@@ -87,7 +87,7 @@ export class ManagementController {
         await this.contentService.moderateCourse(adminId, courseId, dto);
     }
 
-    async getLessonPreview(courseId: bigint, lessonId: bigint): Promise<LessonPreviewDto> {
-        return await this.contentService.getLessonPreview(courseId, lessonId);
+    async getLessonPreview(courseId: bigint, lessonId: bigint, user?: { id: bigint; role: string }): Promise<LessonPreviewDto> {
+        return await this.contentService.getLessonPreview(courseId, lessonId, user);
     }
 }

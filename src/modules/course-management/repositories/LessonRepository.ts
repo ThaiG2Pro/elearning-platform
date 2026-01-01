@@ -105,7 +105,7 @@ export class LessonRepository {
         }
     }
 
-    async findQuizQuestions(lessonId: bigint): Promise<{ id: bigint; content: string; optionA: string; optionB: string; optionC: string; optionD: string }[]> {
+    async findQuizQuestions(lessonId: bigint): Promise<{ id: bigint; content: string; optionA: string; optionB: string; optionC: string; optionD: string; answerKey?: string }[]> {
         const questions = await this.prisma.questions.findMany({
             where: { lesson_id: lessonId },
             orderBy: { id: 'asc' }
@@ -117,7 +117,8 @@ export class LessonRepository {
             optionA: q.option_a,
             optionB: q.option_b,
             optionC: q.option_c,
-            optionD: q.option_d
+            optionD: q.option_d,
+            answerKey: (q as any).answer_key || undefined,
         }));
     }
 }

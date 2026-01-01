@@ -6,7 +6,7 @@ export interface LecturerCourse {
     status: 'Draft' | 'Pending' | 'Active';
     thumbnailUrl?: string;
     rejectNote?: string;
-    createdAt: string;
+    createdAt?: string; // optional because API might not provide it
 }
 
 export interface LecturerCoursesResponse {

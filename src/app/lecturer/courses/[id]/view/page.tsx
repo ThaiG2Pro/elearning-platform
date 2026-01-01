@@ -152,40 +152,88 @@ const CoursePreviewPage = () => {
                         ) : selectedLesson ? (
                             <div>
                                 <h3 className="text-xl font-semibold text-gray-900 mb-4">{selectedLesson.title}</h3>
-                                {selectedLesson.type === 'VIDEO' && selectedLesson.videoUrl && (
+                                {selectedLesson.type === 'VIDEO' && (selectedLesson.videoUrl || selectedLesson.content) && (
                                     <div className="mb-4">
-                                        <video
-                                            controls
-                                            className="w-full max-h-96 rounded-lg"
-                                            src={selectedLesson.videoUrl}
-                                        >
-                                            Trình duyệt của bạn không hỗ trợ video.
-                                        </video>
+                                        {(() => {
+                                            const lessonVideoUrl = selectedLesson.videoUrl || selectedLesson.content || '';
+                                            const getYouTubeVideoId = (url: string): string | null => {
+                                                const reg1 = /(?:https?:\/\/)?(?:www\.)?youtube\.com\/watch\?v=([^&\n?#]+)/;
+                                                const reg2 = /(?:https?:\/\/)?(?:www\.)?youtu\.be\/([^&\n?#]+)/;
+                                                const reg3 = /(?:https?:\/\/)?(?:www\.)?youtube\.com\/embed\/([^&\n?#]+)/;
+                                                const m = reg1.exec(url) || reg2.exec(url) || reg3.exec(url);
+                                                return m ? m[1] : null;
+                                            };
+                                            const isYouTubeUrl = (url: string) => url.includes('youtube.com') || url.includes('youtu.be');
+
+                                            if (isYouTubeUrl(lessonVideoUrl)) {
+                                                const vid = getYouTubeVideoId(lessonVideoUrl);
+                                                return vid ? (
+                                                    <YoutubePlayer
+                                                        videoId={vid}
+                                                        initialPos={0}
+                                                        onProgress={() => {}}
+                                                        onDuration={() => {}}
+                                                        onFlush={() => {}}
+                                                    />
+                                                ) : (
+                                                    <div className="text-sm text-gray-500">Không thể lấy video YouTube</div>
+                                                );
+                                            }
+
+                                            return (
+                                                <video
+                                                    controls
+                                                    className="w-full max-h-96 rounded-lg"
+                                                    src={lessonVideoUrl}
+                                                >
+                                                    Trình duyệt của bạn không hỗ trợ video.
+                                                </video>
+                                            );
+                                        })()}
                                     </div>
                                 )}
                                 {selectedLesson.type === 'QUIZ' && selectedLesson.quizQuestions && (
                                     <div className="space-y-4">
-                                        {selectedLesson.quizQuestions.map((question) => (
-                                            <div key={question.id} className="border rounded-lg p-4">
-                                                <p className="font-medium mb-2">{question.text}</p>
-                                                <div className="space-y-1">
-                                                    {question.options.map((option, index) => (
-                                                        <div
-                                                            key={index}
-                                                            className={`p-2 rounded ${index === question.correctId
+                                        {selectedLesson.quizQuestions.map((question: any) => {
+                                            const qText = question.content || question.text || 'Câu hỏi';
+                                            const parseCorrectIndex = () => {
+                                                if (typeof question.correctIndex === 'number') return question.correctIndex;
+                                                if (typeof question.correctId === 'number') return question.correctId;
+                                                if (typeof question.correctId === 'string') {
+                                                    const m = question.correctId.match(/option_(\d+)/);
+                                                    if (m) return parseInt(m[1], 10);
+                                                }
+                                                if (typeof question.answerKey === 'string') {
+                                                    const map: any = { A: 0, B: 1, C: 2, D: 3 };
+                                                    const k = question.answerKey.trim().toUpperCase();
+                                                    if (map[k] !== undefined) return map[k];
+                                                }
+                                                return -1;
+                                            };
+                                            const correctIdx = parseCorrectIndex();
+
+                                            return (
+                                                <div key={question.id} className="border rounded-lg p-4">
+                                                    <p className="font-medium mb-2">{qText}</p>
+                                                    <div className="space-y-1">
+                                                        {Array.isArray(question.options) ? question.options.map((option: string, index: number) => (
+                                                            <div
+                                                                key={index}
+                                                                className={`p-2 rounded ${index === correctIdx
                                                                     ? 'bg-green-100 text-green-800'
                                                                     : 'bg-gray-50'
                                                                 }`}
-                                                        >
-                                                            {option}
-                                                            {index === question.correctId && (
-                                                                <span className="ml-2 text-green-600">✓ Đáp án đúng</span>
-                                                            )}
-                                                        </div>
-                                                    ))}
+                                                            >
+                                                                {option}
+                                                                {index === correctIdx && (
+                                                                    <span className="ml-2 text-green-600">✓ Đáp án đúng</span>
+                                                                )}
+                                                            </div>
+                                                        )) : <div className="text-sm text-gray-500">Không có đáp án</div>}
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 )}
                                 {selectedLesson.type === 'TEXT' && (

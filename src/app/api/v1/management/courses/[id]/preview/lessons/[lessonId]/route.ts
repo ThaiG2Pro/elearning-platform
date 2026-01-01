@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { CourseManagementController } from '@/modules/course-management/controllers/CourseManagementController';
-import { getUserIdFromRequest } from '@/shared/middleware/auth';
+import { getUserFromRequest } from '@/shared/middleware/auth';
 
 export async function GET(
     request: NextRequest,
     { params }: { params: { id: string; lessonId: string } }
 ) {
     try {
-        const userId = await getUserIdFromRequest(request);
-        if (!userId) {
+        const user = await getUserFromRequest(request);
+        if (!user) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
@@ -16,12 +16,13 @@ export async function GET(
         const lessonId = BigInt(params.lessonId);
 
         const controller = new CourseManagementController();
-        const lessonPreview = await controller.getLessonPreview(courseId, lessonId);
+        const lessonPreview = await controller.getLessonPreview(courseId, lessonId, user);
 
         return NextResponse.json(lessonPreview);
     } catch (error) {
         console.error('Get lesson preview error:', error);
         const message = error instanceof Error ? error.message : 'Internal server error';
-        return NextResponse.json({ error: message }, { status: 500 });
+        const status = message === 'FORBIDDEN' ? 403 : message === 'LESSON_NOT_FOUND' ? 404 : 500;
+        return NextResponse.json({ error: message }, { status });
     }
 }

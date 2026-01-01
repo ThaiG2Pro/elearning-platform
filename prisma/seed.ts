@@ -127,13 +127,12 @@ async function main() {
             title: 'Nhập môn Python',
             slug: 'nhap-mon-python',
             description: 'Khóa học Python cơ bản dành cho người mới bắt đầu',
-            status: 'REJECTED',
+            // Represent previously rejected course as a Draft with reject note so lecturer can edit
+            status: 'DRAFT',
             reject_note: 'Thêm quiz chất lượng',
             submitted_at: new Date('2025-12-15'),
         },
     });
-
-    console.log('✅ Courses created');
 
     // Create chapters and lessons for Java course
     const javaChapter = await prisma.chapters.create({

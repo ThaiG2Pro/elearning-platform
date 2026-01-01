@@ -39,7 +39,8 @@ export class Course {
         if (this.status !== CourseStatus.PENDING) {
             throw new Error('INVALID_STATUS_TRANSITION');
         }
-        this.status = CourseStatus.REJECTED;
+        // Reject sends the course back to Draft so the lecturer can fix issues.
+        this.status = CourseStatus.DRAFT;
         this.rejectNote = note;
     }
 }

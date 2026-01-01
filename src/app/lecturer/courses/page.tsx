@@ -8,13 +8,13 @@ import { LecturerCourse } from '@/types/lecturer.types';
 import { User } from '@/types/auth.types';
 import { logout as apiLogout, AuthUtils } from '@/lib/auth';
 
-type Status = 'Draft' | 'Pending' | 'Active';
+type Status = 'All' | 'Draft' | 'Pending' | 'Active';
 
 const LecturerCoursesPage = () => {
     const [courses, setCourses] = useState<LecturerCourse[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [selectedStatus, setSelectedStatus] = useState<Status>('Draft');
+    const [selectedStatus, setSelectedStatus] = useState<Status>('All');
     const [user, setUser] = useState<User | null>(null);
     const router = useRouter();
 
@@ -22,9 +22,25 @@ const LecturerCoursesPage = () => {
         setLoading(true);
         setError(null);
         try {
-            const response = await getLecturerCourses(status ? { status } : undefined);
-            // Guard against unexpected API shapes — always keep courses as an array
-            setCourses(response?.courses || []);
+            // Draft tab should show courses with status = DRAFT (including those with reject notes)
+            if (status === 'Draft') {
+                const response = await getLecturerCourses(undefined);
+                const normalized = Array.isArray(response) ? response : response?.courses || [];
+                const filtered = normalized.filter(c => {
+                    const s = ((c.status || '') as string).toUpperCase();
+                    return s === 'DRAFT';
+                });
+                setCourses(filtered);
+            } else {
+                // If status is 'All' we pass undefined so the API returns all courses
+                const apiStatus = status === 'All' ? undefined : status;
+                // Map frontend statuses to backend values if necessary (e.g., ACTIVE/PENDING)
+                const params = apiStatus ? { status: apiStatus } : undefined;
+                const response = await getLecturerCourses(params);
+                // Guard against unexpected API shapes — API may return either an array or { courses: [] }
+                const normalized = Array.isArray(response) ? response : response?.courses || [];
+                setCourses(normalized);
+            }
         } catch (err: any) {
             // On error ensure we reset to an empty list to avoid undefined runtime errors
             setCourses([]);
@@ -66,13 +82,12 @@ const LecturerCoursesPage = () => {
         setSelectedStatus(status);
     };
 
-    const formatDate = (dateString: string) => {
-        const date = new Date(dateString);
-        return date.toLocaleDateString('vi-VN');
-    };
+
 
     const handleCourseClick = (course: LecturerCourse) => {
-        if (course.status === 'Draft') {
+        const statusNormalized = ((course.status || '') as string).toUpperCase();
+        // If course is still a draft (backend might return 'DRAFT'), go to edit, else view
+        if (statusNormalized === 'DRAFT') {
             router.push(`/lecturer/courses/${course.id}/edit`);
         } else {
             router.push(`/lecturer/courses/${course.id}/view`);
@@ -102,7 +117,7 @@ const LecturerCoursesPage = () => {
                 <div className="mb-6">
                     <div className="border-b border-gray-200">
                         <nav className="-mb-px flex space-x-8">
-                            {(['Draft', 'Pending', 'Active'] as Status[]).map((status) => (
+                            {(['All', 'Draft', 'Pending', 'Active'] as Status[]).map((status) => (
                                 <button
                                     key={status}
                                     onClick={() => handleStatusChange(status)}
@@ -111,7 +126,7 @@ const LecturerCoursesPage = () => {
                                         : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                                         }`}
                                 >
-                                    {status}
+                                    {status === 'All' ? 'Tất cả' : status}
                                 </button>
                             ))}
                         </nav>
@@ -173,27 +188,29 @@ const LecturerCoursesPage = () => {
                                 <div className="p-6">
                                     <h3 className="text-lg font-semibold text-gray-900 mb-2">{course.title}</h3>
 
-                                    <div className="mb-4">
-                                        <div className="flex justify-between text-sm text-gray-600 mb-1">
-                                            <span>Tiến độ</span>
-                                            <span>{((course as any).completionRate ?? 0)}%</span>
-                                        </div>
-                                        <div className="w-full bg-gray-200 rounded-full h-2">
-                                            <div
-                                                className="bg-blue-600 h-2 rounded-full"
-                                                style={{ width: `${(course as any).completionRate ?? 0}%` }}
-                                            ></div>
-                                        </div>
+                                    {/* Status & metadata (show backend status and reject note) */}
+                                    <div className="mb-2 flex items-center justify-between">
+                                        {/* Normalize status to uppercase to match backend values */}
+                                        <span
+                                            className={`px-2 py-1 rounded-full text-xs font-medium ${((course.status || '') as string).toUpperCase() === 'ACTIVE'
+                                                ? 'bg-green-100 text-green-800'
+                                                : ((course.status || '') as string).toUpperCase() === 'PENDING'
+                                                    ? 'bg-yellow-100 text-yellow-800'
+                                                    : (((course.status || '') as string).toUpperCase() === 'DRAFT' && (course as any).rejectNote)
+                                                        ? 'bg-red-100 text-red-800'
+                                                        : 'bg-gray-100 text-gray-800'
+                                                }`}
+                                        >
+                                            {((course.status || '') as string).toUpperCase() === 'ACTIVE' ? 'Đang hoạt động' : ((course.status || '') as string).toUpperCase() === 'PENDING' ? 'Chờ duyệt' : (((course.status || '') as string).toUpperCase() === 'DRAFT' && (course as any).rejectNote) ? 'Bị từ chối' : 'Nháp'}
+                                        </span>
+
                                     </div>
 
-                                    <div className="flex justify-between text-sm text-gray-500">
-                                        <span>
-                                            {course.status === 'Draft' ? 'Nháp' : course.status === 'Pending' ? 'Chờ duyệt' : 'Đang hoạt động'}
-                                        </span>
-                                        <span>
-                                            Ngày tạo: {formatDate(course.createdAt)}
-                                        </span>
-                                    </div>
+                                    {(((course.status || '') as string).toUpperCase() === 'DRAFT' && (course as any).rejectNote) && (
+                                        <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded">
+                                            <p className="text-sm text-red-700">{(course as any).rejectNote}</p>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         ))}

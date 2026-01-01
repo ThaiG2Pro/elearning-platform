@@ -7,6 +7,7 @@ import { YouTubeAdapter } from '../../../shared/adapters/YouTubeAdapter';
 import { LessonFactory } from '../domain/LessonFactory';
 import { BulkCourseContentDto } from '../dtos/BulkCourseContentDto';
 import { LessonPreviewDto } from './ContentManagementService';
+import { QuizPolicy } from '../domain/QuizPolicy';
 
 export class CourseManagementService {
     constructor(
@@ -69,8 +70,8 @@ export class CourseManagementService {
         await this.courseRepository.save(course);
     }
 
-    async getLessonPreview(courseId: bigint, lessonId: bigint): Promise<LessonPreviewDto> {
-        // For preview, we allow access without enrollment check
+    async getLessonPreview(courseId: bigint, lessonId: bigint, user: { id: bigint; role: string }): Promise<LessonPreviewDto> {
+        // For preview, allow access according to role rules
         const lesson = await this.lessonRepository.findById(lessonId);
         if (!lesson) throw new Error('LESSON_NOT_FOUND');
 
@@ -78,6 +79,26 @@ export class CourseManagementService {
         const chapter = await this.sectionRepository.findById(lesson.chapterId);
         if (!chapter || chapter.courseId !== courseId) {
             throw new Error('LESSON_NOT_FOUND');
+        }
+
+        // Load course to check ownership & status
+        const course = await this.courseRepository.findById(courseId);
+        if (!course) throw new Error('COURSE_NOT_FOUND');
+
+        // Access control
+        if (!user) throw new Error('Unauthorized');
+
+        if (user.role === 'STUDENT') {
+            throw new Error('FORBIDDEN');
+        }
+
+        if (user.role === 'LECTURER') {
+            if (course.lecturerId !== user.id) throw new Error('FORBIDDEN');
+            if (course.status !== 'PENDING' && course.status !== 'ACTIVE') throw new Error('FORBIDDEN');
+        }
+
+        if (user.role === 'ADMIN') {
+            if (course.status !== 'PENDING') throw new Error('FORBIDDEN');
         }
 
         const quizQuestions = await this.lessonRepository.findQuizQuestions(lessonId);
@@ -88,11 +109,20 @@ export class CourseManagementService {
             type: lesson.type,
             content: lesson.contentUrl || '',
             videoUrl: lesson.contentUrl || undefined,
-            quizQuestions: quizQuestions.map(q => ({
-                id: q.id,
-                content: q.content,
-                options: [q.optionA, q.optionB, q.optionC, q.optionD]
-            }))
+            quizQuestions: quizQuestions.map(q => {
+                const answerKey = (q as any).answerKey || undefined;
+                const correctIdx = typeof answerKey === 'string' ? QuizPolicy.keyToIndex(answerKey) : null;
+                const correctId = correctIdx !== null && correctIdx >= 0 ? `option_${correctIdx}` : null;
+
+                return {
+                    id: q.id,
+                    content: q.content,
+                    options: [q.optionA, q.optionB, q.optionC, q.optionD],
+                    answerKey: answerKey || undefined,
+                    correctIndex: correctIdx !== null ? correctIdx : null,
+                    correctId: correctId,
+                };
+            })
         };
     }
 }

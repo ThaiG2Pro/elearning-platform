@@ -1,4 +1,5 @@
 import { CourseRepository } from '../repositories/CourseRepository';
+import { QuizPolicy } from '../domain/QuizPolicy';
 import { Course, CourseStatus } from '../domain/Course';
 import { CreateCourseDto, CourseSummaryDto } from '../dtos/CourseManagementDto';
 import { CreateSectionDto, UpdateSectionDto, SectionDto, CreateLessonDto, UpdateLessonDto, LessonDto } from '../dtos/ContentDto';
@@ -17,13 +18,22 @@ export interface PendingCourseDto {
     submittedAt: Date;
 }
 
+export interface QuizQuestionPreviewDto {
+    id: bigint;
+    content: string;
+    options: string[];
+    answerKey?: string;
+    correctIndex?: number | null;
+    correctId?: string | null;
+}
+
 export interface LessonPreviewDto {
     id: bigint;
     title: string;
     type: string;
     content: string;
     videoUrl?: string;
-    quizQuestions?: any[];
+    quizQuestions?: QuizQuestionPreviewDto[];
 }
 
 export class ContentManagementService {
@@ -35,7 +45,14 @@ export class ContentManagementService {
     async getLecturerCourses(lecturerId: bigint, status?: string | null): Promise<CourseSummaryDto[]> {
         const whereClause: any = { lecturer_id: lecturerId };
         if (status) {
-            whereClause.status = status.toUpperCase();
+            const statusUpper = status.toUpperCase();
+            // When requesting Drafts, include previously rejected courses so lecturers can see drafts with reject notes
+            if (statusUpper === 'DRAFT') {
+                // Use OR clause to include DRAFT or REJECTED stored in DB
+                whereClause.OR = [{ status: 'DRAFT' }, { status: 'REJECTED' }];
+            } else {
+                whereClause.status = statusUpper;
+            }
         }
 
         const courses = await this.prisma.courses.findMany({
@@ -45,6 +62,7 @@ export class ContentManagementService {
                 title: true,
                 status: true,
                 reject_note: true,
+                submitted_at: true,
                 chapters: {
                     select: {
                         lessons: {
@@ -70,12 +88,15 @@ export class ContentManagementService {
                 ? VideoThumbnailUtil.deriveThumbnailFromVideoUrl(firstVideoUrl)
                 : '/images/course-placeholder.svg';
 
+            // Normalize status: treat REJECTED as DRAFT for lecturer-facing lists so drafts with reject notes are editable
+            const normalizedStatus = course.status === 'REJECTED' ? 'DRAFT' : course.status;
+
             return new CourseSummaryDto(
                 course.id,
                 course.title,
-                course.status,
+                normalizedStatus,
                 thumbnailUrl,
-                course.reject_note || undefined
+                course.reject_note || undefined,
             );
         });
     }
@@ -253,7 +274,8 @@ export class ContentManagementService {
             throw new Error('REJECT_NOTE_REQUIRED');
         }
 
-        const newStatus = dto.action === 'APPROVE' ? 'ACTIVE' : 'REJECTED';
+        // If admin approves -> ACTIVE. If admin rejects -> send back to DRAFT with reject note
+        const newStatus = dto.action === 'APPROVE' ? 'ACTIVE' : 'DRAFT';
 
         await this.prisma.courses.update({
             where: { id: courseId },
@@ -264,8 +286,8 @@ export class ContentManagementService {
         });
     }
 
-    async getLessonPreview(courseId: bigint, lessonId: bigint): Promise<LessonPreviewDto> {
-        // Check if course is accessible for preview (pending or active for admin/lecturer)
+    async getLessonPreview(courseId: bigint, lessonId: bigint, user?: { id: bigint; role: string }): Promise<LessonPreviewDto> {
+        // Fetch lesson and its course to enforce access rules
         const lesson = await this.prisma.lessons.findFirst({
             where: {
                 id: lessonId,
@@ -274,12 +296,44 @@ export class ContentManagementService {
                 }
             },
             include: {
-                questions: true
+                questions: true,
+                chapter: {
+                    include: { course: true }
+                }
             }
         });
 
         if (!lesson) {
             throw new Error('LESSON_NOT_FOUND');
+        }
+
+        const course = lesson.chapter.course;
+
+        // Require authenticated user
+        if (!user) {
+            throw new Error('Unauthorized');
+        }
+
+        // Students are not allowed to preview
+        if (user.role === 'STUDENT') {
+            throw new Error('FORBIDDEN');
+        }
+
+        // Lecturer: only allowed for own course and only when status is PENDING or ACTIVE
+        if (user.role === 'LECTURER') {
+            if (course.lecturer_id !== user.id) {
+                throw new Error('FORBIDDEN');
+            }
+            if (course.status !== 'PENDING' && course.status !== 'ACTIVE') {
+                throw new Error('FORBIDDEN');
+            }
+        }
+
+        // Admin: only allowed to preview courses in PENDING state
+        if (user.role === 'ADMIN') {
+            if (course.status !== 'PENDING') {
+                throw new Error('FORBIDDEN');
+            }
         }
 
         return {
@@ -288,11 +342,20 @@ export class ContentManagementService {
             type: lesson.type,
             content: lesson.content_url || '',
             videoUrl: lesson.content_url || undefined,
-            quizQuestions: lesson.questions.map(q => ({
-                id: q.id,
-                content: q.content,
-                options: [q.option_a, q.option_b, q.option_c, q.option_d]
-            }))
+            quizQuestions: lesson.questions.map(q => {
+                const answerKey = (q as any).answer_key || (q as any).answerKey || undefined;
+                const correctIdx = typeof answerKey === 'string' ? QuizPolicy.keyToIndex(answerKey) : null;
+                const correctId = correctIdx !== null && correctIdx >= 0 ? `option_${correctIdx}` : null;
+
+                return {
+                    id: q.id,
+                    content: q.content,
+                    options: [q.option_a, q.option_b, q.option_c, q.option_d],
+                    answerKey: answerKey || undefined,
+                    correctIndex: correctIdx !== null ? correctIdx : null,
+                    correctId: correctId,
+                };
+            })
         };
     }
 }
