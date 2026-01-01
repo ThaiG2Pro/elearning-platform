@@ -6,18 +6,10 @@ const prisma = new PrismaClient();
 async function main() {
     console.log('🌱 Seeding database...');
 
-    // Clear existing data
-    console.log('🧹 Clearing existing data...');
-    await prisma.questions.deleteMany();
-    await prisma.learning_progress.deleteMany();
-    await prisma.enrollments.deleteMany();
-    await prisma.lessons.deleteMany();
-    await prisma.chapters.deleteMany();
-    await prisma.courses.deleteMany();
-    await prisma.tokens.deleteMany();
-    await prisma.users.deleteMany();
-    await prisma.roles.deleteMany();
-    console.log('✅ Existing data cleared');
+    // Clear existing data — use TRUNCATE to ensure tables are fully cleared and sequences reset
+    console.log('🧹 Truncating tables and resetting sequences...');
+    await prisma.$executeRaw`TRUNCATE TABLE "questions","learning_progress","enrollments","lessons","chapters","courses","tokens","users","roles" RESTART IDENTITY CASCADE;`;
+    console.log('✅ Tables truncated and sequences reset');
 
     // Create roles
     let studentRole = await prisma.roles.findFirst({
