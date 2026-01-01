@@ -1,5 +1,5 @@
 import { UserEntity } from './UserEntity';
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';;
 import { prisma } from '../../../shared/config/database';
 
 export class UserFactory {
