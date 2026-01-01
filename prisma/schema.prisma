@@ -1,0 +1,128 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model users {
+  id                BigInt              @id @default(autoincrement()) @map("id")
+  email             String              @unique @db.VarChar(255) @map("email")
+  password_hash     String              @db.VarChar(255) @map("password_hash")
+  full_name         String              @db.VarChar(100) @map("full_name")
+  age               Int?                @map("age")
+  role_id           Int                 @map("role_id")
+  status            String              @db.VarChar(20) @map("status")
+  created_at        DateTime?           @db.Timestamp(6) @map("created_at")
+  courses           courses[]
+  enrollments       enrollments[]
+  role              roles               @relation(fields: [role_id], references: [id])
+  tokens            tokens[]
+
+  @@map("users")
+}
+model roles {
+  id    Int     @id @default(autoincrement()) @map("id")
+  name  String  @db.VarChar(20) @map("name")
+  users users[]
+
+  @@map("roles")
+}
+
+model tokens {
+  id         BigInt   @id @default(autoincrement()) @map("id")
+  user_id    BigInt   @map("user_id")
+  code       String   @unique @db.Uuid @map("code")
+  type       String   @db.VarChar(20) @map("type")
+  expires_at DateTime @db.Timestamp(6) @map("expires_at")
+  is_used    Boolean  @map("is_used")
+  user       users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("tokens")
+}
+
+model courses {
+  id           BigInt        @id @default(autoincrement()) @map("id")
+  lecturer_id  BigInt        @map("lecturer_id")
+  title        String        @db.VarChar(255) @map("title")
+  slug         String        @unique @db.VarChar(255) @map("slug")
+  description  String?       @db.Text @map("description")
+  status       String        @db.VarChar(20) @map("status")
+  reject_note  String?       @db.Text @map("reject_note")
+  submitted_at DateTime?     @db.Timestamp(6) @map("submitted_at")
+  chapters     chapters[]
+  enrollments  enrollments[]
+  lecturer     users         @relation(fields: [lecturer_id], references: [id])
+
+  @@map("courses")
+}
+
+model chapters {
+  id          BigInt    @id @default(autoincrement()) @map("id")
+  course_id   BigInt    @map("course_id")
+  title       String    @db.VarChar(255) @map("title")
+  order_index Int       @map("order_index")
+  course      courses   @relation(fields: [course_id], references: [id])
+  lessons     lessons[]
+
+  @@map("chapters")
+}
+
+model lessons {
+  id                BigInt              @id @default(autoincrement()) @map("id")
+  chapter_id        BigInt              @map("chapter_id")
+  title             String              @db.VarChar(255) @map("title")
+  type              String              @db.VarChar(20) @map("type")
+  content_url       String?             @db.VarChar(500) @map("content_url")
+  order_index       Int                 @map("order_index")
+  chapter           chapters            @relation(fields: [chapter_id], references: [id])
+  learning_progress learning_progress[]
+  questions         questions[]
+
+  @@map("lessons")
+}
+
+model enrollments {
+  id              BigInt              @id @default(autoincrement()) @map("id")
+  student_id      BigInt              @map("student_id")
+  course_id       BigInt              @map("course_id")
+  completion_rate Int                 @map("completion_rate")
+  enrolled_at     DateTime?           @db.Timestamp(6) @map("enrolled_at")
+  course          courses             @relation(fields: [course_id], references: [id])
+  learning_progress learning_progress[]
+  student         users               @relation(fields: [student_id], references: [id])
+
+  @@map("enrollments")
+}
+
+model learning_progress {
+  id                   BigInt       @id @default(autoincrement()) @map("id")
+  enrollment_id        BigInt       @map("enrollment_id")
+  lesson_id            BigInt       @map("lesson_id")
+  is_finished          Boolean      @map("is_finished")
+  video_last_position  Int?         @map("video_last_position")
+  quiz_max_score       Int?         @map("quiz_max_score")
+  quiz_start_time      DateTime?    @map("quiz_start_time")
+  personal_note        String?      @db.Text @map("personal_note")
+  quiz_question_ids    String?      @db.Text @map("quiz_question_ids")
+  enrollment           enrollments  @relation(fields: [enrollment_id], references: [id])
+  lesson               lessons      @relation(fields: [lesson_id], references: [id])
+
+  @@map("learning_progress")
+}
+
+model questions {
+  id          BigInt  @id @default(autoincrement()) @map("id")
+  lesson_id   BigInt  @map("lesson_id")
+  content     String  @db.Text @map("content")
+  answer_key  String? @db.VarChar(255) @map("answer_key")
+  option_a    String  @db.VarChar(255) @map("option_a")
+  option_b    String  @db.VarChar(255) @map("option_b")
+  option_c    String  @db.VarChar(255) @map("option_c")
+  option_d    String  @db.VarChar(255) @map("option_d")
+  lesson      lessons @relation(fields: [lesson_id], references: [id])
+
+  @@map("questions")
+}
