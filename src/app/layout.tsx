@@ -1,3 +1,10 @@
+// Fix lỗi BigInt không thể chuyển sang JSON
+if (typeof BigInt !== 'undefined' && !(BigInt.prototype as any)?.toJSON) {
+    (BigInt.prototype as any).toJSON = function () {
+        return this.toString();
+    };
+}
+
 import type { Metadata } from 'next'
 import './globals.css'
 
