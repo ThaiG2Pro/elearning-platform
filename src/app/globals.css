@@ -1,3 +1,15 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Ensure Youtube iframe fills the aspect container and doesn't get vertically squashed */
+.youtube-player-wrapper>iframe {
+    width: 100% !important;
+    height: 100% !important;
+    display: block;
+}
+
+/* Also ensure the outer wrapper keeps a sensible min-height to avoid tiny previews */
+.youtube-player-wrapper {
+    min-height: 200px;
+}

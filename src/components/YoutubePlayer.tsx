@@ -91,7 +91,7 @@ const YoutubePlayer = ({ videoId, initialPos, onProgress, onDuration, onFlush }:
     }), []);
 
     return (
-        <div className="w-full aspect-video rounded-lg overflow-hidden shadow-lg">
+        <div className="youtube-player-wrapper w-full aspect-video rounded-lg overflow-hidden shadow-lg">
             <YouTube
                 videoId={videoId}
                 opts={opts}
