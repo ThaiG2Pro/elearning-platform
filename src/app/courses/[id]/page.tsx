@@ -115,7 +115,7 @@ export default function CourseDetailPage() {
                     <>
                         {/* Visual Content Section */}
                         <section className="mb-6">
-                            <div className="h-64 bg-gray-200 rounded-lg overflow-hidden">
+                            <div className="w-full aspect-video bg-gray-200 rounded-lg overflow-hidden">
                                 {course.thumbnailUrl ? (
                                     <img
                                         src={course.thumbnailUrl}
@@ -132,10 +132,13 @@ export default function CourseDetailPage() {
 
                         {/* Information Section */}
                         <section className="mb-6">
-                            <h1 className="text-3xl font-bold text-gray-900 mb-2">{course.title}</h1>
-                            {course.lecturerName && (
-                                <p className="text-lg text-gray-600 mb-4">Giảng viên: {course.lecturerName}</p>
-                            )}
+                            <h1 className="text-3xl font-extrabold text-gray-900 mb-2 leading-tight">{course.title}</h1>
+                            <div className="flex flex-wrap items-center gap-4 mb-4">
+                                {course.lecturerName && (
+                                    <p className="text-sm text-gray-600">Giảng viên: <span className="font-medium text-gray-900">{course.lecturerName}</span></p>
+                                )}
+                                {/* Add placeholder for metadata if available in future */}
+                            </div>
                             {course.description && (
                                 <p className="text-gray-700 leading-relaxed">{course.description}</p>
                             )}
@@ -147,7 +150,7 @@ export default function CourseDetailPage() {
                                 course.isEnrolled ? (
                                     <button
                                         onClick={handleLearn}
-                                        className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 font-semibold"
+                                        className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 font-semibold shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
                                     >
                                         Bắt đầu học
                                     </button>
@@ -155,7 +158,7 @@ export default function CourseDetailPage() {
                                     <button
                                         onClick={handleEnroll}
                                         disabled={appState === 'processing'}
-                                        className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 disabled:opacity-50 font-semibold"
+                                        className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 disabled:opacity-50 font-semibold shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                                     >
                                         {appState === 'processing' ? 'Đang đăng ký...' : 'Đăng ký học'}
                                     </button>
@@ -165,7 +168,7 @@ export default function CourseDetailPage() {
                             ) : (
                                 <button
                                     onClick={handleJoin}
-                                    className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-semibold"
+                                    className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-semibold shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                                 >
                                     Tham gia để đăng ký
                                 </button>

@@ -3,6 +3,8 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { resetPassword } from '@/lib/auth';
+import Header from '@/components/Header';
+import Toast from '@/components/Toast';
 
 function ResetPasswordForm() {
     const router = useRouter();
@@ -49,14 +51,7 @@ function ResetPasswordForm() {
 
     return (
         <div className="min-h-screen bg-gray-50">
-            {/* Header */}
-            <header className="bg-white shadow-sm">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex justify-center items-center h-16">
-                        <h1 className="text-xl font-bold text-gray-900">E-Learning</h1>
-                    </div>
-                </div>
-            </header>
+            <Header onJoin={() => router.push('/join')} />
 
             {/* Body */}
             <main className="max-w-md mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -69,60 +64,56 @@ function ResetPasswordForm() {
                     </p>
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-6">
-                    {/* New Password Input */}
-                    <div>
-                        <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-                            Mật khẩu mới
-                        </label>
-                        <input
-                            id="password"
-                            name="password"
-                            type="password"
-                            autoComplete="new-password"
-                            required
-                            minLength={6}
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            disabled={appState === 'submitting'}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50"
-                            placeholder="Nhập mật khẩu mới (tối thiểu 6 ký tự)"
-                        />
-                        {appState === 'business_error' && errorMessage && (
-                            <p className="mt-2 text-sm text-red-600">{errorMessage}</p>
-                        )}
-                        {appState === 'system_error' && (
-                            <p className="mt-2 text-sm text-red-600">Có lỗi xảy ra. Vui lòng thử lại sau.</p>
-                        )}
-                    </div>
-
-                    <button
-                        type="submit"
-                        disabled={appState === 'submitting' || !token}
-                        className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
-                    >
-                        {appState === 'submitting' ? 'Đang cập nhật...' : 'Cập nhật mật khẩu'}
-                    </button>
-                </form>
-
-                {/* Success Message */}
-                {appState === 'success' && (
-                    <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-md">
-                        <div className="text-center">
-                            <h3 className="text-sm font-medium text-green-800">
-                                Mật khẩu đã được cập nhật!
-                            </h3>
-                            <p className="mt-2 text-sm text-green-700">
-                                Bạn có thể đăng nhập với mật khẩu mới.
-                            </p>
-                            <button
-                                onClick={() => router.push('/join')}
-                                className="mt-4 text-sm text-blue-600 hover:text-blue-800"
-                            >
-                                Đăng nhập ngay
-                            </button>
+                <div className="bg-white border border-gray-100 rounded-lg shadow-sm p-6">
+                    <form onSubmit={handleSubmit} className="space-y-6">
+                        {/* New Password Input */}
+                        <div>
+                            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+                                Mật khẩu mới
+                            </label>
+                            <input
+                                id="password"
+                                name="password"
+                                type="password"
+                                autoComplete="new-password"
+                                required
+                                minLength={6}
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                disabled={appState === 'submitting'}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50"
+                                placeholder="Nhập mật khẩu mới (tối thiểu 6 ký tự)"
+                            />
+                            <p className="mt-2 text-sm text-gray-500">Mật khẩu nên có ít nhất 6 ký tự. Tránh dùng mật khẩu dễ đoán.</p>
+                            {appState === 'business_error' && errorMessage && (
+                                <p className="mt-2 text-sm text-red-600">{errorMessage}</p>
+                            )}
+                            {appState === 'system_error' && (
+                                <p className="mt-2 text-sm text-red-600">Có lỗi xảy ra. Vui lòng thử lại sau.</p>
+                            )}
                         </div>
-                    </div>
+
+                        <button
+                            type="submit"
+                            disabled={appState === 'submitting' || !token}
+                            className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+                        >
+                            {appState === 'submitting' ? 'Đang cập nhật...' : 'Cập nhật mật khẩu'}
+                        </button>
+                    </form>
+                </div>
+
+                {/* Success Toast */}
+                {appState === 'success' && (
+                    <Toast message="Mật khẩu đã được cập nhật! Bạn có thể đăng nhập với mật khẩu mới." type="success" onClose={() => router.push('/join')} />
+                )}
+
+                {/* Error Toasts */}
+                {appState === 'business_error' && errorMessage && (
+                    <Toast message={errorMessage} type="error" onClose={() => setAppState('idle')} />
+                )}
+                {appState === 'system_error' && (
+                    <Toast message="Có lỗi xảy ra. Vui lòng thử lại sau." type="error" onClose={() => setAppState('idle')} />
                 )}
             </main>
         </div>

@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { identifyUser } from '@/lib/auth';
 import { IdentifyRequest } from '@/types/auth.types';
+import Header from '@/components/Header';
+import Toast from '@/components/Toast';
 
 type AppState = 'idle' | 'submitting' | 'redirecting' | 'error';
 
@@ -63,14 +65,7 @@ export default function JoinPage() {
 
     return (
         <div className="min-h-screen bg-gray-50">
-            {/* Header */}
-            <header className="bg-white shadow-sm">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex justify-center items-center h-16">
-                        <h1 className="text-xl font-bold text-gray-900">E-Learning</h1>
-                    </div>
-                </div>
-            </header>
+            <Header onJoin={() => router.push('/join')} />
 
             {/* Body */}
             <main className="max-w-md mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -83,38 +78,43 @@ export default function JoinPage() {
                     </p>
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-6">
-                    <div>
-                        <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                            Email
-                        </label>
-                        <input
-                            id="email"
-                            name="email"
-                            type="email"
-                            autoComplete="email"
-                            required
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            disabled={appState === 'submitting' || appState === 'redirecting'}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50"
-                            placeholder="your@email.com"
-                        />
-                        {appState === 'error' && errorMessage && (
-                            <p className="mt-2 text-sm text-red-600">{errorMessage}</p>
-                        )}
-                    </div>
+                <div className="bg-white border border-gray-100 rounded-lg shadow-sm p-6">
+                    <form onSubmit={handleSubmit} className="space-y-6">
+                        <div>
+                            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+                                Email
+                            </label>
+                            <input
+                                id="email"
+                                name="email"
+                                type="email"
+                                autoComplete="email"
+                                required
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                disabled={appState === 'submitting' || appState === 'redirecting'}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50"
+                                placeholder="your@email.com"
+                            />
+                            <p className="mt-2 text-sm text-gray-500">Sẽ gửi hướng dẫn tiếp theo theo email của bạn.</p>
+                        </div>
 
-                    <button
-                        type="submit"
-                        disabled={appState === 'submitting' || appState === 'redirecting'}
-                        className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
-                    >
-                        {appState === 'submitting' ? 'Đang xử lý...' :
-                            appState === 'redirecting' ? 'Đang chuyển hướng...' :
-                                'Tiếp tục'}
-                    </button>
-                </form>
+                        <button
+                            type="submit"
+                            disabled={appState === 'submitting' || appState === 'redirecting'}
+                            className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+                        >
+                            {appState === 'submitting' ? 'Đang xử lý...' :
+                                appState === 'redirecting' ? 'Đang chuyển hướng...' :
+                                    'Tiếp tục'}
+                        </button>
+                    </form>
+                </div>
+
+                {/* Error Toast */}
+                {appState === 'error' && errorMessage && (
+                    <Toast message={errorMessage} type="error" onClose={() => setAppState('idle')} />
+                )}
             </main>
         </div>
     );

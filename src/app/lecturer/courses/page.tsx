@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
 import { getLecturerCourses, createCourse } from '@/lib/lecturer';
+import Toast from '@/components/Toast';
 import { LecturerCourse } from '@/types/lecturer.types';
 import { User } from '@/types/auth.types';
 import { logout as apiLogout, AuthUtils } from '@/lib/auth';
@@ -179,9 +180,7 @@ const LecturerCoursesPage = () => {
                 </div>
 
                 {createError && (
-                    <div className="mb-4 px-4">
-                        <div className="text-sm text-red-600">{createError}</div>
-                    </div>
+                    <Toast message={createError} type="error" onClose={() => setCreateError(null)} />
                 )}
 
                 {/* Section 02: Danh sách khóa học */}
@@ -215,6 +214,30 @@ const LecturerCoursesPage = () => {
                         </div>
                         <h3 className="text-lg font-medium text-gray-900 mb-2">Không có khóa học</h3>
                         <p className="text-gray-600">Bạn chưa có khóa học nào trong mục này.</p>
+
+                        {user?.role === 'LECTURER' && (
+                            <div className="mt-6">
+                                <button
+                                    onClick={async () => {
+                                        setCreateError(null);
+                                        setCreating(true);
+                                        try {
+                                            const res = await createCourse({ title: 'Khóa học mới' });
+                                            const newId = (res as any)?.id;
+                                            const idStr = typeof newId === 'number' ? String(newId) : String(newId);
+                                            router.push(`/lecturer/courses/${idStr}/edit`);
+                                        } catch (err: any) {
+                                            setCreateError(err.message || 'Lỗi khi tạo khóa học');
+                                        } finally {
+                                            setCreating(false);
+                                        }
+                                    }}
+                                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                                >
+                                    {creating ? 'Đang tạo...' : 'Tạo khóa học đầu tiên'}
+                                </button>
+                            </div>
+                        )}
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

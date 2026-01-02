@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { loginUser } from '@/lib/auth';
 import { AuthUtils } from '@/lib/auth';
 import { LoginRequest } from '@/types/auth.types';
+import Header from '@/components/Header';
+import Toast from '@/components/Toast';
 
 export default function LoginPage() {
     const router = useRouter();
@@ -64,89 +66,88 @@ export default function LoginPage() {
 
     return (
         <div className="min-h-screen bg-gray-50">
-            {/* Header */}
-            <header className="bg-white shadow-sm">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex justify-center items-center h-16">
-                        <h1 className="text-xl font-bold text-gray-900">E-Learning</h1>
-                    </div>
-                </div>
-            </header>
+            <Header onJoin={() => router.push('/join')} />
 
             {/* Body */}
             <main className="max-w-md mx-auto px-4 sm:px-6 lg:px-8 py-12">
                 <div className="text-center mb-8">
-                    <h2 className="text-3xl font-bold text-gray-900 mb-2">
+                    <h2 className="text-3xl font-extrabold text-gray-900 mb-2">
                         Đăng nhập
                     </h2>
                     <p className="text-gray-600">
-                        Chào mừng bạn quay trở lại
+                        Chào mừng bạn quay trở lại — tiếp tục hành trình học tập của bạn.
                     </p>
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-6">
-                    {/* Email Display */}
-                    <div>
-                        <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                            Email
-                        </label>
-                        <div className="flex items-center">
-                            <input
-                                id="email"
-                                name="email"
-                                type="email"
-                                value={email}
-                                readOnly
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-50 text-gray-500"
-                            />
-                            <button
-                                type="button"
-                                onClick={handleChangeEmail}
-                                className="ml-2 text-blue-600 hover:text-blue-800 text-sm"
-                            >
-                                Thay đổi
-                            </button>
+                <div className="bg-white border border-gray-100 rounded-lg shadow-sm p-6">
+                    <form onSubmit={handleSubmit} className="space-y-6">
+                        {/* Email Display */}
+                        <div>
+                            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+                                Email
+                            </label>
+                            <div className="flex items-center">
+                                <input
+                                    id="email"
+                                    name="email"
+                                    type="email"
+                                    value={email}
+                                    readOnly
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-50 text-gray-500"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={handleChangeEmail}
+                                    className="ml-2 text-blue-600 hover:text-blue-800 text-sm"
+                                >
+                                    Thay đổi
+                                </button>
+                            </div>
                         </div>
+
+                        {/* Password Input */}
+                        <div>
+                            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+                                Mật khẩu
+                            </label>
+                            <input
+                                id="password"
+                                name="password"
+                                type="password"
+                                autoComplete="current-password"
+                                required
+                                minLength={6}
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                            />
+                            <p className="mt-2 text-sm text-gray-500">Mật khẩu của bạn được bảo mật. Nếu quên, bạn có thể đặt lại.</p>
+                        </div>
+
+                        <button
+                            type="submit"
+                            disabled={appState === 'submitting'}
+                            className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+                        >
+                            {appState === 'submitting' ? 'Đang đăng nhập...' : 'Đăng nhập'}
+                        </button>
+                    </form>
+
+                    {/* Footer */}
+                    <div className="mt-6 text-center">
+                        <button
+                            onClick={handleForgotPassword}
+                            className="text-sm text-blue-600 hover:text-blue-800"
+                        >
+                            Quên mật khẩu?
+                        </button>
                     </div>
-
-                    {/* Password Input */}
-                    <div>
-                        <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-                            Mật khẩu
-                        </label>
-                        <input
-                            id="password"
-                            name="password"
-                            type="password"
-                            autoComplete="current-password"
-                            required
-                            minLength={6}
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                        />
-                        {appState === 'error' && errorMessage && (
-                            <p className="mt-2 text-sm text-red-600">{errorMessage}</p>
-                        )}
-                    </div>
-
-                    <button
-                        type="submit"
-                        disabled={appState === 'submitting'}
-                        className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
-                    >
-                        {appState === 'submitting' ? 'Đang đăng nhập...' : 'Đăng nhập'}
-                    </button>
-                </form>
-
-                {/* Footer */}
-                <div className="mt-6 text-center">
-                    <button
-                        onClick={handleForgotPassword}
-                        className="text-sm text-blue-600 hover:text-blue-800"
-                    >
-                        Quên mật khẩu?
-                    </button>
                 </div>
+
+                {/* Inline Toast for errors */}
+                {appState === 'error' && errorMessage && (
+                    <Toast message={errorMessage} type="error" onClose={() => setAppState('idle')} />
+                )}
             </main>
         </div>
     );

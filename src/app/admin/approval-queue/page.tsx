@@ -123,6 +123,7 @@ const AdminApprovalQueuePage = () => {
                     <div className="bg-white shadow-sm rounded-lg overflow-hidden">
                         <div className="px-6 py-4 border-b border-gray-200">
                             <h2 className="text-lg font-medium text-gray-900">Danh sách khóa học chờ duyệt</h2>
+                            <p className="text-sm text-gray-500 mt-1">Xem qua và xử lý các yêu cầu phê duyệt từ giảng viên.</p>
                         </div>
                         <div className="overflow-x-auto">
                             <table className="min-w-full divide-y divide-gray-200">
@@ -154,24 +155,24 @@ const AdminApprovalQueuePage = () => {
                                             <td className="px-6 py-4 whitespace-nowrap">
                                                 <div className="text-sm text-gray-500">{formatDate(item.submittedAt)}</div>
                                             </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium flex items-center justify-end gap-2">
                                                 <button
                                                     onClick={() => handleViewCourse(item.id)}
-                                                    className="text-blue-600 hover:text-blue-900"
+                                                    className="inline-flex items-center px-3 py-1 rounded text-sm text-gray-700 bg-gray-50 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                                                     disabled={processingId === item.id}
                                                 >
                                                     Xem
                                                 </button>
                                                 <button
                                                     onClick={() => handleModerate(item.id, 'APPROVE')}
-                                                    className="text-green-600 hover:text-green-900"
+                                                    className="inline-flex items-center px-3 py-1 rounded text-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
                                                     disabled={processingId === item.id}
                                                 >
                                                     {processingId === item.id ? 'Đang xử lý...' : 'Duyệt'}
                                                 </button>
                                                 <button
                                                     onClick={() => handleModerate(item.id, 'REJECT')}
-                                                    className="text-red-600 hover:text-red-900"
+                                                    className="inline-flex items-center px-3 py-1 rounded text-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
                                                     disabled={processingId === item.id}
                                                 >
                                                     Từ chối

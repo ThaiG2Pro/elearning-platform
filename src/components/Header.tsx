@@ -59,9 +59,12 @@ export default function Header({ user, onLogout, onJoin }: HeaderProps) {
                     <div className="flex-shrink-0">
                         <button
                             onClick={() => router.push('/')}
-                            className="text-xl font-bold text-gray-900 hover:text-blue-600 transition-colors"
+                            className="text-xl font-bold text-gray-900 hover:text-blue-600 transition-colors px-2 py-1 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                            aria-label="Trang chủ"
+                            title="Trang chủ"
                         >
-                            E-Learning
+                            <span className="sr-only">Trang chủ</span>
+                            <span className="inline-block">E-Learning</span>
                         </button>
                     </div>
 
@@ -72,25 +75,32 @@ export default function Header({ user, onLogout, onJoin }: HeaderProps) {
                                 {/* Avatar Button */}
                                 <button
                                     onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                                    className="flex items-center justify-center w-8 h-8 bg-blue-500 text-white rounded-full font-semibold hover:bg-blue-600 transition-colors"
+                                    className="flex items-center justify-center w-9 h-9 bg-blue-500 text-white rounded-full font-semibold hover:bg-blue-600 transition transform hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                                    aria-haspopup="menu"
+                                    aria-expanded={isDropdownOpen}
+                                    aria-label="User menu"
+                                    title={user.fullName}
                                 >
-                                    {getInitial(user.fullName)}
+                                    <span className="sr-only">{user.fullName}</span>
+                                    <span className="text-sm">{getInitial(user.fullName)}</span>
                                 </button>
 
                                 {/* Dropdown Menu */}
                                 {isDropdownOpen && (
-                                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 border">
-                                        <div className="py-1">
+                                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 border ring-1 ring-black/5 transform transition duration-150 origin-top-right">
+                                        <div className="py-1" role="menu" aria-orientation="vertical" aria-label="User menu">
                                             <button
                                                 onClick={handleHomeClick}
-                                                className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
+                                                role="menuitem"
+                                                className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 w-full text-left"
                                             >
                                                 Trang chủ
                                             </button>
                                             {user.role === 'STUDENT' && (
                                                 <button
                                                     onClick={handleMyLearningClick}
-                                                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
+                                                    role="menuitem"
+                                                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 w-full text-left"
                                                 >
                                                     Khóa học của tôi
                                                 </button>
@@ -98,7 +108,8 @@ export default function Header({ user, onLogout, onJoin }: HeaderProps) {
                                             {user.role === 'LECTURER' && (
                                                 <button
                                                     onClick={handleMyCoursesClick}
-                                                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
+                                                    role="menuitem"
+                                                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 w-full text-left"
                                                 >
                                                     Khóa học của tôi
                                                 </button>
@@ -106,26 +117,31 @@ export default function Header({ user, onLogout, onJoin }: HeaderProps) {
                                             {user.role === 'ADMIN' && (
                                                 <button
                                                     onClick={handlePendingQueueClick}
-                                                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
+                                                    role="menuitem"
+                                                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 w-full text-left"
                                                 >
                                                     Danh sách chờ duyệt
                                                 </button>
                                             )}
                                             <button
                                                 onClick={handleProfileClick}
-                                                className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
+                                                role="menuitem"
+                                                className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 w-full text-left"
                                             >
                                                 Sửa hồ sơ
                                             </button>
                                             <button
                                                 onClick={handleChangePasswordClick}
-                                                className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
+                                                role="menuitem"
+                                                className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 w-full text-left"
                                             >
                                                 Đổi mật khẩu
                                             </button>
+                                            <div className="border-t mt-1" />
                                             <button
                                                 onClick={handleLogoutClick}
-                                                className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
+                                                role="menuitem"
+                                                className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 w-full text-left"
                                             >
                                                 Đăng xuất
                                             </button>

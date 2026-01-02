@@ -137,12 +137,12 @@ export default function MyLearningPage() {
                     {appState === 'loading' && (
                         // Skeleton loading
                         Array.from({ length: 6 }).map((_, index) => (
-                            <div key={index} className="bg-white rounded-lg shadow-md p-6 animate-pulse">
-                                <div className="h-32 bg-gray-200 rounded mb-4"></div>
-                                <div className="h-4 bg-gray-200 rounded mb-2"></div>
-                                <div className="h-4 bg-gray-200 rounded w-3/4 mb-4"></div>
-                                <div className="h-2 bg-gray-200 rounded mb-2"></div>
-                                <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                            <div key={index} className="bg-white rounded-lg shadow-sm overflow-hidden animate-pulse">
+                                <div className="w-full aspect-video bg-gray-200"></div>
+                                <div className="p-4">
+                                    <div className="h-4 bg-gray-200 rounded mb-2 w-3/4"></div>
+                                    <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                                </div>
                             </div>
                         ))
                     )}
@@ -151,10 +151,13 @@ export default function MyLearningPage() {
                         <div
                             key={course.id}
                             onClick={() => handleCourseClick(course.id)}
-                            className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow cursor-pointer"
+                            role="button"
+                            tabIndex={0}
+                            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleCourseClick(course.id); }}
+                            className="bg-white rounded-lg shadow-sm hover:shadow-md transition-transform transform hover:-translate-y-0.5 cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                         >
                             {/* Thumbnail */}
-                            <div className="h-32 bg-gray-200 rounded-t-lg flex items-center justify-center">
+                            <div className="w-full aspect-video bg-gray-200 rounded-t-lg flex items-center justify-center overflow-hidden">
                                 {course.thumbnailUrl ? (
                                     <img
                                         src={course.thumbnailUrl}
@@ -168,7 +171,7 @@ export default function MyLearningPage() {
 
                             <div className="p-6">
                                 {/* Course Title */}
-                                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                                <h3 className="text-lg font-semibold text-gray-900 mb-2 leading-tight">
                                     {course.title}
                                 </h3>
 
@@ -176,11 +179,11 @@ export default function MyLearningPage() {
                                 <div className="mb-4">
                                     <div className="flex justify-between text-sm text-gray-600 mb-1">
                                         <span>Tiến độ</span>
-                                        <span>{course.completionRate}%</span>
+                                        <span aria-hidden>{course.completionRate}%</span>
                                     </div>
-                                    <div className="w-full bg-gray-200 rounded-full h-2">
+                                    <div className="w-full bg-gray-200 rounded-full h-2" aria-hidden>
                                         <div
-                                            className="bg-blue-600 h-2 rounded-full"
+                                            className="bg-gradient-to-r from-blue-500 to-blue-600 h-2 rounded-full"
                                             style={{ width: `${course.completionRate}%` }}
                                         ></div>
                                     </div>
@@ -209,9 +212,17 @@ export default function MyLearningPage() {
                             <h3 className="text-lg font-medium text-gray-900 mb-2">
                                 Chưa có khóa học
                             </h3>
-                            <p className="text-gray-600">
+                            <p className="text-gray-600 mb-4">
                                 Bạn chưa tham gia khóa học nào trong mục này.
                             </p>
+                            <div>
+                                <button
+                                    onClick={() => router.push('/')}
+                                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                                >
+                                    Khám phá khóa học
+                                </button>
+                            </div>
                         </div>
                     )}
 

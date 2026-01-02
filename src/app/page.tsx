@@ -82,18 +82,53 @@ export default function Home() {
             <Header user={user} onLogout={handleLogout} onJoin={handleJoin} />
 
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                {/* Search Section */}
+                {/* Hero / Search Section */}
                 <section className="mb-8">
-                    <SearchBar value={searchQuery} onChange={handleSearchChange} />
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                        <div>
+                            <h2 className="text-3xl font-extrabold text-gray-900">Khám phá khóa học</h2>
+                            <p className="text-gray-600 mt-1">Học bất cứ lúc nào — bắt đầu với khóa học phù hợp.</p>
+                        </div>
+                        <div className="w-full md:max-w-md flex items-center gap-3">
+                            <div className="flex-1">
+                                <SearchBar value={searchQuery} onChange={handleSearchChange} />
+                            </div>
+
+                            {user?.role === 'LECTURER' && (
+                                <button
+                                    onClick={() => router.push('/lecturer/courses')}
+                                    className="hidden md:inline-flex px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                                >
+                                    Tạo khóa học
+                                </button>
+                            )}
+                        </div>
+                    </div>
                 </section>
 
                 {/* Course List Section */}
                 <section>
+                    <div className="mb-4 flex items-center justify-between">
+                        <h3 className="text-lg font-semibold text-gray-900">Khóa học nổi bật</h3>
+                        <button
+                            onClick={() => router.push('/')}
+                            className="text-sm text-gray-500 hover:text-gray-700"
+                        >
+                            Xem tất cả
+                        </button>
+                    </div>
+
                     <CourseList
                         courses={courses}
                         loading={appState === 'loading'}
                         onCourseClick={handleCourseClick}
                     />
+
+                    {/* Live region for screen readers */}
+                    <div className="sr-only" aria-live="polite">
+                        {appState === 'loading' ? 'Đang tải khóa học...' : ''}
+                    </div>
+
                     {appState === 'error' && errorMessage && (
                         <div className="text-center py-4">
                             <p className="text-red-600">{errorMessage}</p>
