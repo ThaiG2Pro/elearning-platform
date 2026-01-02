@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
-import { getLecturerCourses } from '@/lib/lecturer';
+import { getLecturerCourses, createCourse } from '@/lib/lecturer';
 import { LecturerCourse } from '@/types/lecturer.types';
 import { User } from '@/types/auth.types';
 import { logout as apiLogout, AuthUtils } from '@/lib/auth';
@@ -16,6 +16,8 @@ const LecturerCoursesPage = () => {
     const [error, setError] = useState<string | null>(null);
     const [selectedStatus, setSelectedStatus] = useState<Status>('All');
     const [user, setUser] = useState<User | null>(null);
+    const [creating, setCreating] = useState(false);
+    const [createError, setCreateError] = useState<string | null>(null);
     const router = useRouter();
 
     const fetchCourses = async (status?: Status) => {
@@ -111,7 +113,50 @@ const LecturerCoursesPage = () => {
         <div className="min-h-screen bg-gray-50">
             <Header user={user} onLogout={handleLogout} onJoin={handleJoin} />
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                <h1 className="text-3xl font-bold text-gray-900 mb-8">My Courses</h1>
+                <div className="flex items-center justify-between mb-8">
+                    <h1 className="text-3xl font-bold text-gray-900">My Courses</h1>
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={handleJoin}
+                            className="px-3 py-2 rounded-md border border-gray-300 text-sm text-gray-700 hover:bg-gray-50"
+                        >
+                            Tham gia
+                        </button>
+                        <button
+                            onClick={async () => {
+                                // noop placeholder if needed
+                            }}
+                            className="px-3 py-2 rounded-md border border-gray-300 text-sm text-gray-700 hover:bg-gray-50 hidden"
+                        >
+                            Import
+                        </button>
+                        <button
+                            onClick={async () => {
+                                setCreateError(null);
+                                setCreating(true);
+                                try {
+                                    const res = await createCourse({ title: 'Khóa học mới' });
+                                    const newId = (res as any)?.id;
+                                    const idStr = typeof newId === 'number' ? String(newId) : String(newId);
+                                    // redirect to editor (use lecturer editor path)
+                                    router.push(`/lecturer/courses/${idStr}/edit`);
+                                } catch (err: any) {
+                                    setCreateError(err.message || 'Lỗi khi tạo khóa học');
+                                } finally {
+                                    setCreating(false);
+                                }
+                            }}
+                            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm flex items-center gap-2"
+                            disabled={creating}
+                        >
+                            {creating ? (
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                            ) : (
+                                'Tạo khóa học'
+                            )}
+                        </button>
+                    </div>
+                </div>
 
                 {/* Section 01: Bộ lọc trạng thái (Tabs like My Learning) */}
                 <div className="mb-6">
@@ -132,6 +177,12 @@ const LecturerCoursesPage = () => {
                         </nav>
                     </div>
                 </div>
+
+                {createError && (
+                    <div className="mb-4 px-4">
+                        <div className="text-sm text-red-600">{createError}</div>
+                    </div>
+                )}
 
                 {/* Section 02: Danh sách khóa học */}
                 {loading ? (

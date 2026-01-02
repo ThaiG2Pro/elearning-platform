@@ -16,10 +16,31 @@ export async function GET(
 
         const courseId = BigInt(params.id);
 
+        // Ensure course exists
+        const course = await prisma.courses.findUnique({ where: { id: courseId } });
+        if (!course) {
+            return NextResponse.json({ error: 'COURSE_NOT_FOUND' }, { status: 404 });
+        }
+
+        // Ensure owner
+        if (course.lecturer_id !== userId) {
+            return NextResponse.json({ error: 'ACCESS_DENIED' }, { status: 403 });
+        }
+
+        // If course is published/active, editing is not allowed
+        if (((course.status || '') as string).toUpperCase() === 'ACTIVE') {
+            return NextResponse.json({ error: 'COURSE_PUBLISHED' }, { status: 409 });
+        }
+
         const controller = new ManagementController();
         const sections = await controller.getCourseSections(courseId);
 
-        return NextResponse.json(sections);
+        // Guarantee stable contract: always return an object with courseId, status and sections array
+        return NextResponse.json({
+            courseId: Number(course.id),
+            status: (course.status || 'DRAFT').toUpperCase(),
+            sections: Array.isArray(sections) ? sections : []
+        });
     } catch (error) {
         console.error('Get course sections error:', error);
         return NextResponse.json(

@@ -80,6 +80,25 @@ export const getLessonPreview = async (courseId: number, lessonId: number): Prom
     }
 };
 
+// Create a new course (Draft)
+export const createCourse = async (data: { title?: string; description?: string; slug?: string } = {}): Promise<{ id: number | string; message?: string }> => {
+    try {
+        const response = await api.post<{ id: number | string; message?: string }>(
+            `/management/courses`,
+            data
+        );
+        return response.data;
+    } catch (error: any) {
+        if (error.response) {
+            const { status } = error.response;
+            if (status === 400) throw new Error('VALIDATION_ERROR');
+            else if (status === 401) throw new Error('UNAUTHORIZED');
+            else if (status === 403) throw new Error('ACCESS_DENIED');
+            else throw new Error('SERVER_ERROR');
+        } else throw new Error('NETWORK_ERROR');
+    }
+};
+
 // Section (Chapter) CRUD
 export const createSection = async (courseId: number, data: { title: string; orderIndex: number }): Promise<Chapter> => {
     try {
@@ -245,6 +264,21 @@ export const publishCourse = async (courseId: number): Promise<PublishValidation
                 return data as PublishValidation; // Return validation errors
             } else if (status === 401) throw new Error('UNAUTHORIZED');
             else if (status === 403) throw new Error('ACCESS_DENIED');
+            else throw new Error('SERVER_ERROR');
+        } else throw new Error('NETWORK_ERROR');
+    }
+};
+
+// Update full course content (sections & lessons)
+export const updateCourseContent = async (courseId: number, payload: any): Promise<void> => {
+    try {
+        await api.put(`/management/courses/${courseId}/content`, payload);
+    } catch (error: any) {
+        if (error.response) {
+            const { status } = error.response;
+            if (status === 401) throw new Error('UNAUTHORIZED');
+            else if (status === 403) throw new Error('ACCESS_DENIED');
+            else if (status === 404) throw new Error('COURSE_NOT_FOUND');
             else throw new Error('SERVER_ERROR');
         } else throw new Error('NETWORK_ERROR');
     }

@@ -21,6 +21,9 @@ export interface Lesson {
     id: number;
     title: string;
     type: 'VIDEO' | 'QUIZ' | 'TEXT';
+    orderIndex: number;
+    content?: string;
+    videoUrl?: string;
 }
 
 export interface Chapter {
@@ -44,9 +47,14 @@ export interface CourseStructure {
 
 export interface QuizQuestion {
     id: number;
-    text: string;
+    // backend may provide either `text` or `content`
+    text?: string;
+    content?: string;
     options: string[];
-    correctId: number;
+    // backend may return correct answer in different shapes
+    correctId?: number | string; // e.g., 0 or 'option_0'
+    correctIndex?: number; // numeric index
+    answerKey?: string; // e.g., 'A','B' etc
 }
 
 export interface LessonPreview {

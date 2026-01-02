@@ -53,7 +53,8 @@ export async function POST(request: NextRequest) {
         const courseId = await controller.createCourse(user.id, body);
 
         // Convert BigInt to string for safe JSON serialization
-        return NextResponse.json({ courseId: courseId.toString() }, { status: 201 });
+        // Return stable contract including initial status
+        return NextResponse.json({ courseId: courseId.toString(), status: 'DRAFT' }, { status: 201 });
     } catch (error) {
         console.error('Create course error:', error);
         return NextResponse.json(

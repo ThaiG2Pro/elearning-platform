@@ -36,24 +36,83 @@ export class CourseManagementService {
         const course = await this.courseRepository.findById(courseId);
         if (!course) throw new Error('COURSE_NOT_FOUND');
 
-        AccessControlPolicy.validateOwnershipAndState(userId, course);
-
-        const youtubeAdapter = new YouTubeAdapter();
-        const lessons = [];
-
-        for (const lessonDto of dto.lessons) {
-            const metadata = await youtubeAdapter.fetchMetadata(lessonDto.videoUrl);
-
-            const lesson = LessonFactory.createVideoLesson({
-                chapterId: BigInt(lessonDto.chapterId),
-                title: lessonDto.title,
-                videoUrl: lessonDto.videoUrl,
-                orderIndex: lessonDto.orderIndex,
-            }, metadata);
-
-            lessons.push(lesson);
+        // Only allow syncing content when course in DRAFT
+        if (course.status !== 'DRAFT') {
+            throw new Error('INVALID_STATUS');
         }
 
+        AccessControlPolicy.validateOwnership(userId, course.lecturerId);
+
+        const youtubeAdapter = new YouTubeAdapter();
+        const lessons: any[] = [];
+        const { Lesson: LessonDomain, LessonType } = require('../domain/Lesson');
+
+        // Accept either flat lessons or structured sections
+        if (Array.isArray(dto.sections)) {
+            for (const sec of dto.sections) {
+                const secId = sec.id;
+                if (!Array.isArray(sec.lessons)) continue;
+                for (const lessonDto of sec.lessons) {
+                    if ((lessonDto.type || 'VIDEO') === 'VIDEO') {
+                        if (lessonDto.contentUrl) {
+                            const metadata = await youtubeAdapter.fetchMetadata(lessonDto.contentUrl);
+                            const lesson = LessonFactory.createVideoLesson({
+                                chapterId: BigInt(secId || lessonDto.chapterId),
+                                title: lessonDto.title,
+                                videoUrl: lessonDto.contentUrl,
+                                orderIndex: lessonDto.orderIndex,
+                            }, metadata);
+                            lessons.push(lesson);
+                        } else {
+                            // Create video lesson without metadata/content
+                            const lesson = new LessonDomain(
+                                null,
+                                BigInt(secId || lessonDto.chapterId),
+                                lessonDto.title,
+                                LessonType.VIDEO,
+                                '',
+                                lessonDto.orderIndex
+                            );
+                            lessons.push(lesson);
+                        }
+                    } else {
+                        // Quiz lesson - create placeholder with empty quiz data
+                        const lesson = LessonFactory.createQuizLesson(BigInt(secId || lessonDto.chapterId), lessonDto.title, {}, lessonDto.orderIndex);
+                        lessons.push(lesson);
+                    }
+                }
+            }
+        } else if (Array.isArray(dto.lessons)) {
+            for (const lessonDto of dto.lessons) {
+                if ((lessonDto.type || 'VIDEO') === 'VIDEO') {
+                    if (lessonDto.contentUrl) {
+                        const metadata = await youtubeAdapter.fetchMetadata(lessonDto.contentUrl);
+                        const lesson = LessonFactory.createVideoLesson({
+                            chapterId: BigInt(lessonDto.chapterId),
+                            title: lessonDto.title,
+                            videoUrl: lessonDto.contentUrl,
+                            orderIndex: lessonDto.orderIndex,
+                        }, metadata);
+                        lessons.push(lesson);
+                    } else {
+                        const lesson = new LessonDomain(
+                            null,
+                            BigInt(lessonDto.chapterId),
+                            lessonDto.title,
+                            LessonType.VIDEO,
+                            '',
+                            lessonDto.orderIndex
+                        );
+                        lessons.push(lesson);
+                    }
+                } else {
+                    const lesson = LessonFactory.createQuizLesson(BigInt(lessonDto.chapterId), lessonDto.title, {}, lessonDto.orderIndex);
+                    lessons.push(lesson);
+                }
+            }
+        }
+
+        // Persist through repository which will replace existing lessons for course
         await this.lessonRepository.syncLessons(courseId, lessons);
     }
 

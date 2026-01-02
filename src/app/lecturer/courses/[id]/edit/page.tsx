@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import {
     getCourseStructure,
@@ -10,7 +10,9 @@ import {
     createLesson,
     parseQuizFile,
     uploadQuizFile,
-    publishCourse
+    publishCourse,
+    updateCourseContent,
+    updateLesson
 } from '@/lib/lecturer';
 import {
     CourseStructure,
@@ -48,6 +50,7 @@ const CourseEditPage = () => {
         orderIndex: 0,
         type: 'VIDEO'
     });
+    const [chapterCreating, setChapterCreating] = useState(false);
     const [quizFile, setQuizFile] = useState<File | null>(null);
 
     useEffect(() => {
@@ -71,11 +74,38 @@ const CourseEditPage = () => {
         }
     };
 
+    const buildContentPayload = () => {
+        // Map course state to backend BulkDto structure
+        return {
+            sections: course?.chapters.map(ch => ({
+                id: ch.id,
+                title: ch.title,
+                orderIndex: ch.orderIndex,
+                lessons: ch.lessons.map(l => ({
+                    id: l.id,
+                    title: l.title,
+                    type: l.type,
+                    orderIndex: l.orderIndex,
+                    content: (l as any).content || undefined,
+                    videoUrl: (l as any).videoUrl || undefined
+                }))
+            })) || []
+        };
+    };
+
     const handleSave = async () => {
         if (!course) return;
-        // Save logic would be implemented here
-        // For now, just show success
-        alert('Changes saved successfully!');
+        setSaving(true);
+        try {
+            const payload = buildContentPayload();
+            await updateCourseContent(courseId, payload);
+            // Optionally show feedback
+            // alert('Changes saved successfully!');
+        } catch (err: any) {
+            setError(err.message);
+        } finally {
+            setSaving(false);
+        }
     };
 
     const handlePublish = async () => {
@@ -122,9 +152,10 @@ const CourseEditPage = () => {
 
     const handleCreateChapter = async () => {
         if (!course) return;
+        setChapterCreating(true);
         try {
             const newChapter = await createSection(courseId, {
-                title: chapterForm.title,
+                title: chapterForm.title || 'Chương 1',
                 orderIndex: chapterForm.orderIndex
             });
             setCourse(prev => prev ? {
@@ -132,14 +163,19 @@ const CourseEditPage = () => {
                 chapters: [...prev.chapters, newChapter]
             } : null);
             setChapterForm({ title: '', orderIndex: 0 });
+            // select new chapter for editing
+            setSelectedItem(newChapter);
         } catch (err: any) {
             setError(err.message);
+        } finally {
+            setChapterCreating(false);
         }
     };
 
     const handleUpdateChapter = async () => {
         if (!chapterForm.id) return;
         try {
+            setSaving(true);
             const updatedChapter = await updateSection(chapterForm.id, {
                 title: chapterForm.title,
                 orderIndex: chapterForm.orderIndex
@@ -152,6 +188,8 @@ const CourseEditPage = () => {
             } : null);
         } catch (err: any) {
             setError(err.message);
+        } finally {
+            setSaving(false);
         }
     };
 
@@ -201,6 +239,47 @@ const CourseEditPage = () => {
         }
     };
 
+    // Autosave support for lesson edits (debounced)
+    const lessonSaveTimer = useRef<NodeJS.Timeout | null>(null);
+    const [, setSavingLesson] = useState(false);
+
+    useEffect(() => {
+        // Only autosave if a lesson is selected and has an id
+        if (!selectedItem || (selectedItem as Chapter).lessons) return;
+        const lesson = selectedItem as Lesson;
+        if (!lesson.id) return;
+
+        if (lessonSaveTimer.current) clearTimeout(lessonSaveTimer.current);
+        lessonSaveTimer.current = setTimeout(async () => {
+            try {
+                setSavingLesson(true);
+                const updated = await updateLesson(lesson.id, {
+                    title: lessonForm.title,
+                    content: lessonForm.content,
+                    videoUrl: lessonForm.videoUrl,
+                    orderIndex: lessonForm.orderIndex,
+                    type: lessonForm.type
+                });
+                // Update local course state
+                setCourse(prev => prev ? {
+                    ...prev,
+                    chapters: prev.chapters.map(ch => ({
+                        ...ch,
+                        lessons: ch.lessons.map(l => l.id === updated.id ? updated : l)
+                    }))
+                } : null);
+            } catch (err: any) {
+                setError(err.message);
+            } finally {
+                setSavingLesson(false);
+            }
+        }, 1000);
+
+        return () => {
+            if (lessonSaveTimer.current) clearTimeout(lessonSaveTimer.current);
+        };
+    }, [lessonForm.title, lessonForm.content, lessonForm.videoUrl]);
+
     const handleParseQuiz = async () => {
         if (!quizFile) return;
         setEditState('processing');
@@ -229,6 +308,8 @@ const CourseEditPage = () => {
             setEditState('editingQuiz');
         }
     };
+
+    const [saving, setSaving] = useState(false);
 
     const getErrorMessage = (errorCode: string) => {
         switch (errorCode) {
@@ -295,12 +376,18 @@ const CourseEditPage = () => {
                             <h1 className="text-xl font-semibold text-gray-900">{course.title}</h1>
                         </div>
                         {editState !== 'readOnly' && (
-                            <div className="flex space-x-4">
+                            <div className="flex items-center space-x-4">
                                 <button
                                     onClick={handleSave}
-                                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center gap-2"
+                                    disabled={saving}
                                 >
-                                    Lưu
+                                    {saving ? (
+                                        <>
+                                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                                            <span>Đang lưu...</span>
+                                        </>
+                                    ) : 'Lưu'}
                                 </button>
                                 <button
                                     onClick={handlePublish}
@@ -356,68 +443,93 @@ const CourseEditPage = () => {
                         )}
 
                         <div className="space-y-4">
-                            {course.chapters.map((chapter: Chapter) => (
-                                <div key={chapter.id} className="border rounded-md">
-                                    <div
-                                        className={`p-3 cursor-pointer hover:bg-gray-50 ${selectedItem?.id === chapter.id ? 'bg-blue-50' : ''
-                                            }`}
-                                        onClick={() => handleChapterSelect(chapter)}
-                                    >
-                                        <div className="flex items-center justify-between">
-                                            <span className="font-medium">{chapter.title}</span>
-                                            {editState !== 'readOnly' && (
-                                                <button
-                                                    onClick={() => handleDeleteChapter(chapter.id)}
-                                                    className="text-red-600 hover:text-red-800"
+                            {course.chapters.length === 0 ? (
+                                <div className="p-6 border rounded-md text-center">
+                                    <h3 className="text-lg font-semibold mb-2">Khóa học này chưa có chương nào</h3>
+                                    <p className="text-sm text-gray-600 mb-4">Thêm chương để bắt đầu xây dựng nội dung cho khóa học của bạn.</p>
+                                    <div className="flex justify-center gap-3">
+                                        <button
+                                            onClick={handleCreateChapter}
+                                            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center gap-2"
+                                            disabled={chapterCreating}
+                                        >
+                                            {chapterCreating ? (
+                                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                                            ) : (
+                                                'Thêm chương đầu tiên'
+                                            )}
+                                        </button>
+                                        <button
+                                            onClick={() => setChapterForm(prev => ({ ...prev, title: 'Chương 1' }))}
+                                            className="px-4 py-2 border rounded-md text-sm text-gray-700 hover:bg-gray-50"
+                                        >
+                                            Gợi ý tên: "Chương 1"
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : (
+                                course.chapters.map((chapter: Chapter) => (
+                                    <div key={chapter.id} className="border rounded-md">
+                                        <div
+                                            className={`p-3 cursor-pointer hover:bg-gray-50 ${selectedItem?.id === chapter.id ? 'bg-blue-50' : ''
+                                                }`}
+                                            onClick={() => handleChapterSelect(chapter)}
+                                        >
+                                            <div className="flex items-center justify-between">
+                                                <span className="font-medium">{chapter.title}</span>
+                                                {editState !== 'readOnly' && (
+                                                    <button
+                                                        onClick={() => handleDeleteChapter(chapter.id)}
+                                                        className="text-red-600 hover:text-red-800"
+                                                    >
+                                                        ×
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        <div className="ml-4 space-y-1">
+                                            {chapter.lessons.map((lesson: Lesson) => (
+                                                <div
+                                                    key={lesson.id}
+                                                    className={`p-2 cursor-pointer hover:bg-gray-50 rounded ${selectedItem?.id === lesson.id ? 'bg-blue-50' : ''
+                                                        }`}
+                                                    onClick={() => handleLessonSelect(lesson)}
                                                 >
-                                                    ×
-                                                </button>
+                                                    <span>{lesson.title} ({lesson.type})</span>
+                                                </div>
+                                            ))}
+
+                                            {/* Add Lesson */}
+                                            {editState !== 'readOnly' && selectedItem?.id === chapter.id && (
+                                                <div className="p-2 border-t">
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Tên bài học"
+                                                        value={lessonForm.title}
+                                                        onChange={(e) => setLessonForm(prev => ({ ...prev, title: e.target.value }))}
+                                                        className="w-full mb-2 px-2 py-1 border rounded text-sm"
+                                                    />
+                                                    <select
+                                                        value={lessonForm.type}
+                                                        onChange={(e) => setLessonForm(prev => ({ ...prev, type: e.target.value as 'VIDEO' | 'QUIZ' | 'TEXT' }))}
+                                                        className="w-full mb-2 px-2 py-1 border rounded text-sm"
+                                                    >
+                                                        <option value="VIDEO">Video</option>
+                                                        <option value="QUIZ">Quiz</option>
+                                                        <option value="TEXT">Text</option>
+                                                    </select>
+                                                    <button
+                                                        onClick={handleCreateLesson}
+                                                        className="w-full px-2 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700"
+                                                    >
+                                                        Thêm bài học
+                                                    </button>
+                                                </div>
                                             )}
                                         </div>
                                     </div>
-
-                                    <div className="ml-4 space-y-1">
-                                        {chapter.lessons.map((lesson: Lesson) => (
-                                            <div
-                                                key={lesson.id}
-                                                className={`p-2 cursor-pointer hover:bg-gray-50 rounded ${selectedItem?.id === lesson.id ? 'bg-blue-50' : ''
-                                                    }`}
-                                                onClick={() => handleLessonSelect(lesson)}
-                                            >
-                                                <span>{lesson.title} ({lesson.type})</span>
-                                            </div>
-                                        ))}
-
-                                        {/* Add Lesson */}
-                                        {editState !== 'readOnly' && selectedItem?.id === chapter.id && (
-                                            <div className="p-2 border-t">
-                                                <input
-                                                    type="text"
-                                                    placeholder="Tên bài học"
-                                                    value={lessonForm.title}
-                                                    onChange={(e) => setLessonForm(prev => ({ ...prev, title: e.target.value }))}
-                                                    className="w-full mb-2 px-2 py-1 border rounded text-sm"
-                                                />
-                                                <select
-                                                    value={lessonForm.type}
-                                                    onChange={(e) => setLessonForm(prev => ({ ...prev, type: e.target.value as 'VIDEO' | 'QUIZ' | 'TEXT' }))}
-                                                    className="w-full mb-2 px-2 py-1 border rounded text-sm"
-                                                >
-                                                    <option value="VIDEO">Video</option>
-                                                    <option value="QUIZ">Quiz</option>
-                                                    <option value="TEXT">Text</option>
-                                                </select>
-                                                <button
-                                                    onClick={handleCreateLesson}
-                                                    className="w-full px-2 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700"
-                                                >
-                                                    Thêm bài học
-                                                </button>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            ))}
+                                )))}
                         </div>
                     </div>
 

@@ -79,7 +79,7 @@ const YoutubePlayer = ({ videoId, initialPos, onProgress, onDuration, onFlush }:
     }, [videoId, onFlush]);
 
     const opts = useMemo(() => ({
-        height: '390',
+        height: '100%',
         width: '100%',
         playerVars: {
             autoplay: 0,
@@ -91,22 +91,24 @@ const YoutubePlayer = ({ videoId, initialPos, onProgress, onDuration, onFlush }:
     }), []);
 
     return (
-        <YouTube
-            videoId={videoId}
-            opts={opts}
-            onReady={(e: any) => {
-                playerRef.current = e.target;
-                const duration = e.target.getDuration();
-                onDuration(Math.floor(duration));
-                startEngine(e.target);
-            }}
-            onStateChange={(e: any) => {
-                // Cập nhật lại instance mỗi khi có thay đổi trạng thái
-                playerRef.current = e.target;
-                startEngine(e.target);
-            }}
-            className="w-full aspect-video rounded-lg overflow-hidden shadow-lg"
-        />
+        <div className="w-full aspect-video rounded-lg overflow-hidden shadow-lg">
+            <YouTube
+                videoId={videoId}
+                opts={opts}
+                onReady={(e: any) => {
+                    playerRef.current = e.target;
+                    const duration = e.target.getDuration();
+                    onDuration(Math.floor(duration));
+                    startEngine(e.target);
+                }}
+                onStateChange={(e: any) => {
+                    // Cập nhật lại instance mỗi khi có thay đổi trạng thái
+                    playerRef.current = e.target;
+                    startEngine(e.target);
+                }}
+            // react-youtube will render an iframe that fills the parent when width/height are 100%
+            />
+        </div>
     );
 };
 

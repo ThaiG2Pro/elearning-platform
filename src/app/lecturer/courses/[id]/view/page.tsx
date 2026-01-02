@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { getCourseStructure, getLessonPreview } from '@/lib/lecturer';
 import { CourseStructure, LessonPreview, Chapter, Lesson } from '@/types/lecturer.types';
+import YoutubePlayer from '@/components/YoutubePlayer';
 
 const CoursePreviewPage = () => {
     const params = useParams();
@@ -171,9 +172,9 @@ const CoursePreviewPage = () => {
                                                     <YoutubePlayer
                                                         videoId={vid}
                                                         initialPos={0}
-                                                        onProgress={() => {}}
-                                                        onDuration={() => {}}
-                                                        onFlush={() => {}}
+                                                        onProgress={() => { }}
+                                                        onDuration={() => { }}
+                                                        onFlush={() => { }}
                                                     />
                                                 ) : (
                                                     <div className="text-sm text-gray-500">Không thể lấy video YouTube</div>
@@ -183,7 +184,7 @@ const CoursePreviewPage = () => {
                                             return (
                                                 <video
                                                     controls
-                                                    className="w-full max-h-96 rounded-lg"
+                                                    className="w-full aspect-video rounded-lg"
                                                     src={lessonVideoUrl}
                                                 >
                                                     Trình duyệt của bạn không hỗ trợ video.
@@ -222,7 +223,7 @@ const CoursePreviewPage = () => {
                                                                 className={`p-2 rounded ${index === correctIdx
                                                                     ? 'bg-green-100 text-green-800'
                                                                     : 'bg-gray-50'
-                                                                }`}
+                                                                    }`}
                                                             >
                                                                 {option}
                                                                 {index === correctIdx && (
