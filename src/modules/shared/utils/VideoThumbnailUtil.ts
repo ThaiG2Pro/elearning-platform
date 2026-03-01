@@ -8,8 +8,13 @@ export class VideoThumbnailUtil {
             // Iterate through lessons in order
             for (const lesson of chapter.lessons) {
                 // Check both content_url (from database) and contentUrl (from entities)
-                const videoUrl = lesson.content_url || lesson.contentUrl;
+                let videoUrl = lesson.content_url || lesson.contentUrl;
                 if (videoUrl) {
+                    // Handle legacy JSON format: {"url":"...","duration":0,"thumbnail":""}
+                    try {
+                        const parsed = JSON.parse(videoUrl);
+                        if (parsed && parsed.url) videoUrl = parsed.url;
+                    } catch { /* raw URL */ }
                     return videoUrl;
                 }
             }

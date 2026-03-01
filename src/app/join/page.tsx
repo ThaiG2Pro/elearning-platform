@@ -64,25 +64,24 @@ export default function JoinPage() {
     };
 
     return (
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-slate-50">
             <Header onJoin={() => router.push('/join')} />
 
-            {/* Body */}
-            <main className="max-w-md mx-auto px-4 sm:px-6 lg:px-8 py-12">
+            <main className="max-w-md mx-auto px-4 py-12">
+                {/* Logo + Title */}
                 <div className="text-center mb-8">
-                    <h2 className="text-3xl font-bold text-gray-900 mb-2">
-                        Tham gia E-Learning Platform
-                    </h2>
-                    <p className="text-gray-600">
-                        Nhập email của bạn để tiếp tục
-                    </p>
+                    <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-blue-600 mb-4">
+                        <span className="text-white font-bold text-xl">E</span>
+                    </div>
+                    <h1 className="text-2xl font-bold text-slate-900 mb-1">Bắt đầu ngay</h1>
+                    <p className="text-sm text-slate-500">Nhập email của bạn để tiếp tục</p>
                 </div>
 
-                <div className="bg-white border border-gray-100 rounded-lg shadow-sm p-6">
-                    <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-8">
+                    <form onSubmit={handleSubmit} className="space-y-5">
                         <div>
-                            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                                Email
+                            <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-1.5">
+                                Địa chỉ Email
                             </label>
                             <input
                                 id="email"
@@ -93,25 +92,25 @@ export default function JoinPage() {
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 disabled={appState === 'submitting' || appState === 'redirecting'}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50"
+                                className="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 disabled:bg-slate-50 transition-shadow"
                                 placeholder="your@email.com"
                             />
-                            <p className="mt-2 text-sm text-gray-500">Sẽ gửi hướng dẫn tiếp theo theo email của bạn.</p>
                         </div>
 
                         <button
                             type="submit"
                             disabled={appState === 'submitting' || appState === 'redirecting'}
-                            className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+                            className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 flex items-center justify-center gap-2"
                         >
+                            {(appState === 'submitting' || appState === 'redirecting') && (
+                                <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                            )}
                             {appState === 'submitting' ? 'Đang xử lý...' :
-                                appState === 'redirecting' ? 'Đang chuyển hướng...' :
-                                    'Tiếp tục'}
+                                appState === 'redirecting' ? 'Đang chuyển...' : 'Tiếp tục →'}
                         </button>
                     </form>
                 </div>
 
-                {/* Error Toast */}
                 {appState === 'error' && errorMessage && (
                     <Toast message={errorMessage} type="error" onClose={() => setAppState('idle')} />
                 )}

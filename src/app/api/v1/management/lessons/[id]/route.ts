@@ -14,10 +14,17 @@ export async function PUT(
         }
 
         const lessonId = BigInt(params.id);
-        const body: UpdateLessonDto = await request.json();
+        const body = await request.json();
+        // Accept both `contentUrl` (DTO name) and `videoUrl` (frontend field name).
+        // Only use videoUrl as fallback when it's non-empty to avoid overwriting with blank.
+        const dto = new UpdateLessonDto(
+            body.title,
+            body.contentUrl ?? (body.videoUrl || undefined),
+            body.orderIndex,
+        );
 
         const controller = new ManagementController();
-        await controller.updateLesson(lessonId, body);
+        await controller.updateLesson(lessonId, dto);
 
         return NextResponse.json({ message: 'Lesson updated successfully' });
     } catch (error) {

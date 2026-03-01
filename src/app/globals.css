@@ -3,7 +3,15 @@
 @tailwind utilities;
 
 /* Ensure Youtube iframe fills the aspect container and doesn't get vertically squashed */
-.youtube-player-wrapper>iframe {
+.youtube-player-wrapper > div,
+.youtube-player-wrapper > iframe {
+    width: 100% !important;
+    height: 100% !important;
+    display: block;
+}
+
+/* react-youtube wraps iframe in an extra div — target the iframe inside it too */
+.youtube-player-wrapper > div > iframe {
     width: 100% !important;
     height: 100% !important;
     display: block;
@@ -12,4 +20,43 @@
 /* Also ensure the outer wrapper keeps a sensible min-height to avoid tiny previews */
 .youtube-player-wrapper {
     min-height: 200px;
+}
+
+@layer base {
+  :root {
+    /* Corporate Professional — Blue base */
+    --background: 210 40% 98%;       /* slate-50 surface */
+    --foreground: 222 47% 11%;       /* slate-900 text */
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    /* Primary = blue-600 (#2563EB) */
+    --primary: 221 83% 53%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 214 32% 91%;        /* slate-200 */
+    --secondary-foreground: 222 47% 11%;
+    --muted: 214 32% 91%;
+    --muted-foreground: 215 16% 47%; /* slate-500 */
+    --accent: 214 32% 91%;
+    --accent-foreground: 222 47% 11%;
+    --destructive: 0 84% 60%;        /* red-500 */
+    --destructive-foreground: 0 0% 100%;
+    --border: 214 32% 91%;           /* slate-200 */
+    --input: 214 32% 91%;
+    --ring: 221 83% 53%;             /* blue-600 */
+    --radius: 0.625rem;
+
+    /* Portal accent overrides (used via Tailwind classes directly) */
+    --student: 221 83% 53%;          /* blue-600 */
+    --lecturer: 239 84% 67%;         /* indigo-600 */
+    --admin: 215 25% 27%;            /* slate-700 */
+
+    /* Chart colors */
+    --chart-1: 221 83% 53%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
+  }
 }

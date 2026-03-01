@@ -1,4 +1,5 @@
 export interface BulkLessonDto {
+    id?: number;
     chapterId: number;
     title: string;
     type?: 'VIDEO' | 'QUIZ';

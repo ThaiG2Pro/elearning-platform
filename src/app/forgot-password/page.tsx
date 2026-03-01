@@ -61,68 +61,55 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-slate-50">
       <Header onJoin={() => router.push('/join')} />
 
-      {/* Body */}
-      <main className="max-w-md mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <main className="max-w-md mx-auto px-4 py-12">
         <div className="text-center mb-8">
-          <h2 className="text-3xl font-bold text-gray-900 mb-2">
-            Khôi phục mật khẩu
-          </h2>
-          <p className="text-gray-600">
-            Nhập địa chỉ email để nhận liên kết khôi phục
-          </p>
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-blue-600 mb-4">
+                <span className="text-white font-bold text-xl">E</span>
+            </div>
+            <h1 className="text-2xl font-bold text-slate-900 mb-1">Khôi phục mật khẩu</h1>
+            <p className="text-sm text-slate-500">Nhập email để nhận liên kết đặt lại</p>
         </div>
 
-        <div className="bg-white border border-gray-100 rounded-lg shadow-sm p-6">
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Email Input */}
+        <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-8">
+          <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                Email
-              </label>
+              <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-1.5">Email</label>
               <input
-                id="email"
-                name="email"
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                id="email" name="email" type="email" required
+                value={email} onChange={(e) => setEmail(e.target.value)}
                 disabled={appState === 'submitting'}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50"
-                placeholder="Nhập địa chỉ email"
+                className="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 transition-shadow"
+                placeholder="your@email.com"
               />
-              <p className="mt-2 text-sm text-gray-500">Chúng tôi sẽ gửi liên kết khôi phục mật khẩu nếu email tồn tại trong hệ thống. Vui lòng kiểm tra cả thư mục Spam.</p>
-              {appState === 'error' && errorMessage && (
-                <Toast message={errorMessage} type="error" onClose={() => setAppState('idle')} />
-              )}
+              <p className="mt-1.5 text-xs text-slate-400">Nếu email tồn tại, bạn sẽ nhận liên kết đặt lại. Kiểm tra cả thư mục Spam.</p>
             </div>
 
             <button
               type="submit"
               disabled={appState === 'submitting'}
-              className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+              className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 flex items-center justify-center gap-2"
             >
-              {appState === 'submitting' ? 'Đang gửi...' : 'Gửi yêu cầu khôi phục'}
+              {appState === 'submitting' && <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
+              {appState === 'submitting' ? 'Đang gửi...' : 'Gửi liên kết khôi phục'}
             </button>
           </form>
+
+          <div className="mt-5 text-center">
+            <button onClick={handleBackToJoin} className="text-sm text-slate-500 hover:text-slate-700 transition-colors">
+              ← Quay lại đăng nhập
+            </button>
+          </div>
         </div>
 
-        {/* Neutral Success Toast */}
         {appState === 'neutral_success' && (
           <Toast message="Nếu email tồn tại trong hệ thống, bạn sẽ nhận được liên kết khôi phục trong hộp thư." type="info" onClose={() => setAppState('idle')} />
         )}
-
-        {/* Footer */}
-        <div className="mt-6 text-center">
-          <button
-            onClick={handleBackToJoin}
-            className="text-sm text-blue-600 hover:text-blue-800"
-          >
-            Quay lại
-          </button>
-        </div>
+        {appState === 'error' && errorMessage && (
+          <Toast message={errorMessage} type="error" onClose={() => setAppState('idle')} />
+        )}
       </main>
     </div>
   );

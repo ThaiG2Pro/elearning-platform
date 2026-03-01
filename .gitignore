@@ -5,6 +5,10 @@
 /.pnp
 .pnp.js
 
+# pnpm — pnpm-lock.yaml MUST be committed to git (do NOT add it here)
+# pnpm virtual store
+.pnpm-store/
+
 # testing
 /coverage
 
@@ -34,3 +38,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+.agent/
+.agents/
+.github/
+.windsurf/
+#docs/

@@ -3,7 +3,7 @@ import { ApprovalController } from '../../../../../../../modules/course-manageme
 import { getUserIdFromRequest } from '../../../../../../../shared/middleware/auth';
 import { ModerateCourseDto } from '../../../../../../../modules/course-management/dtos/ModerateCourseDto';
 
-export async function PATCH(
+export async function POST(
     request: NextRequest,
     { params }: { params: { id: string } }
 ) {

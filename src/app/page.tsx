@@ -78,27 +78,27 @@ export default function Home() {
     };
 
     return (
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-slate-50">
             <Header user={user} onLogout={handleLogout} onJoin={handleJoin} />
 
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 {/* Hero / Search Section */}
-                <section className="mb-8">
+                <section className="mb-8 bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                         <div>
-                            <h2 className="text-3xl font-extrabold text-gray-900">Khám phá khóa học</h2>
-                            <p className="text-gray-600 mt-1">Học bất cứ lúc nào — bắt đầu với khóa học phù hợp.</p>
+                            <h1 className="text-2xl font-bold text-slate-900">Khám phá khóa học</h1>
+                            <p className="text-sm text-slate-500 mt-1">Học bất cứ lúc nào — bắt đầu với khóa học phù hợp.</p>
                         </div>
-                        <div className="w-full md:max-w-md flex items-center gap-3">
+                        <div className="w-full md:max-w-sm flex items-center gap-3">
                             <div className="flex-1">
                                 <SearchBar value={searchQuery} onChange={handleSearchChange} />
                             </div>
-
                             {user?.role === 'LECTURER' && (
                                 <button
                                     onClick={() => router.push('/lecturer/courses')}
-                                    className="hidden md:inline-flex px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                                    className="hidden md:inline-flex items-center gap-1.5 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors whitespace-nowrap"
                                 >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/></svg>
                                     Tạo khóa học
                                 </button>
                             )}
@@ -109,13 +109,12 @@ export default function Home() {
                 {/* Course List Section */}
                 <section>
                     <div className="mb-4 flex items-center justify-between">
-                        <h3 className="text-lg font-semibold text-gray-900">Khóa học nổi bật</h3>
-                        <button
-                            onClick={() => router.push('/')}
-                            className="text-sm text-gray-500 hover:text-gray-700"
-                        >
-                            Xem tất cả
-                        </button>
+                        <h2 className="text-base font-semibold text-slate-800">
+                            {searchQuery ? `Kết quả cho "${searchQuery}"` : 'Khóa học nổi bật'}
+                        </h2>
+                        {appState === 'success' && (
+                            <span className="text-xs text-slate-400">{/* course count could go here */}</span>
+                        )}
                     </div>
 
                     <CourseList
@@ -124,14 +123,24 @@ export default function Home() {
                         onCourseClick={handleCourseClick}
                     />
 
-                    {/* Live region for screen readers */}
                     <div className="sr-only" aria-live="polite">
                         {appState === 'loading' ? 'Đang tải khóa học...' : ''}
                     </div>
 
                     {appState === 'error' && errorMessage && (
-                        <div className="text-center py-4">
-                            <p className="text-red-600">{errorMessage}</p>
+                        <div className="flex flex-col items-center py-12 text-center">
+                            <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mb-3">
+                                <svg className="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                            </div>
+                            <p className="text-sm text-slate-600 mb-3">{errorMessage}</p>
+                            <button
+                                onClick={() => setDebouncedSearchQuery(searchQuery)}
+                                className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                            >
+                                Thử lại
+                            </button>
                         </div>
                     )}
                 </section>

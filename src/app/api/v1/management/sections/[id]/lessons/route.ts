@@ -19,7 +19,7 @@ export async function POST(
         const controller = new ManagementController();
         const lessonId = await controller.createLesson(sectionId, body);
 
-        return NextResponse.json({ lessonId }, { status: 201 });
+        return NextResponse.json({ lessonId: Number(lessonId) }, { status: 201 });
     } catch (error) {
         console.error('Create lesson error:', error);
         return NextResponse.json(

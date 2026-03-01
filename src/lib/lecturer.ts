@@ -226,17 +226,18 @@ export const parseQuizFile = async (file: File): Promise<QuizParseResponse> => {
     }
 };
 
-export const uploadQuizFile = async (lessonId: number, file: File): Promise<void> => {
+export const uploadQuizFile = async (lessonId: number, file: File): Promise<{ uploadedCount: number }> => {
     try {
         const formData = new FormData();
         formData.append('file', file);
-        await api.post(
+        const response = await api.post<{ uploadedCount: number }>(
             `/management/lessons/${lessonId}/quiz/upload`,
             formData,
             {
                 headers: { 'Content-Type': 'multipart/form-data' }
             }
         );
+        return response.data;
     } catch (error: any) {
         if (error.response) {
             const { status } = error.response;

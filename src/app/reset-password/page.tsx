@@ -50,65 +50,48 @@ function ResetPasswordForm() {
     };
 
     return (
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-slate-50">
             <Header onJoin={() => router.push('/join')} />
 
-            {/* Body */}
-            <main className="max-w-md mx-auto px-4 sm:px-6 lg:px-8 py-12">
+            <main className="max-w-md mx-auto px-4 py-12">
                 <div className="text-center mb-8">
-                    <h2 className="text-3xl font-bold text-gray-900 mb-2">
-                        Thiết lập mật khẩu mới
-                    </h2>
-                    <p className="text-gray-600">
-                        Nhập mật khẩu mới cho tài khoản của bạn
-                    </p>
+                    <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-blue-600 mb-4">
+                        <span className="text-white font-bold text-xl">E</span>
+                    </div>
+                    <h1 className="text-2xl font-bold text-slate-900 mb-1">Đặt lại mật khẩu</h1>
+                    <p className="text-sm text-slate-500">Nhập mật khẩu mới cho tài khoản</p>
                 </div>
 
-                <div className="bg-white border border-gray-100 rounded-lg shadow-sm p-6">
-                    <form onSubmit={handleSubmit} className="space-y-6">
-                        {/* New Password Input */}
+                <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-8">
+                    <form onSubmit={handleSubmit} className="space-y-5">
                         <div>
-                            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+                            <label htmlFor="password" className="block text-sm font-medium text-slate-700 mb-1.5">
                                 Mật khẩu mới
                             </label>
                             <input
-                                id="password"
-                                name="password"
-                                type="password"
-                                autoComplete="new-password"
-                                required
-                                minLength={6}
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
+                                id="password" name="password" type="password" autoComplete="new-password" required minLength={6}
+                                value={password} onChange={(e) => setPassword(e.target.value)}
                                 disabled={appState === 'submitting'}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50"
-                                placeholder="Nhập mật khẩu mới (tối thiểu 6 ký tự)"
+                                className="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 transition-shadow"
+                                placeholder="Tối thiểu 6 ký tự"
                             />
-                            <p className="mt-2 text-sm text-gray-500">Mật khẩu nên có ít nhất 6 ký tự. Tránh dùng mật khẩu dễ đoán.</p>
-                            {appState === 'business_error' && errorMessage && (
-                                <p className="mt-2 text-sm text-red-600">{errorMessage}</p>
-                            )}
-                            {appState === 'system_error' && (
-                                <p className="mt-2 text-sm text-red-600">Có lỗi xảy ra. Vui lòng thử lại sau.</p>
-                            )}
+                            <p className="mt-1.5 text-xs text-slate-400">Tránh dùng mật khẩu dễ đoán.</p>
                         </div>
 
                         <button
                             type="submit"
                             disabled={appState === 'submitting' || !token}
-                            className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+                            className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 flex items-center justify-center gap-2"
                         >
+                            {appState === 'submitting' && <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
                             {appState === 'submitting' ? 'Đang cập nhật...' : 'Cập nhật mật khẩu'}
                         </button>
                     </form>
                 </div>
 
-                {/* Success Toast */}
                 {appState === 'success' && (
                     <Toast message="Mật khẩu đã được cập nhật! Bạn có thể đăng nhập với mật khẩu mới." type="success" onClose={() => router.push('/join')} />
                 )}
-
-                {/* Error Toasts */}
                 {appState === 'business_error' && errorMessage && (
                     <Toast message={errorMessage} type="error" onClose={() => setAppState('idle')} />
                 )}
@@ -122,7 +105,11 @@ function ResetPasswordForm() {
 
 export default function ResetPasswordPage() {
     return (
-        <Suspense fallback={<div>Loading...</div>}>
+        <Suspense fallback={
+            <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+                <span className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+            </div>
+        }>
             <ResetPasswordForm />
         </Suspense>
     );

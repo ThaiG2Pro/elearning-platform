@@ -61,7 +61,8 @@ export class CourseService {
                 ? VideoThumbnailUtil.deriveThumbnailFromVideoUrl(
                     VideoThumbnailUtil.findFirstVideoUrl(fullCourse.chapters)!
                 )
-                : '/images/course-placeholder.svg'
+                : '/images/course-placeholder.svg',
+            fullCourse.status,
         );
     }
 }

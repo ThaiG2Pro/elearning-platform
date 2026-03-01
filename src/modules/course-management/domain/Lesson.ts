@@ -18,20 +18,14 @@ export class Lesson {
         title: string,
         videoUrl: string,
         orderIndex: number,
-        metadata: { duration: number; thumbnail: string }
+        _metadata: { duration: number; thumbnail: string }
     ): Lesson {
-        const contentData = JSON.stringify({
-            url: videoUrl,
-            duration: metadata.duration,
-            thumbnail: metadata.thumbnail,
-        });
-
         return new Lesson(
             null,
             chapterId,
             title,
             LessonType.VIDEO,
-            contentData,
+            videoUrl,
             orderIndex
         );
     }
@@ -39,9 +33,9 @@ export class Lesson {
     getVideoMetadata(): { url: string; duration: number; thumbnail: string } | null {
         if (this.type !== LessonType.VIDEO) return null;
         try {
-            return JSON.parse(this.contentUrl);
-        } catch {
-            return null;
-        }
+            const parsed = JSON.parse(this.contentUrl);
+            if (parsed && parsed.url) return parsed;
+        } catch { /* raw URL */ }
+        return { url: this.contentUrl, duration: 0, thumbnail: '' };
     }
 }

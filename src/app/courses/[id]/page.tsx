@@ -86,7 +86,7 @@ export default function CourseDetailPage() {
     };
 
     return (
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-slate-50">
             <Header user={user} onLogout={handleLogout} onJoin={handleJoin} />
 
             <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -94,9 +94,9 @@ export default function CourseDetailPage() {
                 <section className="mb-6">
                     <button
                         onClick={handleBack}
-                        className="flex items-center text-blue-600 hover:text-blue-800"
+                        className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800 transition-colors"
                     >
-                        <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                         </svg>
                         Quay lại danh sách
@@ -104,18 +104,19 @@ export default function CourseDetailPage() {
                 </section>
 
                 {appState === 'loading' ? (
-                    <div className="animate-pulse">
-                        <div className="h-64 bg-gray-300 rounded-lg mb-6"></div>
-                        <div className="h-8 bg-gray-300 rounded mb-4"></div>
-                        <div className="h-4 bg-gray-300 rounded mb-2"></div>
-                        <div className="h-4 bg-gray-300 rounded mb-6"></div>
-                        <div className="h-10 bg-gray-300 rounded w-32"></div>
+                    <div className="animate-pulse space-y-4">
+                        <div className="h-64 bg-slate-200 rounded-xl"></div>
+                        <div className="h-6 bg-slate-200 rounded w-2/3"></div>
+                        <div className="h-4 bg-slate-200 rounded w-1/3"></div>
+                        <div className="h-4 bg-slate-200 rounded w-full"></div>
+                        <div className="h-4 bg-slate-200 rounded w-5/6"></div>
+                        <div className="h-10 bg-slate-200 rounded w-32 mt-2"></div>
                     </div>
                 ) : course ? (
                     <>
                         {/* Visual Content Section */}
                         <section className="mb-6">
-                            <div className="w-full aspect-video bg-gray-200 rounded-lg overflow-hidden">
+                            <div className="w-full aspect-video bg-slate-100 rounded-xl overflow-hidden border border-slate-200">
                                 {course.thumbnailUrl ? (
                                     <img
                                         src={course.thumbnailUrl}
@@ -123,24 +124,28 @@ export default function CourseDetailPage() {
                                         className="w-full h-full object-cover"
                                     />
                                 ) : (
-                                    <div className="w-full h-full flex items-center justify-center text-gray-400">
-                                        No Image
+                                    <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-slate-300">
+                                        <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 10l4.553-2.069A1 1 0 0121 8.868V15.13a1 1 0 01-1.447.897L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                                        </svg>
+                                        <span className="text-sm">Chưa có ảnh</span>
                                     </div>
                                 )}
                             </div>
                         </section>
 
                         {/* Information Section */}
-                        <section className="mb-6">
-                            <h1 className="text-3xl font-extrabold text-gray-900 mb-2 leading-tight">{course.title}</h1>
+                        <section className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm mb-6">
+                            <h1 className="text-xl font-bold text-slate-900 mb-3 leading-snug">{course.title}</h1>
                             <div className="flex flex-wrap items-center gap-4 mb-4">
                                 {course.lecturerName && (
-                                    <p className="text-sm text-gray-600">Giảng viên: <span className="font-medium text-gray-900">{course.lecturerName}</span></p>
+                                    <p className="text-sm text-slate-500">
+                                        Giảng viên: <span className="font-medium text-slate-800">{course.lecturerName}</span>
+                                    </p>
                                 )}
-                                {/* Add placeholder for metadata if available in future */}
                             </div>
                             {course.description && (
-                                <p className="text-gray-700 leading-relaxed">{course.description}</p>
+                                <p className="text-sm text-slate-600 leading-relaxed">{course.description}</p>
                             )}
                         </section>
 
@@ -150,25 +155,34 @@ export default function CourseDetailPage() {
                                 course.isEnrolled ? (
                                     <button
                                         onClick={handleLearn}
-                                        className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 font-semibold shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                                        className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg transition-colors shadow-sm"
                                     >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                        </svg>
                                         Bắt đầu học
                                     </button>
                                 ) : (
                                     <button
                                         onClick={handleEnroll}
                                         disabled={appState === 'processing'}
-                                        className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 disabled:opacity-50 font-semibold shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                                        className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-medium rounded-lg transition-colors shadow-sm"
                                     >
-                                        {appState === 'processing' ? 'Đang đăng ký...' : 'Đăng ký học'}
+                                        {appState === 'processing' ? (
+                                            <>
+                                                <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"/>
+                                                Đang đăng ký...
+                                            </>
+                                        ) : 'Đăng ký học'}
                                     </button>
                                 )
                             ) : user ? (
-                                <p className="text-gray-500">Chỉ học viên mới có thể đăng ký khóa học.</p>
+                                <p className="text-sm text-slate-400">Chỉ học viên mới có thể đăng ký khóa học.</p>
                             ) : (
                                 <button
                                     onClick={handleJoin}
-                                    className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-semibold shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                                    className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors shadow-sm"
                                 >
                                     Tham gia để đăng ký
                                 </button>
@@ -176,11 +190,16 @@ export default function CourseDetailPage() {
                         </section>
                     </>
                 ) : appState === 'error' && errorMessage ? (
-                    <div className="text-center py-12">
-                        <p className="text-red-600 mb-4">{errorMessage}</p>
+                    <div className="flex flex-col items-center py-16 text-center">
+                        <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mb-3">
+                            <svg className="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                        </div>
+                        <p className="text-sm text-slate-600 mb-4">{errorMessage}</p>
                         <button
                             onClick={handleBack}
-                            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+                            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
                         >
                             Quay lại
                         </button>

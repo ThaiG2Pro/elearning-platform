@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { CourseManagementController } from '../../../../../../../modules/course-management/controllers/CourseManagementController';
 import { getUserIdFromRequest } from '../../../../../../../shared/middleware/auth';
 
-export async function PATCH(
+export async function POST(
     request: NextRequest,
     { params }: { params: { id: string } }
 ) {

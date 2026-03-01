@@ -45,25 +45,41 @@ export class LessonRepository {
         });
         const chapterIds = chapters.map((c: any) => c.id);
 
-        // Delete existing lessons for all chapters in this course
-        await this.prisma.lessons.deleteMany({
-            where: {
-                chapter_id: { in: chapterIds },
-            },
-        });
+        const existingLessons = lessons.filter(l => l.id !== null);
+        const newLessons = lessons.filter(l => l.id === null);
+        const keptIds = existingLessons.map(l => l.id!);
 
-        // Insert new lessons
-        if (lessons.length > 0) {
-            const lessonData = lessons.map(lesson => ({
-                chapter_id: lesson.chapterId,
-                title: lesson.title,
-                type: lesson.type,
-                content_url: lesson.contentUrl,
-                order_index: lesson.orderIndex,
-            }));
+        // Delete only lessons no longer in the payload (preserves quiz FK references)
+        const deleteWhere: any = { chapter_id: { in: chapterIds } };
+        if (keptIds.length > 0) {
+            deleteWhere.id = { notIn: keptIds };
+        }
+        await this.prisma.lessons.deleteMany({ where: deleteWhere });
 
+        // Update existing lessons in-place so quiz questions remain linked
+        for (const lesson of existingLessons) {
+            await this.prisma.lessons.update({
+                where: { id: lesson.id! },
+                data: {
+                    title: lesson.title,
+                    type: lesson.type,
+                    order_index: lesson.orderIndex,
+                    // Preserve quiz content_url (questions live in the questions table)
+                    ...(lesson.type !== 'QUIZ' && { content_url: lesson.contentUrl }),
+                },
+            });
+        }
+
+        // Insert brand-new lessons
+        if (newLessons.length > 0) {
             await this.prisma.lessons.createMany({
-                data: lessonData,
+                data: newLessons.map(lesson => ({
+                    chapter_id: lesson.chapterId,
+                    title: lesson.title,
+                    type: lesson.type,
+                    content_url: lesson.contentUrl,
+                    order_index: lesson.orderIndex,
+                })),
             });
         }
     }

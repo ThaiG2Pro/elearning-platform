@@ -104,132 +104,91 @@ export default function RegisterPage() {
     };
 
     return (
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-slate-50">
             <Header onJoin={() => router.push('/join')} />
 
-            {/* Body */}
-            <main className="max-w-md mx-auto px-4 sm:px-6 lg:px-8 py-12">
+            <main className="max-w-md mx-auto px-4 py-12">
                 <div className="text-center mb-8">
-                    <h2 className="text-3xl font-bold text-gray-900 mb-2">
-                        Thiết lập hồ sơ
-                    </h2>
-                    <p className="text-gray-600">
-                        Hoàn thành thông tin để tạo tài khoản
-                    </p>
+                    <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-blue-600 mb-4">
+                        <span className="text-white font-bold text-xl">E</span>
+                    </div>
+                    <h1 className="text-2xl font-bold text-slate-900 mb-1">Tạo tài khoản</h1>
+                    <p className="text-sm text-slate-500">Hoàn thành thông tin để bắt đầu học</p>
                 </div>
 
-                <div className="bg-white border border-gray-100 rounded-lg shadow-sm p-6">
-                    <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-8">
+                    <form onSubmit={handleSubmit} className="space-y-4">
                         {/* Email Display */}
                         <div>
-                            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                                Email
-                            </label>
+                            <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-1.5">Email</label>
                             <input
-                                id="email"
-                                name="email"
-                                type="email"
-                                value={email}
-                                readOnly
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-50 text-gray-500"
+                                id="email" name="email" type="email" value={email} readOnly
+                                className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm bg-slate-50 text-slate-500"
                             />
                         </div>
 
-                        {/* Full Name Input */}
+                        {/* Full Name */}
                         <div>
-                            <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 mb-2">
-                                Họ và tên
-                            </label>
+                            <label htmlFor="fullName" className="block text-sm font-medium text-slate-700 mb-1.5">Họ và tên</label>
                             <input
-                                id="fullName"
-                                name="fullName"
-                                type="text"
-                                required
-                                value={fullName}
-                                onChange={(e) => setFullName(e.target.value)}
+                                id="fullName" name="fullName" type="text" required
+                                value={fullName} onChange={(e) => setFullName(e.target.value)}
                                 disabled={appState === 'submitting'}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50"
-                                placeholder="Nhập họ và tên đầy đủ"
+                                className={`w-full px-3 py-2.5 border rounded-lg text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 transition-shadow ${fieldErrors.fullName ? 'border-red-400 bg-red-50' : 'border-slate-300'}`}
+                                placeholder="Nguyễn Văn A"
                             />
-                            {fieldErrors.fullName && (
-                                <p className="mt-2 text-sm text-red-600">{fieldErrors.fullName}</p>
-                            )}
+                            {fieldErrors.fullName && <p className="mt-1 text-xs text-red-600">{fieldErrors.fullName}</p>}
                         </div>
 
-                        {/* Age Input */}
+                        {/* Age */}
                         <div>
-                            <label htmlFor="age" className="block text-sm font-medium text-gray-700 mb-2">
-                                Tuổi
-                            </label>
+                            <label htmlFor="age" className="block text-sm font-medium text-slate-700 mb-1.5">Tuổi</label>
                             <input
-                                id="age"
-                                name="age"
-                                type="number"
-                                min="1"
-                                required
-                                value={age}
-                                onChange={(e) => setAge(e.target.value)}
+                                id="age" name="age" type="number" min="1" required
+                                value={age} onChange={(e) => setAge(e.target.value)}
                                 disabled={appState === 'submitting'}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50"
-                                placeholder="Nhập tuổi của bạn"
+                                className={`w-full px-3 py-2.5 border rounded-lg text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 transition-shadow ${fieldErrors.age ? 'border-red-400 bg-red-50' : 'border-slate-300'}`}
+                                placeholder="18"
                             />
-                            {fieldErrors.age && (
-                                <p className="mt-2 text-sm text-red-600">{fieldErrors.age}</p>
-                            )}
+                            {fieldErrors.age && <p className="mt-1 text-xs text-red-600">{fieldErrors.age}</p>}
                         </div>
 
-                        {/* Password Input */}
+                        {/* Password */}
                         <div>
-                            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-                                Mật khẩu
-                            </label>
+                            <label htmlFor="password" className="block text-sm font-medium text-slate-700 mb-1.5">Mật khẩu</label>
                             <input
-                                id="password"
-                                name="password"
-                                type="password"
-                                autoComplete="new-password"
-                                required
-                                minLength={6}
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
+                                id="password" name="password" type="password" autoComplete="new-password" required minLength={6}
+                                value={password} onChange={(e) => setPassword(e.target.value)}
                                 disabled={appState === 'submitting'}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50"
-                                placeholder="Tạo mật khẩu (tối thiểu 6 ký tự)"
+                                className={`w-full px-3 py-2.5 border rounded-lg text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 transition-shadow ${fieldErrors.password ? 'border-red-400 bg-red-50' : 'border-slate-300'}`}
+                                placeholder="Tối thiểu 6 ký tự"
                             />
-                            {fieldErrors.password && (
-                                <p className="mt-2 text-sm text-red-600">{fieldErrors.password}</p>
-                            )}
+                            {fieldErrors.password && <p className="mt-1 text-xs text-red-600">{fieldErrors.password}</p>}
                         </div>
 
                         <button
                             type="submit"
                             disabled={appState === 'submitting'}
-                            className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+                            className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 flex items-center justify-center gap-2 mt-2"
                         >
+                            {appState === 'submitting' && <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
                             {appState === 'submitting' ? 'Đang tạo tài khoản...' : 'Đăng ký'}
                         </button>
                     </form>
+
+                    <div className="mt-5 text-center">
+                        <button onClick={handleBackToIdentify} className="text-sm text-slate-500 hover:text-slate-700 transition-colors">
+                            ← Quay lại
+                        </button>
+                    </div>
                 </div>
 
-                {/* Success Toast */}
                 {appState === 'request_sent' && (
                     <Toast message="Yêu cầu đăng ký đã được gửi. Vui lòng kiểm tra email để kích hoạt tài khoản." type="success" onClose={() => setAppState('idle')} />
                 )}
-
-                {/* Error Toast */}
                 {appState === 'error' && errorMessage && (
                     <Toast message={errorMessage} type="error" onClose={() => setAppState('idle')} />
                 )}
-
-                {/* Footer */}
-                <div className="mt-6 text-center">
-                    <button
-                        onClick={handleBackToIdentify}
-                        className="text-sm text-blue-600 hover:text-blue-800"
-                    >
-                        Quay lại
-                    </button>
-                </div>
             </main>
         </div>
     );

@@ -102,18 +102,35 @@ export class ContentManagementService {
     }
 
     async createCourse(lecturerId: bigint, dto: CreateCourseDto): Promise<bigint> {
+        const baseSlug = dto.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+        const suffix = Math.random().toString(36).slice(2, 7);
+        const slug = `${baseSlug}-${suffix}`;
         const course = new Course(
             null,
             lecturerId,
             dto.title,
-            dto.title.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+            slug,
             dto.description || '',
             CourseStatus.DRAFT,
             null
         );
 
-        await this.courseRepository.save(course);
+        await this.courseRepository.create(course);
         return course.id!;
+    }
+
+    async updateCourseMetadata(lecturerId: bigint, courseId: bigint, data: { title?: string; description?: string }): Promise<void> {
+        const course = await this.courseRepository.findById(courseId);
+        if (!course) throw new Error('COURSE_NOT_FOUND');
+
+        if (course.lecturerId !== lecturerId) {
+            throw new Error('FORBIDDEN');
+        }
+
+        if (data.title) course.title = data.title;
+        if (data.description !== undefined) course.description = data.description;
+
+        await this.courseRepository.save(course);
     }
 
     async getCourseSections(courseId: bigint): Promise<SectionDto[]> {
@@ -150,7 +167,7 @@ export class ContentManagementService {
             data: {
                 course_id: courseId,
                 title: dto.title,
-                order_index: dto.orderIndex,
+                order_index: dto.orderIndex ?? 0,
             },
         });
         return section.id;

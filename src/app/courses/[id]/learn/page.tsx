@@ -334,53 +334,54 @@ export default function LearningPage() {
 
     if (appState === 'loading') {
         return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+                <div className="animate-spin rounded-full h-10 w-10 border-2 border-blue-600 border-t-transparent"></div>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-slate-50">
             <Header user={user} onLogout={handleLogout} onJoin={handleJoin} />
 
-            {/* Lesson Header */}
-            <header className="bg-white shadow-sm border-b">
+            {/* Lesson Sub-Header */}
+            <div className="bg-white border-b border-slate-200 sticky top-16 z-10">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex items-center justify-between h-16">
-                        <div className="flex items-center space-x-4">
+                    <div className="flex items-center justify-between h-14">
+                        <div className="flex items-center gap-4 min-w-0">
                             <button
                                 onClick={() => router.push('/my-learning')}
-                                className="text-gray-600 hover:text-gray-900"
+                                className="flex-shrink-0 text-sm text-slate-500 hover:text-slate-800 transition-colors flex items-center gap-1"
                             >
-                                ← Quay lại
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7"/>
+                                </svg>
+                                Quay lại
                             </button>
-                            <div>
-                                <h1 className="text-lg font-semibold text-gray-900">
-                                    {currentLesson ? `Bài ${currentLesson.order}: ${currentLesson.title}` : 'Đang tải...'}
-                                </h1>
-                                <div className="flex items-center space-x-2 text-sm text-gray-600">
-                                    <span>Tiến độ khóa học:</span>
-                                    <div className="w-32 bg-gray-200 rounded-full h-2">
-                                        <div
-                                            className="bg-blue-600 h-2 rounded-full"
-                                            style={{ width: `${calculateCourseProgress()}%` }}
-                                        ></div>
-                                    </div>
-                                    <span>{calculateCourseProgress()}%</span>
-                                </div>
+                            <div className="hidden sm:block w-px h-5 bg-slate-200"/>
+                            <p className="text-sm font-medium text-slate-800 truncate">
+                                {currentLesson ? `Bài ${currentLesson.order}: ${currentLesson.title}` : 'Đang tải...'}
+                            </p>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-slate-500 flex-shrink-0">
+                            <div className="w-24 bg-slate-100 rounded-full h-1.5">
+                                <div
+                                    className="bg-blue-600 h-1.5 rounded-full transition-all"
+                                    style={{ width: `${calculateCourseProgress()}%` }}
+                                />
                             </div>
+                            <span className="font-medium text-blue-600">{calculateCourseProgress()}%</span>
                         </div>
                     </div>
                 </div>
-            </header>
+            </div>
 
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
                     {/* Main Content Area */}
-                    <div className="lg:col-span-3 space-y-6">
+                    <div className="lg:col-span-3 space-y-4">
                         {/* Video Player or Quiz Area */}
-                        <div className="bg-white rounded-lg shadow-md p-6">
+                        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
                             {/* Keep the video DOM mounted to avoid re-mounts caused by transient appState changes */}
                             <div className={appState === 'idle' ? 'block' : 'hidden'}>
                                 {currentLesson?.type?.toLowerCase() === 'video' && (
@@ -414,7 +415,7 @@ export default function LearningPage() {
                                             </video>
                                         )}
                                         {lessonProgress && (
-                                            <div className="mt-4 text-sm text-gray-600">
+                                            <div className="mt-3 text-xs text-slate-400">
                                                 Tiến độ: {formatTime(lessonProgress.currentPosition)} / {formatTime(videoDuration || currentLesson.duration || 0)}
                                             </div>
                                         )}
@@ -423,16 +424,21 @@ export default function LearningPage() {
                             </div>
 
                             {appState === 'quiz_ready' && currentLesson?.type?.toLowerCase() === 'quiz' && (
-                                <div className="text-center py-12">
-                                    <h3 className="text-xl font-semibold text-gray-900 mb-4">
+                                <div className="flex flex-col items-center py-16 text-center">
+                                    <div className="w-16 h-16 rounded-full bg-blue-50 flex items-center justify-center mb-4">
+                                        <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                        </svg>
+                                    </div>
+                                    <h3 className="text-base font-semibold text-slate-900 mb-2">
                                         Bài kiểm tra
                                     </h3>
-                                    <p className="text-gray-600 mb-6">
+                                    <p className="text-sm text-slate-500 mb-6">
                                         Bạn đã sẵn sàng làm bài kiểm tra chưa?
                                     </p>
                                     <button
                                         onClick={handleStartQuiz}
-                                        className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+                                        className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
                                     >
                                         Bắt đầu làm bài
                                     </button>
@@ -441,33 +447,36 @@ export default function LearningPage() {
 
                             {appState === 'quiz_doing' && quizSession && (
                                 <div>
-                                    <div className="flex justify-between items-center mb-6">
-                                        <h3 className="text-xl font-semibold text-gray-900">
+                                    <div className="flex justify-between items-center mb-6 pb-4 border-b border-slate-100">
+                                        <h3 className="text-base font-semibold text-slate-900">
                                             Bài kiểm tra
                                         </h3>
-                                        <div className="text-lg font-mono text-red-600">
-                                            Thời gian còn lại: {formatTime(timeLeft)}
+                                        <div className={`flex items-center gap-1.5 text-sm font-mono font-semibold px-3 py-1 rounded-full ${timeLeft <= 60 ? 'bg-red-50 text-red-600' : 'bg-slate-100 text-slate-700'}`}>
+                                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                            </svg>
+                                            {formatTime(timeLeft)}
                                         </div>
                                     </div>
 
                                     <div className="space-y-6">
                                         {(quizSession.questions || []).map((question, index) => (
-                                            <div key={question.id} className="border-b pb-4">
-                                                <h4 className="font-medium text-gray-900 mb-3">
+                                            <div key={question.id} className="border-b border-slate-100 pb-5 last:border-0">
+                                                <p className="text-sm font-medium text-slate-800 mb-3">
                                                     Câu {index + 1}: {question.text}
-                                                </h4>
+                                                </p>
                                                 <div className="space-y-2">
                                                     {(question.options || []).map(option => (
-                                                        <label key={option.id} className="flex items-center">
+                                                        <label key={option.id} className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${answers[question.id] === option.id ? 'border-blue-300 bg-blue-50' : 'border-slate-200 hover:bg-slate-50'}`}>
                                                             <input
                                                                 type="radio"
                                                                 name={`question-${question.id}`}
                                                                 value={option.id}
                                                                 checked={answers[question.id] === option.id}
                                                                 onChange={() => handleAnswerChange(question.id, option.id)}
-                                                                className="mr-3"
+                                                                className="text-blue-600 focus:ring-blue-500"
                                                             />
-                                                            <span className="text-gray-700">{option.text}</span>
+                                                            <span className="text-sm text-slate-700">{option.text}</span>
                                                         </label>
                                                     ))}
                                                 </div>
@@ -475,14 +484,14 @@ export default function LearningPage() {
                                         ))}
 
                                         {(!quizSession.questions || quizSession.questions.length === 0) && (
-                                            <p className="text-gray-500 italic">Không có câu hỏi nào cho bài tập này.</p>
+                                            <p className="text-sm text-slate-400 italic">Không có câu hỏi nào cho bài tập này.</p>
                                         )}
                                     </div>
 
-                                    <div className="mt-8 text-center">
+                                    <div className="mt-8 flex justify-end">
                                         <button
                                             onClick={handleSubmitQuiz}
-                                            className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-green-600 hover:bg-green-700"
+                                            className="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition-colors"
                                         >
                                             Nộp bài
                                         </button>
@@ -492,35 +501,41 @@ export default function LearningPage() {
 
                             {appState === 'quiz_result' && quizResult && (
                                 <div>
-                                    <div className="text-center mb-8">
-                                        <h3 className="text-2xl font-semibold text-gray-900 mb-2">
+                                    <div className="text-center mb-8 pb-6 border-b border-slate-100">
+                                        <h3 className="text-base font-semibold text-slate-800 mb-3">
                                             Kết quả bài kiểm tra
                                         </h3>
-                                        <div className="text-4xl font-bold text-blue-600">
-                                            {quizResult.score}/100
+                                        <div className={`inline-flex items-center justify-center w-20 h-20 rounded-full text-2xl font-bold ${quizResult.score >= 50 ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
+                                            {quizResult.score}
                                         </div>
+                                        <p className="text-xs text-slate-400 mt-2">/ 100 điểm</p>
                                     </div>
 
                                     <div className="space-y-4">
                                         {(quizResult.questions || []).map((question, index) => (
-                                            <div key={question.id} className="border rounded-lg p-4">
-                                                <h4 className="font-medium text-gray-900 mb-2">
+                                            <div key={question.id} className="border border-slate-200 rounded-xl p-4">
+                                                <p className="text-sm font-medium text-slate-800 mb-3">
                                                     Câu {index + 1}: {question.text}
-                                                </h4>
-                                                <div className="space-y-1">
+                                                </p>
+                                                <div className="space-y-1.5">
                                                     {(question.options || []).map(option => (
                                                         <div
                                                             key={option.id}
-                                                            className={`p-2 rounded ${option.id === question.correctId
-                                                                ? 'bg-green-100 text-green-800'
+                                                            className={`flex items-center gap-2 p-2.5 rounded-lg text-sm ${option.id === question.correctId
+                                                                ? 'bg-emerald-50 text-emerald-700 font-medium'
                                                                 : option.id === question.selectedId && option.id !== question.correctId
-                                                                    ? 'bg-red-100 text-red-800'
-                                                                    : 'bg-gray-50'
+                                                                    ? 'bg-red-50 text-red-700'
+                                                                    : 'text-slate-600'
                                                                 }`}
                                                         >
+                                                            {option.id === question.correctId ? (
+                                                                <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7"/></svg>
+                                                            ) : option.id === question.selectedId && option.id !== question.correctId ? (
+                                                                <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/></svg>
+                                                            ) : (
+                                                                <span className="w-4 h-4 flex-shrink-0"/>
+                                                            )}
                                                             {option.text}
-                                                            {option.id === question.correctId && ' ✓'}
-                                                            {option.id === question.selectedId && option.id !== question.correctId && ' ✗'}
                                                         </div>
                                                     ))}
                                                 </div>
@@ -528,23 +543,23 @@ export default function LearningPage() {
                                         ))}
 
                                         {(!quizResult.questions || quizResult.questions.length === 0) && (
-                                            <p className="text-center text-gray-500">Không có dữ liệu xem lại câu hỏi.</p>
+                                            <p className="text-center text-sm text-slate-400">Không có dữ liệu xem lại câu hỏi.</p>
                                         )}
                                     </div>
                                 </div>
                             )}
 
                             {appState === 'error' && (
-                                <div className="text-center py-12">
-                                    <div className="text-red-400 mb-4">
-                                        <svg className="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <div className="flex flex-col items-center py-12 text-center">
+                                    <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mb-3">
+                                        <svg className="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
                                         </svg>
                                     </div>
-                                    <h3 className="text-lg font-medium text-gray-900 mb-2">
+                                    <h3 className="text-sm font-semibold text-slate-700 mb-1">
                                         Có lỗi xảy ra
                                     </h3>
-                                    <p className="text-gray-600">
+                                    <p className="text-sm text-slate-500">
                                         {errorMessage}
                                     </p>
                                 </div>
@@ -553,8 +568,8 @@ export default function LearningPage() {
 
                         {/* Notes Section - Only show for video lessons */}
                         {currentLesson?.type?.toLowerCase() === 'video' && (
-                            <div className="bg-white rounded-lg shadow-md p-6">
-                                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+                                <h3 className="text-sm font-semibold text-slate-800 mb-3">
                                     Ghi chú bài học
                                 </h3>
                                 <textarea
@@ -562,15 +577,20 @@ export default function LearningPage() {
                                     onChange={(e) => setNoteContent(e.target.value)}
                                     placeholder="Nhập ghi chú của bạn..."
                                     rows={4}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                                    className="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
                                 />
-                                <div className="mt-4 flex justify-end">
+                                <div className="mt-3 flex justify-end">
                                     <button
                                         onClick={handleSaveNote}
                                         disabled={isSavingNote}
-                                        className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
+                                        className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors"
                                     >
-                                        {isSavingNote ? 'Đang lưu...' : 'Lưu ghi chú'}
+                                        {isSavingNote ? (
+                                            <>
+                                                <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"/>
+                                                Đang lưu...
+                                            </>
+                                        ) : 'Lưu ghi chú'}
                                     </button>
                                 </div>
                             </div>
@@ -579,36 +599,36 @@ export default function LearningPage() {
 
                     {/* Sidebar - Lesson List */}
                     <div className="lg:col-span-1">
-                        <div className="bg-white rounded-lg shadow-md p-4">
-                            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 sticky top-28">
+                            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">
                                 Danh sách bài học
                             </h3>
-                            <div className="space-y-2">
+                            <div className="space-y-1">
                                 {lessons.map(lesson => (
                                     <button
                                         key={lesson.id}
                                         onClick={() => handleLessonSelect(lesson)}
-                                        className={`w-full text-left p-3 rounded-lg border ${currentLesson?.id === lesson.id
-                                            ? 'bg-blue-50 border-blue-200 text-blue-900'
-                                            : 'border-gray-200 hover:bg-gray-50'
+                                        className={`w-full text-left p-3 rounded-lg transition-colors ${currentLesson?.id === lesson.id
+                                            ? 'bg-blue-50 border border-blue-200'
+                                            : 'hover:bg-slate-50 border border-transparent'
                                             }`}
                                     >
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex-1">
-                                                <div className="text-sm font-medium">
-                                                    Bài {lesson.order}: {lesson.title}
-                                                </div>
-                                                <div className="text-xs text-gray-500">
-                                                    {lesson.type.toLowerCase() === 'video' ? 'Video' : 'Quiz'}
-                                                </div>
-                                            </div>
-                                            {lesson.isCompleted && (
-                                                <div className="ml-2">
-                                                    <svg className="h-5 w-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                        <div className="flex items-start gap-2.5">
+                                            <div className={`flex-shrink-0 w-5 h-5 rounded-full border flex items-center justify-center mt-0.5 ${lesson.isCompleted ? 'bg-emerald-500 border-emerald-500' : currentLesson?.id === lesson.id ? 'border-blue-400' : 'border-slate-300'}`}>
+                                                {lesson.isCompleted && (
+                                                    <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7"/>
                                                     </svg>
-                                                </div>
-                                            )}
+                                                )}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className={`text-xs font-medium truncate leading-snug ${currentLesson?.id === lesson.id ? 'text-blue-700' : 'text-slate-700'}`}>
+                                                    Bài {lesson.order}: {lesson.title}
+                                                </p>
+                                                <p className="text-xs text-slate-400 mt-0.5">
+                                                    {lesson.type.toLowerCase() === 'video' ? 'Video' : 'Quiz'}
+                                                </p>
+                                            </div>
                                         </div>
                                     </button>
                                 ))}

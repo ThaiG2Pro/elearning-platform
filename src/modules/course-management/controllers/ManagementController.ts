@@ -48,6 +48,10 @@ export class ManagementController {
         return await this.contentService.createCourse(lecturerId, dto);
     }
 
+    async updateCourseMetadata(lecturerId: bigint, courseId: bigint, data: { title?: string; description?: string }): Promise<void> {
+        return await this.contentService.updateCourseMetadata(lecturerId, courseId, data);
+    }
+
     // Section Management
     async getCourseSections(courseId: bigint): Promise<SectionDto[]> {
         return await this.contentService.getCourseSections(courseId);

@@ -21,7 +21,7 @@ export class Course {
     ) { }
 
     submit() {
-        if (this.status !== CourseStatus.DRAFT) {
+        if (this.status !== CourseStatus.DRAFT && this.status !== CourseStatus.REJECTED) {
             throw new Error('INVALID_STATUS_TRANSITION');
         }
         this.status = CourseStatus.PENDING;

@@ -2,6 +2,7 @@
   "name": "elearning-platform",
   "version": "1.0.0",
   "description": "",
+  "packageManager": "pnpm@10.30.3",
   "main": "index.js",
   "scripts": {
     "dev": "next dev",
@@ -30,20 +31,39 @@
   },
   "dependencies": {
     "@prisma/client": "^5",
+    "@radix-ui/react-dialog": "^1.1.15",
+    "@radix-ui/react-label": "^2.1.8",
+    "@radix-ui/react-progress": "^1.1.8",
+    "@radix-ui/react-separator": "^1.1.8",
+    "@radix-ui/react-slot": "^1.2.4",
+    "@radix-ui/react-tabs": "^1.1.13",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/uuid": "^10.0.0",
     "autoprefixer": "^10.4.23",
     "axios": "^1.13.2",
     "bcryptjs": "^3.0.3",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
     "dotenv": "^16",
     "jsonwebtoken": "^9.0.3",
+    "lucide-react": "^0.575.0",
     "next": "^14.2.35",
     "nodemailer": "^7.0.12",
     "react": "^18",
     "react-dom": "^18",
     "react-youtube": "^10.1.0",
+    "tailwind-merge": "^3.5.0",
     "tailwindcss": "^3",
+    "tailwindcss-animate": "^1.0.7",
     "uuid": "^13.0.0",
     "xlsx": "^0.18.5"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@prisma/client",
+      "@prisma/engines",
+      "prisma",
+      "unrs-resolver"
+    ]
   }
 }

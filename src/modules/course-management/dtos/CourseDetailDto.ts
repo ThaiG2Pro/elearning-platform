@@ -8,6 +8,7 @@ export class CourseDetailDto {
         public isEnrolled: boolean,
         public chapters: ChapterDto[],
         public thumbnailUrl?: string,
+        public status?: string,
     ) { }
 }
 

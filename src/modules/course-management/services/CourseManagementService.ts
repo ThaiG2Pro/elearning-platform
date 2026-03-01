@@ -20,10 +20,10 @@ export class CourseManagementService {
         const section = await this.sectionRepository.findById(sectionId);
         if (!section) throw new Error('SECTION_NOT_FOUND');
 
-        AccessControlPolicy.validateOwnership(userId, section.ownerId);
-
         const course = await this.courseRepository.findById(section.courseId);
         if (!course) throw new Error('COURSE_NOT_FOUND');
+
+        AccessControlPolicy.validateOwnership(userId, course.lecturerId);
 
         const currentCount = await this.sectionRepository.countByCourse(section.courseId);
 
@@ -36,8 +36,8 @@ export class CourseManagementService {
         const course = await this.courseRepository.findById(courseId);
         if (!course) throw new Error('COURSE_NOT_FOUND');
 
-        // Only allow syncing content when course in DRAFT
-        if (course.status !== 'DRAFT') {
+        // Only allow syncing content when course is editable (DRAFT or REJECTED)
+        if (course.status !== 'DRAFT' && course.status !== 'REJECTED') {
             throw new Error('INVALID_STATUS');
         }
 
@@ -47,26 +47,46 @@ export class CourseManagementService {
         const lessons: any[] = [];
         const { Lesson: LessonDomain, LessonType } = require('../domain/Lesson');
 
+        // Helper: fetch YouTube metadata gracefully (API failures must not block save)
+        const safeYoutubeMeta = async (url: string) => {
+            try {
+                return await youtubeAdapter.fetchMetadata(url);
+            } catch {
+                return { duration: 0, thumbnail: '' };
+            }
+        };
+
+        // Helper: extract raw URL from potentially legacy JSON format {"url":"..."}
+        const extractRawUrl = (url: string): string => {
+            try {
+                const parsed = JSON.parse(url);
+                if (parsed && parsed.url) return parsed.url;
+            } catch { /* raw URL */ }
+            return url;
+        };
+
         // Accept either flat lessons or structured sections
         if (Array.isArray(dto.sections)) {
             for (const sec of dto.sections) {
                 const secId = sec.id;
                 if (!Array.isArray(sec.lessons)) continue;
                 for (const lessonDto of sec.lessons) {
+                    const lessonId = lessonDto.id ? BigInt(lessonDto.id) : null;
                     if ((lessonDto.type || 'VIDEO') === 'VIDEO') {
                         if (lessonDto.contentUrl) {
-                            const metadata = await youtubeAdapter.fetchMetadata(lessonDto.contentUrl);
+                            const rawUrl = extractRawUrl(lessonDto.contentUrl);
+                            const metadata = await safeYoutubeMeta(rawUrl);
                             const lesson = LessonFactory.createVideoLesson({
                                 chapterId: BigInt(secId || lessonDto.chapterId),
                                 title: lessonDto.title,
-                                videoUrl: lessonDto.contentUrl,
+                                videoUrl: rawUrl,
                                 orderIndex: lessonDto.orderIndex,
                             }, metadata);
+                            lesson.id = lessonId;
                             lessons.push(lesson);
                         } else {
-                            // Create video lesson without metadata/content
                             const lesson = new LessonDomain(
-                                null,
+                                lessonId,
                                 BigInt(secId || lessonDto.chapterId),
                                 lessonDto.title,
                                 LessonType.VIDEO,
@@ -76,27 +96,37 @@ export class CourseManagementService {
                             lessons.push(lesson);
                         }
                     } else {
-                        // Quiz lesson - create placeholder with empty quiz data
-                        const lesson = LessonFactory.createQuizLesson(BigInt(secId || lessonDto.chapterId), lessonDto.title, {}, lessonDto.orderIndex);
+                        // Quiz lesson - preserve existing id so questions remain linked
+                        const lesson = new LessonDomain(
+                            lessonId,
+                            BigInt(secId || lessonDto.chapterId),
+                            lessonDto.title,
+                            LessonType.QUIZ,
+                            '{}',
+                            lessonDto.orderIndex
+                        );
                         lessons.push(lesson);
                     }
                 }
             }
         } else if (Array.isArray(dto.lessons)) {
             for (const lessonDto of dto.lessons) {
+                const lessonId = lessonDto.id ? BigInt(lessonDto.id) : null;
                 if ((lessonDto.type || 'VIDEO') === 'VIDEO') {
                     if (lessonDto.contentUrl) {
-                        const metadata = await youtubeAdapter.fetchMetadata(lessonDto.contentUrl);
+                        const rawUrl = extractRawUrl(lessonDto.contentUrl);
+                        const metadata = await safeYoutubeMeta(rawUrl);
                         const lesson = LessonFactory.createVideoLesson({
                             chapterId: BigInt(lessonDto.chapterId),
                             title: lessonDto.title,
-                            videoUrl: lessonDto.contentUrl,
+                            videoUrl: rawUrl,
                             orderIndex: lessonDto.orderIndex,
                         }, metadata);
+                        lesson.id = lessonId;
                         lessons.push(lesson);
                     } else {
                         const lesson = new LessonDomain(
-                            null,
+                            lessonId,
                             BigInt(lessonDto.chapterId),
                             lessonDto.title,
                             LessonType.VIDEO,
@@ -106,13 +136,20 @@ export class CourseManagementService {
                         lessons.push(lesson);
                     }
                 } else {
-                    const lesson = LessonFactory.createQuizLesson(BigInt(lessonDto.chapterId), lessonDto.title, {}, lessonDto.orderIndex);
+                    const lesson = new LessonDomain(
+                        lessonId,
+                        BigInt(lessonDto.chapterId),
+                        lessonDto.title,
+                        LessonType.QUIZ,
+                        '{}',
+                        lessonDto.orderIndex
+                    );
                     lessons.push(lesson);
                 }
             }
         }
 
-        // Persist through repository which will replace existing lessons for course
+        // Persist through repository (upsert: update existing, create new, delete removed)
         await this.lessonRepository.syncLessons(courseId, lessons);
     }
 

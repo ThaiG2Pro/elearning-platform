@@ -78,128 +78,90 @@ export default function EditProfilePage() {
     };
 
     return (
-        <div className="min-h-screen bg-gray-50">
-            {/* Header */}
-            <header className="bg-white shadow-sm">
+        <div className="min-h-screen bg-slate-50">
+            {/* Compact header for settings pages */}
+            <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between items-center h-16">
-                        <div className="flex items-center">
-                            <h1 className="text-xl font-bold text-gray-900">E-Learning</h1>
-                        </div>
-                        <div className="flex items-center space-x-4">
-                            {/* Avatar */}
-                            <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white font-medium">
-                                {avatarInitial}
+                        <button onClick={() => router.push('/')} className="flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded-md">
+                            <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center">
+                                <span className="text-white font-bold text-sm">E</span>
                             </div>
+                            <span className="font-semibold text-slate-900 text-base hidden sm:block">E-Learning</span>
+                        </button>
+                        <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
+                            {avatarInitial}
                         </div>
                     </div>
                 </div>
             </header>
 
-            {/* Body */}
-            <main className="max-w-md mx-auto px-4 sm:px-6 lg:px-8 py-12">
-                <div className="text-center mb-8">
-                    <h2 className="text-3xl font-bold text-gray-900 mb-2">
-                        Cập nhật hồ sơ
-                    </h2>
-                    <p className="text-gray-600">
-                        Cập nhật thông tin cá nhân của bạn
-                    </p>
+            <main className="max-w-lg mx-auto px-4 py-10">
+                <div className="mb-6">
+                    <h1 className="text-xl font-bold text-slate-900">Hồ sơ cá nhân</h1>
+                    <p className="text-sm text-slate-500 mt-0.5">Cập nhật thông tin tài khoản của bạn</p>
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-6">
-                    {/* Email (Read-only) */}
-                    <div>
-                        <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                            Email
-                        </label>
-                        <input
-                            id="email"
-                            name="email"
-                            type="email"
-                            value={email}
-                            disabled
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-50 text-gray-500 cursor-not-allowed"
-                        />
-                        <p className="mt-1 text-xs text-gray-500">Email không thể thay đổi</p>
-                    </div>
-
-                    {/* Full Name */}
-                    <div>
-                        <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 mb-2">
-                            Họ và tên
-                        </label>
-                        <input
-                            id="fullName"
-                            name="fullName"
-                            type="text"
-                            required
-                            value={fullName}
-                            onChange={(e) => setFullName(e.target.value)}
-                            disabled={appState === 'submitting'}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50"
-                            placeholder="Nhập họ và tên"
-                        />
-                    </div>
-
-                    {/* Age */}
-                    <div>
-                        <label htmlFor="age" className="block text-sm font-medium text-gray-700 mb-2">
-                            Tuổi
-                        </label>
-                        <input
-                            id="age"
-                            name="age"
-                            type="number"
-                            min="1"
-                            required
-                            value={age}
-                            onChange={(e) => setAge(e.target.value)}
-                            disabled={appState === 'submitting'}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50"
-                            placeholder="Nhập tuổi"
-                        />
-                        {appState === 'business_error' && errorMessage && (
-                            <p className="mt-2 text-sm text-red-600">{errorMessage}</p>
-                        )}
-                        {appState === 'system_error' && (
-                            <p className="mt-2 text-sm text-red-600">Có lỗi xảy ra. Vui lòng thử lại sau.</p>
-                        )}
-                    </div>
-
-                    {/* Action Buttons */}
-                    <div className="flex space-x-4">
-                        <button
-                            type="button"
-                            onClick={handleCancel}
-                            disabled={appState === 'submitting'}
-                            className="flex-1 py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
-                        >
-                            Hủy
-                        </button>
-                        <button
-                            type="submit"
-                            disabled={appState === 'submitting'}
-                            className="flex-1 flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
-                        >
-                            {appState === 'submitting' ? 'Đang lưu...' : 'Lưu thay đổi'}
-                        </button>
-                    </div>
-                </form>
-
-                {/* Success Message */}
-                {appState === 'success' && (
-                    <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-md">
-                        <div className="text-center">
-                            <h3 className="text-sm font-medium text-green-800">
-                                Hồ sơ đã được cập nhật thành công!
-                            </h3>
-                            <p className="mt-2 text-sm text-green-700">
-                                Thông tin của bạn đã được lưu.
-                            </p>
+                <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-6">
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                        {/* Email (Read-only) */}
+                        <div>
+                            <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-1.5">Email</label>
+                            <input
+                                id="email" name="email" type="email" value={email} disabled
+                                className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm bg-slate-50 text-slate-400 cursor-not-allowed"
+                            />
+                            <p className="mt-1 text-xs text-slate-400">Email không thể thay đổi</p>
                         </div>
-                    </div>
-                )}
+
+                        {/* Full Name */}
+                        <div>
+                            <label htmlFor="fullName" className="block text-sm font-medium text-slate-700 mb-1.5">Họ và tên</label>
+                            <input
+                                id="fullName" name="fullName" type="text" required
+                                value={fullName} onChange={(e) => setFullName(e.target.value)}
+                                disabled={appState === 'submitting'}
+                                className="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 transition-shadow"
+                                placeholder="Nguyễn Văn A"
+                            />
+                        </div>
+
+                        {/* Age */}
+                        <div>
+                            <label htmlFor="age" className="block text-sm font-medium text-slate-700 mb-1.5">Tuổi</label>
+                            <input
+                                id="age" name="age" type="number" min="1" required
+                                value={age} onChange={(e) => setAge(e.target.value)}
+                                disabled={appState === 'submitting'}
+                                className="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 transition-shadow"
+                                placeholder="18"
+                            />
+                            {(appState === 'business_error' || appState === 'system_error') && errorMessage && (
+                                <p className="mt-1 text-xs text-red-600">{errorMessage}</p>
+                            )}
+                        </div>
+
+                        {/* Success inline */}
+                        {appState === 'success' && (
+                            <div className="flex items-center gap-2 p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
+                                <svg className="w-4 h-4 text-emerald-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7"/></svg>
+                                <p className="text-sm text-emerald-700 font-medium">Hồ sơ đã được cập nhật!</p>
+                            </div>
+                        )}
+
+                        <div className="flex gap-3 pt-1">
+                            <button type="button" onClick={handleCancel} disabled={appState === 'submitting'}
+                                className="flex-1 py-2.5 px-4 border border-slate-300 rounded-lg text-sm font-medium text-slate-700 bg-white hover:bg-slate-50 transition-colors disabled:opacity-50">
+                                Hủy
+                            </button>
+                            <button type="submit" disabled={appState === 'submitting'}
+                                className="flex-1 py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 flex items-center justify-center gap-2">
+                                {appState === 'submitting' && <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
+                                {appState === 'submitting' ? 'Đang lưu...' : 'Lưu thay đổi'}
+                            </button>
+                        </div>
+                    </form>
+                </div>
             </main>
         </div>
     );

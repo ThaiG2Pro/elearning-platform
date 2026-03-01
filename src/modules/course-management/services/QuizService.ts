@@ -269,12 +269,13 @@ export class QuizService {
             }
         });
         const totalLessons = lessons.length;
+        const lessonIds = new Set(lessons.map(l => l.id));
 
         // Get all progresses for this enrollment
         const progresses = await this.progressRepo!.findByEnrollment(enrollmentId);
 
-        // Count finished lessons
-        const finishedCount = progresses.filter(p => p.isFinished).length;
+        // Count finished lessons that still exist
+        const finishedCount = progresses.filter(p => p.isFinished && lessonIds.has(p.lessonId)).length;
 
         // Calculate completion rate
         const completionRate = totalLessons > 0 ? Math.round((finishedCount / totalLessons) * 100) : 0;

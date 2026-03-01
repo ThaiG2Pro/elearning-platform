@@ -82,18 +82,19 @@ export class CourseRepository {
             );
         });
 
-        return {
-            id: course.id,
-            lecturerId: course.lecturer_id,
-            title: course.title,
-            slug: course.slug,
-            description: course.description,
-            status: course.status as CourseStatus,
-            rejectNote: course.reject_note,
-            submittedAt: course.submitted_at || undefined,
-            lecturerName: course.lecturer.full_name,
+        const domainCourse = new Course(
+            course.id,
+            course.lecturer_id,
+            course.title,
+            course.slug,
+            course.description,
+            course.status as CourseStatus,
+            course.reject_note,
+            course.submitted_at || undefined,
             chapters
-        };
+        );
+        (domainCourse as any).lecturerName = course.lecturer.full_name;
+        return domainCourse;
     }
 
     async findActiveCoursesWithThumbnails(search?: string): Promise<{ id: bigint; title: string; slug: string; description: string | null; thumbnailUrl: string }[]> {
@@ -165,6 +166,20 @@ export class CourseRepository {
             console.warn('Error getting course thumbnail:', error);
             return '/images/course-placeholder.svg';
         }
+    }
+
+    async create(course: Course): Promise<void> {
+        const created = await this.prisma.courses.create({
+            data: {
+                lecturer_id: course.lecturerId,
+                title: course.title,
+                slug: course.slug,
+                description: course.description,
+                status: course.status,
+                reject_note: course.rejectNote,
+            },
+        });
+        course.id = created.id;
     }
 
     async save(course: Course): Promise<void> {

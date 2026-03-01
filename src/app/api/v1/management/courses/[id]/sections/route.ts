@@ -74,15 +74,21 @@ export async function POST(
             return NextResponse.json({ error: 'ACCESS_DENIED' }, { status: 403 });
         }
 
-        // Only allow adding sections when course is in DRAFT state
-        if ((course.status || '').toUpperCase() !== 'DRAFT') {
+        // Only allow adding sections when course is editable (DRAFT or REJECTED)
+        if (!['DRAFT', 'REJECTED'].includes((course.status || '').toUpperCase())) {
             return NextResponse.json({ error: 'INVALID_STATUS' }, { status: 400 });
         }
 
         const controller = new ManagementController();
         const sectionId = await controller.createSection(courseId, body);
 
-        return NextResponse.json({ sectionId }, { status: 201 });
+        return NextResponse.json({
+            sectionId: Number(sectionId),
+            id: Number(sectionId),
+            title: body.title,
+            orderIndex: body.orderIndex ?? 0,
+            lessons: [],
+        }, { status: 201 });
     } catch (error) {
         console.error('Create section error:', error);
         return NextResponse.json(

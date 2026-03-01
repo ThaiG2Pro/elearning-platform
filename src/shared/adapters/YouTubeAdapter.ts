@@ -41,8 +41,10 @@ export class YouTubeAdapter {
             const thumbnail = video.snippet.thumbnails.default.url;
 
             return { duration, thumbnail };
-        } catch (error) {
-            console.error('YouTube API error:', error);
+        } catch (error: any) {
+            const googleMsg = error?.response?.data?.error?.message;
+            const status = error?.response?.status;
+            console.error(`YouTube API error [${status ?? 'network'}]: ${googleMsg ?? error?.message ?? 'unknown'}`);
             throw new Error('YOUTUBE_API_ERROR');
         }
     }

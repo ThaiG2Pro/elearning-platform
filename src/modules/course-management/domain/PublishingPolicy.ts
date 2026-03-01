@@ -16,10 +16,6 @@ export class PublishingPolicy {
             throw new Error('COURSE_TITLE_REQUIRED');
         }
 
-        if (!course.description || course.description.trim() === '') {
-            throw new Error('COURSE_DESCRIPTION_REQUIRED');
-        }
-
         if (course.chapters.length === 0) {
             throw new Error('COURSE_MUST_HAVE_SECTIONS');
         }
@@ -27,7 +23,7 @@ export class PublishingPolicy {
         // Check that all chapters have at least one lesson
         for (const chapter of course.chapters) {
             if (chapter.lessons.length === 0) {
-                throw new Error(`SECTION_${chapter.title}_MUST_HAVE_LESSONS`);
+                throw new Error('SECTION_MUST_HAVE_LESSONS');
             }
         }
     }

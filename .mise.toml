@@ -1,0 +1,6 @@
+[tools]
+node = "lts"           # Node.js LTS — run `mise install` after cloning
+
+[env]
+# Enforce pnpm as the only package manager (corepack will handle version)
+COREPACK_ENABLE_STRICT = "1"
