@@ -18,35 +18,7 @@ const AdminApprovalQueuePage = () => {
     const [processingId, setProcessingId] = useState<number | null>(null);
     const [user, setUser] = useState<User | null>(null);
 
-    useEffect(() => {
-        fetchApprovalQueue();
-        loadUser();
-    }, []);
-
-    const loadUser = () => {
-        if (AuthUtils.isAuthenticated()) {
-            const userData = AuthUtils.getCurrentUser();
-            setUser(userData);
-        }
-    };
-
-    const handleLogout = async () => {
-        try {
-            await apiLogout();
-            setUser(null);
-            router.push('/');
-        } catch (error: any) {
-            setUser(null);
-            router.push('/');
-        }
-    };
-
-    const handleJoin = () => {
-        const currentUrl = window.location.pathname;
-        router.push(`/join?continueUrl=${encodeURIComponent(currentUrl)}`);
-    };
-
-    const fetchApprovalQueue = async () => {
+    const fetchApprovalQueue = useCallback(async () => {
         setState('loading');
         setError(null);
         try {
@@ -61,7 +33,19 @@ const AdminApprovalQueuePage = () => {
             setError(err.message);
             setState('error');
         }
-    };
+    }, []);
+
+    const loadUser = useCallback(() => {
+        if (AuthUtils.isAuthenticated()) {
+            const userData = AuthUtils.getCurrentUser();
+            setUser(userData);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchApprovalQueue();
+        loadUser();
+    }, [fetchApprovalQueue, loadUser]);
 
     const handleViewCourse = (courseId: number) => {
         router.push(`/lecturer/courses/${courseId}/view`);

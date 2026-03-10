@@ -59,11 +59,7 @@ const CourseEditPage = () => {
     const [quizFile, setQuizFile] = useState<File | null>(null);
     const [quizUploadedCount, setQuizUploadedCount] = useState<number | null>(null);
 
-    useEffect(() => {
-        fetchCourseStructure();
-    }, [courseId]);
-
-    const fetchCourseStructure = async () => {
+    const fetchCourseStructure = useCallback(async () => {
         setLoading(true);
         setError(null);
         try {
@@ -78,7 +74,11 @@ const CourseEditPage = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [courseId]);
+
+    useEffect(() => {
+        fetchCourseStructure();
+    }, [fetchCourseStructure]);
 
     const buildContentPayload = () => {
         // Map course state to backend BulkDto structure
@@ -292,7 +292,7 @@ const CourseEditPage = () => {
                 } : l)
             }))
         } : null);
-    }, [lessonForm.title, lessonForm.content, lessonForm.videoUrl]);
+    }, [lessonForm.title, lessonForm.videoUrl, lessonForm.orderIndex, lessonForm.type, selectedItem]);
 
     const handleParseQuiz = async () => {
         if (!quizFile) return;

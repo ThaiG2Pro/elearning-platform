@@ -11,20 +11,7 @@ export default function ActivatePage() {
     const [appState, setAppState] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-    useEffect(() => {
-        // Get token from URL params
-        const urlParams = new URLSearchParams(window.location.search);
-        const tokenParam = urlParams.get('token') || '';
-
-        if (tokenParam) {
-            handleActivate(tokenParam);
-        } else {
-            setAppState('error');
-            setErrorMessage('Link kích hoạt không hợp lệ. Thiếu mã token.');
-        }
-    }, []);
-
-    const handleActivate = async (activationToken: string) => {
+    const handleActivate = useCallback(async (activationToken: string) => {
         setAppState('submitting');
         setErrorMessage(null);
 
@@ -46,7 +33,20 @@ export default function ActivatePage() {
             setAppState('error');
             setErrorMessage(error.message || 'Có lỗi xảy ra khi kích hoạt tài khoản.');
         }
-    };
+    }, [router]);
+
+    useEffect(() => {
+        // Get token from URL params
+        const urlParams = new URLSearchParams(window.location.search);
+        const tokenParam = urlParams.get('token') || '';
+
+        if (tokenParam) {
+            handleActivate(tokenParam);
+        } else {
+            setAppState('error');
+            setErrorMessage('Link kích hoạt không hợp lệ. Thiếu mã token.');
+        }
+    }, [handleActivate]);
 
     return (
         <div className="min-h-screen bg-slate-50">

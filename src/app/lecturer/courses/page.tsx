@@ -22,7 +22,7 @@ const LecturerCoursesPage = () => {
     const [createError, setCreateError] = useState<string | null>(null);
     const router = useRouter();
 
-    const fetchCourses = async (status?: Status) => {
+    const fetchCourses = useCallback(async (status?: Status) => {
         setLoading(true);
         setError(null);
         try {
@@ -52,19 +52,19 @@ const LecturerCoursesPage = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
 
-    useEffect(() => {
-        fetchCourses(selectedStatus);
-        loadUser();
-    }, [selectedStatus]);
-
-    const loadUser = () => {
+    const loadUser = useCallback(() => {
         if (AuthUtils.isAuthenticated()) {
             const userData = AuthUtils.getCurrentUser();
             setUser(userData);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        fetchCourses(selectedStatus);
+        loadUser();
+    }, [selectedStatus, fetchCourses, loadUser]);
 
     const handleLogout = async () => {
         try {

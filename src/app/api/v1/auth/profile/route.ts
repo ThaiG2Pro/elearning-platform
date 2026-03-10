@@ -3,6 +3,8 @@ import { AuthController } from '@/modules/auth/controllers/AuthController';
 import { getUserIdFromRequest } from '@/shared/middleware/auth';
 import { UpdateProfileDto } from '@/modules/auth/dtos/UpdateProfileDto';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(
     request: NextRequest,
 ): Promise<NextResponse> {

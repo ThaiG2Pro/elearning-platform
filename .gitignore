@@ -43,7 +43,6 @@ next-env.d.ts
 # IDE & Editor
 .agent/
 .agents/
-.github/
 .windsurf/
 .vscode/
 .idea/

@@ -1,0 +1,90 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Quality Gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      # ── Checkout ─────────────────────────────────────────────────────────────
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # ── Node + pnpm setup ─────────────────────────────────────────────────────
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      # ── Install ────────────────────────────────────────────────────────────────
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # ── Generate Prisma client (needed for typecheck + build) ─────────────────
+      - name: Generate Prisma client
+        run: pnpm exec prisma generate
+
+      # ── Fix known pnpm/Node.js package resolution issue ────────────────────────
+      - name: Fix fdir package.json in tinyglobby
+        run: |
+          NESTED_FDIR="node_modules/tinyglobby/node_modules/fdir"
+          if [ -d "$NESTED_FDIR" ] && [ ! -f "$NESTED_FDIR/package.json" ]; then
+            cp node_modules/fdir/package.json "$NESTED_FDIR/package.json"
+          fi
+
+      # ── Type check ────────────────────────────────────────────────────────────
+      - name: TypeScript type check
+        run: pnpm typecheck
+
+      # ── Lint ──────────────────────────────────────────────────────────────────
+      - name: Lint
+        run: pnpm lint
+
+      # ── Unit + Integration tests ──────────────────────────────────────────────
+      - name: Run tests
+        run: pnpm test
+
+      # ── Upload coverage report ────────────────────────────────────────────────
+      - name: Generate coverage report
+        run: pnpm test:coverage
+
+      - name: Upload coverage to GitHub Actions summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage/
+          retention-days: 7
+
+      # ── Production build ──────────────────────────────────────────────────────
+      - name: Build
+        run: pnpm build
+        env:
+          # Provide dummy values so Next.js can perform a static build check.
+          # Real secrets are managed by Vercel for CD.
+          DATABASE_URL: postgresql://ci:ci@localhost/ci
+          JWT_SECRET: ci-secret-placeholder
+          FRONTEND_URL: http://localhost:3000
+          YOUTUBE_API_KEY: placeholder
+          MAILTRAP_HOST: sandbox.smtp.mailtrap.io
+          MAILTRAP_PORT: 2525
+          MAILTRAP_USER: placeholder
+          MAILTRAP_PASS: placeholder
+          MAIL_FROM: noreply@elearning.com

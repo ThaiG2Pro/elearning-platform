@@ -64,7 +64,7 @@ export default function LearningPage() {
     // Memoize videoId so it doesn't change reference unless the lesson changes
     const youtubeVideoId = useMemo(() => {
         return currentLesson?.videoUrl ? getYouTubeVideoId(currentLesson.videoUrl) : null;
-    }, [currentLesson?.id]);
+    }, [currentLesson?.videoUrl]);
 
     // Memoize callbacks to prevent remounting
     const handleProgressUpdate = useCallback(async (currentTime: number) => {
@@ -86,7 +86,7 @@ export default function LearningPage() {
                 // lastSentTimeRef.current = roundedTime - 5;
             }
         }
-    }, [currentLesson?.id, videoDuration]);
+    }, [currentLesson, videoDuration]);
 
     const handleFlushUpdate = useCallback(async (time: number) => {
         const roundedTime = Math.floor(time);
@@ -98,7 +98,7 @@ export default function LearningPage() {
         } catch (err) {
             console.error('Flush Error:', err);
         }
-    }, [currentLesson?.id, videoDuration]);
+    }, [currentLesson, videoDuration]);
 
     const handleDurationUpdate = useCallback((duration: number) => {
         setVideoDuration(duration);
@@ -120,66 +120,14 @@ export default function LearningPage() {
         router.push(`/join?continueUrl=${encodeURIComponent(currentUrl)}`);
     };
 
-    useEffect(() => {
-        loadCourseData();
-        loadUser();
-    }, [courseId]);
-
-    const loadUser = () => {
+    const loadUser = useCallback(() => {
         if (AuthUtils.isAuthenticated()) {
             const userData = AuthUtils.getCurrentUser();
             setUser(userData);
         }
-    };
-
-    useEffect(() => {
-        if (currentLesson) {
-            console.log('Loading lesson data for lesson:', currentLesson.id, currentLesson.type);
-            loadLessonData(currentLesson.id, currentLesson.type);
-        }
-    }, [currentLesson]);
-
-    useEffect(() => {
-        if (quizSession && appState === 'quiz_doing') {
-            startTimer();
-        } else {
-            stopTimer();
-        }
-
-        return () => stopTimer();
-    }, [quizSession, appState]);
-
-    // cleanup on unmount
-    useEffect(() => {
-        return () => {
-            stopTimer();
-        };
     }, []);
 
-    const loadCourseData = async () => {
-        try {
-            const courseLessons = await getLessons(courseId);
-            // console.log('Loaded lessons:', courseLessons);
-            setLessons(courseLessons);
-
-            // Set first lesson as current
-            if (courseLessons.length > 0) {
-                // console.log('Setting current lesson:', courseLessons[0]);
-                setCurrentLesson(courseLessons[0]);
-                // DO NOT toggle appState here to avoid unnecessary unmounting of the player.
-                // appState will be set by loadLessonData based on lesson type or by handleLessonSelect when user switches lessons.
-            } else {
-                // No lessons available
-                setAppState('idle');
-            }
-        } catch (error: any) {
-            // console.error('Error in loadCourseData:', error);
-            setAppState('error');
-            setErrorMessage(error.message || 'Không thể tải dữ liệu khóa học.');
-        }
-    };
-
-    const loadLessonData = async (lessonId: string, lessonType: string) => {
+    const loadLessonData = useCallback(async (lessonId: string, lessonType: string) => {
         // console.log('loadLessonData called with:', { lessonId, lessonType });
         try {
             const [progress, note] = await Promise.all([
@@ -208,66 +156,44 @@ export default function LearningPage() {
             setAppState('error');
             setErrorMessage(error.message || 'Không thể tải dữ liệu bài học.');
         }
-    };
+    }, []);
 
-    const handleLessonSelect = (lesson: Lesson) => {
-        console.log('Lesson select: Switching to lesson', lesson.id);
-
-        // Reset progress tracking state
-        lastSentTimeRef.current = 0;
-
-        // Reset video states
-        setVideoDuration(0);
-
-        setCurrentLesson(lesson);
-        setQuizSession(null);
-        setQuizResult(null);
-        setAnswers({});
-        setAppState('loading');
-    };
-
-    const handleVideoProgress = async () => {
-        if (videoRef.current && currentLesson) {
-            const currentTime = Math.floor(videoRef.current.currentTime);
-            const duration = Math.floor(videoRef.current.duration || 0);
-            try {
-                const progress = await updateLessonProgress(currentLesson.id, currentTime, duration);
-                setLessonProgress(progress);
-            } catch (error) {
-                // Silent fail for progress updates
-            }
-        }
-    };
-
-    const handleStartQuiz = async () => {
-        if (!currentLesson) return;
-
+    const loadCourseData = useCallback(async () => {
         try {
-            const session = await startQuiz(currentLesson.id);
-            setQuizSession(session);
-            setAppState('quiz_doing');
+            const courseLessons = await getLessons(courseId);
+            // console.log('Loaded lessons:', courseLessons);
+            setLessons(courseLessons);
 
-            // Initialize answers an toàn
-            const initialAnswers: Record<string, string> = {};
-            if (Array.isArray(session.questions)) {
-                session.questions.forEach(q => {
-                    initialAnswers[q.id] = '';
-                });
+            // Set first lesson as current
+            if (courseLessons.length > 0) {
+                // console.log('Setting current lesson:', courseLessons[0]);
+                setCurrentLesson(courseLessons[0]);
+                // DO NOT toggle appState here to avoid unnecessary unmounting of the player.
+                // appState will be set by loadLessonData based on lesson type or by handleLessonSelect when user switches lessons.
+            } else {
+                // No lessons available
+                setAppState('idle');
             }
-            setAnswers(initialAnswers);
         } catch (error: any) {
-            setErrorMessage(error.message);
+            // console.error('Error in loadCourseData:', error);
+            setAppState('error');
+            setErrorMessage(error.message || 'Không thể tải dữ liệu khóa học.');
         }
-    };
+    }, [courseId]);
 
-    const handleAnswerChange = (questionId: string, optionId: string) => {
-        setAnswers(prev => ({
-            ...prev,
-            [questionId]: optionId
-        }));
-    };
+    useEffect(() => {
+        loadCourseData();
+        loadUser();
+    }, [loadCourseData, loadUser]);
 
-    const handleSubmitQuiz = async () => {
+    useEffect(() => {
+        if (currentLesson) {
+            console.log('Loading lesson data for lesson:', currentLesson.id, currentLesson.type);
+            loadLessonData(currentLesson.id, currentLesson.type);
+        }
+    }, [currentLesson, loadLessonData]);
+
+    const handleSubmitQuiz = useCallback(async () => {
         if (!currentLesson || !quizSession) return;
 
         try {
@@ -277,23 +203,9 @@ export default function LearningPage() {
         } catch (error: any) {
             setErrorMessage(error.message);
         }
-    };
+    }, [currentLesson, quizSession, answers]);
 
-    const handleSaveNote = async () => {
-        if (!currentLesson) return;
-
-        setIsSavingNote(true);
-        try {
-            await saveLessonNote(currentLesson.id, noteContent);
-            // Note saved successfully
-        } catch (error: any) {
-            setErrorMessage(error.message);
-        } finally {
-            setIsSavingNote(false);
-        }
-    };
-
-    const startTimer = () => {
+    const startTimer = useCallback(() => {
         if (!quizSession) return;
 
         const endTime = new Date(quizSession.expiresAt).getTime();
@@ -311,14 +223,24 @@ export default function LearningPage() {
         };
 
         updateTimer();
-    };
+    }, [quizSession, handleSubmitQuiz]);
 
-    const stopTimer = () => {
+    const stopTimer = useCallback(() => {
         if (quizTimerRef.current) {
             clearTimeout(quizTimerRef.current);
             quizTimerRef.current = null;
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        if (quizSession && appState === 'quiz_doing') {
+            startTimer();
+        } else {
+            stopTimer();
+        }
+
+        return () => stopTimer();
+    }, [quizSession, appState, startTimer, stopTimer]);
 
     const formatTime = (seconds: number) => {
         const mins = Math.floor(seconds / 60);

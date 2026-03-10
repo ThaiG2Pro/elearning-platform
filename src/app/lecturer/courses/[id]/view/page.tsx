@@ -17,11 +17,7 @@ const CoursePreviewPage = () => {
     const [loadingContent, setLoadingContent] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    useEffect(() => {
-        fetchCourseStructure();
-    }, [courseId]);
-
-    const fetchCourseStructure = async () => {
+    const fetchCourseStructure = useCallback(async () => {
         setLoading(true);
         setError(null);
         try {
@@ -32,7 +28,11 @@ const CoursePreviewPage = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [courseId]);
+
+    useEffect(() => {
+        fetchCourseStructure();
+    }, [fetchCourseStructure]);
 
     const fetchLessonPreview = async (lessonId: number) => {
         setLoadingContent(true);
