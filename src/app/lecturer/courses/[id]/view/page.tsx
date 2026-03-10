@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { getCourseStructure, getLessonPreview } from '@/lib/lecturer';
 import { CourseStructure, LessonPreview, Chapter, Lesson } from '@/types/lecturer.types';

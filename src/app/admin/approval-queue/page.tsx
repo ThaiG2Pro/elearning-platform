@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
 import { ApprovalQueueItem } from '@/types/admin.types';
@@ -46,6 +46,22 @@ const AdminApprovalQueuePage = () => {
         fetchApprovalQueue();
         loadUser();
     }, [fetchApprovalQueue, loadUser]);
+
+    const handleLogout = async () => {
+        try {
+            await apiLogout();
+            setUser(null);
+            router.push('/');
+        } catch (error: any) {
+            setUser(null);
+            router.push('/');
+        }
+    };
+
+    const handleJoin = () => {
+        const currentUrl = window.location.pathname;
+        router.push(`/join?continueUrl=${encodeURIComponent(currentUrl)}`);
+    };
 
     const handleViewCourse = (courseId: number) => {
         router.push(`/lecturer/courses/${courseId}/view`);

@@ -193,6 +193,63 @@ export default function LearningPage() {
         }
     }, [currentLesson, loadLessonData]);
 
+    const handleLessonSelect = (lesson: Lesson) => {
+        console.log('Lesson select: Switching to lesson', lesson.id);
+
+        // Reset progress tracking state
+        lastSentTimeRef.current = 0;
+
+        // Reset video states
+        setVideoDuration(0);
+
+        setCurrentLesson(lesson);
+        setQuizSession(null);
+        setQuizResult(null);
+        setAnswers({});
+        setAppState('loading');
+    };
+
+    const handleVideoProgress = async () => {
+        if (videoRef.current && currentLesson) {
+            const currentTime = Math.floor(videoRef.current.currentTime);
+            const duration = Math.floor(videoRef.current.duration || 0);
+            try {
+                const progress = await updateLessonProgress(currentLesson.id, currentTime, duration);
+                setLessonProgress(progress);
+            } catch (error) {
+                // Silent fail for progress updates
+            }
+        }
+    };
+
+    const handleStartQuiz = async () => {
+        if (!currentLesson) return;
+
+        try {
+            const session = await startQuiz(currentLesson.id);
+            setQuizSession(session);
+            setAppState('quiz_doing');
+
+            // Initialize answers an toàn
+            const initialAnswers: Record<string, string> = {};
+            if (Array.isArray(session.questions)) {
+                session.questions.forEach(q => {
+                    initialAnswers[q.id] = '';
+                });
+            }
+            setAnswers(initialAnswers);
+        } catch (error: any) {
+            setErrorMessage(error.message);
+        }
+    };
+
+    const handleAnswerChange = (questionId: string, optionId: string) => {
+        setAnswers(prev => ({
+            ...prev,
+            [questionId]: optionId
+        }));
+    };
+
     const handleSubmitQuiz = useCallback(async () => {
         if (!currentLesson || !quizSession) return;
 
@@ -204,6 +261,20 @@ export default function LearningPage() {
             setErrorMessage(error.message);
         }
     }, [currentLesson, quizSession, answers]);
+
+    const handleSaveNote = async () => {
+        if (!currentLesson) return;
+
+        setIsSavingNote(true);
+        try {
+            await saveLessonNote(currentLesson.id, noteContent);
+            // Note saved successfully
+        } catch (error: any) {
+            setErrorMessage(error.message);
+        } finally {
+            setIsSavingNote(false);
+        }
+    };
 
     const startTimer = useCallback(() => {
         if (!quizSession) return;
