@@ -49,6 +49,22 @@ export default function MyLearningPage() {
         loadUser();
     }, [loadCourses, loadUser]);
 
+    const handleLogout = async () => {
+        try {
+            await apiLogout();
+            setUser(null);
+            router.push('/');
+        } catch (error: any) {
+            setUser(null);
+            router.push('/');
+        }
+    };
+
+    const handleJoin = () => {
+        const currentUrl = window.location.pathname;
+        router.push(`/join?continueUrl=${encodeURIComponent(currentUrl)}`);
+    };
+
     const handleFilterChange = (newFilter: 'in_progress' | 'completed') => {
         setFilter(newFilter);
     };
