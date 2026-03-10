@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
 import { getEnrolledCourses } from '@/lib/course';
@@ -18,35 +18,7 @@ export default function MyLearningPage() {
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [user, setUser] = useState<User | null>(null);
 
-    useEffect(() => {
-        loadCourses();
-        loadUser();
-    }, [filter]);
-
-    const loadUser = () => {
-        if (AuthUtils.isAuthenticated()) {
-            const userData = AuthUtils.getCurrentUser();
-            setUser(userData);
-        }
-    };
-
-    const handleLogout = async () => {
-        try {
-            await apiLogout();
-            setUser(null);
-            router.push('/');
-        } catch (error: any) {
-            setUser(null);
-            router.push('/');
-        }
-    };
-
-    const handleJoin = () => {
-        const currentUrl = window.location.pathname;
-        router.push(`/join?continueUrl=${encodeURIComponent(currentUrl)}`);
-    };
-
-    const loadCourses = async () => {
+    const loadCourses = useCallback(async () => {
         setAppState('loading');
         setErrorMessage(null);
 
@@ -63,7 +35,19 @@ export default function MyLearningPage() {
             setAppState('error');
             setErrorMessage(error.message || 'Có lỗi xảy ra khi tải danh sách khóa học.');
         }
-    };
+    }, [filter]);
+
+    const loadUser = useCallback(() => {
+        if (AuthUtils.isAuthenticated()) {
+            const userData = AuthUtils.getCurrentUser();
+            setUser(userData);
+        }
+    }, []);
+
+    useEffect(() => {
+        loadCourses();
+        loadUser();
+    }, [loadCourses, loadUser]);
 
     const handleFilterChange = (newFilter: 'in_progress' | 'completed') => {
         setFilter(newFilter);
