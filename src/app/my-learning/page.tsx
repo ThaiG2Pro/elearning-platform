@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
@@ -157,12 +158,14 @@ export default function MyLearningPage() {
                             className="bg-white rounded-xl shadow-sm border border-slate-100 hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                         >
                             {/* Thumbnail */}
-                            <div className="w-full aspect-video bg-slate-100 rounded-t-xl flex items-center justify-center overflow-hidden">
+                            <div className="w-full aspect-video bg-slate-100 rounded-t-xl flex items-center justify-center overflow-hidden relative">
                                 {course.thumbnailUrl ? (
-                                    <img
+                                    <Image
                                         src={course.thumbnailUrl}
                                         alt={course.title}
-                                        className="h-full w-full object-cover rounded-t-xl"
+                                        fill
+                                        sizes="(max-width: 768px) 100vw, 400px"
+                                        className="object-cover rounded-t-xl"
                                     />
                                 ) : (
                                     <svg className="w-10 h-10 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">

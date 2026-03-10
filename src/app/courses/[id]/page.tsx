@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Header from '@/components/Header';
@@ -116,12 +117,14 @@ export default function CourseDetailPage() {
                     <>
                         {/* Visual Content Section */}
                         <section className="mb-6">
-                            <div className="w-full aspect-video bg-slate-100 rounded-xl overflow-hidden border border-slate-200">
+                            <div className="w-full aspect-video bg-slate-100 rounded-xl overflow-hidden border border-slate-200 relative">
                                 {course.thumbnailUrl ? (
-                                    <img
+                                    <Image
                                         src={course.thumbnailUrl}
                                         alt={course.title}
-                                        className="w-full h-full object-cover"
+                                        fill
+                                        sizes="(max-width: 768px) 100vw, 800px"
+                                        className="object-cover"
                                     />
                                 ) : (
                                     <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-slate-300">

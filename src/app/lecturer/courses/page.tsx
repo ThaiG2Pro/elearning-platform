@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
@@ -239,12 +240,14 @@ const LecturerCoursesPage = () => {
                                 onClick={() => handleCourseClick(course)}
                                 className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all"
                             >
-                                <div className="h-32 bg-slate-100 flex items-center justify-center overflow-hidden">
+                                <div className="h-32 bg-slate-100 flex items-center justify-center overflow-hidden relative">
                                     {course.thumbnailUrl ? (
-                                        <img
+                                        <Image
                                             src={course.thumbnailUrl}
                                             alt={course.title}
-                                            className="h-full w-full object-cover"
+                                            fill
+                                            sizes="(max-width: 768px) 100vw, 300px"
+                                            className="object-cover"
                                         />
                                     ) : (
                                         <svg className="w-8 h-8 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">

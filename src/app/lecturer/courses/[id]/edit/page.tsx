@@ -483,7 +483,7 @@ const CourseEditPage = () => {
                                                 onClick={() => setChapterForm(prev => ({ ...prev, title: 'Chương 1' }))}
                                                 className="px-3 py-1 border border-slate-300 rounded-lg text-xs text-slate-600 hover:bg-slate-50 transition-colors"
                                             >
-                                                Gợi ý: "Chương 1"
+                                                Gợi ý: &quot;Chương 1&quot;
                                             </button>
                                         </div>
                                     </div>
