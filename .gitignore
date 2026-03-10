@@ -27,6 +27,7 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+.log
 
 # local env files
 .env*.local
@@ -39,8 +40,16 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# IDE & Editor
 .agent/
 .agents/
 .github/
 .windsurf/
-#docs/
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+Thumbs.db
+.DS_Store

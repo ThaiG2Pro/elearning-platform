@@ -89,13 +89,27 @@ export const createCourse = async (data: { title?: string; description?: string;
         );
         return response.data;
     } catch (error: any) {
-        if (error.response) {
-            const { status } = error.response;
-            if (status === 400) throw new Error('VALIDATION_ERROR');
-            else if (status === 401) throw new Error('UNAUTHORIZED');
-            else if (status === 403) throw new Error('ACCESS_DENIED');
-            else throw new Error('SERVER_ERROR');
-        } else throw new Error('NETWORK_ERROR');
+        if (error.response?.status === 400) {
+            throw new Error(error.response.data?.error || 'Invalid input');
+        }
+        throw new Error('NETWORK_ERROR');
+    }
+};
+
+// Update course metadata (title, description)
+export const updateCourseMetadata = async (courseId: number, data: { title?: string; description?: string }): Promise<void> => {
+    try {
+        await api.put(`/management/courses/${courseId}`, data);
+    } catch (error: any) {
+        if (error.response?.status === 400) {
+            throw new Error(error.response.data?.error || 'Invalid input');
+        } else if (error.response?.status === 403) {
+            throw new Error('ACCESS_DENIED');
+        } else if (error.response?.status === 404) {
+            throw new Error('COURSE_NOT_FOUND');
+        } else {
+            throw new Error('SERVER_ERROR');
+        }
     }
 };
 

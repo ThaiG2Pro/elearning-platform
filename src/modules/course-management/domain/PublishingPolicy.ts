@@ -5,6 +5,7 @@ export class PublishingPolicy {
         if (course.status !== 'DRAFT') {
             throw new Error('INVALID_STATE');
         }
+        // Only prevent deletion if it's the only section
         if (currentCount <= 1) {
             throw new Error('CANNOT_DELETE_LAST_SECTION');
         }

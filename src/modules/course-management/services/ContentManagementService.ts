@@ -124,11 +124,19 @@ export class ContentManagementService {
         if (!course) throw new Error('COURSE_NOT_FOUND');
 
         if (course.lecturerId !== lecturerId) {
-            throw new Error('FORBIDDEN');
+            throw new Error('ACCESS_DENIED');
         }
 
-        if (data.title) course.title = data.title;
-        if (data.description !== undefined) course.description = data.description;
+        if (course.status !== CourseStatus.DRAFT && course.status !== CourseStatus.REJECTED) {
+            throw new Error('COURSE_NOT_EDITABLE');
+        }
+
+        if (data.title) {
+            course.title = data.title;
+        }
+        if (data.description !== undefined) {
+            course.description = data.description;
+        }
 
         await this.courseRepository.save(course);
     }
