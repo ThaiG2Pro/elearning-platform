@@ -1,0 +1,75 @@
+@startuml
+skinparam componentStyle uml2
+skinparam packageStyle rectangle
+skinparam backgroundColor #FFFFFF
+
+title LMS Context Map — Modular Monolith (bounded contexts) and Event Flows
+
+actor "User Browser" as Browser
+
+node "Frontend" #F8F9FA {
+  component "Next.js App (UI)" as FE
+}
+
+node "Backend (Monolith / future NestJS)" #E7F5FF {
+  package "Auth / Identity" as Auth
+  package "Profile" as Profile
+  package "Course Catalog (read)" as Catalog
+  package "Course Management (authoring)" as Management
+  package "Enrollment / Progress" as Enrollment
+  package "Learning (playback)" as Learning
+  package "Quiz / Assessment" as Quiz
+  package "Media Gateway" as Media
+  package "Notifications / Email" as Notif
+  package "Admin / Reporting" as Admin
+  package "Shared / Infra (Prisma, Config, Adapters)" as Shared
+}
+
+database "PostgreSQL (Prisma)" as DB
+cloud "Message Broker (Kafka / Rabbit / Redis streams)" as Broker
+
+FE --> Auth : POST /v1/auth/* (cookies)
+FE --> Catalog : GET /v1/courses
+FE --> Learning : POST /v1/lessons/:id/progress
+FE --> Quiz : POST /v1/lessons/:id/quiz/submit
+
+Auth --> DB : users, roles, tokens
+Profile --> DB : user profile fields
+Catalog --> DB : courses, chapters
+Management --> DB : courses, chapters, lessons, questions
+Enrollment --> DB : enrollments, learning_progress
+Quiz --> DB : questions, quiz_results
+Learning --> DB : learning_progress, notes
+Media --> "YouTube / Storage" : HTTPS
+Notif --> "SMTP / Providers" : API
+
+Management -> Broker : CoursePublished {courseId, slug, lecturerId, publishedAt}
+Enrollment -> Broker : EnrollmentCreated {enrollmentId, userId, courseId}
+Quiz -> Broker : QuizSubmitted {attemptId, userId, lessonId, answers}
+Learning -> Broker : ProgressUpdated {userId, lessonId, position, finished}
+Auth -> Broker : UserCreated {userId, email, role}
+
+Broker --> Notif
+Broker --> Catalog
+Broker --> Admin
+
+Management ..> Auth : validate lecturer identity
+Enrollment ..> Catalog : check course visibility/status
+Learning ..> Enrollment : check access (enrolled?)
+Quiz ..> Enrollment : check access
+
+Shared --> DB : Prisma client
+Shared --> Broker : Event publisher/consumer
+Media ..> "YouTube API / CDN" : HTTPS
+Notif ..> "SMTP / SES / SendGrid" : API
+
+note left
+  Sync: solid arrows
+  Async events: arrows to broker
+end note
+
+note bottom
+  Purpose: each package = bounded context (module). Keep transactional writes local; use broker events for cross-context eventual consistency.
+end note
+
+@enduml
