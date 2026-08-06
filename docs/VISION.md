@@ -141,3 +141,5 @@ liệu này thay đổi):
   hướng đi ở đây.
 - `docs/design/ai-personalization-economics.md` — thiết kế chi tiết cho tính
   năng AI (mục 6) và chiến lược kiếm tiền (mục 7) ở trên.
+- `docs/ROADMAP.md` — hiện thực hoá mục 4 và mục 10 ở trên thành checkpoint/WP
+  quản lý được.

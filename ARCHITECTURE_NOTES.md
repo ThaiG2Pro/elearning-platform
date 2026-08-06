@@ -5,8 +5,10 @@
 > 2. File này — nợ kỹ thuật & trạng thái codebase hiện tại, đối chiếu với Vision.
 > 3. `docs/design/ai-personalization-economics.md` — thiết kế chi tiết cho
 >    tính năng AI cá nhân hoá + mô hình kinh tế chi phí (chi tiết hoá Vision mục 6-7).
+> 4. `docs/ROADMAP.md` — checkpoint/WP hiện thực hoá gap ghi ở file này (đặc
+>    biệt Checkpoint 0 = pivot data model mô tả bên dưới).
 >
-> Khi 1 trong 3 file thay đổi hướng đi/kết luận, phải cập nhật 2 file còn lại
+> Khi 1 trong 4 file thay đổi hướng đi/kết luận, phải cập nhật các file còn lại
 > trong cùng lần sửa — không để lệch.
 
 ## Trạng thái hiện tại (2026-08-06)

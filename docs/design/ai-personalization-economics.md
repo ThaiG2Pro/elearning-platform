@@ -50,11 +50,15 @@ Source                                    — dedup theo video ID chuẩn hoá
 
 AIGeneration                              — 1 bản output AI cụ thể
   id, sourceId → Source
-  recipeHash                              — hash(type, params, segmentRange)
+  recipeHash                              — hash(type, params, segmentRange,
+                                             modelVersion) — modelVersion BẮT
+                                             BUỘC nằm trong hash (xem ghi chú
+                                             dưới), không phải optional
   isDefaultRecipe: boolean                — true chỉ khi recipe == cấu hình
                                              mặc định hệ thống (không do user chọn)
   keySource: SHARED_FREE | BYOK | PAID_TIER
-  generatedByUserId (null nếu hệ thống seed)
+  generatedByUserId (NULL nếu hệ thống seed HOẶC user gốc đã xoá tài khoản —
+                                             xem ghi chú dưới)
   visibility: PRIVATE | SHARED
   content (output đã xử lý — KHÔNG chứa lại transcript gốc)
 
@@ -70,6 +74,21 @@ CourseItem                                — chương/bài trong course
   id, courseId, sourceId, order, segmentRange?
   aiGenerationId? → AIGeneration          — NULL hợp lệ, AI luôn optional (mục 8)
 ```
+
+**Ghi chú 1 — `modelVersion` trong `recipeHash`:** nếu hash chỉ gồm
+`(type, params, segmentRange)`, đổi model AI sau này (vd nâng cấp lên bản
+tốt hơn) sẽ **không bao giờ làm mới được** bản `SHARED_FREE` đã cache —
+mọi người vẫn nhận mãi output từ model cũ vì hash không đổi, không có cách
+nào bust cache mà không phá ràng buộc unique ở mục 3. Đưa `modelVersion`
+vào hash để nâng cấp model tự động tạo cache-miss có kiểm soát (sinh lại
+đúng 1 lần cho `SHARED_FREE`, không phải xoá tay).
+
+**Ghi chú 2 — xoá tài khoản của `generatedByUserId`:** bản `SHARED`-BYOK
+(mục 5) có thể đang được nhiều người khác tái dùng free tại thời điểm
+người tạo xoá tài khoản. Hành vi bắt buộc: `generatedByUserId → NULL`,
+**giữ nguyên `content` và `visibility = SHARED`** — không cascade-delete
+`AIGeneration` theo user, và không âm thầm chuyển nó về `PRIVATE`/xoá
+(sẽ làm gãy mọi `CourseItem.aiGenerationId` đang tham chiếu tới nó).
 
 ## 4. UX — 4 nhánh cố định, không nhánh nào mơ hồ
 
@@ -144,6 +163,17 @@ Vision đã tự phòng bằng lộ trình mở rộng theo từng vòng nhỏ (
 Cần thêm lớp phòng thủ kỹ thuật thứ 2: alerting chi phí AI theo ngày/tuần, để
 phát hiện sớm tăng trưởng đột biến ngoài dự tính.
 
+### 6.8 Web/blog source — chi phí và rủi ro riêng, không chỉ YouTube
+Mục 6.6 chỉ xét quota YouTube Data API, nhưng Vision cho phép dán cả link
+blog. Fetch/parse trang web (readability extraction) có chi phí và rủi ro
+khác: rate-limit từ site nguồn khi nhiều user cùng dán 1 URL trong thời
+gian ngắn, nội dung trang gốc có thể đổi/bị gỡ sau khi đã cache (transcript
+tại `Source` lúc đó "lệch" so với thực tế), và một số site chặn scraping
+qua robots.txt/ToS. **Fix**: áp cùng nguyên tắc lazy-generate + rate-limit
+per-user như 6.1 cho việc fetch web source; lưu kèm `fetchedAt` ở `Source`
+để biết cache có thể đã cũ, không coi transcript web là "chân lý vĩnh viễn"
+như transcript video.
+
 ## 7. Khi triển khai `PAID_TIER` thật (chưa cần làm ngay)
 
 - `keySource: PAID_TIER` trong schema **chỉ là chỗ trống**, chưa cần build
@@ -165,6 +195,8 @@ chung chạm giới hạn thường xuyên, đó là tín hiệu #2 ở Vision m
 
 ## 9. Việc cần làm khi bắt đầu code (tóm tắt)
 
-Bắt buộc từ ngày đầu (an ninh kinh tế): mục 6.1, 6.2, 6.3, 6.6.
+Bắt buộc từ ngày đầu (an ninh kinh tế): mục 6.1, 6.2, 6.3, 6.6, 6.8, cùng
+2 ghi chú ở mục 3 (`modelVersion` trong `recipeHash`, `generatedByUserId`
+→ NULL khi xoá tài khoản).
 Tối ưu dài hạn, làm sau khi có dữ liệu usage thật: mục 6.4, 6.5, 6.7.
 Chưa cần code, chỉ ghi chú: mục 7.
