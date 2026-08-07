@@ -4,8 +4,9 @@ import Image from 'next/image';
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
-import { getLecturerCourses, createCourse } from '@/lib/lecturer';
+import { getLecturerCourses, createCourseFromLink } from '@/lib/lecturer';
 import Toast from '@/components/Toast';
+import { Skeleton } from '@/components/ui/skeleton';
 import { LecturerCourse } from '@/types/lecturer.types';
 import { User } from '@/types/auth.types';
 import { logout as apiLogout, AuthUtils } from '@/lib/auth';
@@ -20,6 +21,8 @@ const LecturerCoursesPage = () => {
     const [user, setUser] = useState<User | null>(null);
     const [creating, setCreating] = useState(false);
     const [createError, setCreateError] = useState<string | null>(null);
+    const [showLinkModal, setShowLinkModal] = useState(false);
+    const [linkUrl, setLinkUrl] = useState('');
     const router = useRouter();
 
     const fetchCourses = useCallback(async (status?: Status) => {
@@ -74,6 +77,22 @@ const LecturerCoursesPage = () => {
         setSelectedStatus(status);
     };
 
+    const handleCreateFromLink = async () => {
+        if (!linkUrl.trim()) return;
+        setCreateError(null);
+        setCreating(true);
+        try {
+            const res = await createCourseFromLink(linkUrl.trim());
+            setShowLinkModal(false);
+            setLinkUrl('');
+            router.push(`/lecturer/courses/${res.courseId}/edit`);
+        } catch (err: any) {
+            setCreateError(err.message || 'Lỗi khi tạo khóa học');
+        } finally {
+            setCreating(false);
+        }
+    };
+
 
 
     const handleCourseClick = (course: LecturerCourse) => {
@@ -106,29 +125,12 @@ const LecturerCoursesPage = () => {
                     </div>
                     <div className="flex items-center gap-3">
                         <button
-                            onClick={async () => {
-                                setCreateError(null);
-                                setCreating(true);
-                                try {
-                                    const res = await createCourse({ title: 'Khóa học mới' });
-                                    const newId = (res as any)?.courseId ?? (res as any)?.id;
-                                    const idStr = String(newId);
-                                    router.push(`/lecturer/courses/${idStr}/edit`);
-                                } catch (err: any) {
-                                    setCreateError(err.message || 'Lỗi khi tạo khóa học');
-                                } finally {
-                                    setCreating(false);
-                                }
-                            }}
+                            onClick={() => { setCreateError(null); setShowLinkModal(true); }}
                             className="inline-flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
                             disabled={creating}
                         >
-                            {creating ? (
-                                <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"/>
-                            ) : (
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/></svg>
-                            )}
-                            Tạo khóa học
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/></svg>
+                            Tạo khóa học từ link
                         </button>
                     </div>
                 </div>
@@ -161,11 +163,11 @@ const LecturerCoursesPage = () => {
                 {loading ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {Array.from({ length: 6 }).map((_, index) => (
-                            <div key={index} className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden animate-pulse">
-                                <div className="h-32 bg-slate-200"></div>
+                            <div key={index} className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
+                                <Skeleton className="h-32 w-full rounded-none bg-slate-200" />
                                 <div className="p-5 space-y-2">
-                                    <div className="h-4 bg-slate-200 rounded w-3/4"></div>
-                                    <div className="h-3 bg-slate-200 rounded w-1/3"></div>
+                                    <Skeleton className="h-4 w-3/4 bg-slate-200" />
+                                    <Skeleton className="h-3 w-1/3 bg-slate-200" />
                                 </div>
                             </div>
                         ))}
@@ -196,23 +198,10 @@ const LecturerCoursesPage = () => {
                         <p className="text-sm text-slate-500 mb-5">Bạn chưa có khóa học nào trong mục này.</p>
                         {user?.role === 'LECTURER' && (
                             <button
-                                onClick={async () => {
-                                    setCreateError(null);
-                                    setCreating(true);
-                                    try {
-                                        const res = await createCourse({ title: 'Khóa học mới' });
-                                        const newId = (res as any)?.courseId ?? (res as any)?.id;
-                                        const idStr = String(newId);
-                                        router.push(`/lecturer/courses/${idStr}/edit`);
-                                    } catch (err: any) {
-                                        setCreateError(err.message || 'Lỗi khi tạo khóa học');
-                                    } finally {
-                                        setCreating(false);
-                                    }
-                                }}
+                                onClick={() => { setCreateError(null); setShowLinkModal(true); }}
                                 className="inline-flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors"
                             >
-                                {creating ? 'Đang tạo...' : 'Tạo khóa học đầu tiên'}
+                                Tạo khóa học đầu tiên
                             </button>
                         )}
                     </div>
@@ -257,6 +246,43 @@ const LecturerCoursesPage = () => {
                     </div>
                 )}
             </div>
+
+            {/* WP1.1 — dán link đầu tiên → tự tạo course có cấu trúc chương/bài */}
+            {showLinkModal && (
+                <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
+                    <div className="bg-white rounded-xl shadow-lg w-full max-w-md p-6">
+                        <h2 className="text-lg font-semibold text-slate-900 mb-1">Tạo khóa học từ link</h2>
+                        <p className="text-sm text-slate-500 mb-4">
+                            Dán link video YouTube — hệ thống sẽ tự lấy tiêu đề, ảnh và tạo khóa học có sẵn bài học đầu tiên.
+                        </p>
+                        <input
+                            type="text"
+                            value={linkUrl}
+                            onChange={(e) => setLinkUrl(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === 'Enter') handleCreateFromLink(); }}
+                            placeholder="https://www.youtube.com/watch?v=..."
+                            autoFocus
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm mb-4 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        />
+                        <div className="flex justify-end gap-2">
+                            <button
+                                onClick={() => { setShowLinkModal(false); setLinkUrl(''); setCreateError(null); }}
+                                className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 transition-colors"
+                                disabled={creating}
+                            >
+                                Hủy
+                            </button>
+                            <button
+                                onClick={handleCreateFromLink}
+                                disabled={creating || !linkUrl.trim()}
+                                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors"
+                            >
+                                {creating ? 'Đang tạo…' : 'Tạo khóa học'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

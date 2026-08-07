@@ -1,5 +1,6 @@
 import { CourseRepository } from '../repositories/CourseRepository';
 import { EnrollmentRepository } from '../repositories/EnrollmentRepository';
+import { LearnService } from './LearnService';
 import { CourseListDto } from '../dtos/CourseListDto';
 import { CourseDetailDto, ChapterDto, LessonDto } from '../dtos/CourseDetailDto';
 import { VideoThumbnailUtil } from '../../shared/utils/VideoThumbnailUtil';
@@ -7,7 +8,14 @@ import { VideoThumbnailUtil } from '../../shared/utils/VideoThumbnailUtil';
 export class CourseService {
     constructor(
         private courseRepository: CourseRepository,
-        private enrollmentRepository?: EnrollmentRepository
+        // WP1.5.9: no longer read here — getCourseDetail's access check is
+        // ownership-based now, not enrollment-based (see below). Kept in the
+        // constructor signature for compatibility with existing call sites
+        // (CourseController wires it via LearnService too). Plain parameter
+        // (no `private`) so it isn't a class field noUnusedLocals complains
+        // about — matches the QuizService precedent for the same situation.
+        _enrollmentRepository?: EnrollmentRepository,
+        private learnService?: LearnService,
     ) { }
 
     async getCourses(search?: string): Promise<CourseListDto[]> {
@@ -28,10 +36,20 @@ export class CourseService {
             throw new Error('Course not found');
         }
 
-        let isEnrolled = false;
-        if (userId && this.enrollmentRepository) {
-            const enrollment = await this.enrollmentRepository.findByStudentAndCourse(userId, courseId);
-            isEnrolled = enrollment !== null;
+        // WP1.5.9 (found while fixing WP1.5.12): access here was still gated
+        // by the legacy `enrollments` table, which WP0.2 was supposed to
+        // remove from the main flow — a course's own owner has no enrollment
+        // row, so GET /courses/[id]/lessons 403'd for literally every user,
+        // including on their own course. Personal-organizer model: a course
+        // is accessible to the user who owns it, full stop.
+        const isEnrolled = !!userId && fullCourse.ownerId === userId;
+
+        // WP1.3: surface the logged-in user's own progress on course-detail —
+        // ownership-based, no enrollment required.
+        let completionRate: number | undefined;
+        if (userId && this.learnService) {
+            const progress = await this.learnService.getCourseProgress(userId, courseId);
+            completionRate = progress.completionRate;
         }
 
         const chapters = fullCourse.chapters.map((chapter: any) => {
@@ -63,6 +81,7 @@ export class CourseService {
                 )
                 : '/images/course-placeholder.svg',
             fullCourse.status,
+            completionRate,
         );
     }
 }

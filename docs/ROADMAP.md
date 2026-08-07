@@ -95,9 +95,186 @@ cho người ngoài.**
   dùng thử ngay, không cần thao tác phức tạp. **Bắt buộc có ở checkpoint này,
   không để sau** — đây chính là kênh đo tín hiệu retention/lan truyền thật
   theo Vision mục 9, và theo nguyên tắc #3 ở trên link này phải ổn định lâu dài.
+- **WP1.5 — Dọn nợ core product trước khi mở Checkpoint 2.** WP1.1–1.4 chứng
+  minh luồng đi được, nhưng audit code thật (sau khi WP1 xong) cho thấy phần
+  lõi (video, note, home, profile, UX, UI) còn quá sơ sài để mời người ngoài
+  vào dùng thật và đo retention có ý nghĩa — thêm AI (Checkpoint 2) lên nền
+  này chỉ khuếch đại nợ, không sửa được nó. Đợt rà soát thứ hai quét **toàn bộ
+  17 màn hình** của app (không chỉ 9 mảng ban đầu) để tìm thêm: màn hình
+  legacy/mồ côi cần xoá, màn hình còn thiếu, và lỗi logic/UI cụ thể theo từng
+  màn — gộp thẳng vào WP1.5.10–1.5.12 bên dưới. Chi tiết từng hạng mục, có
+  file:line dẫn chứng: `docs/design/wp1.5-core-product-debt-audit.md`.
+  - **WP1.5.1 — Seed data đồng bộ với model hiện tại.** `prisma/seed.ts` hiện
+    không tạo `sources`, không set `share_token`, không có
+    `learning_progress`, và `TRUNCATE` bỏ sót bảng `sources` — dev mới clone
+    repo không seed ra được dữ liệu để tự tay thử WP1.1/1.3/1.4. User cuối
+    không thấy ảnh hưởng trực tiếp, nhưng đây là rủi ro chặn tốc độ sửa các
+    mục còn lại trong WP1.5.
+  - **WP1.5.2 — Hợp nhất avatar dropdown menu.** `Header.tsx` là dropdown thật
+    dùng chung ở 12 trang, nhưng `profile/page.tsx` và `change-password/page.tsx`
+    tự dựng thanh header riêng với avatar **không bấm được** — đứng ở 2 trang
+    này, user mất hoàn toàn lối vào "Trang chủ/Khóa học của tôi/Đăng xuất".
+  - **WP1.5.3 — Video player: vá lỗ hổng chức năng, không đổi thư viện ngay.**
+    `react-youtube` (3+ năm không cập nhật) vẫn dùng được, nhưng thiếu tối
+    thiểu: auto-advance sang bài kế khi hết video, resume-vị-trí cho nhánh
+    `<video>` thường (chỉ YouTube có), thống nhất lại ngưỡng "hoàn thành"
+    (đang lệch 80% vs 90% giữa 2 code path), và xử lý URL Vimeo (đã có
+    thumbnail nhưng phát không được, rơi vào thẻ `<video>` không chạy).
+  - **WP1.5.4 — Note: từ "1 ô text" thành tính năng ghi chú thật.** Hiện mỗi
+    bài học chỉ có đúng 1 note dạng text thô (ràng buộc unique
+    `(user_id, lesson_id)`), không gắn mốc thời gian video, không có nhiều
+    note/bài, không xoá được. Tối thiểu cho Checkpoint 1 thật sự dùng được:
+    cho nhiều note/bài + gắn timestamp (bấm note → tua video tới đó).
+  - **WP1.5.5 — Trang chủ: thêm lối vào và ngữ cảnh cho user quay lại.**
+    `/` hiện chỉ là catalog công khai tĩnh, không có "học tiếp", không có ô
+    dán link nổi bật (trong khi dán-link là tính năng lõi của WP1.1), không
+    có empty-state cho user mới — ai đăng nhập xong quay lại `/` không thấy
+    gì khác biệt so với chưa đăng nhập.
+  - **WP1.5.6 — Trang cá nhân: bổ sung các thao tác cơ bản còn thiếu.** Hiện
+    chỉ sửa được tên/tuổi; chưa có đổi avatar thật (chỉ chữ cái đầu), chưa có
+    xoá tài khoản, và đổi mật khẩu nằm tách rời hoàn toàn khỏi trang hồ sơ
+    (chỉ vào được qua dropdown — mà dropdown lại không có ở WP1.5.2).
+  - **WP1.5.7 — UX chuyển trang/lesson: bỏ full-page reload giả.** Trang học
+    (`learn/page.tsx`) khi đổi bài unmount toàn bộ layout (header, sidebar,
+    progress) và chỉ còn spinner giữa màn hình trống — trong khi
+    `courses/[id]/page.tsx` và `my-learning` đã làm đúng (skeleton trong
+    layout, không mất khung sườn). Áp dụng lại đúng pattern đã có sẵn trong
+    chính codebase, không cần công nghệ mới.
+  - **WP1.5.8 — Chuẩn hoá UI: dùng lại component đã có sẵn nhưng bị bỏ quên.**
+    `src/components/ui/{button,card,dialog,tabs,skeleton,...}` đã được cài
+    (shadcn) nhưng **0 nơi nào import** — mỗi trang tự viết lại nút/modal/tab
+    bằng class Tailwind rời rạc (cùng 1 màn `edit/page.tsx` có cả nút
+    `bg-blue-600` lẫn `bg-indigo-600` cho hành động tương đương). Việc cần làm
+    là bắt đầu thay dần bằng bộ component có sẵn, không phải thiết kế mới từ
+    đầu.
+  - **WP1.5.9 — Theo dõi phát sinh khi làm các mục trên.** Audit chỉ quét các
+    mảng user chỉ ra trong goal; nếu trong lúc sửa WP1.5.1–1.5.8 lộ thêm vấn
+    đề tương tự (route khác dùng chung pattern lỗi), gộp thẳng vào đây thay vì
+    mở lại audit — tránh WP1.5 kéo dài vô hạn.
+  - **WP1.5.10 — Gỡ sạch màn hình/role legacy còn sót từ mô hình marketplace
+    cũ.** Rà soát toàn bộ 17 màn hình (`docs/design/wp1.5-core-product-debt-audit.md`
+    phụ lục kiểm kê) cho thấy pivot Checkpoint 0 mới xong ~90% ở tầng dữ liệu,
+    còn để lọt: (a) `GET/POST /management/courses` vẫn chặn cứng
+    `role !== 'LECTURER'` trong khi mọi user mới đăng ký đều mặc định
+    `STUDENT` — nghĩa là nút "Khóa học đã tạo" ở Header/Trang chủ dẫn thẳng
+    tới màn hình 401 cho gần như mọi user thật; (b) `/admin/approval-queue`
+    (trang deprecation-stub) và `/lecturer/courses/[id]/view` (trang preview
+    không còn được link từ đâu cả) là 2 màn hình mồ côi, không ai tới được
+    trừ gõ URL tay; (c) `LoginNavigationPolicy` vẫn redirect theo role tới
+    `/student/dashboard` và `/admin/pending` — cả hai route đều không tồn
+    tại; (d) type `CourseStructure.status: 'Draft'|'Pending'|'Active'` và
+    copy "chờ duyệt" còn sót trong `edit/page.tsx` dù không route nào còn
+    tạo ra state đó. Việc cần làm: thống nhất toàn bộ theo ownership-based
+    (đã đúng ở hầu hết endpoint khác), xoá routes/state không dùng, sửa nút
+    "Khóa học đã tạo" hoạt động cho mọi user.
+  - **WP1.5.11 — Bổ sung màn hình còn thiếu.** Không có `not-found.tsx`,
+    `error.tsx`, hay bất kỳ `loading.tsx` nào trong toàn bộ `src/app` — 404
+    và lỗi runtime rơi về trang mặc định không thương hiệu của Next.js.
+    Không có màn hình "quản lý share link của tôi" (xem lại/thu hồi link đã
+    tạo) dù `WP1.4` đã có API tạo link — hiện chỉ tạo được, không xem lại
+    được trừ vào đúng trang `view` (đã mồ côi, xem WP1.5.10) và **không có
+    cách thu hồi link** ở bất kỳ tầng nào. Không có màn hình xoá tài khoản/
+    export dữ liệu (thuộc phạm vi rộng hơn WP1.5.6). Không có UI xoá/sắp xếp
+    lại bài học sau khi tạo course (`deleteLesson`/`updateLesson` đã có API
+    nhưng không nơi nào trong `edit/page.tsx` gọi tới).
+  - **WP1.5.12 — Vá các lỗi logic cụ thể phát hiện qua rà soát toàn màn
+    hình.** Danh sách đầy đủ có file:line ở phụ lục audit; các lỗi ảnh hưởng
+    trực tiếp tới user, ưu tiên cao nhất:
+    - `courses/[id]/page.tsx` — `courseId = parseInt(...)` không kiểm tra
+      `NaN`, URL course-id sai dạng làm trang treo trắng vĩnh viễn (không
+      loading, không error, không gì cả).
+    - `share/[token]/page.tsx` — clone-khi-đăng-nhập-xong không có
+      idempotency/guard chống double-submit, và backend `cloneForOwner`
+      không chặn trùng — bấm 2 lần (hoặc double-fire effect) ra 2 khóa học
+      giống hệt nhau trong tài khoản user.
+    - `courses/[id]/learn/page.tsx` — % tiến độ trên thanh sub-header không
+      cập nhật lại sau khi hoàn thành bài trong chính phiên đang học (chỉ
+      đúng sau khi tải lại trang); ghi nhận tiến độ có thể mất im lặng khi
+      API lỗi (không rollback, không retry).
+    - `profile/page.tsx` — 2 nguồn dữ liệu user khác nhau hiển thị cùng lúc
+      (avatar từ `localStorage` cache, form từ API fetch mới) có thể lệch
+      nhau; lỗi hệ thống khi lưu profile không hiện thông báo gì cho user
+      (nuốt lỗi im lặng).
+    - `page.tsx` (trang chủ) — nút "Thử lại" khi tìm kiếm lỗi có thể là
+      no-op nếu state tìm kiếm không đổi; không có lối tạo khóa học nào trên
+      mobile.
+
+- **WP1.6 — Dọn nốt tầng "legacy marketplace" (enrollment/role) còn trà trộn
+  với ownership model, phát sinh khi tự dùng thật sau WP1.5.** WP0.2 pivot
+  `Course` sang sở hữu cá nhân (`owner_id`), và WP1.5.9–1.5.10 đã sửa vài route
+  theo hướng đó, nhưng đó là sửa **điểm**, chưa quét hết — nhánh `enrollments`
+  (bảng + domain `Enrollment`/`EnrollmentPolicy`/`EnrollmentFactory` + repo/
+  service/controller riêng) từ mô hình marketplace cũ (STUDENT enroll vào
+  course của LECTURER) vẫn còn tồn tại **song song** với ownership model mới,
+  không đồng bộ với nhau — đây chính là nguồn gốc các log 200-nhưng-rỗng và
+  403-khó-hiểu người dùng gặp phải khi tự test lại toàn luồng.
+  - **WP1.6.1 — Catalog công khai kiểu marketplace cũ đứng cạnh learn/lessons
+    ownership-only mới → tự tạo "bẫy 403".** `GET /api/v1/courses`
+    (`CourseController.getCourses` → `findActiveCoursesWithThumbnails`) trả
+    về **toàn bộ** course `ACTIVE` của **mọi** user, không lọc theo owner —
+    đúng kiểu catalog marketplace cũ. Trang chủ (`page.tsx`) hiển thị catalog
+    này cho bất kỳ ai đăng nhập, và `courses/[id]/page.tsx` chỉ dựa vào
+    `user` có tồn tại hay không (không dựa vào owner có khớp không) để quyết
+    định hiện nút "Bắt đầu học" → bấm vào course của người khác vẫn ra nút,
+    dẫn thẳng tới `/courses/[id]/learn` rồi 403 `NOT_ENROLLED` ở
+    `GET /courses/[id]/lessons` (gate ownership-based đúng, đã fix ở WP1.5.9).
+    Đây chính là log user báo: *"vào trùng khóa 403? ko hiểu tại sao"* — không
+    phải bug ở gate 403 (gate đúng), mà là catalog phía trước gate đó vẫn quảng
+    cáo course người dùng không có quyền vào. Cần chọn 1 hướng: (a) catalog chỉ
+    show course của chính user (nhất quán ownership-based toàn app), hoặc (b)
+    giữ browse công khai nhưng nút hành động phải phản ánh đúng quyền thật
+    (dùng `isEnrolled`/so khớp `ownerId` đã có sẵn ở `CourseService.getCourseDetail`)
+    trước khi cho bấm — không để user tự nhảy vào bẫy.
+  - **WP1.6.2 — `/my-learning` luôn rỗng: đọc từ bảng `enrollments` không ai
+    còn viết vào.** `GET /api/v1/courses/enrolled` (dùng bởi
+    `my-learning/page.tsx` qua `lib/course.ts:getEnrolledCourses`, đúng log
+    user báo `filter=in_progress`/`completed` đều trả rỗng) đi qua
+    `EnrollmentController → EnrollmentService.getEnrolledCourses →
+    EnrollmentRepository.getEnrolledCoursesWithDetails`, query thẳng bảng
+    `enrollments`. Từ khi pivot ownership (WP0.2), không còn nơi nào trong
+    luồng chính tạo dòng `enrollments` cho course sở hữu — user có N course
+    thật (owner_id khớp) nhưng "Khóa học của tôi" luôn hiện empty-state, dù
+    dữ liệu không hề mất, chỉ là route đang đọc nhầm nguồn. Việc cần làm:
+    viết lại route/`EnrollmentRepository` để lấy danh sách theo `owner_id`
+    (giống cách `ContentManagementService.getLecturerCourses` đã làm), không
+    còn phụ thuộc bảng `enrollments` cho luồng hiển thị chính.
+  - **WP1.6.3 — Hai định nghĩa "đã sở hữu/đã học" tồn tại song song, không
+    khớp nhau.** `POST/GET /api/v1/courses/[id]/enroll`
+    (`EnrollmentController.enrollStudent`/`checkEnrollmentStatus`) và hàm
+    client tương ứng `lib/courses.ts:enrollCourse` — **không có UI nào gọi
+    tới** (0 usage trong `src/app`) — vẫn ghi/đọc bảng `enrollments` độc lập,
+    tách biệt hoàn toàn khỏi `ownerId` là nguồn sự thật thật sự đang dùng ở
+    `CourseService.getCourseDetail`. Route này còn sống là rủi ro: ai vô tình
+    nối lại UI vào đây (hoặc AI code-gen sau này gợi ý dùng lại) sẽ tạo ra
+    luồng "enrolled nhưng vẫn 403" hoặc ngược lại.
+  - **WP1.6.4 — Role-gate legacy còn sót ngoài phạm vi đã quét ở WP1.5.10.**
+    `management/lessons/[id]/quiz/upload/route.ts:18` vẫn chặn cứng
+    `user.role !== 'LECTURER' && user.role !== 'ADMIN'` → user role
+    `STUDENT` (role mặc định khi đăng ký, đã ghi nhận ở WP1.5.10) sở hữu
+    course thật vẫn bị 403 khi tải file quiz lên bài học **của chính mình**,
+    trong khi các route quản lý nội dung khác (`management/courses`,
+    content/sections) đã chuyển ownership-based. Và
+    `lecturer/courses/page.tsx:199` — nút "Tạo khóa học đầu tiên" ở
+    empty-state chỉ render khi `user?.role === 'LECTURER'`; STUDENT có 0
+    course vào đúng trang quản lý course của mình lại không thấy cách nào để
+    tạo course đầu tiên tại đây (phải biết đường vòng qua ô dán link ở trang
+    chủ). Sửa cả hai theo cùng nguyên tắc ownership đã áp dụng nơi khác.
+  - **WP1.6.5 — Quyết định dứt điểm số phận nhánh Enrollment.** Sau khi
+    1.6.1–1.6.4 xong, bảng `enrollments` + domain (`Enrollment`,
+    `EnrollmentPolicy`, `EnrollmentFactory`) + repo/service/controller riêng
+    sẽ không còn nơi nào cần trong luồng chính — quyết định rõ: xoá hẳn (nếu
+    ownership đã đủ cho mọi nhu cầu hiện tại), hay giữ lại có chủ đích khác
+    (vd sau này "theo dõi" course người khác mà không sở hữu — concept khác
+    ownership, cần thiết kế lại tên/API rõ ràng, không tái dùng nhánh cũ mập
+    mờ như hiện tại). Không để vừa tồn tại vừa sai — đây là mẫu số chung gây
+    ra cả 1.6.1–1.6.3, và sẽ tiếp tục gây bug tương tự nếu không chốt.
 
 **Điều kiện qua checkpoint tiếp theo:** có người ngoài thật sự quay lại học
-tiếp (retention có ý nghĩa) — đúng exit signal Vision giai đoạn 1.
+tiếp (retention có ý nghĩa) — đúng exit signal Vision giai đoạn 1. **WP1.5 và
+WP1.6 phải xong trước khi bắt đầu WP2** — mời người ngoài vào một sản phẩm còn
+lỗi avatar menu, mất note, mất focus khi chuyển bài, hoặc "Khóa học của tôi"
+luôn trống/catalog dẫn thẳng vào bẫy 403, sẽ làm hỏng chính phép đo retention
+mà checkpoint này cần, bất kể AI ở Checkpoint 2 tốt đến đâu.
 
 ---
 

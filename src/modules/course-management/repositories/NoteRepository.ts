@@ -1,102 +1,63 @@
 import { PrismaClient } from '@prisma/client';
 import { Note } from '../domain/Note';
 
+/**
+ * WP1.5.4: notes live in their own table now — many notes per lesson, each
+ * optionally pinned to a video timestamp. Ownership check is always
+ * (user_id, note_id), never lesson-only.
+ */
 export class NoteRepository {
     constructor(private prisma: PrismaClient) { }
 
-    async findByStudentAndLesson(studentId: bigint, lessonId: bigint): Promise<Note | null> {
-        const progress = await this.prisma.learning_progress.findFirst({
-            where: {
-                enrollment: {
-                    student_id: studentId,
-                },
-                lesson_id: lessonId,
-            },
-            include: {
-                enrollment: true,
-            },
-        });
-
-        if (!progress || !progress.personal_note) return null;
-
-        // Map learning_progress to Note
+    private toDomain(row: {
+        id: bigint;
+        user_id: bigint;
+        lesson_id: bigint;
+        course_id: bigint;
+        content: string;
+        video_timestamp_sec: number | null;
+        created_at: Date;
+        updated_at: Date;
+    }): Note {
         return new Note(
-            progress.id, // Use progress id as note id
-            progress.enrollment_id,
-            progress.lesson_id,
-            progress.personal_note,
-            progress.enrollment.enrolled_at || new Date(), // created_at
-            progress.enrollment.enrolled_at || new Date(), // updated_at
+            row.id,
+            row.user_id,
+            row.course_id,
+            row.lesson_id,
+            row.content,
+            row.video_timestamp_sec,
+            row.created_at,
+            row.updated_at,
         );
     }
 
-    async save(note: Note): Promise<Note> {
-        // Update personal_note in learning_progress
-        const updated = await this.prisma.learning_progress.update({
-            where: { id: note.id! },
-            data: {
-                personal_note: note.content,
-            },
-            include: {
-                enrollment: true,
-            },
+    async findAllByUserAndLesson(userId: bigint, lessonId: bigint): Promise<Note[]> {
+        const rows = await this.prisma.notes.findMany({
+            where: { user_id: userId, lesson_id: lessonId },
+            orderBy: [{ video_timestamp_sec: 'asc' }, { created_at: 'asc' }],
         });
+        return rows.map(r => this.toDomain(r));
+    }
 
-        return new Note(
-            updated.id,
-            updated.enrollment_id,
-            updated.lesson_id,
-            updated.personal_note || '',
-            updated.enrollment.enrolled_at || new Date(),
-            updated.enrollment.enrolled_at || new Date(),
-        );
+    async findById(noteId: bigint): Promise<Note | null> {
+        const row = await this.prisma.notes.findUnique({ where: { id: noteId } });
+        return row ? this.toDomain(row) : null;
     }
 
     async create(note: Note): Promise<Note> {
-        // First ensure learning_progress exists
-        let progress = await this.prisma.learning_progress.findFirst({
-            where: {
-                enrollment_id: note.enrollmentId,
+        const row = await this.prisma.notes.create({
+            data: {
+                user_id: note.userId,
                 lesson_id: note.lessonId,
-            },
-            include: {
-                enrollment: true,
+                course_id: note.courseId,
+                content: note.content,
+                video_timestamp_sec: note.videoTimestampSec,
             },
         });
+        return this.toDomain(row);
+    }
 
-        if (!progress) {
-            // Create learning_progress if not exists
-            progress = await this.prisma.learning_progress.create({
-                data: {
-                    enrollment_id: note.enrollmentId,
-                    lesson_id: note.lessonId,
-                    is_finished: false,
-                    personal_note: note.content,
-                },
-                include: {
-                    enrollment: true,
-                },
-            });
-        } else {
-            // Update existing
-            progress = await this.prisma.learning_progress.update({
-                where: { id: progress.id },
-                data: {
-                    personal_note: note.content,
-                },
-                include: {
-                    enrollment: true,
-                },
-            });
-        }
-
-        return new Note(
-            progress.id,
-            progress.enrollment_id,
-            progress.lesson_id,
-            progress.personal_note || '',
-            progress.enrollment.enrolled_at || new Date(),
-            progress.enrollment.enrolled_at || new Date(),
-        );
+    async delete(noteId: bigint): Promise<void> {
+        await this.prisma.notes.delete({ where: { id: noteId } });
     }
 }

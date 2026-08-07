@@ -65,24 +65,30 @@ export const submitQuiz = async (lessonId: string, sessionId: string, answers: R
     }
 };
 
-export const saveLessonNote = async (lessonId: string, content: string): Promise<LessonNote> => {
+// WP1.5.4: a lesson can now have many notes, each optionally pinned to a
+// video timestamp — replaces the old single save/get-note pair.
+export const addLessonNote = async (lessonId: string, content: string, videoTimestampSec: number | null): Promise<LessonNote> => {
     try {
-        const response = await api.put(`/lessons/${lessonId}/notes`, { content });
+        const response = await api.post(`/lessons/${lessonId}/notes`, { content, videoTimestampSec });
         return response.data as LessonNote;
     } catch (error: any) {
-        if (error.response?.data?.code === 'SAVE_FAILED') {
-            throw new Error('Không thể lưu ghi chú. Vui lòng kiểm tra kết nối.');
-        }
         throw new Error('Không thể lưu ghi chú.');
     }
 };
 
-export const getLessonNote = async (lessonId: string): Promise<LessonNote | null> => {
+export const getLessonNotes = async (lessonId: string): Promise<LessonNote[]> => {
     try {
         const response = await api.get(`/lessons/${lessonId}/notes`);
-        return response.data as LessonNote;
+        return response.data as LessonNote[];
     } catch (error: any) {
-        // Note might not exist yet
-        return null;
+        return [];
+    }
+};
+
+export const deleteLessonNote = async (lessonId: string, noteId: string): Promise<void> => {
+    try {
+        await api.delete(`/lessons/${lessonId}/notes/${noteId}`);
+    } catch (error: any) {
+        throw new Error('Không thể xoá ghi chú.');
     }
 };

@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { LearnController } from '@/modules/course-management/controllers/LearnController';
 import { getUserIdFromRequest } from '@/shared/middleware/auth';
 
-// Duplicate of /note route for FE compatibility
+// WP1.5.4: a lesson now has many notes (was a single text blob on
+// learning_progress). GET lists them, POST adds a new one — no more
+// upsert-a-single-row semantics.
 export async function GET(
     request: NextRequest,
     { params }: { params: { id: string } }
@@ -15,21 +17,17 @@ export async function GET(
 
         const lessonId = BigInt(params.id);
         const controller = new LearnController();
-        const note = await controller.getNote(userId, lessonId);
+        const notes = await controller.listNotes(userId, lessonId);
 
-        if (!note) {
-            return NextResponse.json({ content: '', updatedAt: null }, { status: 200 });
-        }
-
-        return NextResponse.json(note, { status: 200 });
+        return NextResponse.json(notes, { status: 200 });
     } catch (error) {
-        console.error('Error getting note:', error);
+        console.error('Error listing notes:', error);
         const message = error instanceof Error ? error.message : 'Internal server error';
         return NextResponse.json({ error: message }, { status: 500 });
     }
 }
 
-export async function PUT(
+export async function POST(
     request: NextRequest,
     { params }: { params: { id: string } }
 ) {
@@ -39,20 +37,24 @@ export async function PUT(
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const { content } = await request.json();
+        const { content, videoTimestampSec } = await request.json();
 
         if (typeof content !== 'string') {
             return NextResponse.json({ error: 'Invalid content' }, { status: 400 });
         }
+        const timestamp = typeof videoTimestampSec === 'number' && videoTimestampSec >= 0
+            ? Math.floor(videoTimestampSec)
+            : null;
 
         const lessonId = BigInt(params.id);
         const controller = new LearnController();
-        await controller.saveNote(userId, lessonId, content);
+        const note = await controller.addNote(userId, lessonId, content, timestamp);
 
-        return NextResponse.json({ status: 'SAVED' }, { status: 200 });
+        return NextResponse.json(note, { status: 201 });
     } catch (error) {
-        console.error('Error saving note:', error);
+        console.error('Error creating note:', error);
         const message = error instanceof Error ? error.message : 'Internal server error';
-        return NextResponse.json({ error: message }, { status: 500 });
+        const status = message === 'NOTE_EMPTY' || message === 'NOTE_TOO_LONG' ? 400 : 500;
+        return NextResponse.json({ error: message }, { status });
     }
 }

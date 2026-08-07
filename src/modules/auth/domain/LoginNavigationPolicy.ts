@@ -6,14 +6,13 @@ export class LoginNavigationPolicy {
             // Simple validation, in real app check if valid URL
             return continueUrl;
         }
-        // Role-based default
+        // WP1.5.10: personal-organizer model has no per-role dashboards — every
+        // role lands on the same home page. '/student/dashboard' and
+        // '/admin/pending' never existed as routes; '/lecturer/courses' is kept
+        // since STUDENT can also own courses now (ownership-based, not role-gated).
         switch (user.roleName) {
-            case 'STUDENT':
-                return '/student/dashboard';
             case 'LECTURER':
                 return '/lecturer/courses';
-            case 'ADMIN':
-                return '/admin/pending';
             default:
                 return '/';
         }

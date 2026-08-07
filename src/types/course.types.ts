@@ -16,6 +16,7 @@ export interface CourseDetail {
     isEnrolled: boolean;
     thumbnailUrl?: string;
     chapters: any[]; // TODO: Define chapter type
+    completionRate?: number; // WP1.3 — % of lessons finished by the logged-in user
 }
 
 export interface EnrollResponse {
@@ -78,7 +79,32 @@ export interface QuizResult {
     submittedAt: string;
 }
 
+/** WP1.5.4: a lesson can have many notes, each optionally pinned to a video timestamp. */
 export interface LessonNote {
+    id: string;
     content: string;
+    videoTimestampSec: number | null;
+    createdAt: string;
     updatedAt: string;
+}
+
+/** WP1.4 — anonymous-visitor view of a course reached via /share/[token]. */
+export interface PublicCourse {
+    id: number;
+    title: string;
+    description?: string | null;
+    ownerName?: string | null;
+    thumbnailUrl?: string;
+    shareToken?: string;
+    chapters: {
+        id: number;
+        title: string;
+        lessons: {
+            id: number;
+            title: string;
+            type: string;
+            orderIndex: number;
+            contentUrl?: string;
+        }[];
+    }[];
 }

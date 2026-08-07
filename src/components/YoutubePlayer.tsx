@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useMemo } from 'react';
+import React, { useRef, useEffect, useMemo, forwardRef, useImperativeHandle } from 'react';
 import YouTube from 'react-youtube';
 
 interface Props {
@@ -7,12 +7,29 @@ interface Props {
     onProgress: (time: number) => void;
     onDuration: (duration: number) => void;
     onFlush: (time: number) => void;
+    // WP1.5.3: auto-advance to the next lesson when a video finishes.
+    onEnded?: () => void;
 }
 
-const YoutubePlayer = ({ videoId, initialPos, onProgress, onDuration, onFlush }: Props) => {
+export interface VideoPlayerHandle {
+    seekTo: (seconds: number) => void;
+    getCurrentTime: () => number;
+}
+
+const YoutubePlayer = forwardRef<VideoPlayerHandle, Props>(({ videoId, initialPos, onProgress, onDuration, onFlush, onEnded }, ref) => {
     const playerRef = useRef<any>(null);
     const intervalRef = useRef<NodeJS.Timeout | null>(null);
     const isInitialSeekDone = useRef(false);
+    const hasEndedRef = useRef(false);
+
+    useImperativeHandle(ref, () => ({
+        seekTo: (seconds: number) => {
+            playerRef.current?.seekTo?.(seconds, true);
+        },
+        getCurrentTime: () => {
+            return playerRef.current?.getCurrentTime?.() ?? 0;
+        },
+    }), []);
 
     // Quan trọng: Chỉ thực hiện Seek khi Clock thực sự chạy
     const processTracking = () => {
@@ -52,6 +69,7 @@ const YoutubePlayer = ({ videoId, initialPos, onProgress, onDuration, onFlush }:
     useEffect(() => {
         // Reset khi đổi videoId (chuyển bài)
         isInitialSeekDone.current = false;
+        hasEndedRef.current = false;
 
         const handleBeforeUnload = () => {
             const p = playerRef.current;
@@ -98,12 +116,22 @@ const YoutubePlayer = ({ videoId, initialPos, onProgress, onDuration, onFlush }:
                 onStateChange={(e: any) => {
                     // Cập nhật lại instance mỗi khi có thay đổi trạng thái
                     playerRef.current = e.target;
+                    // WP1.5.3: state 0 === ENDED. Fire once per playthrough —
+                    // seeking back after ending can retrigger state changes.
+                    if (e.data === 0 && !hasEndedRef.current) {
+                        hasEndedRef.current = true;
+                        onEnded?.();
+                    } else if (e.data === 1) {
+                        hasEndedRef.current = false;
+                    }
                     startEngine(e.target);
                 }}
             // react-youtube will render an iframe that fills the parent when width/height are 100%
             />
         </div>
     );
-};
+});
+
+YoutubePlayer.displayName = 'YoutubePlayer';
 
 export default React.memo(YoutubePlayer); // Chống re-render thừa

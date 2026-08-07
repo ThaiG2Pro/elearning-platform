@@ -1,8 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { changePassword, AuthUtils } from '@/lib/auth';
+import Header from '@/components/Header';
+import { changePassword, logout as apiLogout, AuthUtils } from '@/lib/auth';
+import { User } from '@/types/auth.types';
 
 export default function ChangePasswordPage() {
     const router = useRouter();
@@ -12,10 +14,29 @@ export default function ChangePasswordPage() {
     const [confirmPassword, setConfirmPassword] = useState('');
     const [appState, setAppState] = useState<'idle' | 'submitting' | 'success' | 'business_error' | 'system_error'>('idle');
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
+    const [user, setUser] = useState<User | null>(null);
 
-    const getInitial = (fullName: string) => fullName.charAt(0).toUpperCase();
-    const user = AuthUtils.getCurrentUser();
-    const avatarInitial = user ? getInitial(user.fullName) : 'U';
+    useEffect(() => {
+        if (AuthUtils.isAuthenticated()) {
+            setUser(AuthUtils.getCurrentUser());
+        }
+    }, []);
+
+    const handleLogout = async () => {
+        try {
+            await apiLogout();
+        } catch (error) {
+            // ignore — still clear local session and navigate away
+        } finally {
+            setUser(null);
+            router.push('/');
+        }
+    };
+
+    const handleJoin = () => {
+        const currentUrl = window.location.pathname;
+        router.push(`/join?continueUrl=${encodeURIComponent(currentUrl)}`);
+    };
 
     // Handle form submission
     const handleSubmit = async (e: React.FormEvent) => {
@@ -60,22 +81,7 @@ export default function ChangePasswordPage() {
 
     return (
         <div className="min-h-screen bg-slate-50">
-            {/* Compact header */}
-            <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex justify-between items-center h-16">
-                        <button onClick={() => router.push('/')} className="flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded-md">
-                            <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center">
-                                <span className="text-white font-bold text-sm">E</span>
-                            </div>
-                            <span className="font-semibold text-slate-900 text-base hidden sm:block">E-Learning</span>
-                        </button>
-                        <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
-                            {avatarInitial}
-                        </div>
-                    </div>
-                </div>
-            </header>
+            <Header user={user} onLogout={handleLogout} onJoin={handleJoin} />
 
             <main className="max-w-lg mx-auto px-4 py-10">
                 <div className="mb-6">

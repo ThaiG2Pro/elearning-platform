@@ -1,10 +1,13 @@
 import { CourseRepository } from '../repositories/CourseRepository';
 import { QuizPolicy } from '../domain/QuizPolicy';
+import { AccessControlPolicy } from '../domain/AccessControlPolicy';
 import { Course, CourseStatus } from '../domain/Course';
 import { CreateCourseDto, CourseSummaryDto } from '../dtos/CourseManagementDto';
 import { CreateSectionDto, UpdateSectionDto, SectionDto, CreateLessonDto, UpdateLessonDto, LessonDto } from '../dtos/ContentDto';
+import { PublicCourseDto, ChapterDto as PublicChapterDto, LessonDto as PublicLessonDto } from '../dtos/CourseDetailDto';
 import { PrismaClient } from '@prisma/client';
 import { VideoThumbnailUtil } from '../../shared/utils/VideoThumbnailUtil';
+import { YouTubeOEmbedAdapter } from '../../../shared/adapters/YouTubeOEmbedAdapter';
 
 export interface QuizQuestionPreviewDto {
     id: bigint;
@@ -25,6 +28,8 @@ export interface LessonPreviewDto {
 }
 
 export class ContentManagementService {
+    private oEmbedAdapter = new YouTubeOEmbedAdapter();
+
     constructor(
         private courseRepository: CourseRepository,
         private prisma: PrismaClient
@@ -98,6 +103,130 @@ export class ContentManagementService {
 
         await this.courseRepository.create(course);
         return course.id!;
+    }
+
+    /**
+     * WP1.1 — "dán link → tự parse metadata → tự tạo course". Creates a
+     * `Source` (deduped by normalized URL), then a course with one default
+     * chapter and one lesson pointing at it, in a single step.
+     */
+    async createCourseFromLink(ownerId: bigint, url: string): Promise<bigint> {
+        const trimmedUrl = url.trim();
+        if (!trimmedUrl) throw new Error('URL_REQUIRED');
+        if (!YouTubeOEmbedAdapter.isYouTubeUrl(trimmedUrl)) {
+            throw new Error('UNSUPPORTED_URL');
+        }
+
+        const normalizedUrl = YouTubeOEmbedAdapter.normalize(trimmedUrl);
+
+        let source = await this.prisma.sources.findUnique({ where: { normalized_url: normalizedUrl } });
+        if (!source) {
+            const meta = await this.oEmbedAdapter.fetchOEmbed(trimmedUrl);
+            source = await this.prisma.sources.create({
+                data: {
+                    url: trimmedUrl,
+                    normalized_url: normalizedUrl,
+                    title: meta.title,
+                    type: 'YOUTUBE',
+                    metadata: JSON.stringify({ thumbnailUrl: meta.thumbnailUrl }),
+                },
+            });
+        }
+
+        const baseSlug = (source.title || 'khoa-hoc-moi').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+        const suffix = Math.random().toString(36).slice(2, 7);
+        const slug = `${baseSlug}-${suffix}`;
+
+        return await this.prisma.$transaction(async (tx) => {
+            const course = await tx.courses.create({
+                data: {
+                    owner_id: ownerId,
+                    lecturer_id: ownerId,
+                    title: source!.title || 'Khóa học mới',
+                    slug,
+                    status: 'ACTIVE',
+                },
+            });
+
+            const chapter = await tx.chapters.create({
+                data: { course_id: course.id, title: 'Chương 1', order_index: 1 },
+            });
+
+            await tx.lessons.create({
+                data: {
+                    chapter_id: chapter.id,
+                    source_id: source!.id,
+                    title: source!.title || 'Bài học đầu tiên',
+                    type: 'VIDEO',
+                    content_url: trimmedUrl,
+                    order_index: 1,
+                },
+            });
+
+            return course.id;
+        });
+    }
+
+    /** Owner-only: returns (generating on first call) the course's stable share token. */
+    async getOrCreateShareLink(userId: bigint, courseId: bigint): Promise<string> {
+        const course = await this.courseRepository.findById(courseId);
+        if (!course) throw new Error('COURSE_NOT_FOUND');
+        AccessControlPolicy.validateOwnership(userId, course.ownerId);
+
+        return await this.courseRepository.ensureShareToken(courseId);
+    }
+
+    /** WP1.5.11: owner-only — revokes a course's share link (old URL 404s afterwards). */
+    async revokeShareLink(userId: bigint, courseId: bigint): Promise<void> {
+        const course = await this.courseRepository.findById(courseId);
+        if (!course) throw new Error('COURSE_NOT_FOUND');
+        AccessControlPolicy.validateOwnership(userId, course.ownerId);
+
+        await this.courseRepository.clearShareToken(courseId);
+    }
+
+    /** WP1.5.11: list of the user's own courses with their current share status, for the "my share links" screen. */
+    async listMyShareLinks(userId: bigint): Promise<Array<{ id: number; title: string; shareToken: string | null }>> {
+        const courses = await this.courseRepository.findOwnedWithShareStatus(userId);
+        return courses.map(c => ({ id: Number(c.id), title: c.title, shareToken: c.shareToken }));
+    }
+
+    /** Public: anonymous-safe view of a shared course, keyed by its share token. */
+    async getPublicCourseByToken(token: string): Promise<PublicCourseDto> {
+        const course = await this.courseRepository.findByShareToken(token);
+        if (!course) throw new Error('SHARE_LINK_NOT_FOUND');
+
+        const chapters = course.chapters.map((chapter: any) => {
+            const lessons = chapter.lessons.map((lesson: any) => new PublicLessonDto(
+                Number(lesson.id),
+                lesson.title,
+                lesson.type,
+                lesson.orderIndex,
+                lesson.contentUrl,
+            ));
+            return new PublicChapterDto(Number(chapter.id), chapter.title, lessons);
+        });
+
+        const firstVideoUrl = VideoThumbnailUtil.findFirstVideoUrl(course.chapters);
+        return new PublicCourseDto(
+            Number(course.id),
+            course.title,
+            course.description,
+            (course as any).ownerName || null,
+            chapters,
+            firstVideoUrl
+                ? VideoThumbnailUtil.deriveThumbnailFromVideoUrl(firstVideoUrl)
+                : '/images/course-placeholder.svg',
+            course.shareToken || token,
+        );
+    }
+
+    /** Clones a shared course into `userId`'s own account ("Sao chép về học"). */
+    async cloneSharedCourse(token: string, userId: bigint): Promise<bigint> {
+        const course = await this.courseRepository.findByShareToken(token);
+        if (!course) throw new Error('SHARE_LINK_NOT_FOUND');
+
+        return await this.courseRepository.cloneForOwner(course.id, userId);
     }
 
     async updateCourseMetadata(lecturerId: bigint, courseId: bigint, data: { title?: string; description?: string }): Promise<void> {

@@ -2,7 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { updateProfile, getProfile, AuthUtils } from '@/lib/auth';
+import Header from '@/components/Header';
+import { Button } from '@/components/ui/button';
+import { updateProfile, getProfile, logout as apiLogout, AuthUtils } from '@/lib/auth';
+import { User } from '@/types/auth.types';
 
 export default function EditProfilePage() {
     const router = useRouter();
@@ -12,10 +15,29 @@ export default function EditProfilePage() {
     const [email, setEmail] = useState('');
     const [appState, setAppState] = useState<'idle' | 'submitting' | 'success' | 'business_error' | 'system_error'>('idle');
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
+    const [user, setUser] = useState<User | null>(null);
 
-    const getInitial = (fullName: string) => fullName.charAt(0).toUpperCase();
-    const user = AuthUtils.getCurrentUser();
-    const avatarInitial = user ? getInitial(user.fullName) : 'U';
+    useEffect(() => {
+        if (AuthUtils.isAuthenticated()) {
+            setUser(AuthUtils.getCurrentUser());
+        }
+    }, []);
+
+    const handleLogout = async () => {
+        try {
+            await apiLogout();
+        } catch (error) {
+            // ignore — still clear local session and navigate away
+        } finally {
+            setUser(null);
+            router.push('/');
+        }
+    };
+
+    const handleJoin = () => {
+        const currentUrl = window.location.pathname;
+        router.push(`/join?continueUrl=${encodeURIComponent(currentUrl)}`);
+    };
 
     useEffect(() => {
         // Load current user profile
@@ -28,6 +50,7 @@ export default function EditProfilePage() {
             } catch (error) {
                 console.error('Failed to load profile:', error);
                 setAppState('system_error');
+                setErrorMessage('Không thể tải hồ sơ. Vui lòng tải lại trang.');
             }
         };
 
@@ -51,7 +74,10 @@ export default function EditProfilePage() {
                 age: ageNum,
             });
 
-            // Update localStorage with new user info
+            // WP1.5.12: update localStorage AND the `user` state driving the
+            // Header avatar/name together — previously only localStorage was
+            // updated, so the Header kept showing the stale name/initial
+            // until a full page reload re-read it.
             const currentUser = AuthUtils.getCurrentUser();
             if (currentUser) {
                 const updatedUser = {
@@ -59,16 +85,21 @@ export default function EditProfilePage() {
                     fullName: fullName.trim(),
                 };
                 AuthUtils.setUserInfo(updatedUser);
+                setUser(updatedUser);
             }
 
             setAppState('success');
         } catch (error: any) {
             const message = error.message;
-            if (message.includes('tuổi') || message.includes('không hợp lệ')) {
+            if (message && (message.includes('tuổi') || message.includes('không hợp lệ'))) {
                 setAppState('business_error');
                 setErrorMessage(message);
             } else {
+                // WP1.5.12: this used to leave errorMessage null, so the error
+                // banner below rendered nothing — a save failure looked like
+                // nothing happened at all.
                 setAppState('system_error');
+                setErrorMessage('Có lỗi xảy ra, không thể lưu hồ sơ. Vui lòng thử lại.');
             }
         }
     };
@@ -79,22 +110,7 @@ export default function EditProfilePage() {
 
     return (
         <div className="min-h-screen bg-slate-50">
-            {/* Compact header for settings pages */}
-            <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex justify-between items-center h-16">
-                        <button onClick={() => router.push('/')} className="flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded-md">
-                            <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center">
-                                <span className="text-white font-bold text-sm">E</span>
-                            </div>
-                            <span className="font-semibold text-slate-900 text-base hidden sm:block">E-Learning</span>
-                        </button>
-                        <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
-                            {avatarInitial}
-                        </div>
-                    </div>
-                </div>
-            </header>
+            <Header user={user} onLogout={handleLogout} onJoin={handleJoin} />
 
             <main className="max-w-lg mx-auto px-4 py-10">
                 <div className="mb-6">
@@ -150,15 +166,13 @@ export default function EditProfilePage() {
                         )}
 
                         <div className="flex gap-3 pt-1">
-                            <button type="button" onClick={handleCancel} disabled={appState === 'submitting'}
-                                className="flex-1 py-2.5 px-4 border border-slate-300 rounded-lg text-sm font-medium text-slate-700 bg-white hover:bg-slate-50 transition-colors disabled:opacity-50">
+                            <Button type="button" variant="outline" onClick={handleCancel} disabled={appState === 'submitting'} className="flex-1">
                                 Hủy
-                            </button>
-                            <button type="submit" disabled={appState === 'submitting'}
-                                className="flex-1 py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 flex items-center justify-center gap-2">
+                            </Button>
+                            <Button type="submit" disabled={appState === 'submitting'} className="flex-1">
                                 {appState === 'submitting' && <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
                                 {appState === 'submitting' ? 'Đang lưu...' : 'Lưu thay đổi'}
-                            </button>
+                            </Button>
                         </div>
                     </form>
                 </div>

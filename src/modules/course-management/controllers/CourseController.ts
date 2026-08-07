@@ -1,17 +1,24 @@
 import { CourseService } from '../services/CourseService';
+import { ContentManagementService } from '../services/ContentManagementService';
+import { LearnService } from '../services/LearnService';
 import { CourseRepository } from '../repositories/CourseRepository';
 import { EnrollmentRepository } from '../repositories/EnrollmentRepository';
+import { LearningProgressRepository } from '../repositories/LearningProgressRepository';
 import { CourseListDto } from '../dtos/CourseListDto';
-import { CourseDetailDto } from '../dtos/CourseDetailDto';
+import { CourseDetailDto, PublicCourseDto } from '../dtos/CourseDetailDto';
 import { prisma } from '../../../shared/config/database';
 
 export class CourseController {
     private service: CourseService;
+    private contentService: ContentManagementService;
 
     constructor() {
         const courseRepo = new CourseRepository(prisma);
         const enrollmentRepo = new EnrollmentRepository(prisma);
-        this.service = new CourseService(courseRepo, enrollmentRepo);
+        const progressRepo = new LearningProgressRepository(prisma);
+        const learnService = new LearnService(progressRepo, enrollmentRepo, prisma);
+        this.service = new CourseService(courseRepo, enrollmentRepo, learnService);
+        this.contentService = new ContentManagementService(courseRepo, prisma);
     }
 
     async getCourses(search?: string): Promise<CourseListDto[]> {
@@ -20,5 +27,13 @@ export class CourseController {
 
     async getCourseDetail(courseId: bigint, userId?: bigint): Promise<CourseDetailDto | null> {
         return await this.service.getCourseDetail(courseId, userId);
+    }
+
+    async getCourseByShareToken(token: string): Promise<PublicCourseDto> {
+        return await this.contentService.getPublicCourseByToken(token);
+    }
+
+    async cloneSharedCourse(token: string, userId: bigint): Promise<bigint> {
+        return await this.contentService.cloneSharedCourse(token, userId);
     }
 }

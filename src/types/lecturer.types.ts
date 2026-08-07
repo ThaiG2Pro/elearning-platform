@@ -41,7 +41,9 @@ export interface CourseStructure {
     isEnrolled: boolean;
     thumbnailUrl?: string;
     chapters: Chapter[];
-    status: 'Draft' | 'Pending' | 'Active';
+    // WP1.5.10: 'Draft'/'Pending' dropped — no route creates that state
+    // anymore, courses are active for their owner immediately.
+    status: 'Active';
 }
 
 export interface QuizQuestion {

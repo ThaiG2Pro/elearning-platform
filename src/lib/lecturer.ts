@@ -298,3 +298,64 @@ export const updateCourseContent = async (courseId: number, payload: any): Promi
         } else throw new Error('NETWORK_ERROR');
     }
 };
+
+// WP1.1 — paste a link, get a fully-formed course in one step
+export const createCourseFromLink = async (url: string): Promise<{ courseId: string }> => {
+    try {
+        const response = await api.post('/management/courses/from-link', { url });
+        return response.data;
+    } catch (error: any) {
+        if (error.response) {
+            const { status, data } = error.response;
+            if (status === 401) throw new Error('UNAUTHORIZED');
+            if (data?.error === 'UNSUPPORTED_URL') throw new Error('Hiện chỉ hỗ trợ link YouTube.');
+            if (data?.error === 'URL_REQUIRED') throw new Error('Vui lòng nhập link video.');
+            if (data?.error === 'YOUTUBE_METADATA_FETCH_FAILED') throw new Error('Không đọc được thông tin video, kiểm tra lại link.');
+            throw new Error('SERVER_ERROR');
+        } else throw new Error('NETWORK_ERROR');
+    }
+};
+
+// WP1.4 — owner-only: get (and lazily create) the course's stable share link
+export const getOrCreateShareLink = async (courseId: number): Promise<{ shareToken: string; shareUrl: string }> => {
+    try {
+        const response = await api.post(`/management/courses/${courseId}/share`);
+        return response.data;
+    } catch (error: any) {
+        if (error.response) {
+            const { status } = error.response;
+            if (status === 401) throw new Error('UNAUTHORIZED');
+            else if (status === 403) throw new Error('ACCESS_DENIED');
+            else if (status === 404) throw new Error('COURSE_NOT_FOUND');
+            else throw new Error('SERVER_ERROR');
+        } else throw new Error('NETWORK_ERROR');
+    }
+};
+
+export interface MyShareLink {
+    id: number;
+    title: string;
+    shareToken: string | null;
+    shareUrl: string | null;
+}
+
+// WP1.5.11 — "quản lý share link của tôi": list every owned course with its
+// current share status (previously the only way to see a link again was the
+// orphaned lecturer/courses/[id]/view page).
+export const listMyShareLinks = async (): Promise<MyShareLink[]> => {
+    try {
+        const response = await api.get('/management/courses/share');
+        return response.data;
+    } catch (error: any) {
+        throw new Error('Không thể tải danh sách link chia sẻ.');
+    }
+};
+
+export const revokeShareLink = async (courseId: number): Promise<void> => {
+    try {
+        await api.delete(`/management/courses/${courseId}/share`);
+    } catch (error: any) {
+        if (error.response?.status === 403) throw new Error('ACCESS_DENIED');
+        throw new Error('Không thể thu hồi link.');
+    }
+};

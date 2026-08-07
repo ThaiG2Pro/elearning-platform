@@ -8,6 +8,7 @@ import {
     updateSection,
     deleteSection,
     createLesson,
+    deleteLesson,
     parseQuizFile,
     uploadQuizFile,
     updateCourseContent,
@@ -20,8 +21,14 @@ import {
     ChapterEdit,
     QuizParseResponse
 } from '@/types/lecturer.types';
+// WP1.5.8: standardize on the shared Button component instead of each
+// action re-implementing its own Tailwind classes — this page previously
+// mixed bg-blue-600 and bg-indigo-600 for equivalent primary actions.
+import { Button } from '@/components/ui/button';
 
-type EditState = 'idle' | 'editingVideo' | 'editingQuiz' | 'processing' | 'reviewing' | 'readOnly';
+// WP1.5.10: 'readOnly' dropped — no code path ever set it (courses are always
+// editable by their owner now, there is no approval workflow that locks them).
+type EditState = 'idle' | 'editingVideo' | 'editingQuiz' | 'processing' | 'reviewing';
 
 const extractYoutubeId = (url: string): string | null => {
     if (!url) return null;
@@ -40,7 +47,9 @@ const CourseEditPage = () => {
     const [editState, setEditState] = useState<EditState>('idle');
     const [selectedItem, setSelectedItem] = useState<Chapter | Lesson | null>(null);
     const [parsedQuestions, setParsedQuestions] = useState<QuizParseResponse | null>(null);
-    const isEditable = editState !== 'readOnly';
+    // WP1.5.10: always true now — courses have no approval lock anymore, but
+    // this flag is kept (rather than inlined) so the JSX below reads the same.
+    const isEditable = true;
     const isProcessing = editState === 'processing';
     const isReviewing = editState === 'reviewing';
 
@@ -245,6 +254,50 @@ const CourseEditPage = () => {
         }
     };
 
+    // WP1.5.11: deleteLesson had a working API but nothing in this page ever
+    // called it — the only way to "remove" a lesson was to blank its title so
+    // the save payload's `.filter(l => l.title && l.id)` silently dropped it.
+    const handleDeleteLesson = async (chapterId: number, lessonId: number) => {
+        if (!confirm('Xoá bài học này? Không thể hoàn tác.')) return;
+        try {
+            await deleteLesson(lessonId);
+            setCourse(prev => prev ? {
+                ...prev,
+                chapters: prev.chapters.map(ch =>
+                    ch.id === chapterId ? { ...ch, lessons: ch.lessons.filter(l => l.id !== lessonId) } : ch
+                )
+            } : null);
+            if (selectedItem?.id === lessonId) {
+                setSelectedItem(null);
+                setEditState('idle');
+            }
+        } catch (err: any) {
+            setError(err.message);
+        }
+    };
+
+    // WP1.5.11: no way to reorder lessons besides hand-typing orderIndex.
+    // Swap with the neighbor in-memory; persisted on the next "Lưu khóa học"
+    // like every other in-place edit on this page.
+    const handleMoveLesson = (chapterId: number, lessonId: number, direction: -1 | 1) => {
+        setCourse(prev => {
+            if (!prev) return prev;
+            return {
+                ...prev,
+                chapters: prev.chapters.map(ch => {
+                    if (ch.id !== chapterId) return ch;
+                    const index = ch.lessons.findIndex(l => l.id === lessonId);
+                    const targetIndex = index + direction;
+                    if (index < 0 || targetIndex < 0 || targetIndex >= ch.lessons.length) return ch;
+                    const lessons = [...ch.lessons];
+                    [lessons[index], lessons[targetIndex]] = [lessons[targetIndex], lessons[index]];
+                    lessons.forEach((l, i) => { l.orderIndex = i; });
+                    return { ...ch, lessons };
+                })
+            };
+        });
+    };
+
     // Sync lessonForm edits back into course state (in-memory only — no DB write).
     // handleSave() persists everything at once when the user clicks Save.
     const skipNextSync = useRef(false);
@@ -335,12 +388,9 @@ const CourseEditPage = () => {
             <div className="min-h-screen bg-slate-50 flex items-center justify-center">
                 <div className="text-center">
                     <p className="text-sm text-red-600 mb-4">{getErrorMessage(error)}</p>
-                    <button
-                        onClick={() => router.back()}
-                        className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors"
-                    >
+                    <Button onClick={() => router.back()}>
                         Quay lại
-                    </button>
+                    </Button>
                 </div>
             </div>
         );
@@ -374,18 +424,14 @@ const CourseEditPage = () => {
                             <h1 className="text-sm font-semibold text-slate-800 truncate">{course.title}</h1>
                         </div>
                         <div className="flex items-center gap-2">
-                            <button
-                                onClick={handleSave}
-                                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
-                                disabled={saving}
-                            >
+                            <Button onClick={handleSave} disabled={saving}>
                                 {saving ? (
                                     <>
                                         <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"/>
                                         Đang lưu...
                                     </>
                                 ) : 'Lưu khóa học'}
-                            </button>
+                            </Button>
                         </div>
                     </div>
                 </div>
@@ -402,7 +448,7 @@ const CourseEditPage = () => {
                             <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Cấu trúc khóa học</h2>
 
                             {/* Add Chapter */}
-                            {editState !== 'readOnly' && (
+                            {isEditable && (
                                 <div className="mb-4 p-3 border border-slate-200 rounded-lg bg-slate-50">
                                     <p className="text-xs font-medium text-slate-600 mb-2">Thêm chương mới</p>
                                     <input
@@ -412,12 +458,9 @@ const CourseEditPage = () => {
                                         onChange={(e) => setChapterForm(prev => ({ ...prev, title: e.target.value }))}
                                         className="w-full mb-2 px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                                     />
-                                    <button
-                                        onClick={handleCreateChapter}
-                                        className="w-full px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium rounded-lg transition-colors"
-                                    >
+                                    <Button onClick={handleCreateChapter} size="sm" className="w-full">
                                         Thêm chương
-                                    </button>
+                                    </Button>
                                 </div>
                             )}
 
@@ -427,24 +470,21 @@ const CourseEditPage = () => {
                                         <p className="text-xs font-medium text-slate-600 mb-1">Chưa có chương nào</p>
                                         <p className="text-xs text-slate-400 mb-3">Thêm chương để bắt đầu xây dựng nội dung.</p>
                                         <div className="flex flex-col gap-2">
-                                            <button
-                                                onClick={handleCreateChapter}
-                                                className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-50"
-                                                disabled={chapterCreating}
-                                            >
+                                            <Button onClick={handleCreateChapter} size="sm" disabled={chapterCreating}>
                                                 {chapterCreating ? (
                                                     <span className="inline-flex items-center gap-1">
                                                         <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"/>
                                                         Đang tạo...
                                                     </span>
                                                 ) : 'Thêm chương đầu tiên'}
-                                            </button>
-                                            <button
+                                            </Button>
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
                                                 onClick={() => setChapterForm(prev => ({ ...prev, title: 'Chương 1' }))}
-                                                className="px-3 py-1 border border-slate-300 rounded-lg text-xs text-slate-600 hover:bg-slate-50 transition-colors"
                                             >
                                                 Gợi ý: &quot;Chương 1&quot;
-                                            </button>
+                                            </Button>
                                         </div>
                                     </div>
                                 ) : (
@@ -456,31 +496,67 @@ const CourseEditPage = () => {
                                             >
                                                 <div className="flex items-center justify-between">
                                                     <span className="text-xs font-semibold text-slate-700">{chapter.title}</span>
-                                                    {editState !== 'readOnly' && (
-                                                        <button
+                                                    {isEditable && (
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-5 w-5 text-slate-400 hover:text-red-500 hover:bg-transparent text-base leading-none"
                                                             onClick={(e) => { e.stopPropagation(); handleDeleteChapter(chapter.id); }}
-                                                            className="text-slate-400 hover:text-red-500 transition-colors text-base leading-none"
                                                         >
                                                             ×
-                                                        </button>
+                                                        </Button>
                                                     )}
                                                 </div>
                                             </div>
 
                                             <div className="pl-3 pr-2 py-1 space-y-0.5 bg-slate-50/50">
-                                                {chapter.lessons.map((lesson: Lesson) => (
+                                                {chapter.lessons.map((lesson: Lesson, lessonIndex: number) => (
                                                     <div
                                                         key={lesson.id}
-                                                        className={`px-2 py-1.5 cursor-pointer rounded-md transition-colors ${selectedItem?.id === lesson.id ? 'bg-indigo-50 text-indigo-700' : 'hover:bg-white text-slate-600'}`}
-                                                        onClick={() => handleLessonSelect(lesson)}
+                                                        className={`group flex items-center gap-1 px-2 py-1.5 rounded-md transition-colors ${selectedItem?.id === lesson.id ? 'bg-indigo-50 text-indigo-700' : 'hover:bg-white text-slate-600'}`}
                                                     >
-                                                        <span className="text-xs">{lesson.title}</span>
-                                                        <span className="text-xs text-slate-400 ml-1">({lesson.type})</span>
+                                                        <button
+                                                            onClick={() => handleLessonSelect(lesson)}
+                                                            className="flex-1 min-w-0 text-left"
+                                                        >
+                                                            <span className="text-xs">{lesson.title}</span>
+                                                            <span className="text-xs text-slate-400 ml-1">({lesson.type})</span>
+                                                        </button>
+                                                        {isEditable && (
+                                                            <div className="flex-shrink-0 flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                <Button
+                                                                    variant="ghost" size="icon"
+                                                                    className="h-5 w-5 text-slate-400 hover:text-slate-700"
+                                                                    disabled={lessonIndex === 0}
+                                                                    onClick={(e) => { e.stopPropagation(); handleMoveLesson(chapter.id, lesson.id, -1); }}
+                                                                    title="Lên"
+                                                                >
+                                                                    ↑
+                                                                </Button>
+                                                                <Button
+                                                                    variant="ghost" size="icon"
+                                                                    className="h-5 w-5 text-slate-400 hover:text-slate-700"
+                                                                    disabled={lessonIndex === chapter.lessons.length - 1}
+                                                                    onClick={(e) => { e.stopPropagation(); handleMoveLesson(chapter.id, lesson.id, 1); }}
+                                                                    title="Xuống"
+                                                                >
+                                                                    ↓
+                                                                </Button>
+                                                                <Button
+                                                                    variant="ghost" size="icon"
+                                                                    className="h-5 w-5 text-slate-400 hover:text-red-500"
+                                                                    onClick={(e) => { e.stopPropagation(); handleDeleteLesson(chapter.id, lesson.id); }}
+                                                                    title="Xoá bài học"
+                                                                >
+                                                                    ×
+                                                                </Button>
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 ))}
 
                                                 {/* Add Lesson */}
-                                                {editState !== 'readOnly' && selectedItem?.id === chapter.id && (
+                                                {isEditable && selectedItem?.id === chapter.id && (
                                                     <div className="p-2 border-t border-slate-200 mt-1">
                                                         <input
                                                             type="text"
@@ -498,12 +574,9 @@ const CourseEditPage = () => {
                                                             <option value="QUIZ">Quiz</option>
                                                             <option value="TEXT">Text</option>
                                                         </select>
-                                                        <button
-                                                            onClick={handleCreateLesson}
-                                                            className="w-full px-2 py-1 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium rounded transition-colors"
-                                                        >
+                                                        <Button onClick={handleCreateLesson} size="sm" className="w-full">
                                                             Thêm bài học
-                                                        </button>
+                                                        </Button>
                                                     </div>
                                                 )}
                                             </div>
@@ -529,13 +602,9 @@ const CourseEditPage = () => {
                                             disabled={!isEditable}
                                         />
                                     </div>
-                                    <button
-                                        onClick={handleUpdateChapter}
-                                        className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
-                                        disabled={!isEditable}
-                                    >
+                                    <Button onClick={handleUpdateChapter} disabled={!isEditable}>
                                         Cập nhật chương
-                                    </button>
+                                    </Button>
                                 </div>
                             </div>
                         )}
@@ -623,21 +692,17 @@ const CourseEditPage = () => {
                                     </div>
                                     {quizFile && (
                                         <div className="flex gap-2">
-                                            <button
-                                                onClick={handleParseQuiz}
-                                                className="px-4 py-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
-                                                disabled={isProcessing}
-                                            >
+                                            <Button variant="outline" onClick={handleParseQuiz} disabled={isProcessing}>
                                                 {isProcessing ? 'Đang xử lý...' : 'Xem trước'}
-                                            </button>
+                                            </Button>
                                             {parsedQuestions && (
-                                                <button
+                                                <Button
                                                     onClick={handleUploadQuiz}
-                                                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
                                                     disabled={isProcessing}
+                                                    className="bg-emerald-600 hover:bg-emerald-700 text-white"
                                                 >
                                                     {isProcessing ? 'Đang tải lên...' : 'Tải lên'}
-                                                </button>
+                                                </Button>
                                             )}
                                         </div>
                                     )}
@@ -677,16 +742,6 @@ const CourseEditPage = () => {
                             </div>
                         )}
 
-                        {editState === 'readOnly' && (
-                            <div className="flex flex-col items-center justify-center h-48 text-center">
-                                <div className="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center mb-3">
-                                    <svg className="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
-                                    </svg>
-                                </div>
-                                <p className="text-sm text-slate-500">Khóa học này đang chờ duyệt hoặc đã được duyệt.<br/>Không thể chỉnh sửa.</p>
-                            </div>
-                        )}
                     </div>
                 </div>
             </div>

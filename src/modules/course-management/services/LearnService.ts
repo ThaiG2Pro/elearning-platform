@@ -9,7 +9,10 @@ import { PrismaClient } from '@prisma/client';
 export class LearnService {
     constructor(
         private progressRepo: LearningProgressRepository,
-        private enrollmentRepo: EnrollmentRepository,
+        // Accepted only for constructor-shape compatibility with existing call
+        // sites; progress tracking itself no longer depends on an enrollment
+        // existing (WP1.3 — progress is keyed by ownership, not enrollment).
+        _enrollmentRepo: EnrollmentRepository | undefined,
         private prisma: PrismaClient,
     ) { }
 
@@ -30,12 +33,8 @@ export class LearnService {
         // Step 1: Load State
         let progress = await this.progressRepo.findByStudentAndLesson(userId, lessonId);
         if (!progress) {
-            // Find enrollment for this lesson
-            const enrollment = await this.findEnrollmentByLesson(userId, lessonId);
-            if (!enrollment) {
-                throw new Error('ENROLLMENT_NOT_FOUND');
-            }
-            progress = LearningProgress.create(enrollment.id!, lessonId);
+            const courseId = await this.findCourseIdByLesson(lessonId);
+            progress = LearningProgress.create(userId, courseId, lessonId);
         }
 
         // Step 2: Update Position
@@ -45,15 +44,10 @@ export class LearnService {
         const isValidToFinish = ProgressPolicy.checkCompletionCondition(position, duration);
 
         // Step 4: Try Finish
-        const statusChanged = progress.tryFinish(isValidToFinish);
+        progress.tryFinish(isValidToFinish);
 
         // Step 5: Persist
         await this.progressRepo.save(progress);
-
-        // Step 6: Side Effect
-        if (statusChanged) {
-            await this.recalculateCourseProgress(userId, progress.enrollmentId);
-        }
 
         return { isFinished: progress.isFinished };
     }
@@ -71,63 +65,42 @@ export class LearnService {
         };
     }
 
-    private async findEnrollmentByLesson(userId: bigint, lessonId: bigint): Promise<any> {
-        // Find course that contains this lesson
+    /** WP1.3 — % of a course's lessons the given user has finished, for course-detail display. */
+    async getCourseProgress(userId: bigint, courseId: bigint): Promise<{ completionRate: number; finishedLessons: number; totalLessons: number }> {
+        const lessons = await this.prisma.lessons.findMany({
+            where: { chapter: { course_id: courseId } },
+            select: { id: true },
+        });
+        const totalLessons = lessons.length;
+
+        const progresses = await this.progressRepo.findByUserAndCourse(userId, courseId);
+        const lessonIds = new Set(lessons.map(l => l.id));
+        const finishedLessons = progresses.filter(p => p.isFinished && lessonIds.has(p.lessonId)).length;
+
+        return {
+            completionRate: totalLessons > 0 ? Math.round((finishedLessons / totalLessons) * 100) : 0,
+            finishedLessons,
+            totalLessons,
+        };
+    }
+
+    private async findCourseIdByLesson(lessonId: bigint): Promise<bigint> {
         const lesson = await this.prisma.lessons.findUnique({
             where: { id: lessonId },
-            include: {
-                chapter: {
-                    include: {
-                        course: true
-                    }
-                }
-            }
+            include: { chapter: { include: { course: true } } },
         });
-
         if (!lesson) {
             throw new Error('LESSON_NOT_FOUND');
         }
-
-        const courseId = lesson.chapter.course.id;
-
-        // Find enrollment
-        return await this.enrollmentRepo.findByStudentAndCourse(userId, courseId);
-    }
-
-    private async recalculateCourseProgress(_userId: bigint, enrollmentId: bigint): Promise<void> {
-        // Get enrollment to find courseId
-        const enrollment = await this.enrollmentRepo.findById(enrollmentId);
-        if (!enrollment) return;
-
-        // Get all lessons in the course
-        const lessons = await this.prisma.lessons.findMany({
-            where: {
-                chapter: {
-                    course_id: enrollment.courseId
-                }
-            }
-        });
-        const totalLessons = lessons.length;
-        const lessonIds = new Set(lessons.map(l => l.id));
-
-        // Get all progresses for this enrollment
-        const progresses = await this.progressRepo.findByEnrollment(enrollmentId);
-
-        // Count finished lessons that still exist
-        const finishedCount = progresses.filter(p => p.isFinished && lessonIds.has(p.lessonId)).length;
-
-        // Calculate completion rate
-        const completionRate = totalLessons > 0 ? Math.round((finishedCount / totalLessons) * 100) : 0;
-
-        // Update enrollment
-        enrollment.completionRate = completionRate;
-        await this.enrollmentRepo.save(enrollment);
+        return lesson.chapter.course.id;
     }
 
     private calculateMockResult(position: number, duration: number): ProgressResult {
-        // Mock calculation for preview - consider finished if watched > 90%
-        const progressPercentage = (position / duration) * 100;
-        const isFinished = progressPercentage > 90;
+        // WP1.5.3: this used a hardcoded 90% threshold while the real
+        // (persisted) completion path used ProgressPolicy's 80% — two
+        // different definitions of "done" depending on preview vs real
+        // tracking. Preview mode should mirror the same rule.
+        const isFinished = ProgressPolicy.checkCompletionCondition(position, duration);
 
         return { isFinished };
     }

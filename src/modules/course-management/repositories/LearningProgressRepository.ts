@@ -1,37 +1,47 @@
 import { PrismaClient } from '@prisma/client';
 import { LearningProgress } from '../domain/LearningProgress';
 
+/**
+ * WP1.3: progress rows are keyed by (user_id, lesson_id) — ownership, not
+ * the marketplace `enrollment_id`. `enrollment_id` is only ever read for
+ * rows written before this pivot; new writes never set it.
+ */
 export class LearningProgressRepository {
     constructor(private prisma: PrismaClient) { }
 
-    async findByStudentAndLesson(studentId: bigint, lessonId: bigint): Promise<LearningProgress | null> {
-        const progress = await this.prisma.learning_progress.findFirst({
-            where: {
-                enrollment: {
-                    student_id: studentId,
-                },
-                lesson_id: lessonId,
-            },
-        });
-
-        if (!progress) return null;
-
+    private toDomain(progress: {
+        id: bigint; user_id: bigint | null; course_id: bigint | null; enrollment_id: bigint | null;
+        lesson_id: bigint; is_finished: boolean; video_last_position: number | null;
+        quiz_max_score: number | null; quiz_start_time: Date | null; personal_note: string | null;
+        quiz_question_ids: string | null;
+    }): LearningProgress {
         return new LearningProgress(
             progress.id,
-            progress.enrollment_id,
+            progress.user_id!,
+            progress.course_id!,
             progress.lesson_id,
             progress.is_finished,
             progress.video_last_position,
             progress.quiz_max_score,
             progress.quiz_start_time,
             progress.personal_note,
-            progress.quiz_question_ids ? (() => { try { return JSON.parse(progress.quiz_question_ids).map((id: string) => BigInt(id)); } catch { console.error('Failed to parse quiz_question_ids:', progress.quiz_question_ids); return []; } })() : []
+            progress.quiz_question_ids ? (() => { try { return JSON.parse(progress.quiz_question_ids!).map((id: string) => BigInt(id)); } catch { console.error('Failed to parse quiz_question_ids:', progress.quiz_question_ids); return []; } })() : [],
+            progress.enrollment_id,
         );
+    }
+
+    async findByStudentAndLesson(userId: bigint, lessonId: bigint): Promise<LearningProgress | null> {
+        const progress = await this.prisma.learning_progress.findFirst({
+            where: { user_id: userId, lesson_id: lessonId },
+        });
+        if (!progress) return null;
+        return this.toDomain(progress);
     }
 
     async save(progress: LearningProgress): Promise<LearningProgress> {
         const data = {
-            enrollment_id: progress.enrollmentId,
+            user_id: progress.userId,
+            course_id: progress.courseId,
             lesson_id: progress.lessonId,
             is_finished: progress.isFinished,
             video_last_position: progress.videoLastPosition,
@@ -46,50 +56,22 @@ export class LearningProgressRepository {
                 where: { id: progress.id },
                 data,
             });
-            return new LearningProgress(
-                updated.id,
-                updated.enrollment_id,
-                updated.lesson_id,
-                updated.is_finished,
-                updated.video_last_position,
-                updated.quiz_max_score,
-                updated.quiz_start_time,
-                updated.personal_note,
-                updated.quiz_question_ids ? (() => { try { return JSON.parse(updated.quiz_question_ids).map((id: string) => BigInt(id)); } catch { console.error('Failed to parse quiz_question_ids:', updated.quiz_question_ids); return []; } })() : []
-            );
+            return this.toDomain(updated);
         } else {
-            const created = await this.prisma.learning_progress.create({
-                data,
+            const created = await this.prisma.learning_progress.upsert({
+                where: { user_id_lesson_id: { user_id: progress.userId, lesson_id: progress.lessonId } },
+                update: data,
+                create: data,
             });
-            return new LearningProgress(
-                created.id,
-                created.enrollment_id,
-                created.lesson_id,
-                created.is_finished,
-                created.video_last_position,
-                created.quiz_max_score,
-                created.quiz_start_time,
-                created.personal_note,
-                created.quiz_question_ids ? (() => { try { return JSON.parse(created.quiz_question_ids).map((id: string) => BigInt(id)); } catch { console.error('Failed to parse quiz_question_ids:', created.quiz_question_ids); return []; } })() : []
-            );
+            return this.toDomain(created);
         }
     }
 
-    async findByEnrollment(enrollmentId: bigint): Promise<LearningProgress[]> {
+    /** All progress rows for a user across a course's lessons — used to compute completion %. */
+    async findByUserAndCourse(userId: bigint, courseId: bigint): Promise<LearningProgress[]> {
         const progresses = await this.prisma.learning_progress.findMany({
-            where: { enrollment_id: enrollmentId },
+            where: { user_id: userId, course_id: courseId },
         });
-
-        return progresses.map(progress => new LearningProgress(
-            progress.id,
-            progress.enrollment_id,
-            progress.lesson_id,
-            progress.is_finished,
-            progress.video_last_position,
-            progress.quiz_max_score,
-            progress.quiz_start_time,
-            progress.personal_note,
-            progress.quiz_question_ids ? (() => { try { return JSON.parse(progress.quiz_question_ids).map((id: string) => BigInt(id)); } catch { console.error('Failed to parse quiz_question_ids:', progress.quiz_question_ids); return []; } })() : []
-        ));
+        return progresses.map(p => this.toDomain(p));
     }
 }

@@ -1,5 +1,5 @@
 import { LearnService } from '../services/LearnService';
-import { NoteService } from '../services/NoteService';
+import { NoteService, NoteView } from '../services/NoteService';
 import { LearningProgressRepository } from '../repositories/LearningProgressRepository';
 import { EnrollmentRepository } from '../repositories/EnrollmentRepository';
 import { NoteRepository } from '../repositories/NoteRepository';
@@ -32,11 +32,19 @@ export class LearnController {
         return await this.service.getProgress(userId, lessonId);
     }
 
-    async saveNote(userId: bigint, lessonId: bigint, content: string): Promise<void> {
-        await this.noteService.saveNote(userId, lessonId, content);
+    async getCourseProgress(userId: bigint, courseId: bigint): Promise<{ completionRate: number; finishedLessons: number; totalLessons: number }> {
+        return await this.service.getCourseProgress(userId, courseId);
     }
 
-    async getNote(userId: bigint, lessonId: bigint): Promise<{ content: string; updatedAt: string } | null> {
-        return await this.noteService.getNote(userId, lessonId);
+    async addNote(userId: bigint, lessonId: bigint, content: string, videoTimestampSec: number | null): Promise<NoteView> {
+        return await this.noteService.addNote(userId, lessonId, content, videoTimestampSec);
+    }
+
+    async listNotes(userId: bigint, lessonId: bigint): Promise<NoteView[]> {
+        return await this.noteService.listNotes(userId, lessonId);
+    }
+
+    async deleteNote(userId: bigint, noteId: bigint): Promise<void> {
+        await this.noteService.deleteNote(userId, noteId);
     }
 }

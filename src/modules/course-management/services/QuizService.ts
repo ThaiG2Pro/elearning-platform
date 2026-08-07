@@ -25,7 +25,9 @@ export class QuizService {
     constructor(
         private questionRepo?: QuestionRepository,
         private progressRepo?: LearningProgressRepository,
-        private enrollmentRepo?: EnrollmentRepository,
+        // Kept only for constructor-shape compatibility with existing call sites;
+        // quiz progress no longer depends on an enrollment existing (WP1.3).
+        _enrollmentRepo?: EnrollmentRepository,
         private prisma?: PrismaClient
     ) {
         this.excelAdapter = new ExcelAdapter();
@@ -94,19 +96,15 @@ export class QuizService {
     }
 
     async startQuiz(userId: bigint, lessonId: bigint): Promise<void> {
-        if (!this.progressRepo || !this.enrollmentRepo) {
+        if (!this.progressRepo) {
             throw new Error('Required repositories not provided');
         }
 
         // Find or create progress
         let progress = await this.progressRepo.findByStudentAndLesson(userId, lessonId);
         if (!progress) {
-            // Find enrollment
-            const enrollment = await this.findEnrollmentByLesson(userId, lessonId);
-            if (!enrollment) {
-                throw new Error('ENROLLMENT_NOT_FOUND');
-            }
-            progress = LearningProgress.create(enrollment.id!, lessonId);
+            const courseId = await this.findCourseIdByLesson(lessonId);
+            progress = LearningProgress.create(userId, courseId, lessonId);
         }
 
         // Start quiz timer
@@ -127,7 +125,7 @@ export class QuizService {
     }
 
     async submitQuiz(userId: bigint, lessonId: bigint, dto: SubmitQuizIndexDto): Promise<QuizResultDto> {
-        if (!this.questionRepo || !this.progressRepo || !this.enrollmentRepo || !this.prisma) {
+        if (!this.questionRepo || !this.progressRepo || !this.prisma) {
             throw new Error('Required repositories not provided');
         }
 
@@ -136,10 +134,7 @@ export class QuizService {
 
         if (progress && progress.isQuizTimeout()) {
             // Auto-submit with 0 score
-            const statusChanged = progress.updateQuizResult(0, false);
-            if (statusChanged) {
-                await this.recalculateCourseProgress(userId, progress.enrollmentId);
-            }
+            progress.updateQuizResult(0, false);
             await this.progressRepo.save(progress);
 
             return {
@@ -186,23 +181,14 @@ export class QuizService {
 
         // Step 2: Update Progress
         if (!progress) {
-            // Find enrollment
-            const enrollment = await this.findEnrollmentByLesson(userId, lessonId);
-            if (!enrollment) {
-                throw new Error('ENROLLMENT_NOT_FOUND');
-            }
-            progress = LearningProgress.create(enrollment.id!, lessonId);
+            const courseId = await this.findCourseIdByLesson(lessonId);
+            progress = LearningProgress.create(userId, courseId, lessonId);
         }
 
-        const statusChanged = progress.updateQuizResult(score, isPassed);
+        progress.updateQuizResult(score, isPassed);
 
         // Step 3: Persist
         await this.progressRepo.save(progress);
-
-        // Step 4: Side Effect
-        if (statusChanged) {
-            await this.recalculateCourseProgress(userId, progress.enrollmentId);
-        }
 
         return {
             score,
@@ -235,7 +221,7 @@ export class QuizService {
         }];
     }
 
-    private async findEnrollmentByLesson(userId: bigint, lessonId: bigint): Promise<any> {
+    private async findCourseIdByLesson(lessonId: bigint): Promise<bigint> {
         const lesson = await this.prisma!.lessons.findUnique({
             where: { id: lessonId },
             include: {
@@ -251,37 +237,6 @@ export class QuizService {
             throw new Error('LESSON_NOT_FOUND');
         }
 
-        const courseId = lesson.chapter.course.id;
-        return await this.enrollmentRepo!.findByStudentAndCourse(userId, courseId);
-    }
-
-    private async recalculateCourseProgress(_userId: bigint, enrollmentId: bigint): Promise<void> {
-        // Get enrollment to find courseId
-        const enrollment = await this.enrollmentRepo!.findById(enrollmentId);
-        if (!enrollment) return;
-
-        // Get all lessons in the course
-        const lessons = await this.prisma!.lessons.findMany({
-            where: {
-                chapter: {
-                    course_id: enrollment.courseId
-                }
-            }
-        });
-        const totalLessons = lessons.length;
-        const lessonIds = new Set(lessons.map(l => l.id));
-
-        // Get all progresses for this enrollment
-        const progresses = await this.progressRepo!.findByEnrollment(enrollmentId);
-
-        // Count finished lessons that still exist
-        const finishedCount = progresses.filter(p => p.isFinished && lessonIds.has(p.lessonId)).length;
-
-        // Calculate completion rate
-        const completionRate = totalLessons > 0 ? Math.round((finishedCount / totalLessons) * 100) : 0;
-
-        // Update enrollment
-        enrollment.completionRate = completionRate;
-        await this.enrollmentRepo!.save(enrollment);
+        return lesson.chapter.course.id;
     }
 }

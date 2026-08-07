@@ -1,14 +1,52 @@
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import { randomBytes } from 'crypto';
 
 const prisma = new PrismaClient();
+
+/** Mirrors CourseRepository.ensureShareToken — opaque, not the numeric id. */
+function generateShareToken(): string {
+    return randomBytes(10).toString('base64url');
+}
+
+/**
+ * Mirrors YouTubeOEmbedAdapter.normalize — kept as a plain copy here (not an
+ * import) because prisma's ts-node/ESM seed runner can't resolve extension-less
+ * TS imports from src/. Canonical form used for `sources.normalized_url` dedup.
+ */
+const YOUTUBE_ID_PATTERN = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
+function normalizeYouTubeUrl(url: string): string {
+    const match = url.match(YOUTUBE_ID_PATTERN);
+    if (!match) return url.trim();
+    return `https://www.youtube.com/watch?v=${match[1]}`;
+}
+
+/**
+ * Creates (or reuses, by normalized_url) a `sources` row for a video lesson
+ * and returns its id — WP1.5.1: seed must populate `sources` the same way
+ * ContentManagementService.createCourseFromLink does, so a fresh clone has
+ * real dedup-by-source data to exercise, not just orphan lessons.
+ */
+async function upsertVideoSource(url: string, title: string) {
+    const normalizedUrl = normalizeYouTubeUrl(url);
+    return prisma.sources.upsert({
+        where: { normalized_url: normalizedUrl },
+        update: {},
+        create: {
+            url,
+            normalized_url: normalizedUrl,
+            title,
+            type: 'VIDEO',
+        },
+    });
+}
 
 async function main() {
     console.log('🌱 Seeding database...');
 
     // Clear existing data — use TRUNCATE to ensure tables are fully cleared and sequences reset
     console.log('🧹 Truncating tables and resetting sequences...');
-    await prisma.$executeRaw`TRUNCATE TABLE "questions","learning_progress","enrollments","lessons","chapters","courses","tokens","users","roles" RESTART IDENTITY CASCADE;`;
+    await prisma.$executeRaw`TRUNCATE TABLE "questions","learning_progress","enrollments","lessons","sources","chapters","courses","tokens","users","roles" RESTART IDENTITY CASCADE;`;
     console.log('✅ Tables truncated and sequences reset');
 
     // Create roles
@@ -109,6 +147,7 @@ async function main() {
             slug: 'nhap-mon-java',
             description: 'Khóa học Java cơ bản dành cho người mới bắt đầu',
             status: 'ACTIVE',
+            share_token: generateShareToken(),
         },
     });
 
@@ -120,6 +159,7 @@ async function main() {
             slug: 'nhap-mon-cpp',
             description: 'Khóa học C++ cơ bản dành cho người mới bắt đầu',
             status: 'ACTIVE',
+            share_token: generateShareToken(),
         },
     });
 
@@ -131,6 +171,7 @@ async function main() {
             slug: 'nhap-mon-python',
             description: 'Khóa học Python cơ bản dành cho người mới bắt đầu',
             status: 'ACTIVE',
+            share_token: generateShareToken(),
         },
     });
 
@@ -143,12 +184,16 @@ async function main() {
         },
     });
 
-    await prisma.lessons.create({
+    const javaVideoUrl = 'https://youtu.be/9tQ-GGE010s?si=IRbSd51Vl6NL32Ge';
+    const javaSource = await upsertVideoSource(javaVideoUrl, 'Giới thiệu về Java');
+
+    const javaVideoLesson = await prisma.lessons.create({
         data: {
             chapter_id: javaChapter.id,
+            source_id: javaSource.id,
             title: 'Giới thiệu về Java',
             type: 'VIDEO',
-            content_url: 'https://youtu.be/9tQ-GGE010s?si=IRbSd51Vl6NL32Ge',
+            content_url: javaVideoUrl,
             order_index: 1,
         },
     });
@@ -269,12 +314,16 @@ async function main() {
         },
     });
 
+    const cppVideoUrl = 'https://youtu.be/5vLkWRF-dpE?si=Rso9nHCiT76jh4kJ';
+    const cppSource = await upsertVideoSource(cppVideoUrl, 'Giới thiệu về C++');
+
     await prisma.lessons.create({
         data: {
             chapter_id: cppChapter.id,
+            source_id: cppSource.id,
             title: 'Giới thiệu về C++',
             type: 'VIDEO',
-            content_url: 'https://youtu.be/5vLkWRF-dpE?si=Rso9nHCiT76jh4kJ',
+            content_url: cppVideoUrl,
             order_index: 1,
         },
     });
@@ -395,17 +444,47 @@ async function main() {
         },
     });
 
-    await prisma.lessons.create({
+    const pythonVideoUrl = 'https://youtu.be/NZj6LI5a9vc?si=3s0sCa3Z68qu9qBq';
+    const pythonSource = await upsertVideoSource(pythonVideoUrl, 'Giới thiệu về Python');
+
+    const pythonVideoLesson = await prisma.lessons.create({
         data: {
             chapter_id: pythonChapter.id,
+            source_id: pythonSource.id,
             title: 'Giới thiệu về Python',
             type: 'VIDEO',
-            content_url: 'https://youtu.be/NZj6LI5a9vc?si=3s0sCa3Z68qu9qBq',
+            content_url: pythonVideoUrl,
             order_index: 1,
         },
     });
 
-    console.log('✅ Chapters, lessons and questions created');
+    console.log('✅ Chapters, lessons, sources and questions created');
+
+    // WP1.5.1 — seed learning_progress so a fresh clone has real data to
+    // exercise WP1.3 (progress tracking) without manually clicking through
+    // lessons first. Keyed by (user_id, lesson_id) per the ownership-based
+    // model in learning_progress (see schema comment).
+    await prisma.learning_progress.create({
+        data: {
+            user_id: john.id,
+            course_id: javaCourse.id,
+            lesson_id: javaVideoLesson.id,
+            is_finished: true,
+            video_last_position: 0,
+        },
+    });
+
+    await prisma.learning_progress.create({
+        data: {
+            user_id: john.id,
+            course_id: pythonCourse.id,
+            lesson_id: pythonVideoLesson.id,
+            is_finished: false,
+            video_last_position: 42,
+        },
+    });
+
+    console.log('✅ Learning progress created');
 
     console.log('🎉 Database seeded successfully!');
     console.log('\n📊 Test Data Summary:');
@@ -414,9 +493,9 @@ async function main() {
     console.log('   - Jack (Lecturer): jack@gmail.com / password123');
     console.log('   - TrongTin (Admin): admin1@gmail.com / password123');
     console.log('📚 Courses:');
-    console.log('   - Java Course: ACTIVE');
-    console.log('   - C++ Course: ACTIVE');
-    console.log('   - Python Course: ACTIVE');
+    console.log(`   - Java Course: ACTIVE — share: /share/${javaCourse.share_token}`);
+    console.log(`   - C++ Course: ACTIVE — share: /share/${cppCourse.share_token}`);
+    console.log(`   - Python Course: ACTIVE — share: /share/${pythonCourse.share_token}`);
 }
 
 main()

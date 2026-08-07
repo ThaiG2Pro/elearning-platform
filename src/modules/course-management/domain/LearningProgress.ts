@@ -1,7 +1,8 @@
 export class LearningProgress {
     constructor(
         public id: bigint | null,
-        public enrollmentId: bigint,
+        public userId: bigint,
+        public courseId: bigint,
         public lessonId: bigint,
         public isFinished: boolean,
         public videoLastPosition: number | null,
@@ -9,14 +10,18 @@ export class LearningProgress {
         public quizStartTime: Date | null,
         public personalNote: string | null,
         public quizQuestionIds: bigint[] | null = null,
+        public enrollmentId: bigint | null = null,
     ) { }
 
-    static create(enrollmentId: bigint, lessonId: bigint): LearningProgress {
+    /** WP1.3: progress identity is (userId, lessonId) — ownership, not enrollment. */
+    static create(userId: bigint, courseId: bigint, lessonId: bigint): LearningProgress {
         return new LearningProgress(
             null,
-            enrollmentId,
+            userId,
+            courseId,
             lessonId,
             false,
+            null,
             null,
             null,
             null,

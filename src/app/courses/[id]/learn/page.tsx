@@ -3,9 +3,11 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Header from '@/components/Header';
-import YoutubePlayer from '@/components/YoutubePlayer';
-import { getLessons, getLessonProgress, updateLessonProgress, startQuiz, submitQuiz, saveLessonNote, getLessonNote } from '@/lib/course';
-import { Lesson, LessonProgress, QuizSession, QuizResult } from '@/types/course.types';
+import YoutubePlayer, { VideoPlayerHandle } from '@/components/YoutubePlayer';
+import VimeoPlayer from '@/components/VimeoPlayer';
+import { Skeleton } from '@/components/ui/skeleton';
+import { getLessons, getLessonProgress, updateLessonProgress, startQuiz, submitQuiz, addLessonNote, getLessonNotes, deleteLessonNote } from '@/lib/course';
+import { Lesson, LessonProgress, QuizSession, QuizResult, LessonNote } from '@/types/course.types';
 import { User } from '@/types/auth.types';
 import { logout as apiLogout, AuthUtils } from '@/lib/auth';
 
@@ -28,9 +30,18 @@ export default function LearningPage() {
     const [timeLeft, setTimeLeft] = useState<number>(0);
     const [answers, setAnswers] = useState<Record<string, string>>({});
 
-    // UI states
-    const [noteContent, setNoteContent] = useState('');
+    // UI states — WP1.5.4: a lesson can have many notes now, not one blob.
+    const [notes, setNotes] = useState<LessonNote[]>([]);
+    const [noteDraft, setNoteDraft] = useState('');
+    const [pinToTimestamp, setPinToTimestamp] = useState(true);
     const [isSavingNote, setIsSavingNote] = useState(false);
+    // WP1.5.12 — progress-save failures used to be swallowed entirely
+    // (console.error only); this surfaces a small non-blocking banner so the
+    // learner knows their last watch position may not have been saved.
+    const [progressSyncError, setProgressSyncError] = useState(false);
+    // WP1.2 — focus mode: hides the site header + lesson sidebar so the
+    // learner sees only the video/quiz, no nav/recommendation distractions.
+    const [focusMode, setFocusMode] = useState(false);
 
     // YouTube states
     const [videoDuration, setVideoDuration] = useState<number>(0);
@@ -41,6 +52,10 @@ export default function LearningPage() {
 
     // Video refs
     const videoRef = useRef<HTMLVideoElement>(null);
+    // WP1.5.3/1.5.4: imperative handle to whichever adapter is mounted
+    // (YouTube or Vimeo) — used for "add note at current time" and for
+    // clicking a note to seek the player back to its timestamp.
+    const playerHandleRef = useRef<VideoPlayerHandle>(null);
 
     // Helper function to extract YouTube video ID
     const getYouTubeVideoId = (url: string): string | null => {
@@ -61,10 +76,35 @@ export default function LearningPage() {
         return url.includes('youtube.com') || url.includes('youtu.be');
     };
 
+    // WP1.5.3: Vimeo had a thumbnail but no playback adapter — URLs fell
+    // through to the plain <video> tag and silently failed to play.
+    const isVimeoUrl = (url: string): boolean => url.includes('vimeo.com');
+
+    const getVimeoVideoId = (url: string): string | null => {
+        const match = url.match(/vimeo\.com\/(?:.*\/)?(\d+)/);
+        return match ? match[1] : null;
+    };
+
     // Memoize videoId so it doesn't change reference unless the lesson changes
     const youtubeVideoId = useMemo(() => {
-        return currentLesson?.videoUrl ? getYouTubeVideoId(currentLesson.videoUrl) : null;
+        return currentLesson?.videoUrl && isYouTubeUrl(currentLesson.videoUrl)
+            ? getYouTubeVideoId(currentLesson.videoUrl)
+            : null;
     }, [currentLesson?.videoUrl]);
+
+    const vimeoVideoId = useMemo(() => {
+        return currentLesson?.videoUrl && isVimeoUrl(currentLesson.videoUrl)
+            ? getVimeoVideoId(currentLesson.videoUrl)
+            : null;
+    }, [currentLesson?.videoUrl]);
+
+    // WP1.5.12 — marks a lesson complete in the sidebar/header-bar `lessons`
+    // list the moment the backend confirms it, instead of only after a full
+    // page reload (that list was fetched once in loadCourseData and never
+    // patched again).
+    const markLessonCompleted = useCallback((lessonId: string) => {
+        setLessons(prev => prev.map(l => l.id === lessonId ? { ...l, isCompleted: true } : l));
+    }, []);
 
     // Memoize callbacks to prevent remounting
     const handleProgressUpdate = useCallback(async (currentTime: number) => {
@@ -73,28 +113,39 @@ export default function LearningPage() {
         if (Math.abs(roundedTime - lastSentTimeRef.current) >= 5) {
             if (!currentLesson) return;
 
+            const previousSentTime = lastSentTimeRef.current;
             // CẬP NHẬT NGAY LẬP TỨC TRƯỚC KHI GỌI API
             // Việc này ngăn các nhịp setInterval sau gửi trùng dữ liệu
             lastSentTimeRef.current = roundedTime;
             try {
-                await updateLessonProgress(currentLesson.id, roundedTime, videoDuration);
+                const progress = await updateLessonProgress(currentLesson.id, roundedTime, videoDuration);
+                setProgressSyncError(false);
+                if (progress?.isCompleted) markLessonCompleted(currentLesson.id);
             } catch (err) {
                 console.error('BE Sync Error:', err);
-                // Nếu lỗi, có thể reset lại để nhịp sau gửi lại
-                // lastSentTimeRef.current = roundedTime - 5;
+                // WP1.5.12: previously this failure was fully silent and
+                // lastSentTimeRef stayed advanced, so the next 5s tick would
+                // just skip re-sending this window — that position was lost
+                // for good. Roll back so the next tick retries, and surface
+                // the failure instead of hiding it.
+                lastSentTimeRef.current = previousSentTime;
+                setProgressSyncError(true);
             }
         }
-    }, [currentLesson, videoDuration]);
+    }, [currentLesson, videoDuration, markLessonCompleted]);
 
     const handleFlushUpdate = useCallback(async (time: number) => {
         const roundedTime = Math.floor(time);
         if (!currentLesson) return;
         try {
-            await updateLessonProgress(currentLesson.id, roundedTime, videoDuration);
+            const progress = await updateLessonProgress(currentLesson.id, roundedTime, videoDuration);
+            setProgressSyncError(false);
+            if (progress?.isCompleted) markLessonCompleted(currentLesson.id);
         } catch (err) {
             console.error('Flush Error:', err);
+            setProgressSyncError(true);
         }
-    }, [currentLesson, videoDuration]);
+    }, [currentLesson, videoDuration, markLessonCompleted]);
 
     const handleDurationUpdate = useCallback((duration: number) => {
         setVideoDuration(duration);
@@ -126,14 +177,15 @@ export default function LearningPage() {
     const loadLessonData = useCallback(async (lessonId: string, lessonType: string) => {
         // console.log('loadLessonData called with:', { lessonId, lessonType });
         try {
-            const [progress, note] = await Promise.all([
+            const [progress, lessonNotes] = await Promise.all([
                 getLessonProgress(lessonId),
-                getLessonNote(lessonId)
+                getLessonNotes(lessonId)
             ]);
 
-            // console.log('Progress and note loaded:', { progress, note });
+            // console.log('Progress and notes loaded:', { progress, lessonNotes });
             setLessonProgress(progress);
-            setNoteContent(note?.content || '');
+            setNotes(lessonNotes);
+            setNoteDraft('');
 
             // Always set appState based on lesson type
             if (lessonType.toLowerCase() === 'video') {
@@ -180,13 +232,35 @@ export default function LearningPage() {
     useEffect(() => {
         loadCourseData();
         loadUser();
+        setFocusMode(localStorage.getItem('focusMode') === '1');
     }, [loadCourseData, loadUser]);
+
+    const toggleFocusMode = () => {
+        setFocusMode(prev => {
+            const next = !prev;
+            localStorage.setItem('focusMode', next ? '1' : '0');
+            return next;
+        });
+    };
 
     useEffect(() => {
         if (currentLesson) {
             loadLessonData(currentLesson.id, currentLesson.type);
         }
     }, [currentLesson, loadLessonData]);
+
+    // WP1.5.3: `lessonProgress` (which carries the resume position) loads
+    // asynchronously and can arrive after the plain-<video> element already
+    // fired `onLoadedMetadata` — the one-shot seek there can race and miss.
+    // Re-apply the seek whenever progress lands, as long as playback hasn't
+    // moved past a few seconds yet (don't yank the learner back mid-watch).
+    useEffect(() => {
+        const resumeAt = lessonProgress?.currentPosition || 0;
+        const el = videoRef.current;
+        if (el && resumeAt > 0 && el.currentTime < 1 && el.readyState >= 1) {
+            el.currentTime = resumeAt;
+        }
+    }, [lessonProgress]);
 
     const handleLessonSelect = (lesson: Lesson) => {
         // Reset progress tracking state
@@ -202,6 +276,19 @@ export default function LearningPage() {
         setAppState('loading');
     };
 
+    // WP1.5.3: no lesson auto-advanced to the next one when its video ended —
+    // the learner had to manually pick the next item from the sidebar every
+    // single time.
+    const handleVideoEnded = useCallback(() => {
+        if (!currentLesson) return;
+        const currentIndex = lessons.findIndex(l => l.id === currentLesson.id);
+        const next = currentIndex >= 0 ? lessons[currentIndex + 1] : undefined;
+        if (next) {
+            handleLessonSelect(next);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [currentLesson, lessons]);
+
     const handleVideoProgress = async () => {
         if (videoRef.current && currentLesson) {
             const currentTime = Math.floor(videoRef.current.currentTime);
@@ -209,8 +296,12 @@ export default function LearningPage() {
             try {
                 const progress = await updateLessonProgress(currentLesson.id, currentTime, duration);
                 setLessonProgress(progress);
+                setProgressSyncError(false);
+                if (progress?.isCompleted) markLessonCompleted(currentLesson.id);
             } catch (error) {
-                // Silent fail for progress updates
+                // WP1.5.12: was a fully silent fail — surface it instead.
+                console.error('Video progress sync error:', error);
+                setProgressSyncError(true);
             }
         }
     };
@@ -250,22 +341,52 @@ export default function LearningPage() {
             const result = await submitQuiz(currentLesson.id, quizSession.sessionId, answers);
             setQuizResult(result);
             setAppState('quiz_result');
+            // WP1.5.12: submitting a quiz completes the lesson — reflect that
+            // in the sidebar/progress-bar `lessons` list right away.
+            markLessonCompleted(currentLesson.id);
         } catch (error: any) {
             setErrorMessage(error.message);
         }
-    }, [currentLesson, quizSession, answers]);
+    }, [currentLesson, quizSession, answers, markLessonCompleted]);
 
-    const handleSaveNote = async () => {
-        if (!currentLesson) return;
+    // WP1.5.4: notes are added (not overwritten) and can carry the video
+    // timestamp they were written at, so clicking one later seeks back there.
+    const handleAddNote = async () => {
+        if (!currentLesson || !noteDraft.trim()) return;
 
         setIsSavingNote(true);
         try {
-            await saveLessonNote(currentLesson.id, noteContent);
-            // Note saved successfully
+            const timestamp = pinToTimestamp
+                ? Math.floor(playerHandleRef.current?.getCurrentTime() ?? videoRef.current?.currentTime ?? 0)
+                : null;
+            const created = await addLessonNote(currentLesson.id, noteDraft, timestamp);
+            setNotes(prev => [...prev, created].sort((a, b) => (a.videoTimestampSec ?? -1) - (b.videoTimestampSec ?? -1)));
+            setNoteDraft('');
         } catch (error: any) {
             setErrorMessage(error.message);
         } finally {
             setIsSavingNote(false);
+        }
+    };
+
+    const handleDeleteNote = async (noteId: string) => {
+        if (!currentLesson) return;
+        const prevNotes = notes;
+        setNotes(prev => prev.filter(n => n.id !== noteId));
+        try {
+            await deleteLessonNote(currentLesson.id, noteId);
+        } catch (error: any) {
+            setNotes(prevNotes);
+            setErrorMessage(error.message);
+        }
+    };
+
+    const handleSeekToNote = (note: LessonNote) => {
+        if (note.videoTimestampSec == null) return;
+        if (playerHandleRef.current) {
+            playerHandleRef.current.seekTo(note.videoTimestampSec);
+        } else if (videoRef.current) {
+            videoRef.current.currentTime = note.videoTimestampSec;
         }
     };
 
@@ -318,20 +439,12 @@ export default function LearningPage() {
         return Math.round((completedLessons / lessons.length) * 100);
     };
 
-    if (appState === 'loading') {
-        return (
-            <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-                <div className="animate-spin rounded-full h-10 w-10 border-2 border-blue-600 border-t-transparent"></div>
-            </div>
-        );
-    }
-
     return (
         <div className="min-h-screen bg-slate-50">
-            <Header user={user} onLogout={handleLogout} onJoin={handleJoin} />
+            {!focusMode && <Header user={user} onLogout={handleLogout} onJoin={handleJoin} />}
 
             {/* Lesson Sub-Header */}
-            <div className="bg-white border-b border-slate-200 sticky top-16 z-10">
+            <div className={`bg-white border-b border-slate-200 sticky z-10 ${focusMode ? 'top-0' : 'top-16'}`}>
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex items-center justify-between h-14">
                         <div className="flex items-center gap-4 min-w-0">
@@ -349,25 +462,53 @@ export default function LearningPage() {
                                 {currentLesson ? `Bài ${currentLesson.order}: ${currentLesson.title}` : 'Đang tải...'}
                             </p>
                         </div>
-                        <div className="flex items-center gap-2 text-xs text-slate-500 flex-shrink-0">
-                            <div className="w-24 bg-slate-100 rounded-full h-1.5">
-                                <div
-                                    className="bg-blue-600 h-1.5 rounded-full transition-all"
-                                    style={{ width: `${calculateCourseProgress()}%` }}
-                                />
+                        <div className="flex items-center gap-3 flex-shrink-0">
+                            <button
+                                onClick={toggleFocusMode}
+                                title={focusMode ? 'Thoát chế độ tập trung' : 'Bật chế độ tập trung'}
+                                className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${focusMode ? 'bg-indigo-50 text-indigo-700' : 'text-slate-500 hover:bg-slate-100'}`}
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    {focusMode ? (
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 9V4.5M9 9H4.5M9 9L3.5 3.5M15 9h4.5M15 9V4.5M15 9l5.5-5.5M9 15v4.5M9 15H4.5M9 15l-5.5 5.5M15 15h4.5M15 15v4.5m0-4.5l5.5 5.5"/>
+                                    ) : (
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-5h-4m4 0v4m0-4l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5h-4m4 0v-4"/>
+                                    )}
+                                </svg>
+                                {focusMode ? 'Thoát tập trung' : 'Tập trung'}
+                            </button>
+                            <div className="flex items-center gap-2 text-xs text-slate-500">
+                                <div className="w-24 bg-slate-100 rounded-full h-1.5">
+                                    <div
+                                        className="bg-blue-600 h-1.5 rounded-full transition-all"
+                                        style={{ width: `${calculateCourseProgress()}%` }}
+                                    />
+                                </div>
+                                <span className="font-medium text-blue-600">{calculateCourseProgress()}%</span>
                             </div>
-                            <span className="font-medium text-blue-600">{calculateCourseProgress()}%</span>
                         </div>
                     </div>
                 </div>
             </div>
 
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-                <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                <div className={`grid grid-cols-1 gap-6 ${focusMode ? '' : 'lg:grid-cols-4'}`}>
                     {/* Main Content Area */}
-                    <div className="lg:col-span-3 space-y-4">
+                    <div className={focusMode ? 'space-y-4' : 'lg:col-span-3 space-y-4'}>
                         {/* Video Player or Quiz Area */}
                         <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+                            {/* WP1.5.7: switching lessons (or the very first load) used to
+                                unmount the whole page — header, sidebar, progress bar — behind
+                                a bare centered spinner. Now only this card swaps to a skeleton;
+                                the rest of the layout (sidebar, header) stays mounted, matching
+                                the pattern already used in courses/[id]/page.tsx. */}
+                            {appState === 'loading' && (
+                                <div className="space-y-4">
+                                    <Skeleton className="h-64 rounded-xl bg-slate-200" />
+                                    <Skeleton className="h-4 w-1/3 bg-slate-200" />
+                                    <Skeleton className="h-4 w-2/3 bg-slate-200" />
+                                </div>
+                            )}
                             {/* Keep the video DOM mounted to avoid re-mounts caused by transient appState changes */}
                             <div className={appState === 'idle' ? 'block' : 'hidden'}>
                                 {currentLesson?.type?.toLowerCase() === 'video' && (
@@ -375,22 +516,42 @@ export default function LearningPage() {
                                         {currentLesson.videoUrl && isYouTubeUrl(currentLesson.videoUrl) ? (
                                             <YoutubePlayer
                                                 key={currentLesson.id}
+                                                ref={playerHandleRef}
                                                 videoId={youtubeVideoId || ''}
                                                 initialPos={lessonProgress?.currentPosition || 0}
                                                 onProgress={handleProgressUpdate}
                                                 onDuration={handleDurationUpdate}
                                                 onFlush={handleFlushUpdate}
+                                                onEnded={handleVideoEnded}
+                                            />
+                                        ) : currentLesson.videoUrl && isVimeoUrl(currentLesson.videoUrl) ? (
+                                            <VimeoPlayer
+                                                key={currentLesson.id}
+                                                ref={playerHandleRef}
+                                                videoId={vimeoVideoId || ''}
+                                                initialPos={lessonProgress?.currentPosition || 0}
+                                                onProgress={handleProgressUpdate}
+                                                onDuration={handleDurationUpdate}
+                                                onFlush={handleFlushUpdate}
+                                                onEnded={handleVideoEnded}
                                             />
                                         ) : (
                                             <video
+                                                key={currentLesson.id}
                                                 ref={videoRef}
                                                 controls
                                                 className="w-full rounded-lg"
                                                 onTimeUpdate={handleVideoProgress}
-                                                onEnded={() => handleVideoProgress()}
+                                                onEnded={() => { handleVideoProgress(); handleVideoEnded(); }}
                                                 onLoadedMetadata={() => {
                                                     if (videoRef.current) {
                                                         setVideoDuration(Math.floor(videoRef.current.duration));
+                                                        // WP1.5.3: resume-position only worked on the YouTube
+                                                        // branch — a plain <video> lesson always restarted at 0.
+                                                        const resumeAt = lessonProgress?.currentPosition || 0;
+                                                        if (resumeAt > 0) {
+                                                            videoRef.current.currentTime = resumeAt;
+                                                        }
                                                     }
                                                 }}
                                             >
@@ -403,6 +564,14 @@ export default function LearningPage() {
                                         {lessonProgress && (
                                             <div className="mt-3 text-xs text-slate-400">
                                                 Tiến độ: {formatTime(lessonProgress.currentPosition)} / {formatTime(videoDuration || currentLesson.duration || 0)}
+                                            </div>
+                                        )}
+                                        {progressSyncError && (
+                                            <div className="mt-2 flex items-center gap-1.5 text-xs text-amber-600">
+                                                <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                                                </svg>
+                                                Chưa lưu được tiến độ, đang thử lại...
                                             </div>
                                         )}
                                     </div>
@@ -552,23 +721,68 @@ export default function LearningPage() {
                             )}
                         </div>
 
-                        {/* Notes Section - Only show for video lessons */}
+                        {/* Notes Section - WP1.5.4: many notes per lesson now, each
+                            optionally pinned to the video timestamp it was written
+                            at (click a note to jump the player back there). */}
                         {currentLesson?.type?.toLowerCase() === 'video' && (
                             <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
                                 <h3 className="text-sm font-semibold text-slate-800 mb-3">
                                     Ghi chú bài học
                                 </h3>
+
+                                {notes.length > 0 && (
+                                    <ul className="space-y-2 mb-4">
+                                        {notes.map(note => (
+                                            <li key={note.id} className="flex items-start gap-2 p-3 rounded-lg border border-slate-200 group">
+                                                <div className="flex-1 min-w-0">
+                                                    {note.videoTimestampSec != null && (
+                                                        <button
+                                                            onClick={() => handleSeekToNote(note)}
+                                                            className="text-xs font-mono font-medium text-blue-600 hover:underline mb-1"
+                                                        >
+                                                            ⏱ {formatTime(note.videoTimestampSec)}
+                                                        </button>
+                                                    )}
+                                                    <p className="text-sm text-slate-700 whitespace-pre-wrap break-words">{note.content}</p>
+                                                </div>
+                                                <button
+                                                    onClick={() => handleDeleteNote(note.id)}
+                                                    title="Xoá ghi chú"
+                                                    className="flex-shrink-0 text-slate-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                                                >
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                                    </svg>
+                                                </button>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                )}
+
                                 <textarea
-                                    value={noteContent}
-                                    onChange={(e) => setNoteContent(e.target.value)}
-                                    placeholder="Nhập ghi chú của bạn..."
-                                    rows={4}
+                                    value={noteDraft}
+                                    onChange={(e) => setNoteDraft(e.target.value)}
+                                    placeholder="Nhập ghi chú mới..."
+                                    rows={3}
+                                    maxLength={1000}
                                     className="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
                                 />
+                                <div className="mt-2 flex items-center justify-between">
+                                    <label className="inline-flex items-center gap-1.5 text-xs text-slate-500">
+                                        <input
+                                            type="checkbox"
+                                            checked={pinToTimestamp}
+                                            onChange={(e) => setPinToTimestamp(e.target.checked)}
+                                            className="rounded text-blue-600 focus:ring-blue-500"
+                                        />
+                                        Gắn vào thời điểm hiện tại của video
+                                    </label>
+                                    <span className="text-xs text-slate-400">{noteDraft.length}/1000</span>
+                                </div>
                                 <div className="mt-3 flex justify-end">
                                     <button
-                                        onClick={handleSaveNote}
-                                        disabled={isSavingNote}
+                                        onClick={handleAddNote}
+                                        disabled={isSavingNote || !noteDraft.trim()}
                                         className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors"
                                     >
                                         {isSavingNote ? (
@@ -576,14 +790,15 @@ export default function LearningPage() {
                                                 <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"/>
                                                 Đang lưu...
                                             </>
-                                        ) : 'Lưu ghi chú'}
+                                        ) : 'Thêm ghi chú'}
                                     </button>
                                 </div>
                             </div>
                         )}
                     </div>
 
-                    {/* Sidebar - Lesson List */}
+                    {/* Sidebar - Lesson List (hidden in focus mode — no distraction from the current lesson) */}
+                    {!focusMode && (
                     <div className="lg:col-span-1">
                         <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 sticky top-28">
                             <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">
@@ -621,6 +836,7 @@ export default function LearningPage() {
                             </div>
                         </div>
                     </div>
+                    )}
                 </div>
             </div>
         </div>

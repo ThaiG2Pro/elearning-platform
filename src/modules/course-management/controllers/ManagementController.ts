@@ -48,8 +48,24 @@ export class ManagementController {
         return await this.contentService.createCourse(lecturerId, dto);
     }
 
+    async createCourseFromLink(ownerId: bigint, url: string): Promise<bigint> {
+        return await this.contentService.createCourseFromLink(ownerId, url);
+    }
+
     async updateCourseMetadata(lecturerId: bigint, courseId: bigint, data: { title?: string; description?: string }): Promise<void> {
         return await this.contentService.updateCourseMetadata(lecturerId, courseId, data);
+    }
+
+    async getOrCreateShareLink(userId: bigint, courseId: bigint): Promise<string> {
+        return await this.contentService.getOrCreateShareLink(userId, courseId);
+    }
+
+    async revokeShareLink(userId: bigint, courseId: bigint): Promise<void> {
+        await this.contentService.revokeShareLink(userId, courseId);
+    }
+
+    async listMyShareLinks(userId: bigint): Promise<Array<{ id: number; title: string; shareToken: string | null }>> {
+        return await this.contentService.listMyShareLinks(userId);
     }
 
     // Section Management

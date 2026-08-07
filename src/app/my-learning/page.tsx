@@ -5,6 +5,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
 import { getEnrolledCourses } from '@/lib/course';
+import { Skeleton } from '@/components/ui/skeleton';
 import { EnrolledCourse } from '@/types/course.types';
 import { User } from '@/types/auth.types';
 import { logout as apiLogout, AuthUtils } from '@/lib/auth';
@@ -137,12 +138,12 @@ export default function MyLearningPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {appState === 'loading' && (
                         Array.from({ length: 6 }).map((_, index) => (
-                            <div key={index} className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden animate-pulse">
-                                <div className="w-full aspect-video bg-slate-200"></div>
+                            <div key={index} className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+                                <Skeleton className="w-full aspect-video rounded-none bg-slate-200" />
                                 <div className="p-4 space-y-2">
-                                    <div className="h-4 bg-slate-200 rounded w-3/4"></div>
-                                    <div className="h-3 bg-slate-200 rounded w-1/2"></div>
-                                    <div className="h-2 bg-slate-200 rounded-full w-full mt-3"></div>
+                                    <Skeleton className="h-4 w-3/4 bg-slate-200" />
+                                    <Skeleton className="h-3 w-1/2 bg-slate-200" />
+                                    <Skeleton className="h-2 w-full rounded-full mt-3 bg-slate-200" />
                                 </div>
                             </div>
                         ))

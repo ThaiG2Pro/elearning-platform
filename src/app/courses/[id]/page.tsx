@@ -4,6 +4,7 @@ import Image from 'next/image';
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Header from '@/components/Header';
+import { Skeleton } from '@/components/ui/skeleton';
 import { CourseDetail } from '@/types/course.types';
 import { User } from '@/types/auth.types';
 import { getCourseDetail } from '@/lib/courses';
@@ -36,9 +37,17 @@ export default function CourseDetailPage() {
             }
         };
 
-        if (courseId) {
-            fetchCourse();
+        // WP1.5.12: `courseId` was never checked for NaN — a malformed
+        // course-id in the URL (e.g. /courses/abc) left appState stuck at
+        // 'idle' forever, rendering nothing (no loading, no error). Surface
+        // it as an error immediately instead of silently doing nothing.
+        if (Number.isNaN(courseId)) {
+            setAppState('error');
+            setErrorMessage('Đường dẫn khóa học không hợp lệ.');
+            return;
         }
+
+        fetchCourse();
     }, [courseId]);
 
     // Load user from token on mount
@@ -88,13 +97,13 @@ export default function CourseDetailPage() {
                 </section>
 
                 {appState === 'loading' ? (
-                    <div className="animate-pulse space-y-4">
-                        <div className="h-64 bg-slate-200 rounded-xl"></div>
-                        <div className="h-6 bg-slate-200 rounded w-2/3"></div>
-                        <div className="h-4 bg-slate-200 rounded w-1/3"></div>
-                        <div className="h-4 bg-slate-200 rounded w-full"></div>
-                        <div className="h-4 bg-slate-200 rounded w-5/6"></div>
-                        <div className="h-10 bg-slate-200 rounded w-32 mt-2"></div>
+                    <div className="space-y-4">
+                        <Skeleton className="h-64 rounded-xl bg-slate-200" />
+                        <Skeleton className="h-6 w-2/3 bg-slate-200" />
+                        <Skeleton className="h-4 w-1/3 bg-slate-200" />
+                        <Skeleton className="h-4 w-full bg-slate-200" />
+                        <Skeleton className="h-4 w-5/6 bg-slate-200" />
+                        <Skeleton className="h-10 w-32 mt-2 bg-slate-200" />
                     </div>
                 ) : course ? (
                     <>
@@ -132,6 +141,20 @@ export default function CourseDetailPage() {
                             </div>
                             {course.description && (
                                 <p className="text-sm text-slate-600 leading-relaxed">{course.description}</p>
+                            )}
+                            {user && typeof course.completionRate === 'number' && (
+                                <div className="mt-4">
+                                    <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
+                                        <span>Tiến độ học của bạn</span>
+                                        <span className="font-medium text-slate-700">{course.completionRate}%</span>
+                                    </div>
+                                    <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                                        <div
+                                            className="h-full bg-emerald-500 rounded-full transition-all"
+                                            style={{ width: `${course.completionRate}%` }}
+                                        />
+                                    </div>
+                                </div>
                             )}
                         </section>
 

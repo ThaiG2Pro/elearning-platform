@@ -20,6 +20,7 @@ model users {
   lecturer_courses  courses[]           @relation("CourseLecturer")
   enrollments       enrollments[]
   learning_progress learning_progress[]
+  notes             notes[]
   role              roles               @relation(fields: [role_id], references: [id])
   tokens            tokens[]
 
@@ -60,20 +61,30 @@ model sources {
 }
 
 model courses {
-  id                BigInt              @id @default(autoincrement()) @map("id")
-  owner_id          BigInt              @map("owner_id")
-  lecturer_id       BigInt              @map("lecturer_id")
-  title             String              @db.VarChar(255) @map("title")
-  slug              String              @unique @db.VarChar(255) @map("slug")
-  share_token       String?             @unique @db.VarChar(100) @map("share_token")
-  description       String?             @db.Text @map("description")
-  status            String              @default("active") @db.VarChar(20) @map("status")
+  id                    BigInt              @id @default(autoincrement()) @map("id")
+  owner_id              BigInt              @map("owner_id")
+  lecturer_id           BigInt              @map("lecturer_id")
+  title                 String              @db.VarChar(255) @map("title")
+  slug                  String              @unique @db.VarChar(255) @map("slug")
+  share_token           String?             @unique @db.VarChar(100) @map("share_token")
+  description           String?             @db.Text @map("description")
+  status                String              @default("active") @db.VarChar(20) @map("status")
+  // WP1.5.12 — records which course a "Sao chép về học" clone came from, so
+  // cloneForOwner can dedupe: same (owner, source) pair reuses the existing
+  // clone instead of creating a duplicate on a double-submit/double-fire.
+  cloned_from_course_id BigInt?             @map("cloned_from_course_id")
   chapters          chapters[]
   enrollments       enrollments[]
   learning_progress learning_progress[]
+  notes             notes[]
   owner             users               @relation("CourseOwner", fields: [owner_id], references: [id])
   lecturer          users               @relation("CourseLecturer", fields: [lecturer_id], references: [id])
 
+  // Postgres allows multiple NULLs through a unique index, so this only
+  // constrains actual clones (cloned_from_course_id set) — owner-authored
+  // courses are unaffected. This is what makes cloneForOwner's
+  // check-then-create race-safe under concurrent double-submits.
+  @@unique([owner_id, cloned_from_course_id])
   @@map("courses")
 }
 
@@ -100,8 +111,30 @@ model lessons {
   source            sources?            @relation(fields: [source_id], references: [id])
   learning_progress learning_progress[]
   questions         questions[]
+  notes             notes[]
 
   @@map("lessons")
+}
+
+// WP1.5.4: notes used to "ride" on learning_progress.personal_note — one
+// note per (user, lesson), no timestamp, no delete. A real note-taking
+// feature needs its own table: many notes per lesson, each optionally
+// pinned to a video timestamp so clicking it can seek the player there.
+model notes {
+  id                  BigInt   @id @default(autoincrement()) @map("id")
+  user_id             BigInt   @map("user_id")
+  lesson_id           BigInt   @map("lesson_id")
+  course_id           BigInt   @map("course_id")
+  content             String   @db.Text @map("content")
+  video_timestamp_sec Int?     @map("video_timestamp_sec")
+  created_at          DateTime @default(now()) @map("created_at")
+  updated_at          DateTime @default(now()) @updatedAt @map("updated_at")
+  user                users    @relation(fields: [user_id], references: [id])
+  lesson              lessons  @relation(fields: [lesson_id], references: [id])
+  course              courses  @relation(fields: [course_id], references: [id])
+
+  @@index([user_id, lesson_id])
+  @@map("notes")
 }
 
 model enrollments {
@@ -121,7 +154,7 @@ model learning_progress {
   id                  BigInt       @id @default(autoincrement()) @map("id")
   user_id             BigInt?      @map("user_id")
   course_id           BigInt?      @map("course_id")
-  enrollment_id       BigInt       @map("enrollment_id")
+  enrollment_id       BigInt?      @map("enrollment_id")
   lesson_id           BigInt       @map("lesson_id")
   is_finished         Boolean      @default(false) @map("is_finished")
   video_last_position Int?         @map("video_last_position")
@@ -129,11 +162,15 @@ model learning_progress {
   quiz_start_time     DateTime?    @map("quiz_start_time")
   personal_note       String?      @db.Text @map("personal_note")
   quiz_question_ids   String?      @db.Text @map("quiz_question_ids")
-  enrollment          enrollments  @relation(fields: [enrollment_id], references: [id])
+  enrollment          enrollments? @relation(fields: [enrollment_id], references: [id])
   lesson              lessons      @relation(fields: [lesson_id], references: [id])
   user                users?       @relation(fields: [user_id], references: [id])
   course              courses?     @relation(fields: [course_id], references: [id])
 
+  // WP1.3: progress is keyed by ownership (user_id + lesson_id), not by the
+  // marketplace enrollment row — this is the identity going forward.
+  // enrollment_id stays nullable for pre-pivot rows only.
+  @@unique([user_id, lesson_id])
   @@map("learning_progress")
 }
 

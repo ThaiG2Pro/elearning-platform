@@ -9,6 +9,7 @@ export class CourseDetailDto {
         public chapters: ChapterDto[],
         public thumbnailUrl?: string,
         public status?: string,
+        public completionRate?: number,
     ) { }
 }
 
@@ -27,5 +28,18 @@ export class LessonDto {
         public type: string,
         public orderIndex: number,
         public contentUrl?: string,
+    ) { }
+}
+
+/** Anonymous-visitor view of a shared course — no enrollment/progress fields. */
+export class PublicCourseDto {
+    constructor(
+        public id: number,
+        public title: string,
+        public description: string | null,
+        public ownerName: string | null,
+        public chapters: ChapterDto[],
+        public thumbnailUrl?: string,
+        public shareToken?: string,
     ) { }
 }

@@ -48,6 +48,11 @@ export default function Header({ user, onLogout, onJoin }: HeaderProps) {
         router.push('/lecturer/courses');
     };
 
+    const handleMySharesClick = () => {
+        setIsDropdownOpen(false);
+        router.push('/my-shares');
+    };
+
 
 
     const handleLogoutClick = () => {
@@ -121,6 +126,11 @@ export default function Header({ user, onLogout, onJoin }: HeaderProps) {
                                                     className="flex items-center gap-2.5 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 w-full text-left transition-colors">
                                                     <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
                                                     Khóa học đã tạo
+                                                </button>
+                                                <button onClick={handleMySharesClick} role="menuitem"
+                                                    className="flex items-center gap-2.5 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 w-full text-left transition-colors">
+                                                    <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8.684 13.342a4 4 0 010-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684zm0-9.316a3 3 0 105.368-2.684 3 3 0 00-5.368 2.684z"/></svg>
+                                                    Link chia sẻ của tôi
                                                 </button>
                                                 <div className="mx-4 my-1 border-t border-slate-100" />
                                                 <button onClick={handleProfileClick} role="menuitem"

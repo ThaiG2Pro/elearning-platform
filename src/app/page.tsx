@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
 import SearchBar from '@/components/SearchBar';
 import CourseList from '@/components/CourseList';
+import { Button } from '@/components/ui/button';
 import { Course } from '@/types/course.types';
 import { User } from '@/types/auth.types';
 import { getCourses } from '@/lib/courses';
@@ -30,24 +31,29 @@ export default function Home() {
         return () => clearTimeout(timer);
     }, [searchQuery]);
 
+    // WP1.5.12 — extracted so the "Thử lại" button can call it directly.
+    // Previously retry did `setDebouncedSearchQuery(searchQuery)`, which is a
+    // no-op whenever the two are already equal (the common case right after
+    // an error) — React bails out of the state update and the effect below
+    // never re-runs, so the button did nothing.
+    const fetchCourses = useCallback(async (query: string) => {
+        try {
+            setAppState('loading');
+            setErrorMessage(null);
+            const data = await getCourses(query || undefined);
+            setCourses(data);
+            setAppState('success');
+        } catch (error: any) {
+            setAppState('error');
+            setErrorMessage(error.message);
+            setCourses([]);
+        }
+    }, []);
+
     // Effect for search changes
     useEffect(() => {
-        const fetchCourses = async () => {
-            try {
-                setAppState('loading');
-                setErrorMessage(null);
-                const data = await getCourses(debouncedSearchQuery || undefined);
-                setCourses(data);
-                setAppState('success');
-            } catch (error: any) {
-                setAppState('error');
-                setErrorMessage(error.message);
-                setCourses([]);
-            }
-        };
-
-        fetchCourses(); // Always fetch courses, with or without search
-    }, [debouncedSearchQuery]);
+        fetchCourses(debouncedSearchQuery); // Always fetch courses, with or without search
+    }, [debouncedSearchQuery, fetchCourses]);
 
     // Load user from token on mount
     useEffect(() => {
@@ -94,13 +100,18 @@ export default function Home() {
                                 <SearchBar value={searchQuery} onChange={handleSearchChange} />
                             </div>
                             {user && (
-                                <button
+                                // WP1.5.12: was `hidden md:inline-flex` — completely
+                                // unreachable on mobile. Now always visible; the
+                                // label collapses to icon-only below `sm` so it
+                                // doesn't crowd the search bar on small screens.
+                                <Button
                                     onClick={() => router.push('/lecturer/courses')}
-                                    className="hidden md:inline-flex items-center gap-1.5 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors whitespace-nowrap"
+                                    aria-label="Tạo khóa học"
+                                    className="whitespace-nowrap"
                                 >
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/></svg>
-                                    Tạo khóa học
-                                </button>
+                                    <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/></svg>
+                                    <span className="hidden sm:inline">Tạo khóa học</span>
+                                </Button>
                             )}
                         </div>
                     </div>
@@ -112,8 +123,8 @@ export default function Home() {
                         <h2 className="text-base font-semibold text-slate-800">
                             {searchQuery ? `Kết quả cho "${searchQuery}"` : 'Khóa học nổi bật'}
                         </h2>
-                        {appState === 'success' && (
-                            <span className="text-xs text-slate-400">{/* course count could go here */}</span>
+                        {appState === 'success' && courses.length > 0 && (
+                            <span className="text-xs text-slate-400">{courses.length} khóa học</span>
                         )}
                     </div>
 
@@ -135,12 +146,12 @@ export default function Home() {
                                 </svg>
                             </div>
                             <p className="text-sm text-slate-600 mb-3">{errorMessage}</p>
-                            <button
-                                onClick={() => setDebouncedSearchQuery(searchQuery)}
-                                className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                            <Button
+                                variant="link"
+                                onClick={() => fetchCourses(debouncedSearchQuery)}
                             >
                                 Thử lại
-                            </button>
+                            </Button>
                         </div>
                     )}
                 </section>
