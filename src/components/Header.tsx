@@ -48,10 +48,7 @@ export default function Header({ user, onLogout, onJoin }: HeaderProps) {
         router.push('/lecturer/courses');
     };
 
-    const handlePendingQueueClick = () => {
-        setIsDropdownOpen(false);
-        router.push('/admin/approval-queue');
-    };
+
 
     const handleLogoutClick = () => {
         setIsDropdownOpen(false);
@@ -104,7 +101,7 @@ export default function Header({ user, onLogout, onJoin }: HeaderProps) {
                                             {/* User info header */}
                                             <div className="px-4 py-3 border-b border-slate-100 bg-slate-50">
                                                 <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">
-                                                    {user.role === 'STUDENT' ? 'Học viên' : user.role === 'LECTURER' ? 'Giảng viên' : 'Quản trị viên'}
+                                                    Tài khoản cá nhân
                                                 </p>
                                                 <p className="text-sm font-semibold text-slate-900 truncate mt-0.5">{user.fullName}</p>
                                             </div>
@@ -115,27 +112,16 @@ export default function Header({ user, onLogout, onJoin }: HeaderProps) {
                                                     <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
                                                     Trang chủ
                                                 </button>
-                                                {user.role === 'STUDENT' && (
-                                                    <button onClick={handleMyLearningClick} role="menuitem"
-                                                        className="flex items-center gap-2.5 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 w-full text-left transition-colors">
-                                                        <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
-                                                        Khóa học của tôi
-                                                    </button>
-                                                )}
-                                                {user.role === 'LECTURER' && (
-                                                    <button onClick={handleMyCoursesClick} role="menuitem"
-                                                        className="flex items-center gap-2.5 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 w-full text-left transition-colors">
-                                                        <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
-                                                        Khóa học của tôi
-                                                    </button>
-                                                )}
-                                                {user.role === 'ADMIN' && (
-                                                    <button onClick={handlePendingQueueClick} role="menuitem"
-                                                        className="flex items-center gap-2.5 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 w-full text-left transition-colors">
-                                                        <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
-                                                        Danh sách chờ duyệt
-                                                    </button>
-                                                )}
+                                                <button onClick={handleMyLearningClick} role="menuitem"
+                                                    className="flex items-center gap-2.5 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 w-full text-left transition-colors">
+                                                    <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+                                                    Khóa học đang học
+                                                </button>
+                                                <button onClick={handleMyCoursesClick} role="menuitem"
+                                                    className="flex items-center gap-2.5 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 w-full text-left transition-colors">
+                                                    <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+                                                    Khóa học đã tạo
+                                                </button>
                                                 <div className="mx-4 my-1 border-t border-slate-100" />
                                                 <button onClick={handleProfileClick} role="menuitem"
                                                     className="flex items-center gap-2.5 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 w-full text-left transition-colors">

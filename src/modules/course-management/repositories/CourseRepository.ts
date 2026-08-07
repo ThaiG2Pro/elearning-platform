@@ -171,6 +171,7 @@ export class CourseRepository {
     async create(course: Course): Promise<void> {
         const created = await this.prisma.courses.create({
             data: {
+                owner_id: course.ownerId || course.lecturerId,
                 lecturer_id: course.lecturerId,
                 title: course.title,
                 slug: course.slug,

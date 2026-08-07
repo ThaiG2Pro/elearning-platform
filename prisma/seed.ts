@@ -101,6 +101,7 @@ async function main() {
     // Create courses
     const javaCourse = await prisma.courses.create({
         data: {
+            owner_id: jack.id,
             lecturer_id: jack.id,
             title: 'Nhập môn Java',
             slug: 'nhap-mon-java',
@@ -112,6 +113,7 @@ async function main() {
 
     const cppCourse = await prisma.courses.create({
         data: {
+            owner_id: jack.id,
             lecturer_id: jack.id,
             title: 'Nhập môn C++',
             slug: 'nhap-mon-cpp',
@@ -123,6 +125,7 @@ async function main() {
 
     const pythonCourse = await prisma.courses.create({
         data: {
+            owner_id: jack.id,
             lecturer_id: jack.id,
             title: 'Nhập môn Python',
             slug: 'nhap-mon-python',

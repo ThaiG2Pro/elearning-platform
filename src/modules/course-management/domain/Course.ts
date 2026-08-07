@@ -8,6 +8,8 @@ export enum CourseStatus {
 }
 
 export class Course {
+    public ownerId: bigint;
+
     constructor(
         public id: bigint | null,
         public lecturerId: bigint,
@@ -18,7 +20,11 @@ export class Course {
         public rejectNote: string | null,
         public submittedAt?: Date,
         public chapters: Chapter[] = [],
-    ) { }
+        ownerId?: bigint,
+        public shareToken?: string | null,
+    ) {
+        this.ownerId = ownerId ?? lecturerId;
+    }
 
     submit() {
         if (this.status !== CourseStatus.DRAFT && this.status !== CourseStatus.REJECTED) {

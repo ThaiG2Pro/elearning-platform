@@ -93,10 +93,10 @@ export default function Home() {
                             <div className="flex-1">
                                 <SearchBar value={searchQuery} onChange={handleSearchChange} />
                             </div>
-                            {user?.role === 'LECTURER' && (
+                            {user && (
                                 <button
                                     onClick={() => router.push('/lecturer/courses')}
-                                    className="hidden md:inline-flex items-center gap-1.5 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors whitespace-nowrap"
+                                    className="hidden md:inline-flex items-center gap-1.5 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors whitespace-nowrap"
                                 >
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/></svg>
                                     Tạo khóa học

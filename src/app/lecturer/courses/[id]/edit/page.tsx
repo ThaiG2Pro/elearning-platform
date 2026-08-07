@@ -10,7 +10,6 @@ import {
     createLesson,
     parseQuizFile,
     uploadQuizFile,
-    publishCourse,
     updateCourseContent,
 } from '@/lib/lecturer';
 import {
@@ -38,7 +37,6 @@ const CourseEditPage = () => {
     const [course, setCourse] = useState<CourseStructure | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [validationErrors, setValidationErrors] = useState<string[]>([]);
     const [editState, setEditState] = useState<EditState>('idle');
     const [selectedItem, setSelectedItem] = useState<Chapter | Lesson | null>(null);
     const [parsedQuestions, setParsedQuestions] = useState<QuizParseResponse | null>(null);
@@ -116,23 +114,7 @@ const CourseEditPage = () => {
         }
     };
 
-    const handlePublish = async () => {
-        if (!course) return;
-        setEditState('processing');
-        try {
-            const validation = await publishCourse(courseId);
-            if (validation.errors && validation.errors.length > 0) {
-                setValidationErrors(validation.errors);
-                setEditState('idle');
-            } else {
-                alert('Course published successfully!');
-                router.push('/lecturer/courses');
-            }
-        } catch (err: any) {
-            setError(err.message);
-            setEditState('idle');
-        }
-    };
+
 
     const handleChapterSelect = (chapter: Chapter) => {
         setSelectedItem(chapter);
@@ -393,45 +375,25 @@ const CourseEditPage = () => {
                             <div className="w-px h-5 bg-slate-200"/>
                             <h1 className="text-sm font-semibold text-slate-800 truncate">{course.title}</h1>
                         </div>
-                        {editState !== 'readOnly' && (
-                            <div className="flex items-center gap-2">
-                                <button
-                                    onClick={handleSave}
-                                    className="inline-flex items-center gap-2 px-3 py-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
-                                    disabled={saving}
-                                >
-                                    {saving ? (
-                                        <>
-                                            <span className="w-3.5 h-3.5 border-2 border-slate-400 border-t-transparent rounded-full animate-spin"/>
-                                            Đang lưu...
-                                        </>
-                                    ) : 'Lưu'}
-                                </button>
-                                <button
-                                    onClick={handlePublish}
-                                    className="inline-flex items-center gap-2 px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors"
-                                >
-                                    Gửi duyệt
-                                </button>
-                            </div>
-                        )}
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={handleSave}
+                                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                                disabled={saving}
+                            >
+                                {saving ? (
+                                    <>
+                                        <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"/>
+                                        Đang lưu...
+                                    </>
+                                ) : 'Lưu khóa học'}
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            {/* Validation Errors */}
-            {validationErrors.length > 0 && (
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
-                    <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-                        <p className="text-sm text-red-800 font-medium mb-2">Khóa học chưa đủ điều kiện gửi duyệt:</p>
-                        <ul className="list-disc list-inside text-sm text-red-700 space-y-0.5">
-                            {validationErrors.map((error, index) => (
-                                <li key={index}>{error}</li>
-                            ))}
-                        </ul>
-                    </div>
-                </div>
-            )}
+
 
             {/* Body */}
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">

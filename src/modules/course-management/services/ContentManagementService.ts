@@ -43,7 +43,12 @@ export class ContentManagementService {
     ) { }
 
     async getLecturerCourses(lecturerId: bigint, status?: string | null): Promise<CourseSummaryDto[]> {
-        const whereClause: any = { lecturer_id: lecturerId };
+        const whereClause: any = {
+            OR: [
+                { owner_id: lecturerId },
+                { lecturer_id: lecturerId },
+            ]
+        };
         if (status) {
             const statusUpper = status.toUpperCase();
             // When requesting Drafts, include previously rejected courses so lecturers can see drafts with reject notes

@@ -76,8 +76,6 @@ export default function LearningPage() {
             // CẬP NHẬT NGAY LẬP TỨC TRƯỚC KHI GỌI API
             // Việc này ngăn các nhịp setInterval sau gửi trùng dữ liệu
             lastSentTimeRef.current = roundedTime;
-
-            console.log('>>> [BE Sync] Gửi tiến độ:', roundedTime);
             try {
                 await updateLessonProgress(currentLesson.id, roundedTime, videoDuration);
             } catch (err) {
@@ -91,8 +89,6 @@ export default function LearningPage() {
     const handleFlushUpdate = useCallback(async (time: number) => {
         const roundedTime = Math.floor(time);
         if (!currentLesson) return;
-
-        console.log('>>> [Flush] Lưu tiến độ cuối cùng:', roundedTime);
         try {
             await updateLessonProgress(currentLesson.id, roundedTime, videoDuration);
         } catch (err) {
@@ -188,14 +184,11 @@ export default function LearningPage() {
 
     useEffect(() => {
         if (currentLesson) {
-            console.log('Loading lesson data for lesson:', currentLesson.id, currentLesson.type);
             loadLessonData(currentLesson.id, currentLesson.type);
         }
     }, [currentLesson, loadLessonData]);
 
     const handleLessonSelect = (lesson: Lesson) => {
-        console.log('Lesson select: Switching to lesson', lesson.id);
-
         // Reset progress tracking state
         lastSentTimeRef.current = 0;
 

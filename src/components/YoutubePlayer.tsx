@@ -22,15 +22,11 @@ const YoutubePlayer = ({ videoId, initialPos, onProgress, onDuration, onFlush }:
         const state = player.getPlayerState();
         const time = player.getCurrentTime();
 
-        // Log này bây giờ sẽ phải thay đổi khi bạn Play/Pause
-        console.log(`[Atomic Tick] State: ${state} | Time: ${time.toFixed(2)}`);
-
         if (state === 1) { // PLAYING
             if (time > 0) {
                 // Seek lần đầu nếu cần
                 if (!isInitialSeekDone.current) {
                     if (initialPos > 0) {
-                        console.log(">>> [Atomic] Thực hiện Initial Seek:", initialPos);
                         player.seekTo(initialPos, true);
                     }
                     isInitialSeekDone.current = true;
@@ -49,7 +45,6 @@ const YoutubePlayer = ({ videoId, initialPos, onProgress, onDuration, onFlush }:
         playerRef.current = playerInstance;
 
         if (!intervalRef.current) {
-            console.log(">>> [Atomic] Khởi động Engine");
             intervalRef.current = setInterval(processTracking, 1000);
         }
     };
@@ -73,7 +68,6 @@ const YoutubePlayer = ({ videoId, initialPos, onProgress, onDuration, onFlush }:
             if (intervalRef.current) {
                 clearInterval(intervalRef.current);
                 intervalRef.current = null;
-                console.log(">>> [Atomic] Hủy Engine");
             }
         };
     }, [videoId, onFlush]);

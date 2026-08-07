@@ -16,13 +16,16 @@ model users {
   role_id           Int                 @map("role_id")
   status            String              @db.VarChar(20) @map("status")
   created_at        DateTime?           @db.Timestamp(6) @map("created_at")
-  courses           courses[]
+  owned_courses     courses[]           @relation("CourseOwner")
+  lecturer_courses  courses[]           @relation("CourseLecturer")
   enrollments       enrollments[]
+  learning_progress learning_progress[]
   role              roles               @relation(fields: [role_id], references: [id])
   tokens            tokens[]
 
   @@map("users")
 }
+
 model roles {
   id    Int     @id @default(autoincrement()) @map("id")
   name  String  @db.VarChar(20) @map("name")
@@ -43,18 +46,35 @@ model tokens {
   @@map("tokens")
 }
 
+model sources {
+  id             BigInt    @id @default(autoincrement()) @map("id")
+  url            String    @unique @db.VarChar(1000) @map("url")
+  normalized_url String    @unique @db.VarChar(1000) @map("normalized_url")
+  title          String?   @db.VarChar(255) @map("title")
+  type           String    @db.VarChar(50) @map("type")
+  metadata       String?   @db.Text @map("metadata")
+  created_at     DateTime? @default(now()) @db.Timestamp(6) @map("created_at")
+  lessons        lessons[]
+
+  @@map("sources")
+}
+
 model courses {
-  id           BigInt        @id @default(autoincrement()) @map("id")
-  lecturer_id  BigInt        @map("lecturer_id")
-  title        String        @db.VarChar(255) @map("title")
-  slug         String        @unique @db.VarChar(255) @map("slug")
-  description  String?       @db.Text @map("description")
-  status       String        @db.VarChar(20) @map("status")
-  reject_note  String?       @db.Text @map("reject_note")
-  submitted_at DateTime?     @db.Timestamp(6) @map("submitted_at")
-  chapters     chapters[]
-  enrollments  enrollments[]
-  lecturer     users         @relation(fields: [lecturer_id], references: [id])
+  id                BigInt              @id @default(autoincrement()) @map("id")
+  owner_id          BigInt              @map("owner_id")
+  lecturer_id       BigInt              @map("lecturer_id")
+  title             String              @db.VarChar(255) @map("title")
+  slug              String              @unique @db.VarChar(255) @map("slug")
+  share_token       String?             @unique @db.VarChar(100) @map("share_token")
+  description       String?             @db.Text @map("description")
+  status            String              @default("active") @db.VarChar(20) @map("status")
+  reject_note       String?             @db.Text @map("reject_note")
+  submitted_at      DateTime?           @db.Timestamp(6) @map("submitted_at")
+  chapters          chapters[]
+  enrollments       enrollments[]
+  learning_progress learning_progress[]
+  owner             users               @relation("CourseOwner", fields: [owner_id], references: [id])
+  lecturer          users               @relation("CourseLecturer", fields: [lecturer_id], references: [id])
 
   @@map("courses")
 }
@@ -73,11 +93,13 @@ model chapters {
 model lessons {
   id                BigInt              @id @default(autoincrement()) @map("id")
   chapter_id        BigInt              @map("chapter_id")
+  source_id         BigInt?             @map("source_id")
   title             String              @db.VarChar(255) @map("title")
   type              String              @db.VarChar(20) @map("type")
   content_url       String?             @db.VarChar(500) @map("content_url")
   order_index       Int                 @map("order_index")
   chapter           chapters            @relation(fields: [chapter_id], references: [id])
+  source            sources?            @relation(fields: [source_id], references: [id])
   learning_progress learning_progress[]
   questions         questions[]
 
@@ -85,30 +107,34 @@ model lessons {
 }
 
 model enrollments {
-  id              BigInt              @id @default(autoincrement()) @map("id")
-  student_id      BigInt              @map("student_id")
-  course_id       BigInt              @map("course_id")
-  completion_rate Int                 @map("completion_rate")
-  enrolled_at     DateTime?           @db.Timestamp(6) @map("enrolled_at")
-  course          courses             @relation(fields: [course_id], references: [id])
+  id                BigInt              @id @default(autoincrement()) @map("id")
+  student_id        BigInt              @map("student_id")
+  course_id         BigInt              @map("course_id")
+  completion_rate   Int                 @default(0) @map("completion_rate")
+  enrolled_at       DateTime?           @db.Timestamp(6) @map("enrolled_at")
+  course            courses             @relation(fields: [course_id], references: [id])
   learning_progress learning_progress[]
-  student         users               @relation(fields: [student_id], references: [id])
+  student           users               @relation(fields: [student_id], references: [id])
 
   @@map("enrollments")
 }
 
 model learning_progress {
-  id                   BigInt       @id @default(autoincrement()) @map("id")
-  enrollment_id        BigInt       @map("enrollment_id")
-  lesson_id            BigInt       @map("lesson_id")
-  is_finished          Boolean      @map("is_finished")
-  video_last_position  Int?         @map("video_last_position")
-  quiz_max_score       Int?         @map("quiz_max_score")
-  quiz_start_time      DateTime?    @map("quiz_start_time")
-  personal_note        String?      @db.Text @map("personal_note")
-  quiz_question_ids    String?      @db.Text @map("quiz_question_ids")
-  enrollment           enrollments  @relation(fields: [enrollment_id], references: [id])
-  lesson               lessons      @relation(fields: [lesson_id], references: [id])
+  id                  BigInt       @id @default(autoincrement()) @map("id")
+  user_id             BigInt?      @map("user_id")
+  course_id           BigInt?      @map("course_id")
+  enrollment_id       BigInt       @map("enrollment_id")
+  lesson_id           BigInt       @map("lesson_id")
+  is_finished         Boolean      @default(false) @map("is_finished")
+  video_last_position Int?         @map("video_last_position")
+  quiz_max_score      Int?         @map("quiz_max_score")
+  quiz_start_time     DateTime?    @map("quiz_start_time")
+  personal_note       String?      @db.Text @map("personal_note")
+  quiz_question_ids   String?      @db.Text @map("quiz_question_ids")
+  enrollment          enrollments  @relation(fields: [enrollment_id], references: [id])
+  lesson              lessons      @relation(fields: [lesson_id], references: [id])
+  user                users?       @relation(fields: [user_id], references: [id])
+  course              courses?     @relation(fields: [course_id], references: [id])
 
   @@map("learning_progress")
 }

@@ -26,6 +26,12 @@ const JWT_SECRET = process.env.JWT_SECRET || 'secret';
 //     }
 // };
 
+export interface RequestContext {
+    userId: bigint | null;
+    role: string | null;
+    isAuthenticated: boolean;
+}
+
 export async function getUserIdFromRequest(request: NextRequest): Promise<bigint | null> {
     const authHeader = request.headers.get('authorization');
     const token = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
@@ -53,3 +59,12 @@ export async function getUserFromRequest(request: NextRequest): Promise<{ id: bi
         return null;
     }
 }
+
+export async function getRequestContext(request: NextRequest): Promise<RequestContext> {
+    const user = await getUserFromRequest(request);
+    if (!user) {
+        return { userId: null, role: null, isAuthenticated: false };
+    }
+    return { userId: user.id, role: user.role, isAuthenticated: true };
+}
+

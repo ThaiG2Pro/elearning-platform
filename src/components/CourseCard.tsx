@@ -6,14 +6,7 @@ interface CourseCardProps {
     onClick?: (courseId: number) => void;
 }
 
-const statusLabel: Record<string, { label: string; className: string }> = {
-    ACTIVE:  { label: 'Đang mở', className: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
-    PENDING: { label: 'Chờ duyệt', className: 'bg-amber-50 text-amber-700 border-amber-200' },
-    DRAFT:   { label: 'Nháp', className: 'bg-slate-100 text-slate-600 border-slate-200' },
-};
-
 export default function CourseCard({ course, onClick }: CourseCardProps) {
-    const status = statusLabel[(course as any).status] ?? null;
 
     return (
         <div
@@ -48,11 +41,6 @@ export default function CourseCard({ course, onClick }: CourseCardProps) {
             <div className="p-4">
                 <div className="flex items-start justify-between gap-2 mb-2">
                     <h3 className="text-sm font-semibold text-slate-900 leading-snug line-clamp-2 flex-1">{course.title}</h3>
-                    {status && (
-                        <span className={`flex-shrink-0 text-xs px-2 py-0.5 rounded-full border font-medium ${status.className}`}>
-                            {status.label}
-                        </span>
-                    )}
                 </div>
                 {course.description ? (
                     <p className="text-slate-500 text-xs line-clamp-2 leading-relaxed">{course.description}</p>
