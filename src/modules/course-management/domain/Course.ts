@@ -1,10 +1,13 @@
 import { Chapter } from './Chapter';
 
+/**
+ * Personal-organizer model (post Checkpoint-0 pivot): a course is active the
+ * moment its owner creates it — no admin approval, no DRAFT/PENDING/REJECTED
+ * gate. The only lifecycle state left is whether the owner has archived it.
+ */
 export enum CourseStatus {
-    DRAFT = 'DRAFT',
-    PENDING = 'PENDING',
     ACTIVE = 'ACTIVE',
-    REJECTED = 'REJECTED',
+    ARCHIVED = 'ARCHIVED',
 }
 
 export class Course {
@@ -16,9 +19,7 @@ export class Course {
         public title: string,
         public slug: string,
         public description: string | null,
-        public status: CourseStatus,
-        public rejectNote: string | null,
-        public submittedAt?: Date,
+        public status: CourseStatus = CourseStatus.ACTIVE,
         public chapters: Chapter[] = [],
         ownerId?: bigint,
         public shareToken?: string | null,
@@ -26,27 +27,11 @@ export class Course {
         this.ownerId = ownerId ?? lecturerId;
     }
 
-    submit() {
-        if (this.status !== CourseStatus.DRAFT && this.status !== CourseStatus.REJECTED) {
-            throw new Error('INVALID_STATUS_TRANSITION');
-        }
-        this.status = CourseStatus.PENDING;
-        this.rejectNote = null;
+    archive() {
+        this.status = CourseStatus.ARCHIVED;
     }
 
-    approve() {
-        if (this.status !== CourseStatus.PENDING) {
-            throw new Error('INVALID_STATUS_TRANSITION');
-        }
+    unarchive() {
         this.status = CourseStatus.ACTIVE;
-    }
-
-    reject(note: string) {
-        if (this.status !== CourseStatus.PENDING) {
-            throw new Error('INVALID_STATUS_TRANSITION');
-        }
-        // Reject sends the course back to Draft so the lecturer can fix issues.
-        this.status = CourseStatus.DRAFT;
-        this.rejectNote = note;
     }
 }

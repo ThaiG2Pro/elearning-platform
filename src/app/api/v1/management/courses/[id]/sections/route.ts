@@ -27,10 +27,8 @@ export async function GET(
             return NextResponse.json({ error: 'ACCESS_DENIED' }, { status: 403 });
         }
 
-        // If course is published/active, editing is not allowed
-        if (((course.status || '') as string).toUpperCase() === 'ACTIVE') {
-            return NextResponse.json({ error: 'COURSE_PUBLISHED' }, { status: 409 });
-        }
+        // Personal-organizer model: the owner can always view/edit their
+        // course's sections, active or not — no approval-driven lock.
 
         const controller = new ManagementController();
         const sections = await controller.getCourseSections(courseId);
@@ -38,7 +36,7 @@ export async function GET(
         // Guarantee stable contract: always return an object with courseId, status and sections array
         return NextResponse.json({
             courseId: Number(course.id),
-            status: (course.status || 'DRAFT').toUpperCase(),
+            status: (course.status || 'ACTIVE').toUpperCase(),
             sections: Array.isArray(sections) ? sections : []
         });
     } catch (error) {
@@ -74,10 +72,7 @@ export async function POST(
             return NextResponse.json({ error: 'ACCESS_DENIED' }, { status: 403 });
         }
 
-        // Only allow adding sections when course is editable (DRAFT or REJECTED)
-        if (!['DRAFT', 'REJECTED'].includes((course.status || '').toUpperCase())) {
-            return NextResponse.json({ error: 'INVALID_STATUS' }, { status: 400 });
-        }
+        // Owner can add sections at any time — no approval-driven lock.
 
         const controller = new ManagementController();
         const sectionId = await controller.createSection(courseId, body);

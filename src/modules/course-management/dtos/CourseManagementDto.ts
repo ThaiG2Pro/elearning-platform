@@ -11,6 +11,5 @@ export class CourseSummaryDto {
         public title: string,
         public status: string,
         public thumbnailUrl?: string,
-        public rejectNote?: string,
     ) { }
 }

@@ -10,7 +10,7 @@ import { LecturerCourse } from '@/types/lecturer.types';
 import { User } from '@/types/auth.types';
 import { logout as apiLogout, AuthUtils } from '@/lib/auth';
 
-type Status = 'All' | 'Draft' | 'Pending' | 'Active';
+type Status = 'All' | 'Active' | 'Archived';
 
 const LecturerCoursesPage = () => {
     const [courses, setCourses] = useState<LecturerCourse[]>([]);
@@ -26,25 +26,13 @@ const LecturerCoursesPage = () => {
         setLoading(true);
         setError(null);
         try {
-            // Draft tab should show courses with status = DRAFT (including those with reject notes)
-            if (status === 'Draft') {
-                const response = await getLecturerCourses(undefined);
-                const normalized = Array.isArray(response) ? response : response?.courses || [];
-                const filtered = normalized.filter(c => {
-                    const s = ((c.status || '') as string).toUpperCase();
-                    return s === 'DRAFT';
-                });
-                setCourses(filtered);
-            } else {
-                // If status is 'All' we pass undefined so the API returns all courses
-                const apiStatus = status === 'All' ? undefined : status;
-                // Map frontend statuses to backend values if necessary (e.g., ACTIVE/PENDING)
-                const params = apiStatus ? { status: apiStatus } : undefined;
-                const response = await getLecturerCourses(params);
-                // Guard against unexpected API shapes — API may return either an array or { courses: [] }
-                const normalized = Array.isArray(response) ? response : response?.courses || [];
-                setCourses(normalized);
-            }
+            // If status is 'All' we pass undefined so the API returns all courses
+            const apiStatus = status === 'All' ? undefined : status;
+            const params = apiStatus ? { status: apiStatus } : undefined;
+            const response = await getLecturerCourses(params);
+            // Guard against unexpected API shapes — API may return either an array or { courses: [] }
+            const normalized = Array.isArray(response) ? response : response?.courses || [];
+            setCourses(normalized);
         } catch (err: any) {
             // On error ensure we reset to an empty list to avoid undefined runtime errors
             setCourses([]);
@@ -89,13 +77,9 @@ const LecturerCoursesPage = () => {
 
 
     const handleCourseClick = (course: LecturerCourse) => {
-        const statusNormalized = ((course.status || '') as string).toUpperCase();
-        // If course is still a draft (backend might return 'DRAFT'), go to edit, else view
-        if (statusNormalized === 'DRAFT') {
-            router.push(`/lecturer/courses/${course.id}/edit`);
-        } else {
-            router.push(`/lecturer/courses/${course.id}/view`);
-        }
+        // Personal-organizer model: the owner can always edit their course,
+        // there is no separate draft-vs-published destination anymore.
+        router.push(`/lecturer/courses/${course.id}/edit`);
     };
 
     const getErrorMessage = (errorCode: string) => {
@@ -153,7 +137,7 @@ const LecturerCoursesPage = () => {
                 <div className="mb-6">
                     <div className="border-b border-slate-200">
                         <nav className="-mb-px flex space-x-1">
-                            {(['All', 'Draft', 'Pending', 'Active'] as Status[]).map((status) => (
+                            {(['All', 'Active', 'Archived'] as Status[]).map((status) => (
                                 <button
                                     key={status}
                                     onClick={() => handleStatusChange(status)}
@@ -162,7 +146,7 @@ const LecturerCoursesPage = () => {
                                         : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
                                         }`}
                                 >
-                                    {status === 'All' ? 'Tất cả' : status === 'Draft' ? 'Nháp' : status === 'Pending' ? 'Chờ duyệt' : 'Hoạt động'}
+                                    {status === 'All' ? 'Tất cả' : status === 'Active' ? 'Hoạt động' : 'Lưu trữ'}
                                 </button>
                             ))}
                         </nav>
@@ -262,21 +246,11 @@ const LecturerCoursesPage = () => {
                                     <span
                                         className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${((course.status || '') as string).toUpperCase() === 'ACTIVE'
                                             ? 'bg-emerald-50 text-emerald-700'
-                                            : ((course.status || '') as string).toUpperCase() === 'PENDING'
-                                                ? 'bg-amber-50 text-amber-700'
-                                                : (((course.status || '') as string).toUpperCase() === 'DRAFT' && (course as any).rejectNote)
-                                                    ? 'bg-red-50 text-red-700'
-                                                    : 'bg-slate-100 text-slate-600'
+                                            : 'bg-slate-100 text-slate-600'
                                             }`}
                                     >
-                                        {((course.status || '') as string).toUpperCase() === 'ACTIVE' ? 'Hoạt động' : ((course.status || '') as string).toUpperCase() === 'PENDING' ? 'Chờ duyệt' : (((course.status || '') as string).toUpperCase() === 'DRAFT' && (course as any).rejectNote) ? 'Bị từ chối' : 'Nháp'}
+                                        {((course.status || '') as string).toUpperCase() === 'ACTIVE' ? 'Hoạt động' : 'Lưu trữ'}
                                     </span>
-
-                                    {(((course.status || '') as string).toUpperCase() === 'DRAFT' && (course as any).rejectNote) && (
-                                        <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded-lg">
-                                            <p className="text-xs text-amber-700">{(course as any).rejectNote}</p>
-                                        </div>
-                                    )}
                                 </div>
                             </div>
                         ))}

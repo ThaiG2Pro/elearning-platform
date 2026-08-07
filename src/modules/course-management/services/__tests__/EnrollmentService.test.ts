@@ -6,7 +6,7 @@ import { Enrollment } from '../../domain/Enrollment';
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 const makeCourse = (status: CourseStatus = CourseStatus.ACTIVE) =>
-    new Course(10n, 99n, 'Test Course', 'test-course', null, status, null);
+    new Course(10n, 99n, 'Test Course', 'test-course', null, status);
 
 const makeEnrollment = () => ({
     id: 1n,
@@ -72,7 +72,7 @@ describe('EnrollmentService — integration (mocked repos)', () => {
         });
 
         it('throws COURSE_NOT_AVAILABLE when course is not ACTIVE', async () => {
-            courseRepo.findActiveById.mockResolvedValue(makeCourse(CourseStatus.DRAFT));
+            courseRepo.findActiveById.mockResolvedValue(makeCourse(CourseStatus.ARCHIVED));
 
             await expect(service.enrollStudent(1n, 10n)).rejects.toThrow('COURSE_NOT_AVAILABLE');
         });

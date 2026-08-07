@@ -63,10 +63,8 @@ const CourseEditPage = () => {
         try {
             const courseData = await getCourseStructure(courseId);
             setCourse(courseData);
-            // Check if course is read-only
-            if (['PENDING', 'ACTIVE'].includes((courseData.status || '').toUpperCase())) {
-                setEditState('readOnly');
-            }
+            // Personal-organizer model: the owner can always edit their course,
+            // there is no approval-driven read-only lock anymore.
         } catch (err: any) {
             setError(err.message);
         } finally {

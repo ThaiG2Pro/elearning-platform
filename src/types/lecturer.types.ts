@@ -3,9 +3,8 @@
 export interface LecturerCourse {
     id: number;
     title: string;
-    status: 'Draft' | 'Pending' | 'Active';
+    status: 'Active' | 'Archived';
     thumbnailUrl?: string;
-    rejectNote?: string;
     createdAt?: string; // optional because API might not provide it
 }
 
@@ -14,7 +13,7 @@ export interface LecturerCoursesResponse {
 }
 
 export interface LecturerCoursesRequest {
-    status?: 'Draft' | 'Pending' | 'Active';
+    status?: 'Active' | 'Archived';
 }
 
 export interface Lesson {

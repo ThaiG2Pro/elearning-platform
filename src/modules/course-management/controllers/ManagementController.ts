@@ -6,7 +6,7 @@ import { ContentManagementService } from '../services/ContentManagementService';
 import { CourseRepository } from '../repositories/CourseRepository';
 import { CreateCourseDto, CourseSummaryDto } from '../dtos/CourseManagementDto';
 import { CreateSectionDto, UpdateSectionDto, SectionDto, CreateLessonDto, UpdateLessonDto } from '../dtos/ContentDto';
-import { ModerateCourseDto, PendingCourseDto, LessonPreviewDto } from '../services/ContentManagementService';
+import { LessonPreviewDto } from '../services/ContentManagementService';
 import { prisma } from '../../../shared/config/database';
 
 export interface TrackProgressDto {
@@ -76,19 +76,6 @@ export class ManagementController {
 
     async deleteLesson(lessonId: bigint): Promise<void> {
         await this.contentService.deleteLesson(lessonId);
-    }
-
-    // Publishing & Moderation
-    async submitForApproval(lecturerId: bigint, courseId: bigint): Promise<void> {
-        await this.contentService.submitForApproval(lecturerId, courseId);
-    }
-
-    async getPendingCourses(): Promise<PendingCourseDto[]> {
-        return await this.contentService.getPendingCourses();
-    }
-
-    async moderateCourse(adminId: bigint, courseId: bigint, dto: ModerateCourseDto): Promise<void> {
-        await this.contentService.moderateCourse(adminId, courseId, dto);
     }
 
     async getLessonPreview(courseId: bigint, lessonId: bigint, user?: { id: bigint; role: string }): Promise<LessonPreviewDto> {

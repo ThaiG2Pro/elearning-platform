@@ -34,11 +34,8 @@ export async function POST(
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        // BR-ENROLL-02: Role Restriction - Only students can enroll
-        if (user.role !== 'STUDENT') {
-            return NextResponse.json({ error: 'ROLE_DENIED', message: 'Only students can enroll' }, { status: 403 });
-        }
-
+        // Personal-organizer model: any authenticated user may track their
+        // own progress on a course — there is no STUDENT-only role gate.
         const courseId = BigInt(params.id);
         const controller = new EnrollmentController();
         const result = await controller.enrollStudent(user.id, courseId);

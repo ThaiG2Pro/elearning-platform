@@ -99,6 +99,8 @@ async function main() {
     console.log('✅ Users created');
 
     // Create courses
+    // Personal-organizer model: every course is active for its owner
+    // immediately — no approval workflow, no reject notes.
     const javaCourse = await prisma.courses.create({
         data: {
             owner_id: jack.id,
@@ -107,7 +109,6 @@ async function main() {
             slug: 'nhap-mon-java',
             description: 'Khóa học Java cơ bản dành cho người mới bắt đầu',
             status: 'ACTIVE',
-            submitted_at: new Date('2025-12-20'),
         },
     });
 
@@ -118,8 +119,7 @@ async function main() {
             title: 'Nhập môn C++',
             slug: 'nhap-mon-cpp',
             description: 'Khóa học C++ cơ bản dành cho người mới bắt đầu',
-            status: 'PENDING',
-            submitted_at: new Date('2025-12-25'),
+            status: 'ACTIVE',
         },
     });
 
@@ -130,10 +130,7 @@ async function main() {
             title: 'Nhập môn Python',
             slug: 'nhap-mon-python',
             description: 'Khóa học Python cơ bản dành cho người mới bắt đầu',
-            // Represent previously rejected course as a Draft with reject note so lecturer can edit
-            status: 'DRAFT',
-            reject_note: 'Thêm quiz chất lượng',
-            submitted_at: new Date('2025-12-15'),
+            status: 'ACTIVE',
         },
     });
 
@@ -418,8 +415,8 @@ async function main() {
     console.log('   - TrongTin (Admin): admin1@gmail.com / password123');
     console.log('📚 Courses:');
     console.log('   - Java Course: ACTIVE');
-    console.log('   - C++ Course: PENDING');
-    console.log('   - Python Course: REJECTED');
+    console.log('   - C++ Course: ACTIVE');
+    console.log('   - Python Course: ACTIVE');
 }
 
 main()

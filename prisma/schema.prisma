@@ -68,8 +68,6 @@ model courses {
   share_token       String?             @unique @db.VarChar(100) @map("share_token")
   description       String?             @db.Text @map("description")
   status            String              @default("active") @db.VarChar(20) @map("status")
-  reject_note       String?             @db.Text @map("reject_note")
-  submitted_at      DateTime?           @db.Timestamp(6) @map("submitted_at")
   chapters          chapters[]
   enrollments       enrollments[]
   learning_progress learning_progress[]

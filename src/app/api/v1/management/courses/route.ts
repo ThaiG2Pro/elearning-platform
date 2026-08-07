@@ -53,8 +53,9 @@ export async function POST(request: NextRequest) {
         const courseId = await controller.createCourse(user.id, body);
 
         // Convert BigInt to string for safe JSON serialization
-        // Return stable contract including initial status
-        return NextResponse.json({ courseId: courseId.toString(), status: 'DRAFT' }, { status: 201 });
+        // Return stable contract including initial status — courses are
+        // active immediately, there is no draft/approval gate anymore.
+        return NextResponse.json({ courseId: courseId.toString(), status: 'ACTIVE' }, { status: 201 });
     } catch (error) {
         console.error('Create course error:', error);
         return NextResponse.json(

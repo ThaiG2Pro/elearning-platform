@@ -19,8 +19,6 @@ export class CourseRepository {
             course.slug,
             course.description,
             course.status as CourseStatus,
-            course.reject_note,
-            course.submitted_at || undefined
         );
     }
 
@@ -39,8 +37,6 @@ export class CourseRepository {
             course.slug,
             course.description,
             course.status as CourseStatus,
-            course.reject_note,
-            course.submitted_at || undefined
         );
     }
 
@@ -89,8 +85,6 @@ export class CourseRepository {
             course.slug,
             course.description,
             course.status as CourseStatus,
-            course.reject_note,
-            course.submitted_at || undefined,
             chapters
         );
         (domainCourse as any).lecturerName = course.lecturer.full_name;
@@ -177,7 +171,6 @@ export class CourseRepository {
                 slug: course.slug,
                 description: course.description,
                 status: course.status,
-                reject_note: course.rejectNote,
             },
         });
         course.id = created.id;
@@ -192,28 +185,8 @@ export class CourseRepository {
                 slug: course.slug,
                 description: course.description,
                 status: course.status,
-                reject_note: course.rejectNote,
             },
         });
-    }
-
-    async findPendingCourses(): Promise<{ id: bigint; title: string; lecturerName: string; submittedAt: Date }[]> {
-        const courses = await this.prisma.courses.findMany({
-            where: { status: 'PENDING' },
-            include: {
-                lecturer: {
-                    select: { full_name: true }
-                }
-            },
-            orderBy: { submitted_at: 'asc' } // FIFO: First submitted first
-        });
-
-        return courses.map(course => ({
-            id: course.id,
-            title: course.title,
-            lecturerName: course.lecturer.full_name,
-            submittedAt: course.submitted_at || new Date()
-        }));
     }
 
     async findByIdWithLecturer(id: bigint): Promise<{ course: Course; lecturerName: string } | null> {
@@ -261,8 +234,6 @@ export class CourseRepository {
             course.slug,
             course.description,
             course.status as CourseStatus,
-            course.reject_note,
-            course.submitted_at || undefined,
             chapters
         );
 

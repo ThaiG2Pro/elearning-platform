@@ -24,10 +24,6 @@ export class CourseManagementController {
         await this.service.syncCourseContent(userId, courseId, dto);
     }
 
-    async submitForApproval(userId: bigint, courseId: bigint) {
-        await this.service.submitForApproval(userId, courseId);
-    }
-
     async getLessonPreview(courseId: bigint, lessonId: bigint, user: { id: bigint; role: string }): Promise<LessonPreviewDto> {
         return await this.service.getLessonPreview(courseId, lessonId, user);
     }

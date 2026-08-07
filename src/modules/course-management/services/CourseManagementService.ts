@@ -27,7 +27,7 @@ export class CourseManagementService {
 
         const currentCount = await this.sectionRepository.countByCourse(section.courseId);
 
-        PublishingPolicy.validateDeletionEligibility(course, currentCount);
+        PublishingPolicy.validateDeletionEligibility(currentCount);
 
         await this.sectionRepository.deleteWithLessons(sectionId);
     }
@@ -36,11 +36,8 @@ export class CourseManagementService {
         const course = await this.courseRepository.findById(courseId);
         if (!course) throw new Error('COURSE_NOT_FOUND');
 
-        // Only allow syncing content when course is editable (DRAFT or REJECTED)
-        if (course.status !== 'DRAFT' && course.status !== 'REJECTED') {
-            throw new Error('INVALID_STATUS');
-        }
-
+        // Personal-organizer model: the owner can sync content at any time,
+        // active or not — no approval-driven lock.
         AccessControlPolicy.validateOwnership(userId, course.lecturerId);
 
         const youtubeAdapter = new YouTubeAdapter();
@@ -153,21 +150,12 @@ export class CourseManagementService {
         await this.lessonRepository.syncLessons(courseId, lessons);
     }
 
-    async submitForApproval(userId: bigint, courseId: bigint) {
-        const course = await this.courseRepository.findByIdWithFullStructure(courseId);
-        if (!course) throw new Error('COURSE_NOT_FOUND');
-
-        AccessControlPolicy.validateOwnership(userId, course.lecturerId);
-
-        PublishingPolicy.validateMinimumViableContent(course);
-
-        course.submit();
-
-        await this.courseRepository.save(course);
-    }
-
+    /**
+     * Owner-only preview of a lesson (used by the "view my course" screen).
+     * There is no approval workflow to gate on anymore — access is purely
+     * by ownership.
+     */
     async getLessonPreview(courseId: bigint, lessonId: bigint, user: { id: bigint; role: string }): Promise<LessonPreviewDto> {
-        // For preview, allow access according to role rules
         const lesson = await this.lessonRepository.findById(lessonId);
         if (!lesson) throw new Error('LESSON_NOT_FOUND');
 
@@ -177,25 +165,11 @@ export class CourseManagementService {
             throw new Error('LESSON_NOT_FOUND');
         }
 
-        // Load course to check ownership & status
         const course = await this.courseRepository.findById(courseId);
         if (!course) throw new Error('COURSE_NOT_FOUND');
 
-        // Access control
         if (!user) throw new Error('Unauthorized');
-
-        if (user.role === 'STUDENT') {
-            throw new Error('FORBIDDEN');
-        }
-
-        if (user.role === 'LECTURER') {
-            if (course.lecturerId !== user.id) throw new Error('FORBIDDEN');
-            if (course.status !== 'PENDING' && course.status !== 'ACTIVE') throw new Error('FORBIDDEN');
-        }
-
-        if (user.role === 'ADMIN') {
-            if (course.status !== 'PENDING') throw new Error('FORBIDDEN');
-        }
+        if (course.lecturerId !== user.id) throw new Error('FORBIDDEN');
 
         const quizQuestions = await this.lessonRepository.findQuizQuestions(lessonId);
 

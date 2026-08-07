@@ -6,18 +6,6 @@ import { CreateSectionDto, UpdateSectionDto, SectionDto, CreateLessonDto, Update
 import { PrismaClient } from '@prisma/client';
 import { VideoThumbnailUtil } from '../../shared/utils/VideoThumbnailUtil';
 
-export interface ModerateCourseDto {
-    action: 'APPROVE' | 'REJECT';
-    rejectNote?: string;
-}
-
-export interface PendingCourseDto {
-    id: bigint;
-    title: string;
-    lecturerName: string;
-    submittedAt: Date;
-}
-
 export interface QuizQuestionPreviewDto {
     id: bigint;
     content: string;
@@ -50,14 +38,7 @@ export class ContentManagementService {
             ]
         };
         if (status) {
-            const statusUpper = status.toUpperCase();
-            // When requesting Drafts, include previously rejected courses so lecturers can see drafts with reject notes
-            if (statusUpper === 'DRAFT') {
-                // Use OR clause to include DRAFT or REJECTED stored in DB
-                whereClause.OR = [{ status: 'DRAFT' }, { status: 'REJECTED' }];
-            } else {
-                whereClause.status = statusUpper;
-            }
+            whereClause.status = status.toUpperCase();
         }
 
         const courses = await this.prisma.courses.findMany({
@@ -66,8 +47,6 @@ export class ContentManagementService {
                 id: true,
                 title: true,
                 status: true,
-                reject_note: true,
-                submitted_at: true,
                 chapters: {
                     select: {
                         lessons: {
@@ -93,15 +72,11 @@ export class ContentManagementService {
                 ? VideoThumbnailUtil.deriveThumbnailFromVideoUrl(firstVideoUrl)
                 : '/images/course-placeholder.svg';
 
-            // Normalize status: treat REJECTED as DRAFT for lecturer-facing lists so drafts with reject notes are editable
-            const normalizedStatus = course.status === 'REJECTED' ? 'DRAFT' : course.status;
-
             return new CourseSummaryDto(
                 course.id,
                 course.title,
-                normalizedStatus,
+                course.status,
                 thumbnailUrl,
-                course.reject_note || undefined,
             );
         });
     }
@@ -110,14 +85,15 @@ export class ContentManagementService {
         const baseSlug = dto.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
         const suffix = Math.random().toString(36).slice(2, 7);
         const slug = `${baseSlug}-${suffix}`;
+        // Personal-organizer model: a course is live for its owner immediately,
+        // no admin approval gate (Checkpoint 0 pivot).
         const course = new Course(
             null,
             lecturerId,
             dto.title,
             slug,
             dto.description || '',
-            CourseStatus.DRAFT,
-            null
+            CourseStatus.ACTIVE,
         );
 
         await this.courseRepository.create(course);
@@ -132,10 +108,7 @@ export class ContentManagementService {
             throw new Error('ACCESS_DENIED');
         }
 
-        if (course.status !== CourseStatus.DRAFT && course.status !== CourseStatus.REJECTED) {
-            throw new Error('COURSE_NOT_EDITABLE');
-        }
-
+        // Owner can edit their course at any time — no approval-driven lock.
         if (data.title) {
             course.title = data.title;
         }
@@ -226,98 +199,12 @@ export class ContentManagementService {
         });
     }
 
-    // Publishing & Moderation
-    async submitForApproval(lecturerId: bigint, courseId: bigint): Promise<void> {
-        // Check ownership
-        const course = await this.prisma.courses.findFirst({
-            where: { id: courseId, lecturer_id: lecturerId },
-            include: {
-                chapters: {
-                    include: { lessons: true }
-                }
-            }
-        });
-
-        if (!course) {
-            throw new Error('COURSE_NOT_FOUND');
-        }
-
-        if (course.status !== 'DRAFT') {
-            throw new Error('INVALID_STATUS');
-        }
-
-        // Validate minimum viable content (Rule 40)
-        if (!course.title || !course.description || course.chapters.length === 0) {
-            throw new Error('INCOMPLETE_CONTENT');
-        }
-
-        for (const chapter of course.chapters) {
-            if (chapter.lessons.length === 0) {
-                throw new Error('INCOMPLETE_CONTENT');
-            }
-            for (const lesson of chapter.lessons) {
-                if (!lesson.content_url && lesson.type === 'VIDEO') {
-                    throw new Error('INCOMPLETE_CONTENT');
-                }
-            }
-        }
-
-        // Update status to PENDING
-        await this.prisma.courses.update({
-            where: { id: courseId },
-            data: {
-                status: 'PENDING',
-                reject_note: null // Clear any previous reject note
-            }
-        });
-    }
-
-    async getPendingCourses(): Promise<PendingCourseDto[]> {
-        const courses = await this.prisma.courses.findMany({
-            where: { status: 'PENDING' },
-            include: {
-                lecturer: {
-                    select: { full_name: true }
-                }
-            },
-            orderBy: { submitted_at: 'asc' } // FIFO
-        });
-
-        return courses.map(course => ({
-            id: course.id,
-            title: course.title,
-            lecturerName: course.lecturer.full_name,
-            submittedAt: course.submitted_at || new Date()
-        }));
-    }
-
-    async moderateCourse(_adminId: bigint, courseId: bigint, dto: ModerateCourseDto): Promise<void> {
-        const course = await this.prisma.courses.findUnique({
-            where: { id: courseId }
-        });
-
-        if (!course || course.status !== 'PENDING') {
-            throw new Error('COURSE_NOT_FOUND');
-        }
-
-        if (dto.action === 'REJECT' && !dto.rejectNote) {
-            throw new Error('REJECT_NOTE_REQUIRED');
-        }
-
-        // If admin approves -> ACTIVE. If admin rejects -> send back to DRAFT with reject note
-        const newStatus = dto.action === 'APPROVE' ? 'ACTIVE' : 'DRAFT';
-
-        await this.prisma.courses.update({
-            where: { id: courseId },
-            data: {
-                status: newStatus,
-                reject_note: dto.rejectNote || null
-            }
-        });
-    }
-
+    /**
+     * Owner-only preview of a lesson (used by the "view my course" screen).
+     * There is no approval workflow to gate on anymore — access is purely
+     * by ownership.
+     */
     async getLessonPreview(courseId: bigint, lessonId: bigint, user?: { id: bigint; role: string }): Promise<LessonPreviewDto> {
-        // Fetch lesson and its course to enforce access rules
         const lesson = await this.prisma.lessons.findFirst({
             where: {
                 id: lessonId,
@@ -339,31 +226,12 @@ export class ContentManagementService {
 
         const course = lesson.chapter.course;
 
-        // Require authenticated user
         if (!user) {
             throw new Error('Unauthorized');
         }
 
-        // Students are not allowed to preview
-        if (user.role === 'STUDENT') {
+        if (course.owner_id !== user.id) {
             throw new Error('FORBIDDEN');
-        }
-
-        // Lecturer: only allowed for own course and only when status is PENDING or ACTIVE
-        if (user.role === 'LECTURER') {
-            if (course.lecturer_id !== user.id) {
-                throw new Error('FORBIDDEN');
-            }
-            if (course.status !== 'PENDING' && course.status !== 'ACTIVE') {
-                throw new Error('FORBIDDEN');
-            }
-        }
-
-        // Admin: only allowed to preview courses in PENDING state
-        if (user.role === 'ADMIN') {
-            if (course.status !== 'PENDING') {
-                throw new Error('FORBIDDEN');
-            }
         }
 
         return {
