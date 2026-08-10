@@ -37,3 +37,17 @@ Run's real Always Free quota) is the next-best $0 combination. Once either
 ceiling is exceeded, the realistic non-zero floor is ~$5–12/month
 (compute + DB together), not a gradual scale-up from $0. Full findings and
 sources: [`research/infra-cost-floor.md`](../research/infra-cost-floor.md).
+
+## Addendum
+
+A follow-up pass explicitly checked Oracle against AWS, Azure, GCP, and other
+free-forever hosts and confirms the "use Oracle" conclusion rather than
+overturning it. AWS and Azure's free compute/DB tiers are time-limited trials
+(6–12 months, then silent auto-billing), not perpetual — Azure has no free
+Postgres option at all, ever. GCP has two genuinely perpetual free pieces
+(Cloud Run, e2-micro VM) but neither alone can self-host both the Next.js and
+Postgres containers the way Oracle's single 12GB-RAM VM can; GCP's Cloud
+Run + Neon free Postgres remains the legitimate fallback combo if Oracle's
+platform risk becomes unacceptable. See
+[`research/infra-cost-floor.md` § Addendum](../research/infra-cost-floor.md#addendum--awsazuregcpother-comparison-follow-up)
+for the full comparison table and sources.
