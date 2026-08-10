@@ -51,3 +51,15 @@ Run + Neon free Postgres remains the legitimate fallback combo if Oracle's
 platform risk becomes unacceptable. See
 [`research/infra-cost-floor.md` § Addendum](../research/infra-cost-floor.md#addendum--awsazuregcpother-comparison-follow-up)
 for the full comparison table and sources.
+
+A second follow-up widened the sweep to Supabase, CockroachDB Serverless
+(Basic), MongoDB Atlas M0, Vercel Hobby, and newer PaaS options (Northflank,
+Zeabur, Sevalla, Qoddi) plus IBM Cloud Lite and Alibaba Cloud — none beat or
+match Oracle's Always Free tier for compute, reinforcing the standing
+conclusion again. The one new finding worth carrying forward: CockroachDB
+Basic's recurring $15/month free allowance (~10GiB storage, Postgres-wire-compatible)
+is the most generous free managed-Postgres-compatible DB found across all
+research, and is now a legitimate third fallback alongside Neon/Supabase if
+Oracle's platform risk becomes unacceptable. See
+[`research/infra-cost-floor.md` § Addendum 2](../research/infra-cost-floor.md#addendum-2--additional-providers-supabase-cockroachdb-vercel-paas-options-etc)
+for full findings and sources.
