@@ -55,3 +55,16 @@ retention — ticket 04's finding was "the wrapper alone is likely
 insufficient," not "a social loop alone is sufficient." Treat Checkpoint
 1→2's retention signal as the real test of whether AI-depth is still needed
 on top of this, not a redundant hedge to cut.
+
+## Amended by ticket 13
+
+[Ticket 13](13-niche-competition-differentiation-revisit.md) (after ticket
+11's competition research) shifts this decision's emphasis: **the WP1.7
+"cùng học" view is now the primary differentiation/retention bet, and
+Checkpoint 2's AI layer is demoted to integration-only convenience** —
+two default recipes bundled inside the course shell, no AI feature-depth
+race against Quizlet/Knowt/Wisdolia, whose free tools already commoditized
+the raw capabilities. The last paragraph above ("whether AI-depth is still
+needed") is superseded: AI-depth is decided *out* regardless of the
+Checkpoint 1→2 retention signal; what that signal now tests is only
+whether the integrated minimal slice plus WP1.7 retain users.
