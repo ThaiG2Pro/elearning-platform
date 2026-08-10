@@ -3,14 +3,14 @@ import { LearningProgress } from '../domain/LearningProgress';
 
 /**
  * WP1.3: progress rows are keyed by (user_id, lesson_id) — ownership, not
- * the marketplace `enrollment_id`. `enrollment_id` is only ever read for
- * rows written before this pivot; new writes never set it.
+ * enrollment. The legacy `enrollment_id` FK (WP1.6 follow-up cleanup) has
+ * been dropped from the schema entirely.
  */
 export class LearningProgressRepository {
     constructor(private prisma: PrismaClient) { }
 
     private toDomain(progress: {
-        id: bigint; user_id: bigint | null; course_id: bigint | null; enrollment_id: bigint | null;
+        id: bigint; user_id: bigint | null; course_id: bigint | null;
         lesson_id: bigint; is_finished: boolean; video_last_position: number | null;
         quiz_max_score: number | null; quiz_start_time: Date | null; personal_note: string | null;
         quiz_question_ids: string | null;
@@ -26,7 +26,6 @@ export class LearningProgressRepository {
             progress.quiz_start_time,
             progress.personal_note,
             progress.quiz_question_ids ? (() => { try { return JSON.parse(progress.quiz_question_ids!).map((id: string) => BigInt(id)); } catch { console.error('Failed to parse quiz_question_ids:', progress.quiz_question_ids); return []; } })() : [],
-            progress.enrollment_id,
         );
     }
 

@@ -10,7 +10,6 @@ export class LearningProgress {
         public quizStartTime: Date | null,
         public personalNote: string | null,
         public quizQuestionIds: bigint[] | null = null,
-        public enrollmentId: bigint | null = null,
     ) { }
 
     /** WP1.3: progress identity is (userId, lessonId) — ownership, not enrollment. */
@@ -21,7 +20,6 @@ export class LearningProgress {
             courseId,
             lessonId,
             false,
-            null,
             null,
             null,
             null,

@@ -23,7 +23,6 @@ model users {
   avatar_url        String?             @db.Text @map("avatar_url")
   owned_courses     courses[]           @relation("CourseOwner")
   lecturer_courses  courses[]           @relation("CourseLecturer")
-  enrollments       enrollments[]
   learning_progress learning_progress[]
   notes             notes[]
   role              roles               @relation(fields: [role_id], references: [id])
@@ -78,12 +77,11 @@ model courses {
   // cloneForOwner can dedupe: same (owner, source) pair reuses the existing
   // clone instead of creating a duplicate on a double-submit/double-fire.
   cloned_from_course_id BigInt?             @map("cloned_from_course_id")
-  // WP1.6.2 — needed so "/my-learning" can show a real "enrolled at" date
-  // once it stops reading the legacy `enrollments` table (which had its own
-  // enrolled_at) and reads owned courses directly instead.
+  // WP1.6.2 — "/my-learning" shows this as the "enrolled at" date, reading
+  // owned courses directly instead of the (now-removed) legacy `enrollments`
+  // table's own enrolled_at column.
   created_at            DateTime            @default(now()) @map("created_at")
   chapters          chapters[]
-  enrollments       enrollments[]
   learning_progress learning_progress[]
   notes             notes[]
   owner             users               @relation("CourseOwner", fields: [owner_id], references: [id])
@@ -146,39 +144,26 @@ model notes {
   @@map("notes")
 }
 
-model enrollments {
-  id                BigInt              @id @default(autoincrement()) @map("id")
-  student_id        BigInt              @map("student_id")
-  course_id         BigInt              @map("course_id")
-  completion_rate   Int                 @default(0) @map("completion_rate")
-  enrolled_at       DateTime?           @db.Timestamp(6) @map("enrolled_at")
-  course            courses             @relation(fields: [course_id], references: [id])
-  learning_progress learning_progress[]
-  student           users               @relation(fields: [student_id], references: [id])
-
-  @@map("enrollments")
-}
-
 model learning_progress {
-  id                  BigInt       @id @default(autoincrement()) @map("id")
-  user_id             BigInt?      @map("user_id")
-  course_id           BigInt?      @map("course_id")
-  enrollment_id       BigInt?      @map("enrollment_id")
-  lesson_id           BigInt       @map("lesson_id")
-  is_finished         Boolean      @default(false) @map("is_finished")
-  video_last_position Int?         @map("video_last_position")
-  quiz_max_score      Int?         @map("quiz_max_score")
-  quiz_start_time     DateTime?    @map("quiz_start_time")
-  personal_note       String?      @db.Text @map("personal_note")
-  quiz_question_ids   String?      @db.Text @map("quiz_question_ids")
-  enrollment          enrollments? @relation(fields: [enrollment_id], references: [id])
-  lesson              lessons      @relation(fields: [lesson_id], references: [id])
-  user                users?       @relation(fields: [user_id], references: [id])
-  course              courses?     @relation(fields: [course_id], references: [id])
+  id                  BigInt    @id @default(autoincrement()) @map("id")
+  user_id             BigInt?   @map("user_id")
+  course_id           BigInt?   @map("course_id")
+  lesson_id           BigInt    @map("lesson_id")
+  is_finished         Boolean   @default(false) @map("is_finished")
+  video_last_position Int?      @map("video_last_position")
+  quiz_max_score      Int?      @map("quiz_max_score")
+  quiz_start_time     DateTime? @map("quiz_start_time")
+  personal_note       String?   @db.Text @map("personal_note")
+  quiz_question_ids   String?   @db.Text @map("quiz_question_ids")
+  lesson              lessons   @relation(fields: [lesson_id], references: [id])
+  user                users?    @relation(fields: [user_id], references: [id])
+  course              courses?  @relation(fields: [course_id], references: [id])
 
   // WP1.3: progress is keyed by ownership (user_id + lesson_id), not by the
-  // marketplace enrollment row — this is the identity going forward.
-  // enrollment_id stays nullable for pre-pivot rows only.
+  // marketplace enrollment row — this is the identity going forward. The
+  // legacy `enrollments` table and this row's enrollment_id FK (WP1.6, follow-
+  // up cleanup) were dropped entirely: both were confirmed empty/unread in
+  // production and nothing in the codebase writes to `enrollments` anymore.
   @@unique([user_id, lesson_id])
   @@map("learning_progress")
 }

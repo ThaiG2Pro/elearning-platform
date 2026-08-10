@@ -46,7 +46,7 @@ async function main() {
 
     // Clear existing data — use TRUNCATE to ensure tables are fully cleared and sequences reset
     console.log('🧹 Truncating tables and resetting sequences...');
-    await prisma.$executeRaw`TRUNCATE TABLE "questions","learning_progress","notes","enrollments","lessons","sources","chapters","courses","tokens","users","roles" RESTART IDENTITY CASCADE;`;
+    await prisma.$executeRaw`TRUNCATE TABLE "questions","learning_progress","notes","lessons","sources","chapters","courses","tokens","users","roles" RESTART IDENTITY CASCADE;`;
     console.log('✅ Tables truncated and sequences reset');
 
     // Create roles

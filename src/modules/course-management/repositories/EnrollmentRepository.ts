@@ -8,7 +8,9 @@ import { VideoThumbnailUtil } from '../../shared/utils/VideoThumbnailUtil';
 // usage) and LessonController.getVideoContext (an orphaned route that
 // 403'd everyone, since nothing creates `enrollments` rows anymore). Only
 // getEnrolledCoursesWithDetails remains — it now reads owned courses
-// directly instead of the `enrollments` table.
+// directly instead of the `enrollments` table. The `enrollments` table
+// itself and `learning_progress.enrollment_id` have since been dropped
+// entirely (WP1.6 follow-up cleanup) — both were confirmed empty.
 export class EnrollmentRepository {
     constructor(private prisma: PrismaClient) { }
 
