@@ -14,6 +14,10 @@ export async function GET(
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
+        if (!params.id || isNaN(Number(params.id))) {
+            return NextResponse.json({ error: 'COURSE_NOT_FOUND' }, { status: 404 });
+        }
+
         const courseId = BigInt(params.id);
 
         // Ensure course exists
@@ -66,6 +70,10 @@ export async function POST(
         const userId = await getUserIdFromRequest(request);
         if (!userId) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        if (!params.id || isNaN(Number(params.id))) {
+            return NextResponse.json({ error: 'COURSE_NOT_FOUND' }, { status: 404 });
         }
 
         const courseId = BigInt(params.id);

@@ -439,6 +439,26 @@ export default function LearningPage() {
         return Math.round((completedLessons / lessons.length) * 100);
     };
 
+    const groupedChapters = useMemo(() => {
+        const groups: { chapterId: string; chapterTitle: string; chapterOrder: number; lessons: Lesson[] }[] = [];
+        const groupMap = new Map<string, { chapterId: string; chapterTitle: string; chapterOrder: number; lessons: Lesson[] }>();
+
+        lessons.forEach((lesson) => {
+            const cId = lesson.chapterId || 'default';
+            const cTitle = lesson.chapterTitle || 'Nội dung khóa học';
+            const cOrder = lesson.chapterOrder || (groups.length + 1);
+
+            if (!groupMap.has(cId)) {
+                const newGroup = { chapterId: cId, chapterTitle: cTitle, chapterOrder: cOrder, lessons: [] };
+                groupMap.set(cId, newGroup);
+                groups.push(newGroup);
+            }
+            groupMap.get(cId)!.lessons.push(lesson);
+        });
+
+        return groups;
+    }, [lessons]);
+
     return (
         <div className="min-h-screen bg-slate-50">
             {!focusMode && <Header user={user} onLogout={handleLogout} onJoin={handleJoin} />}
@@ -800,38 +820,76 @@ export default function LearningPage() {
                     {/* Sidebar - Lesson List (hidden in focus mode — no distraction from the current lesson) */}
                     {!focusMode && (
                     <div className="lg:col-span-1">
-                        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 sticky top-28">
-                            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">
-                                Danh sách bài học
-                            </h3>
-                            <div className="space-y-1">
-                                {lessons.map(lesson => (
-                                    <button
-                                        key={lesson.id}
-                                        onClick={() => handleLessonSelect(lesson)}
-                                        className={`w-full text-left p-3 rounded-lg transition-colors ${currentLesson?.id === lesson.id
-                                            ? 'bg-blue-50 border border-blue-200'
-                                            : 'hover:bg-slate-50 border border-transparent'
-                                            }`}
-                                    >
-                                        <div className="flex items-start gap-2.5">
-                                            <div className={`flex-shrink-0 w-5 h-5 rounded-full border flex items-center justify-center mt-0.5 ${lesson.isCompleted ? 'bg-emerald-500 border-emerald-500' : currentLesson?.id === lesson.id ? 'border-blue-400' : 'border-slate-300'}`}>
-                                                {lesson.isCompleted && (
-                                                    <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7"/>
-                                                    </svg>
-                                                )}
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <p className={`text-xs font-medium truncate leading-snug ${currentLesson?.id === lesson.id ? 'text-blue-700' : 'text-slate-700'}`}>
-                                                    Bài {lesson.order}: {lesson.title}
-                                                </p>
-                                                <p className="text-xs text-slate-400 mt-0.5">
-                                                    {lesson.type.toLowerCase() === 'video' ? 'Video' : 'Quiz'}
-                                                </p>
-                                            </div>
+                        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-4 sticky top-28 space-y-4">
+                            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                                <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                                    Nội dung khóa học
+                                </h3>
+                                <span className="text-xs text-slate-400 font-medium">
+                                    {lessons.filter(l => l.isCompleted).length}/{lessons.length} bài
+                                </span>
+                            </div>
+
+                            <div className="space-y-4 max-h-[calc(100vh-220px)] overflow-y-auto pr-1">
+                                {groupedChapters.map((chapterGroup, cIdx) => (
+                                    <div key={chapterGroup.chapterId || cIdx} className="space-y-1.5">
+                                        {/* Chapter Header */}
+                                        <div className="flex items-center gap-2 px-1 py-1">
+                                            <span className="text-[11px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md flex-shrink-0">
+                                                Chương {chapterGroup.chapterOrder || (cIdx + 1)}
+                                            </span>
+                                            <span className="text-xs font-semibold text-slate-800 truncate">
+                                                {chapterGroup.chapterTitle}
+                                            </span>
                                         </div>
-                                    </button>
+
+                                        {/* Lessons List */}
+                                        <div className="space-y-1 pl-1">
+                                            {chapterGroup.lessons.map((lesson, lIdx) => {
+                                                const isSelected = currentLesson?.id === lesson.id;
+                                                const lessonNum = lesson.order || (lIdx + 1);
+                                                return (
+                                                    <button
+                                                        key={lesson.id}
+                                                        onClick={() => handleLessonSelect(lesson)}
+                                                        className={`w-full text-left p-2.5 rounded-xl transition-all flex items-start gap-2.5 ${
+                                                            isSelected
+                                                                ? 'bg-indigo-50/90 text-indigo-900 border border-indigo-200 shadow-xs font-semibold'
+                                                                : 'hover:bg-slate-100/70 text-slate-700 border border-transparent'
+                                                        }`}
+                                                    >
+                                                        <div className={`flex-shrink-0 w-5 h-5 rounded-full border flex items-center justify-center mt-0.5 transition-colors ${
+                                                            lesson.isCompleted
+                                                                ? 'bg-emerald-500 border-emerald-500'
+                                                                : isSelected
+                                                                    ? 'border-indigo-500 bg-white'
+                                                                    : 'border-slate-300'
+                                                        }`}>
+                                                            {lesson.isCompleted ? (
+                                                                <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7"/>
+                                                                </svg>
+                                                            ) : (
+                                                                <span className="text-[10px] text-slate-400 font-mono">
+                                                                    {lessonNum}
+                                                                </span>
+                                                            )}
+                                                        </div>
+
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className="text-xs leading-snug truncate">
+                                                                <span className="font-semibold text-slate-900 mr-1">Bài {lessonNum}:</span>
+                                                                {lesson.title}
+                                                            </p>
+                                                            <p className="text-[10px] text-slate-400 mt-0.5">
+                                                                {lesson.type.toLowerCase() === 'video' ? '📹 Video' : '📝 Quiz'}
+                                                            </p>
+                                                        </div>
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
                                 ))}
                             </div>
                         </div>

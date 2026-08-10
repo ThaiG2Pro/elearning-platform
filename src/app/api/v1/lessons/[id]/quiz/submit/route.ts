@@ -13,6 +13,10 @@ export async function POST(
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
+        if (!params.id || isNaN(Number(params.id))) {
+            return NextResponse.json({ error: 'LESSON_NOT_FOUND' }, { status: 404 });
+        }
+
         const lessonId = BigInt(params.id);
         const body: SubmitQuizDto = await request.json();
 
@@ -22,9 +26,8 @@ export async function POST(
         return NextResponse.json(result);
     } catch (error) {
         console.error('Submit quiz error:', error);
-        return NextResponse.json(
-            { error: 'Internal server error' },
-            { status: 500 }
-        );
+        const message = error instanceof Error ? error.message : 'Internal server error';
+        const status = message === 'ACCESS_DENIED' ? 403 : message === 'LESSON_NOT_FOUND' ? 404 : (message === 'QUIZ_EXPIRED' || message === 'INVALID_SUBMISSION') ? 400 : 500;
+        return NextResponse.json({ error: message }, { status });
     }
 }

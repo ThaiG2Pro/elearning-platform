@@ -1,39 +1,15 @@
-import { LearnService } from '../services/LearnService';
-import { LearningProgressRepository } from '../repositories/LearningProgressRepository';
-import { ProgressResult } from '../dtos/ProgressResult';
 import { ContentManagementService } from '../services/ContentManagementService';
 import { CourseRepository } from '../repositories/CourseRepository';
 import { CreateCourseDto, CourseSummaryDto } from '../dtos/CourseManagementDto';
 import { CreateSectionDto, UpdateSectionDto, SectionDto, CreateLessonDto, UpdateLessonDto } from '../dtos/ContentDto';
 import { prisma } from '../../../shared/config/database';
 
-export interface TrackProgressDto {
-    lessonId: number;
-    position: number;
-    duration: number;
-    isPreview: boolean;
-}
-
 export class ManagementController {
-    private learnService: LearnService;
     private contentService: ContentManagementService;
 
     constructor() {
-        const progressRepo = new LearningProgressRepository(prisma);
-        this.learnService = new LearnService(progressRepo, prisma);
-
         const courseRepo = new CourseRepository(prisma);
         this.contentService = new ContentManagementService(courseRepo, prisma);
-    }
-
-    async trackVideoProgress(userId: bigint, dto: TrackProgressDto): Promise<ProgressResult> {
-        return await this.learnService.trackVideoProgress(
-            userId,
-            BigInt(dto.lessonId),
-            dto.position,
-            dto.duration,
-            dto.isPreview
-        );
     }
 
     // Course Management

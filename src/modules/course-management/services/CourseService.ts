@@ -29,7 +29,7 @@ export class CourseService {
     async getCourseDetail(courseId: bigint, userId?: bigint): Promise<CourseDetailDto> {
         const fullCourse = await this.courseRepository.findByIdWithFullStructure(courseId);
         if (!fullCourse) {
-            throw new Error('Course not found');
+            throw new Error('COURSE_NOT_FOUND');
         }
 
         // WP1.5.9 (found while fixing WP1.5.12): access here was still gated
@@ -59,7 +59,8 @@ export class CourseService {
             return new ChapterDto(
                 Number(chapter.id),
                 chapter.title,
-                lessons
+                lessons,
+                chapter.orderIndex
             );
         });
 
@@ -78,6 +79,7 @@ export class CourseService {
                 : '/images/course-placeholder.svg',
             fullCourse.status,
             completionRate,
+            fullCourse.shareToken || fullCourse.share_token || undefined,
         );
     }
 }

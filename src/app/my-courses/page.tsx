@@ -4,13 +4,9 @@ import Image from 'next/image';
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
-import { getOwnedCourses, createCourseFromLink, archiveCourse, unarchiveCourse } from '@/lib/management';
+import { getOwnedCourses, createCourse, createCourseFromLink, archiveCourse, unarchiveCourse } from '@/lib/management';
 import Toast from '@/components/Toast';
 import { Skeleton } from '@/components/ui/skeleton';
-// WP1.5.8: standardize on the shared component set — this page used to have
-// a hand-rolled modal despite ui/dialog.tsx already being installed, plus
-// raw bg-indigo-600 buttons and a hand-rolled tab strip despite ui/tabs.tsx
-// existing too.
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
@@ -29,6 +25,9 @@ const MyCoursesPage = () => {
     const [creating, setCreating] = useState(false);
     const [createError, setCreateError] = useState<string | null>(null);
     const [showLinkModal, setShowLinkModal] = useState(false);
+    const [showBlankModal, setShowBlankModal] = useState(false);
+    const [newTitle, setNewTitle] = useState('');
+    const [newDesc, setNewDesc] = useState('');
     const [linkUrl, setLinkUrl] = useState('');
     const [archivingId, setArchivingId] = useState<number | null>(null);
     const router = useRouter();
@@ -85,6 +84,25 @@ const MyCoursesPage = () => {
         setSelectedStatus(status as Status);
     };
 
+    const handleCreateBlank = async () => {
+        setCreateError(null);
+        setCreating(true);
+        try {
+            const res = await createCourse({
+                title: newTitle.trim() || 'Khóa học mới',
+                description: newDesc.trim()
+            });
+            setShowBlankModal(false);
+            setNewTitle('');
+            setNewDesc('');
+            router.push(`/my-courses/${res.courseId || res.id}/edit`);
+        } catch (err: any) {
+            setCreateError(err.message || 'Lỗi khi tạo khóa học');
+        } finally {
+            setCreating(false);
+        }
+    };
+
     const handleCreateFromLink = async () => {
         if (!linkUrl.trim()) return;
         setCreateError(null);
@@ -102,14 +120,9 @@ const MyCoursesPage = () => {
     };
 
     const handleCourseClick = (course: ManagedCourse) => {
-        // Personal-organizer model: the owner can always edit their course,
-        // there is no separate draft-vs-published destination anymore.
         router.push(`/my-courses/${course.id}/edit`);
     };
 
-    // WP1.6 follow-up (round 3) — wires up the "Lưu trữ"/"Hoạt động" tabs,
-    // which previously had no action anywhere that could move a course
-    // between them.
     const handleToggleArchive = async (e: React.MouseEvent, course: ManagedCourse) => {
         e.stopPropagation();
         const isActive = ((course.status || '') as string).toUpperCase() === 'ACTIVE';
@@ -123,8 +136,6 @@ const MyCoursesPage = () => {
             if (selectedStatus === 'All') {
                 setCourses(prev => prev.map(c => c.id === course.id ? { ...c, status: isActive ? 'Archived' : 'Active' } : c));
             } else {
-                // Currently viewing a single-status tab — the course no
-                // longer belongs here once its status flips.
                 setCourses(prev => prev.filter(c => c.id !== course.id));
             }
         } catch (err: any) {
@@ -153,6 +164,13 @@ const MyCoursesPage = () => {
         setCreateError(null);
     };
 
+    const closeBlankModal = () => {
+        setShowBlankModal(false);
+        setNewTitle('');
+        setNewDesc('');
+        setCreateError(null);
+    };
+
     return (
         <div className="min-h-screen bg-slate-50">
             <Header user={user} onLogout={handleLogout} onJoin={handleJoin} />
@@ -160,15 +178,22 @@ const MyCoursesPage = () => {
                 <div className="flex items-center justify-between mb-6">
                     <div>
                         <h1 className="text-2xl font-bold text-slate-900">Khóa học của tôi</h1>
-                        <p className="text-sm text-slate-500 mt-0.5">Quản lý và xuất bản khóa học</p>
+                        <p className="text-sm text-slate-500 mt-0.5">Quản lý và chỉnh sửa khóa học</p>
                     </div>
                     <div className="flex items-center gap-3">
+                        <Button
+                            variant="outline"
+                            onClick={() => { setCreateError(null); setShowBlankModal(true); }}
+                            disabled={creating}
+                        >
+                            + Tạo khóa học mới
+                        </Button>
                         <Button
                             onClick={() => { setCreateError(null); setShowLinkModal(true); }}
                             disabled={creating}
                         >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/></svg>
-                            Tạo khóa học từ link
+                            Tạo từ link YouTube
                         </Button>
                     </div>
                 </div>
@@ -290,11 +315,55 @@ const MyCoursesPage = () => {
                 )}
             </div>
 
-            {/* WP1.1 — dán link đầu tiên → tự tạo course có cấu trúc chương/bài */}
+            {/* Modal tạo khóa học mới */}
+            <Dialog open={showBlankModal} onOpenChange={(open) => { if (!open) closeBlankModal(); }}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Tạo khóa học mới</DialogTitle>
+                        <DialogDescription>
+                            Nhập tên và mô tả cho khóa học mới của bạn. Sau khi tạo, bạn có thể thêm các chương và bài học.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-3 py-2">
+                        <div>
+                            <label className="block text-xs font-semibold text-slate-700 mb-1">Tên khóa học</label>
+                            <input
+                                type="text"
+                                value={newTitle}
+                                onChange={(e) => setNewTitle(e.target.value)}
+                                onKeyDown={(e) => { if (e.key === 'Enter') handleCreateBlank(); }}
+                                placeholder="Ví dụ: Lập trình Python cơ bản…"
+                                autoFocus
+                                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-semibold text-slate-700 mb-1">Mô tả (tùy chọn)</label>
+                            <textarea
+                                value={newDesc}
+                                onChange={(e) => setNewDesc(e.target.value)}
+                                placeholder="Mô tả ngắn gọn nội dung khóa học…"
+                                rows={3}
+                                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={closeBlankModal} disabled={creating}>
+                            Hủy
+                        </Button>
+                        <Button onClick={handleCreateBlank} disabled={creating}>
+                            {creating ? 'Đang tạo…' : 'Tạo khóa học'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Modal tạo khóa học từ link */}
             <Dialog open={showLinkModal} onOpenChange={(open) => { if (!open) closeLinkModal(); }}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Tạo khóa học từ link</DialogTitle>
+                        <DialogTitle>Tạo khóa học từ link YouTube</DialogTitle>
                         <DialogDescription>
                             Dán link video YouTube — hệ thống sẽ tự lấy tiêu đề, ảnh và tạo khóa học có sẵn bài học đầu tiên.
                         </DialogDescription>

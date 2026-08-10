@@ -1,6 +1,5 @@
 import { CourseRepository } from '../repositories/CourseRepository';
 import { AccessControlPolicy } from '../domain/AccessControlPolicy';
-import { Course, CourseStatus } from '../domain/Course';
 import { CreateCourseDto, CourseSummaryDto } from '../dtos/CourseManagementDto';
 import { CreateSectionDto, UpdateSectionDto, SectionDto, CreateLessonDto, UpdateLessonDto, LessonDto } from '../dtos/ContentDto';
 import { PublicCourseDto, ChapterDto as PublicChapterDto, LessonDto as PublicLessonDto } from '../dtos/CourseDetailDto';
@@ -83,22 +82,42 @@ export class ContentManagementService {
     }
 
     async createCourse(ownerId: bigint, dto: CreateCourseDto): Promise<bigint> {
-        const baseSlug = dto.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+        const title = dto?.title?.trim() || 'Khóa học mới';
+        const baseSlug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'khoa-hoc-moi';
         const suffix = Math.random().toString(36).slice(2, 7);
         const slug = `${baseSlug}-${suffix}`;
-        // Personal-organizer model: a course is live for its owner immediately,
-        // no admin approval gate (Checkpoint 0 pivot).
-        const course = new Course(
-            null,
-            ownerId,
-            dto.title,
-            slug,
-            dto.description || '',
-            CourseStatus.ACTIVE,
-        );
+        
+        return await this.prisma.$transaction(async (tx) => {
+            const course = await tx.courses.create({
+                data: {
+                    owner_id: ownerId,
+                    title,
+                    slug,
+                    description: dto?.description || '',
+                    status: 'ACTIVE',
+                },
+            });
 
-        await this.courseRepository.create(course);
-        return course.id!;
+            const chapter = await tx.chapters.create({
+                data: {
+                    course_id: course.id,
+                    title: 'Chương 1',
+                    order_index: 1,
+                },
+            });
+
+            await tx.lessons.create({
+                data: {
+                    chapter_id: chapter.id,
+                    title: 'Bài 1',
+                    type: 'VIDEO',
+                    content_url: '',
+                    order_index: 1,
+                },
+            });
+
+            return course.id;
+        });
     }
 
     /**
@@ -151,7 +170,7 @@ export class ContentManagementService {
                 data: {
                     chapter_id: chapter.id,
                     source_id: source!.id,
-                    title: source!.title || 'Bài học đầu tiên',
+                    title: source!.title || 'Bài học 1',
                     type: 'VIDEO',
                     content_url: trimmedUrl,
                     order_index: 1,

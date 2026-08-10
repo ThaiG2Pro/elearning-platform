@@ -82,7 +82,7 @@ async function main() {
     // Hash password
     const hashedPassword = await bcrypt.hash('password123', 10);
 
-    // Create users
+    // Create users — in the personal organizer model, all users are standard personal accounts
     let john = await prisma.users.findFirst({
         where: { email: 'john@gmail.com' },
     });
@@ -92,7 +92,7 @@ async function main() {
                 email: 'john@gmail.com',
                 password_hash: hashedPassword,
                 full_name: 'John Doe',
-                age: 15,
+                age: 25,
                 role_id: studentRole.id,
                 status: 'ACTIVE',
                 created_at: new Date(),
@@ -110,7 +110,7 @@ async function main() {
                 password_hash: hashedPassword,
                 full_name: 'Jack Smith',
                 age: 38,
-                role_id: lecturerRole.id,
+                role_id: studentRole.id,
                 status: 'ACTIVE',
                 created_at: new Date(),
             },
@@ -125,16 +125,16 @@ async function main() {
             data: {
                 email: 'admin1@gmail.com',
                 password_hash: hashedPassword,
-                full_name: 'TrongTin Admin',
+                full_name: 'Trọng Tín',
                 age: 31,
-                role_id: adminRole.id,
+                role_id: studentRole.id,
                 status: 'ACTIVE',
                 created_at: new Date(),
             },
         });
     }
 
-    console.log('✅ Users created');
+    console.log('✅ Users created (standardized personal accounts)');
 
     // Create courses
     // Personal-organizer model: every course is active for its owner
@@ -500,10 +500,10 @@ async function main() {
 
     console.log('🎉 Database seeded successfully!');
     console.log('\n📊 Test Data Summary:');
-    console.log('👤 Users:');
-    console.log('   - John (Student): john@gmail.com / password123');
-    console.log('   - Jack (Lecturer): jack@gmail.com / password123');
-    console.log('   - TrongTin (Admin): admin1@gmail.com / password123');
+    console.log('👤 Standardized Personal Accounts:');
+    console.log('   - John Doe: john@gmail.com / password123');
+    console.log('   - Jack Smith: jack@gmail.com / password123');
+    console.log('   - Trọng Tín: admin1@gmail.com / password123');
     console.log('📚 Courses:');
     console.log(`   - Java Course: ACTIVE — share: /share/${javaCourse.share_token}`);
     console.log(`   - C++ Course: ACTIVE — share: /share/${cppCourse.share_token}`);

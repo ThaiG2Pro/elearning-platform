@@ -1,7 +1,7 @@
 // src/lib/management.ts
 
 import api from './api';
-import { ManagedCoursesResponse, ManagedCoursesRequest, CourseStructure, LessonPreview, Chapter, Lesson, QuizParseResponse, PublishValidation } from '@/types/management.types';
+import { ManagedCoursesResponse, ManagedCoursesRequest, CourseStructure, LessonPreview, Chapter, Lesson, QuizParseResponse } from '@/types/management.types';
 
 // WP1.6 follow-up (round 2) — renamed from getLecturerCourses: lists the
 // courses the current user owns, for the /my-courses management screen.
@@ -82,19 +82,27 @@ export const getLessonPreview = async (courseId: number, lessonId: number): Prom
     }
 };
 
-// Create a new course (Draft)
-export const createCourse = async (data: { title?: string; description?: string; slug?: string } = {}): Promise<{ id: number | string; message?: string }> => {
+// Create a new course
+export const createCourse = async (data: { title?: string; description?: string; slug?: string } = {}): Promise<{ id: string; courseId: string; message?: string }> => {
     try {
-        const response = await api.post<{ id: number | string; message?: string }>(
+        const response = await api.post<{ id?: string | number; courseId?: string | number; message?: string }>(
             `/management/courses`,
             data
         );
-        return response.data;
+        const courseIdStr = String(response.data.courseId || response.data.id || '');
+        return {
+            id: courseIdStr,
+            courseId: courseIdStr,
+            message: response.data.message
+        };
     } catch (error: any) {
-        if (error.response?.status === 400) {
-            throw new Error(error.response.data?.error || 'Invalid input');
+        if (error.response?.data?.error === 'UNAUTHORIZED') {
+            throw new Error('UNAUTHORIZED');
         }
-        throw new Error('NETWORK_ERROR');
+        if (error.response?.status === 400) {
+            throw new Error(error.response.data?.error || 'Dữ liệu không hợp lệ');
+        }
+        throw new Error('Có lỗi xảy ra khi tạo khóa học.');
     }
 };
 
@@ -271,26 +279,6 @@ export const uploadQuizFile = async (lessonId: number, file: File): Promise<{ up
             if (status === 400) throw new Error('INVALID_FILE_FORMAT');
             else if (status === 413) throw new Error('FILE_TOO_LARGE');
             else if (status === 401) throw new Error('UNAUTHORIZED');
-            else if (status === 403) throw new Error('ACCESS_DENIED');
-            else throw new Error('SERVER_ERROR');
-        } else throw new Error('NETWORK_ERROR');
-    }
-};
-
-// Publish course
-export const publishCourse = async (courseId: number): Promise<PublishValidation> => {
-    try {
-        const response = await api.post<PublishValidation>(
-            `/management/courses/${courseId}/publish`,
-            {}
-        );
-        return response.data;
-    } catch (error: any) {
-        if (error.response) {
-            const { status, data } = error.response;
-            if (status === 400) {
-                return data as PublishValidation; // Return validation errors
-            } else if (status === 401) throw new Error('UNAUTHORIZED');
             else if (status === 403) throw new Error('ACCESS_DENIED');
             else throw new Error('SERVER_ERROR');
         } else throw new Error('NETWORK_ERROR');

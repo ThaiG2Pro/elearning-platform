@@ -10,18 +10,12 @@ interface HeaderProps {
     onJoin?: () => void;
 }
 
-const roleAvatarColor: Record<string, string> = {
-    STUDENT: 'bg-blue-600 hover:bg-blue-700',
-    LECTURER: 'bg-indigo-600 hover:bg-indigo-700',
-    ADMIN: 'bg-slate-700 hover:bg-slate-800',
-};
-
 export default function Header({ user, onLogout, onJoin }: HeaderProps) {
     const router = useRouter();
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
     const getInitial = (fullName: string) => fullName.charAt(0).toUpperCase();
-    const avatarColor = user ? (roleAvatarColor[user.role] ?? 'bg-blue-600 hover:bg-blue-700') : '';
+    const avatarColor = 'bg-blue-600 hover:bg-blue-700';
 
     const handleHomeClick = () => {
         setIsDropdownOpen(false);

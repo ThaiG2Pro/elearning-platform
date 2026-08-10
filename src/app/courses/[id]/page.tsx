@@ -7,7 +7,7 @@ import Header from '@/components/Header';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CourseDetail } from '@/types/course.types';
 import { User } from '@/types/auth.types';
-import { getCourseDetail } from '@/lib/courses';
+import { getCourseDetail, copySharedCourse } from '@/lib/courses';
 import { logout as apiLogout, AuthUtils } from '@/lib/auth';
 
 type AppState = 'idle' | 'loading' | 'processing' | 'error' | 'success';
@@ -18,9 +18,10 @@ export default function CourseDetailPage() {
     const courseId = parseInt(params.id as string);
 
     const [course, setCourse] = useState<CourseDetail | null>(null);
-    const [user, setUser] = useState<User | null>(null); // TODO: Get from auth context
+    const [user, setUser] = useState<User | null>(null);
     const [appState, setAppState] = useState<AppState>('idle');
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
+    const [copying, setCopying] = useState(false);
 
     // Fetch course detail on mount
     useEffect(() => {
@@ -37,10 +38,6 @@ export default function CourseDetailPage() {
             }
         };
 
-        // WP1.5.12: `courseId` was never checked for NaN — a malformed
-        // course-id in the URL (e.g. /courses/abc) left appState stuck at
-        // 'idle' forever, rendering nothing (no loading, no error). Surface
-        // it as an error immediately instead of silently doing nothing.
         if (Number.isNaN(courseId)) {
             setAppState('error');
             setErrorMessage('Đường dẫn khóa học không hợp lệ.');
@@ -78,6 +75,23 @@ export default function CourseDetailPage() {
         router.push(`/courses/${courseId}/learn`);
     };
 
+    const handleEdit = () => {
+        router.push(`/my-courses/${courseId}/edit`);
+    };
+
+    const handleCopy = async () => {
+        if (!course?.shareToken) return;
+        try {
+            setCopying(true);
+            setErrorMessage(null);
+            const result = await copySharedCourse(course.shareToken);
+            router.push(`/courses/${result.courseId}/learn`);
+        } catch (error: any) {
+            setErrorMessage(error.message);
+            setCopying(false);
+        }
+    };
+
     return (
         <div className="min-h-screen bg-slate-50">
             <Header user={user} onLogout={handleLogout} onJoin={handleJoin} />
@@ -87,7 +101,7 @@ export default function CourseDetailPage() {
                 <section className="mb-6">
                     <button
                         onClick={handleBack}
-                        className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800 transition-colors"
+                        className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800 transition-colors focus:outline-none"
                     >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -159,13 +173,6 @@ export default function CourseDetailPage() {
                         </section>
 
                         {/* Interaction Section */}
-                        {/* WP1.6.1 — the catalog (GET /courses) lists every user's ACTIVE
-                            courses, not just the viewer's own, but course access (learn/
-                            lessons) is ownership-based. This button used to show "Bắt đầu
-                            học" for ANY logged-in user regardless of ownership, sending
-                            non-owners straight into a 403 ACCESS_DENIED dead-end on
-                            /courses/[id]/learn. `course.isOwner` (owner match, already
-                            computed by CourseService.getCourseDetail) is the real signal. */}
                         <section>
                             {!user ? (
                                 <button
@@ -175,20 +182,59 @@ export default function CourseDetailPage() {
                                     Tham gia để học
                                 </button>
                             ) : course.isOwner ? (
+                                <div className="flex flex-wrap items-center gap-3">
+                                    <button
+                                        onClick={handleLearn}
+                                        className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg transition-colors shadow-sm"
+                                    >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                        </svg>
+                                        {typeof course.completionRate === 'number' && course.completionRate > 0 ? 'Tiếp tục học' : 'Bắt đầu học'}
+                                    </button>
+                                    <button
+                                        onClick={handleEdit}
+                                        className="inline-flex items-center gap-2 px-6 py-3 border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-medium rounded-lg transition-colors shadow-sm"
+                                    >
+                                        <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                        </svg>
+                                        Chỉnh sửa khóa học
+                                    </button>
+                                </div>
+                            ) : course.shareToken ? (
                                 <button
-                                    onClick={handleLearn}
-                                    className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg transition-colors shadow-sm"
+                                    onClick={handleCopy}
+                                    disabled={copying}
+                                    className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white font-medium rounded-lg transition-colors shadow-sm"
                                 >
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                    </svg>
-                                    Bắt đầu học
+                                    {copying ? (
+                                        <>
+                                            <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"/>
+                                            Đang sao chép…
+                                        </>
+                                    ) : (
+                                        <>
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                                            </svg>
+                                            Sao chép về học
+                                        </>
+                                    )}
                                 </button>
                             ) : (
-                                <p className="text-sm text-slate-500 bg-slate-100 rounded-lg px-4 py-3">
-                                    Đây là khóa học của người dùng khác — bạn không thể học trực tiếp khóa học này.
-                                </p>
+                                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                                    <p className="text-sm text-slate-500 bg-slate-100 rounded-lg px-4 py-3">
+                                        Đây là khóa học của người dùng khác.
+                                    </p>
+                                    <button
+                                        onClick={handleBack}
+                                        className="px-4 py-2 border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-sm font-medium rounded-lg transition-colors"
+                                    >
+                                        Khám phá khóa học khác
+                                    </button>
+                                </div>
                             )}
                         </section>
                     </>

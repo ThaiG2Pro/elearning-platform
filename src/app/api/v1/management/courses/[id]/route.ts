@@ -12,6 +12,10 @@ export async function PUT(
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
+        if (!params.id || isNaN(Number(params.id))) {
+            return NextResponse.json({ error: 'COURSE_NOT_FOUND' }, { status: 404 });
+        }
+
         const courseId = BigInt(params.id);
         const body: { title?: string; description?: string; status?: string } = await request.json();
 

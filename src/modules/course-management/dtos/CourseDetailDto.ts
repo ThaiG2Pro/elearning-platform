@@ -10,6 +10,7 @@ export class CourseDetailDto {
         public thumbnailUrl?: string,
         public status?: string,
         public completionRate?: number,
+        public shareToken?: string,
     ) { }
 }
 
@@ -18,6 +19,7 @@ export class ChapterDto {
         public id: number,
         public title: string,
         public lessons: LessonDto[],
+        public orderIndex?: number,
     ) { }
 }
 

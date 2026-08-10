@@ -8,6 +8,13 @@ export async function GET(
     { params }: { params: { id: string } }
 ) {
     try {
+        if (!params.id || isNaN(Number(params.id))) {
+            return NextResponse.json(
+                { error: 'COURSE_NOT_FOUND' },
+                { status: 404 }
+            );
+        }
+
         const courseId = BigInt(params.id);
         const userId = await getUserIdFromRequest(request);
 
@@ -55,16 +62,25 @@ export async function GET(
                     order: lesson.orderIndex,
                     videoUrl: lesson.contentUrl,
                     isCompleted,
-                    duration
+                    duration,
+                    chapterId: chapter.id.toString(),
+                    chapterTitle: chapter.title,
+                    chapterOrder: chapter.orderIndex,
                 });
             }
         }
 
         return NextResponse.json(lessons);
-    } catch (error) {
+    } catch (error: any) {
+        if (error?.message === 'COURSE_NOT_FOUND' || error?.message === 'Course not found') {
+            return NextResponse.json(
+                { error: 'COURSE_NOT_FOUND' },
+                { status: 404 }
+            );
+        }
         console.error('Get course lessons error:', error);
         return NextResponse.json(
-            { error: 'Internal server error' },
+            { error: 'SERVER_ERROR' },
             { status: 500 }
         );
     }

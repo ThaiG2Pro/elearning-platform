@@ -232,14 +232,14 @@ roles ──1:N──> users ──1:N──> tokens
 
 ## V. DỮ LIỆU MẪU (SEED DATA)
 
-| Người dùng | Email | Vai trò | Mật khẩu |
+| Người dùng | Email | Loại tài khoản | Mật khẩu |
 |-----------|-------|---------|-----------|
-| John Doe | john@gmail.com | STUDENT | password123 |
-| Jack Smith | jack@gmail.com | LECTURER | password123 |
-| TrongTin Admin | admin1@gmail.com | ADMIN | password123 |
+| John Doe | john@gmail.com | Tài khoản cá nhân (Personal) | password123 |
+| Jack Smith | jack@gmail.com | Tài khoản cá nhân (Personal) | password123 |
+| Trọng Tín | admin1@gmail.com | Tài khoản cá nhân (Personal) | password123 |
 
 | Khóa học | Trạng thái | Ghi chú |
 |---------|-----------|---------|
 | Nhập môn Java | ACTIVE | 1 chapter, 1 video + 1 quiz (10 câu) |
-| Nhập môn C++ | PENDING | 1 chapter, 1 video + 1 quiz (10 câu) |
-| Nhập môn Python | DRAFT | reject_note: "Thêm quiz chất lượng" |
+| Nhập môn C++ | ACTIVE | 1 chapter, 1 video + 1 quiz (10 câu) |
+| Nhập môn Python | ACTIVE | 1 chapter, 1 video |

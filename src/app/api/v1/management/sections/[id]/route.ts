@@ -14,6 +14,10 @@ export async function PUT(
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
+        if (!params.id || isNaN(Number(params.id))) {
+            return NextResponse.json({ error: 'SECTION_NOT_FOUND' }, { status: 404 });
+        }
+
         const sectionId = BigInt(params.id);
         const body: UpdateSectionDto = await request.json();
 
@@ -39,6 +43,10 @@ export async function DELETE(
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
+        if (!params.id || isNaN(Number(params.id))) {
+            return NextResponse.json({ error: 'SECTION_NOT_FOUND' }, { status: 404 });
+        }
+
         const sectionId = BigInt(params.id);
         const controller = new CourseManagementController();
         await controller.deleteSection(userId, sectionId);
@@ -46,6 +54,8 @@ export async function DELETE(
         return NextResponse.json({ message: 'Section deleted successfully' });
     } catch (error) {
         console.error('Error deleting section:', error);
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+        const message = error instanceof Error ? error.message : 'Internal server error';
+        const status = message === 'ACCESS_DENIED' ? 403 : message === 'SECTION_NOT_FOUND' ? 404 : 500;
+        return NextResponse.json({ error: message }, { status });
     }
 }

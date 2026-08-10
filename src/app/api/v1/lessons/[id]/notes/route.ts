@@ -15,6 +15,10 @@ export async function GET(
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
+        if (!params.id || isNaN(Number(params.id))) {
+            return NextResponse.json({ error: 'LESSON_NOT_FOUND' }, { status: 404 });
+        }
+
         const lessonId = BigInt(params.id);
         const controller = new LearnController();
         const notes = await controller.listNotes(userId, lessonId);
@@ -23,7 +27,8 @@ export async function GET(
     } catch (error) {
         console.error('Error listing notes:', error);
         const message = error instanceof Error ? error.message : 'Internal server error';
-        return NextResponse.json({ error: message }, { status: 500 });
+        const status = message === 'ACCESS_DENIED' ? 403 : message === 'LESSON_NOT_FOUND' ? 404 : 500;
+        return NextResponse.json({ error: message }, { status });
     }
 }
 
@@ -35,6 +40,10 @@ export async function POST(
         const userId = await getUserIdFromRequest(request);
         if (!userId) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        if (!params.id || isNaN(Number(params.id))) {
+            return NextResponse.json({ error: 'LESSON_NOT_FOUND' }, { status: 404 });
         }
 
         const { content, videoTimestampSec } = await request.json();

@@ -17,6 +17,7 @@ export interface CourseDetail {
     thumbnailUrl?: string;
     chapters: any[]; // TODO: Define chapter type
     completionRate?: number; // WP1.3 — % of lessons finished by the logged-in user
+    shareToken?: string;
 }
 
 // WP1.6 follow-up (round 2) — renamed from EnrolledCourse: this is a course
@@ -44,6 +45,9 @@ export interface Lesson {
     duration?: number; // in seconds
     order: number;
     isCompleted: boolean;
+    chapterId?: string;
+    chapterTitle?: string;
+    chapterOrder?: number;
 }
 
 export interface LessonProgress {

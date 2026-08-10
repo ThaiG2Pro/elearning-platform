@@ -13,6 +13,10 @@ export async function PUT(
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
+        if (!params.id || isNaN(Number(params.id))) {
+            return NextResponse.json({ error: 'COURSE_NOT_FOUND' }, { status: 404 });
+        }
+
         const courseId = BigInt(params.id);
         const body: BulkCourseContentDto = await request.json();
 
@@ -35,6 +39,7 @@ export async function PUT(
     } catch (error) {
         console.error('Error syncing course content:', error);
         const message = error instanceof Error ? error.message : 'Internal server error';
-        return NextResponse.json({ error: message }, { status: 500 });
+        const status = message === 'ACCESS_DENIED' ? 403 : message === 'COURSE_NOT_FOUND' ? 404 : 500;
+        return NextResponse.json({ error: message }, { status });
     }
 }

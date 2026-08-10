@@ -13,6 +13,10 @@ export async function PUT(
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
+        if (!params.id || isNaN(Number(params.id))) {
+            return NextResponse.json({ error: 'LESSON_NOT_FOUND' }, { status: 404 });
+        }
+
         const lessonId = BigInt(params.id);
         const body = await request.json();
         // Accept both `contentUrl` (DTO name) and `videoUrl` (frontend field name).
@@ -43,6 +47,10 @@ export async function DELETE(
         const userId = await getUserIdFromRequest(request);
         if (!userId) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        if (!params.id || isNaN(Number(params.id))) {
+            return NextResponse.json({ error: 'LESSON_NOT_FOUND' }, { status: 404 });
         }
 
         const lessonId = BigInt(params.id);

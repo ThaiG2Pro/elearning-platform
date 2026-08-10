@@ -88,7 +88,3 @@ export interface ChapterEdit {
 export interface QuizParseResponse {
     questions: QuizQuestion[];
 }
-
-export interface PublishValidation {
-    errors: string[];
-}
