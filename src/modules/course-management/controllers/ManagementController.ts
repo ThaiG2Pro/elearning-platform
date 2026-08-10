@@ -5,7 +5,6 @@ import { ContentManagementService } from '../services/ContentManagementService';
 import { CourseRepository } from '../repositories/CourseRepository';
 import { CreateCourseDto, CourseSummaryDto } from '../dtos/CourseManagementDto';
 import { CreateSectionDto, UpdateSectionDto, SectionDto, CreateLessonDto, UpdateLessonDto } from '../dtos/ContentDto';
-import { LessonPreviewDto } from '../services/ContentManagementService';
 import { prisma } from '../../../shared/config/database';
 
 export interface TrackProgressDto {
@@ -50,7 +49,7 @@ export class ManagementController {
         return await this.contentService.createCourseFromLink(ownerId, url);
     }
 
-    async updateCourseMetadata(ownerId: bigint, courseId: bigint, data: { title?: string; description?: string }): Promise<void> {
+    async updateCourseMetadata(ownerId: bigint, courseId: bigint, data: { title?: string; description?: string; status?: 'ACTIVE' | 'ARCHIVED' }): Promise<void> {
         return await this.contentService.updateCourseMetadata(ownerId, courseId, data);
     }
 
@@ -90,9 +89,5 @@ export class ManagementController {
 
     async deleteLesson(lessonId: bigint): Promise<void> {
         await this.contentService.deleteLesson(lessonId);
-    }
-
-    async getLessonPreview(courseId: bigint, lessonId: bigint, user?: { id: bigint; role: string }): Promise<LessonPreviewDto> {
-        return await this.contentService.getLessonPreview(courseId, lessonId, user);
     }
 }

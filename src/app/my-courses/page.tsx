@@ -4,7 +4,7 @@ import Image from 'next/image';
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
-import { getOwnedCourses, createCourseFromLink } from '@/lib/management';
+import { getOwnedCourses, createCourseFromLink, archiveCourse, unarchiveCourse } from '@/lib/management';
 import Toast from '@/components/Toast';
 import { Skeleton } from '@/components/ui/skeleton';
 // WP1.5.8: standardize on the shared component set — this page used to have
@@ -30,6 +30,7 @@ const MyCoursesPage = () => {
     const [createError, setCreateError] = useState<string | null>(null);
     const [showLinkModal, setShowLinkModal] = useState(false);
     const [linkUrl, setLinkUrl] = useState('');
+    const [archivingId, setArchivingId] = useState<number | null>(null);
     const router = useRouter();
 
     const fetchCourses = useCallback(async (status?: Status) => {
@@ -104,6 +105,33 @@ const MyCoursesPage = () => {
         // Personal-organizer model: the owner can always edit their course,
         // there is no separate draft-vs-published destination anymore.
         router.push(`/my-courses/${course.id}/edit`);
+    };
+
+    // WP1.6 follow-up (round 3) — wires up the "Lưu trữ"/"Hoạt động" tabs,
+    // which previously had no action anywhere that could move a course
+    // between them.
+    const handleToggleArchive = async (e: React.MouseEvent, course: ManagedCourse) => {
+        e.stopPropagation();
+        const isActive = ((course.status || '') as string).toUpperCase() === 'ACTIVE';
+        setArchivingId(course.id);
+        try {
+            if (isActive) {
+                await archiveCourse(course.id);
+            } else {
+                await unarchiveCourse(course.id);
+            }
+            if (selectedStatus === 'All') {
+                setCourses(prev => prev.map(c => c.id === course.id ? { ...c, status: isActive ? 'Archived' : 'Active' } : c));
+            } else {
+                // Currently viewing a single-status tab — the course no
+                // longer belongs here once its status flips.
+                setCourses(prev => prev.filter(c => c.id !== course.id));
+            }
+        } catch (err: any) {
+            setError(err.message);
+        } finally {
+            setArchivingId(null);
+        }
     };
 
     const getErrorMessage = (errorCode: string) => {
@@ -233,14 +261,28 @@ const MyCoursesPage = () => {
                                 <div className="p-5">
                                     <h3 className="text-sm font-semibold text-slate-800 mb-2 line-clamp-2">{course.title}</h3>
 
-                                    <span
-                                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${((course.status || '') as string).toUpperCase() === 'ACTIVE'
-                                            ? 'bg-emerald-50 text-emerald-700'
-                                            : 'bg-slate-100 text-slate-600'
-                                            }`}
-                                    >
-                                        {((course.status || '') as string).toUpperCase() === 'ACTIVE' ? 'Hoạt động' : 'Lưu trữ'}
-                                    </span>
+                                    <div className="flex items-center justify-between gap-2">
+                                        <span
+                                            className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${((course.status || '') as string).toUpperCase() === 'ACTIVE'
+                                                ? 'bg-emerald-50 text-emerald-700'
+                                                : 'bg-slate-100 text-slate-600'
+                                                }`}
+                                        >
+                                            {((course.status || '') as string).toUpperCase() === 'ACTIVE' ? 'Hoạt động' : 'Lưu trữ'}
+                                        </span>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            disabled={archivingId === course.id}
+                                            onClick={(e) => handleToggleArchive(e, course)}
+                                        >
+                                            {archivingId === course.id
+                                                ? '...'
+                                                : ((course.status || '') as string).toUpperCase() === 'ACTIVE'
+                                                    ? 'Lưu trữ'
+                                                    : 'Khôi phục'}
+                                        </Button>
+                                    </div>
                                 </div>
                             </div>
                         ))}

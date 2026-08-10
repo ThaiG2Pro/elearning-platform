@@ -565,14 +565,20 @@ const CourseEditPage = () => {
                                                             onChange={(e) => setLessonForm(prev => ({ ...prev, title: e.target.value }))}
                                                             className="w-full mb-1.5 px-2 py-1 border border-slate-300 rounded text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                                                         />
+                                                        {/* WP1.6 follow-up (round 3) — "Text" was removed: it had no
+                                                            edit panel (handleLessonSelect only branches on VIDEO/
+                                                            QUIZ), and the bulk-save sync path (syncCourseContent)
+                                                            silently mislabeled any non-VIDEO lesson as QUIZ and
+                                                            wiped its content to '{}' on the next save. A stub
+                                                            option with no working implementation behind it, kept
+                                                            around it would keep corrupting data. */}
                                                         <select
                                                             value={lessonForm.type}
-                                                            onChange={(e) => setLessonForm(prev => ({ ...prev, type: e.target.value as 'VIDEO' | 'QUIZ' | 'TEXT' }))}
+                                                            onChange={(e) => setLessonForm(prev => ({ ...prev, type: e.target.value as 'VIDEO' | 'QUIZ' }))}
                                                             className="w-full mb-1.5 px-2 py-1 border border-slate-300 rounded text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"
                                                         >
                                                             <option value="VIDEO">Video</option>
                                                             <option value="QUIZ">Quiz</option>
-                                                            <option value="TEXT">Text</option>
                                                         </select>
                                                         <Button onClick={handleCreateLesson} size="sm" className="w-full">
                                                             Thêm bài học

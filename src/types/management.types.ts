@@ -22,7 +22,7 @@ export interface ManagedCoursesRequest {
 export interface Lesson {
     id: number;
     title: string;
-    type: 'VIDEO' | 'QUIZ' | 'TEXT';
+    type: 'VIDEO' | 'QUIZ';
     orderIndex: number;
     content?: string;
     videoUrl?: string;
@@ -64,7 +64,7 @@ export interface QuizQuestion {
 export interface LessonPreview {
     id: number;
     title: string;
-    type: 'VIDEO' | 'QUIZ' | 'TEXT';
+    type: 'VIDEO' | 'QUIZ';
     content: string;
     videoUrl?: string;
     quizQuestions?: QuizQuestion[];
@@ -76,7 +76,7 @@ export interface LessonEdit {
     content: string;
     videoUrl?: string;
     orderIndex: number;
-    type: 'VIDEO' | 'QUIZ' | 'TEXT';
+    type: 'VIDEO' | 'QUIZ';
 }
 
 export interface ChapterEdit {

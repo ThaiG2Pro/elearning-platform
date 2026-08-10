@@ -13,10 +13,21 @@ export async function PUT(
         }
 
         const courseId = BigInt(params.id);
-        const body: { title?: string; description?: string } = await request.json();
+        const body: { title?: string; description?: string; status?: string } = await request.json();
+
+        // WP1.6 follow-up (round 3) — `status` (archive/unarchive) now shares
+        // this same update path; a request may carry only `status` with no
+        // title/description, so the "Title is required" guard below must not
+        // reject it.
+        if (body.status !== undefined && body.status !== 'ACTIVE' && body.status !== 'ARCHIVED') {
+            return NextResponse.json(
+                { error: 'Invalid status' },
+                { status: 400 }
+            );
+        }
 
         // Validate input
-        if (!body.title?.trim() && body.description === undefined) {
+        if (!body.title?.trim() && body.description === undefined && body.status === undefined) {
             return NextResponse.json(
                 { error: 'Title is required' },
                 { status: 400 }
@@ -27,6 +38,7 @@ export async function PUT(
         await controller.updateCourseMetadata(userId, courseId, {
             title: body.title,
             description: body.description,
+            status: body.status as 'ACTIVE' | 'ARCHIVED' | undefined,
         });
 
         return NextResponse.json({ message: 'Course updated successfully' });

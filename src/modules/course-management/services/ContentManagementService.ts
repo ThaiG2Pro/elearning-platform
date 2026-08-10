@@ -1,5 +1,4 @@
 import { CourseRepository } from '../repositories/CourseRepository';
-import { QuizPolicy } from '../domain/QuizPolicy';
 import { AccessControlPolicy } from '../domain/AccessControlPolicy';
 import { Course, CourseStatus } from '../domain/Course';
 import { CreateCourseDto, CourseSummaryDto } from '../dtos/CourseManagementDto';
@@ -225,7 +224,7 @@ export class ContentManagementService {
         return await this.courseRepository.cloneForOwner(course.id, userId);
     }
 
-    async updateCourseMetadata(ownerId: bigint, courseId: bigint, data: { title?: string; description?: string }): Promise<void> {
+    async updateCourseMetadata(ownerId: bigint, courseId: bigint, data: { title?: string; description?: string; status?: 'ACTIVE' | 'ARCHIVED' }): Promise<void> {
         const course = await this.courseRepository.findById(courseId);
         if (!course) throw new Error('COURSE_NOT_FOUND');
 
@@ -239,6 +238,17 @@ export class ContentManagementService {
         }
         if (data.description !== undefined) {
             course.description = data.description;
+        }
+        // WP1.6 follow-up (round 3) — Course.archive()/unarchive() existed in
+        // the domain since the ownership pivot but nothing ever called them:
+        // no route, no service method, no UI action. The /my-courses
+        // "Archived" filter tab was consequently always empty. This wires
+        // the existing domain methods up through the same update path as
+        // title/description.
+        if (data.status === 'ARCHIVED') {
+            course.archive();
+        } else if (data.status === 'ACTIVE') {
+            course.unarchive();
         }
 
         await this.courseRepository.save(course);
@@ -322,63 +332,5 @@ export class ContentManagementService {
         await this.prisma.lessons.delete({
             where: { id: lessonId },
         });
-    }
-
-    /**
-     * Owner-only preview of a lesson (used by the "view my course" screen).
-     * There is no approval workflow to gate on anymore — access is purely
-     * by ownership.
-     */
-    async getLessonPreview(courseId: bigint, lessonId: bigint, user?: { id: bigint; role: string }): Promise<LessonPreviewDto> {
-        const lesson = await this.prisma.lessons.findFirst({
-            where: {
-                id: lessonId,
-                chapter: {
-                    course_id: courseId
-                }
-            },
-            include: {
-                questions: true,
-                chapter: {
-                    include: { course: true }
-                }
-            }
-        });
-
-        if (!lesson) {
-            throw new Error('LESSON_NOT_FOUND');
-        }
-
-        const course = lesson.chapter.course;
-
-        if (!user) {
-            throw new Error('Unauthorized');
-        }
-
-        if (course.owner_id !== user.id) {
-            throw new Error('FORBIDDEN');
-        }
-
-        return {
-            id: lesson.id,
-            title: lesson.title,
-            type: lesson.type,
-            content: lesson.content_url || '',
-            videoUrl: lesson.content_url || undefined,
-            quizQuestions: lesson.questions.map(q => {
-                const answerKey = (q as any).answer_key || (q as any).answerKey || undefined;
-                const correctIdx = typeof answerKey === 'string' ? QuizPolicy.keyToIndex(answerKey) : null;
-                const correctId = correctIdx !== null && correctIdx >= 0 ? `option_${correctIdx}` : null;
-
-                return {
-                    id: q.id,
-                    content: q.content,
-                    options: [q.option_a, q.option_b, q.option_c, q.option_d],
-                    answerKey: answerKey || undefined,
-                    correctIndex: correctIdx !== null ? correctIdx : null,
-                    correctId: correctId,
-                };
-            })
-        };
     }
 }

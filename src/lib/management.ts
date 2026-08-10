@@ -98,8 +98,8 @@ export const createCourse = async (data: { title?: string; description?: string;
     }
 };
 
-// Update course metadata (title, description)
-export const updateCourseMetadata = async (courseId: number, data: { title?: string; description?: string }): Promise<void> => {
+// Update course metadata (title, description, status)
+export const updateCourseMetadata = async (courseId: number, data: { title?: string; description?: string; status?: 'ACTIVE' | 'ARCHIVED' }): Promise<void> => {
     try {
         await api.put(`/management/courses/${courseId}`, data);
     } catch (error: any) {
@@ -113,6 +113,17 @@ export const updateCourseMetadata = async (courseId: number, data: { title?: str
             throw new Error('SERVER_ERROR');
         }
     }
+};
+
+// WP1.6 follow-up (round 3) — wires up Course.archive()/unarchive(), which
+// existed in the domain since the ownership pivot but had no route/UI ever
+// calling them, leaving the /my-courses "Archived" filter permanently empty.
+export const archiveCourse = async (courseId: number): Promise<void> => {
+    await updateCourseMetadata(courseId, { status: 'ARCHIVED' });
+};
+
+export const unarchiveCourse = async (courseId: number): Promise<void> => {
+    await updateCourseMetadata(courseId, { status: 'ACTIVE' });
 };
 
 // Section (Chapter) CRUD
@@ -168,7 +179,7 @@ export const deleteSection = async (sectionId: number): Promise<void> => {
 };
 
 // Lesson CRUD
-export const createLesson = async (sectionId: number, data: { title: string; content: string; videoUrl?: string; orderIndex: number; type: 'VIDEO' | 'QUIZ' | 'TEXT' }): Promise<Lesson> => {
+export const createLesson = async (sectionId: number, data: { title: string; content: string; videoUrl?: string; orderIndex: number; type: 'VIDEO' | 'QUIZ' }): Promise<Lesson> => {
     try {
         const response = await api.post<Lesson>(
             `/management/sections/${sectionId}/lessons`,
@@ -185,7 +196,7 @@ export const createLesson = async (sectionId: number, data: { title: string; con
     }
 };
 
-export const updateLesson = async (lessonId: number, data: { title: string; content: string; videoUrl?: string; orderIndex: number; type: 'VIDEO' | 'QUIZ' | 'TEXT' }): Promise<Lesson> => {
+export const updateLesson = async (lessonId: number, data: { title: string; content: string; videoUrl?: string; orderIndex: number; type: 'VIDEO' | 'QUIZ' }): Promise<Lesson> => {
     try {
         const response = await api.put<Lesson>(
             `/management/lessons/${lessonId}`,
