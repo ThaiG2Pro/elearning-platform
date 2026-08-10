@@ -39,7 +39,10 @@ out of scope, not to be relitigated.**
 
 ## Decisions so far
 
-_(none yet)_
+- [Free/near-zero-cost hosting + DB floor for a Docker self-host Next.js+Postgres app](tickets/01-infra-cost-floor-research.md) — a genuine $0 floor exists (Oracle Cloud Always Free, self-hosting app+DB on one VM) but carries platform risk (Oracle already shrank it once in 2026); the realistic non-zero floor once exceeded is ~$5–12/mo, not a gradual ramp.
+- [Real-world BYOK LLM free-tier quotas (Gemini + alternatives)](tickets/02-llm-byok-quota-research.md) — Gemini's free tier is the best-fit BYOK option (only one with enough context+TPM for long transcripts) but not "always on"; visible rate-limit UX must be a required feature, not an edge case.
+- [ToS/legal exposure of unofficial YouTube transcript extraction + blog scraping at planned scale](tickets/03-transcript-scraping-legal-research.md) — no legal action has ever targeted a transcript/scraping tool at this pattern of use; accepted, typical risk at Checkpoint 2–3 scale, no added mitigation needed now.
+- [Comparable "structure wrapper around free content" products — real adoption/retention signal](tickets/04-comparable-products-research.md) — Class Central/roadmap.sh succeeded via their own content + SEO, not pure wrapping; plain "paste-a-playlist" wrapper tools plateau at hundreds of users with no breakout. The wrapper alone is likely necessary but not sufficient — Phase 1's small aligned group and the Phase 2 AI layer are probably load-bearing for retention, not optional polish.
 
 ## Not yet specified
 
