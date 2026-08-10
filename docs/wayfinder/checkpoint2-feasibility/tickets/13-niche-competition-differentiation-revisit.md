@@ -3,7 +3,7 @@ id: checkpoint2-feasibility/13
 title: Does niche AI-tool competition require revising ticket 07's differentiation decision?
 label: wayfinder:grilling
 status: open
-assignee: null
+assignee: claude
 blocked_by: [checkpoint2-feasibility/11]
 ---
 

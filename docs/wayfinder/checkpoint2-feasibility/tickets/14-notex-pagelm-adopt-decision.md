@@ -3,7 +3,7 @@ id: checkpoint2-feasibility/14
 title: Should Checkpoint 2 adopt/fork Notex or PageLM instead of building the bespoke AI pipeline?
 label: wayfinder:grilling
 status: open
-assignee: null
+assignee: claude
 blocked_by: [checkpoint2-feasibility/12]
 ---
 
