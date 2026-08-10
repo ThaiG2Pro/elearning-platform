@@ -18,6 +18,10 @@ import { UpdateProfileDto } from '../dtos/UpdateProfileDto';
 import { UpdateProfileResponseDto } from '../dtos/UpdateProfileResponseDto';
 import { ChangePasswordDto } from '../dtos/ChangePasswordDto';
 import { ChangePasswordResponseDto } from '../dtos/ChangePasswordResponseDto';
+import { UpdateAvatarDto } from '../dtos/UpdateAvatarDto';
+import { UpdateAvatarResponseDto } from '../dtos/UpdateAvatarResponseDto';
+import { DeleteAccountDto } from '../dtos/DeleteAccountDto';
+import { DeleteAccountResponseDto } from '../dtos/DeleteAccountResponseDto';
 
 export class AuthController {
     private authService: AuthService;
@@ -79,7 +83,7 @@ export class AuthController {
         return await this.authService.resetPassword(dto);
     }
 
-    async getProfile(userId: bigint): Promise<{ id: bigint; email: string; fullName: string; age: number; role: string }> {
+    async getProfile(userId: bigint): Promise<{ id: bigint; email: string; fullName: string; age: number; role: string; avatarUrl?: string }> {
         return await this.authService.getProfile(userId);
     }
 
@@ -97,5 +101,19 @@ export class AuthController {
             throw new Error('VALIDATION_ERROR');
         }
         return await this.authService.changePassword(userId, dto);
+    }
+
+    async updateAvatar(userId: bigint, dto: UpdateAvatarDto): Promise<UpdateAvatarResponseDto> {
+        if (!dto.avatarUrl) {
+            throw new Error('VALIDATION_ERROR');
+        }
+        return await this.authService.updateAvatar(userId, dto);
+    }
+
+    async deleteAccount(userId: bigint, dto: DeleteAccountDto): Promise<DeleteAccountResponseDto> {
+        if (!dto.password) {
+            throw new Error('VALIDATION_ERROR');
+        }
+        return await this.authService.deleteAccount(userId, dto);
     }
 }

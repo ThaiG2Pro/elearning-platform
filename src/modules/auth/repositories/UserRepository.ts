@@ -19,6 +19,7 @@ export class UserRepository {
             user.age || undefined,
             user.created_at || undefined,
             undefined, // lastLoginAt - not loaded in this query
+            user.avatar_url || undefined,
         );
     }
 
@@ -39,6 +40,7 @@ export class UserRepository {
             user.age || undefined,
             user.created_at || undefined,
             undefined, // lastLoginAt - not loaded in this query
+            user.avatar_url || undefined,
         );
     }
 
@@ -95,6 +97,7 @@ export class UserRepository {
                     full_name: user.fullName,
                     status: user.status,
                     age: user.age || null,
+                    avatar_url: user.avatarUrl || null,
                 },
             });
         }
@@ -110,6 +113,16 @@ export class UserRepository {
                 },
             },
         });
+    }
+
+    // WP1.5.6 — clear any pending activation/reset codes for an account
+    // that just got soft-deleted. Note: this table holds one-time codes
+    // (activation/reset), not JWT sessions — the access token stays valid
+    // until it naturally expires since shared/middleware/auth.ts trusts the
+    // JWT payload without a DB lookup; the refresh route does re-check
+    // isActive(), so refreshing is blocked immediately.
+    async invalidateAllTokens(userId: bigint): Promise<void> {
+        await prisma.tokens.deleteMany({ where: { user_id: userId } });
     }
 
 }

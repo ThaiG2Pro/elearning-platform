@@ -33,6 +33,7 @@ const makeUserRepo = () => ({
     findById: vi.fn(),
     save: vi.fn(),
     deleteInactiveUsersOlderThan24Hours: vi.fn(),
+    invalidateAllTokens: vi.fn(),
 });
 
 const makeTokenRepo = () => ({
@@ -215,6 +216,68 @@ describe('AuthService — integration (mocked repos)', () => {
 
             const dto = new ChangePasswordDto('CurrentPass1!', '1234', '1234');
             await expect(service.changePassword(1n, dto)).rejects.toThrow('PASSWORD_TOO_WEAK');
+        });
+    });
+
+    // ── updateAvatar (WP1.5.6) ────────────────────────────────────────────────
+    describe('updateAvatar', () => {
+        it('throws INVALID_AVATAR for a non-data-URL value', async () => {
+            userRepo.findById.mockResolvedValue(makeUser());
+            const { UpdateAvatarDto } = await import('../../dtos/UpdateAvatarDto');
+            await expect(service.updateAvatar(1n, new UpdateAvatarDto('https://evil.example/x.jpg')))
+                .rejects.toThrow('INVALID_AVATAR');
+        });
+
+        it('throws AVATAR_TOO_LARGE when the data URL exceeds the cap', async () => {
+            userRepo.findById.mockResolvedValue(makeUser());
+            const { UpdateAvatarDto } = await import('../../dtos/UpdateAvatarDto');
+            const huge = 'data:image/jpeg;base64,' + 'a'.repeat(500_000);
+            await expect(service.updateAvatar(1n, new UpdateAvatarDto(huge)))
+                .rejects.toThrow('AVATAR_TOO_LARGE');
+        });
+
+        it('updates avatarUrl for a valid small data URL', async () => {
+            const user = makeUser();
+            userRepo.findById.mockResolvedValue(user);
+            userRepo.save.mockResolvedValue(undefined);
+            const { UpdateAvatarDto } = await import('../../dtos/UpdateAvatarDto');
+
+            const dataUrl = 'data:image/jpeg;base64,abc123';
+            const result = await service.updateAvatar(1n, new UpdateAvatarDto(dataUrl));
+            expect(user.avatarUrl).toBe(dataUrl);
+            expect(result.success).toBe(true);
+        });
+    });
+
+    // ── deleteAccount (WP1.5.6) ───────────────────────────────────────────────
+    describe('deleteAccount', () => {
+        it('throws CURRENT_PASSWORD_INVALID for a wrong password', async () => {
+            const bcrypt = await import('bcryptjs');
+            const user = makeUser();
+            user.passwordHash = await bcrypt.hash('RealPass1!', 10);
+            userRepo.findById.mockResolvedValue(user);
+            const { DeleteAccountDto } = await import('../../dtos/DeleteAccountDto');
+
+            await expect(service.deleteAccount(1n, new DeleteAccountDto('WrongPass1!')))
+                .rejects.toThrow('CURRENT_PASSWORD_INVALID');
+            expect(userRepo.save).not.toHaveBeenCalled();
+        });
+
+        it('soft-deletes (status DELETED) and invalidates tokens on a correct password', async () => {
+            const bcrypt = await import('bcryptjs');
+            const user = makeUser();
+            user.passwordHash = await bcrypt.hash('RealPass1!', 10);
+            userRepo.findById.mockResolvedValue(user);
+            userRepo.save.mockResolvedValue(undefined);
+            userRepo.invalidateAllTokens.mockResolvedValue(undefined);
+            const { DeleteAccountDto } = await import('../../dtos/DeleteAccountDto');
+
+            const result = await service.deleteAccount(1n, new DeleteAccountDto('RealPass1!'));
+            expect(user.status).toBe('DELETED');
+            expect(user.isActive()).toBe(false);
+            expect(userRepo.save).toHaveBeenCalledOnce();
+            expect(userRepo.invalidateAllTokens).toHaveBeenCalledWith(1n);
+            expect(result.success).toBe(true);
         });
     });
 });

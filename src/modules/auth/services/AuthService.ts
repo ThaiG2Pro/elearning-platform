@@ -22,6 +22,16 @@ import { UpdateProfileDto } from '../dtos/UpdateProfileDto';
 import { UpdateProfileResponseDto } from '../dtos/UpdateProfileResponseDto';
 import { ChangePasswordDto } from '../dtos/ChangePasswordDto';
 import { ChangePasswordResponseDto } from '../dtos/ChangePasswordResponseDto';
+import { UpdateAvatarDto } from '../dtos/UpdateAvatarDto';
+import { UpdateAvatarResponseDto } from '../dtos/UpdateAvatarResponseDto';
+import { DeleteAccountDto } from '../dtos/DeleteAccountDto';
+import { DeleteAccountResponseDto } from '../dtos/DeleteAccountResponseDto';
+
+// WP1.5.6 — data: URL only (no file-storage infra exists in this app), and
+// capped well below the client-side resize target (see profile/page.tsx) so
+// a hand-crafted request can't smuggle in a multi-MB blob.
+const AVATAR_DATA_URL_PATTERN = /^data:image\/(png|jpe?g|webp);base64,/;
+const MAX_AVATAR_DATA_URL_LENGTH = 400_000;
 
 export class AuthService {
     constructor(
@@ -176,7 +186,7 @@ export class AuthService {
         return new ResetResponseDto('Password reset successful', '/');
     }
 
-    async getProfile(userId: bigint): Promise<{ id: bigint; email: string; fullName: string; age: number; role: string }> {
+    async getProfile(userId: bigint): Promise<{ id: bigint; email: string; fullName: string; age: number; role: string; avatarUrl?: string }> {
         const user = await this.userRepository.findById(userId);
         if (!user) {
             throw new Error('USER_NOT_FOUND');
@@ -188,6 +198,7 @@ export class AuthService {
             fullName: user.fullName,
             age: user.age || 0,
             role: user.roleName,
+            avatarUrl: user.avatarUrl,
         };
     }
 
@@ -240,5 +251,44 @@ export class AuthService {
         await this.userRepository.save(user);
 
         return new ChangePasswordResponseDto(true, 'Password changed successfully');
+    }
+
+    async updateAvatar(userId: bigint, dto: UpdateAvatarDto): Promise<UpdateAvatarResponseDto> {
+        const user = await this.userRepository.findById(userId);
+        if (!user) {
+            throw new Error('USER_NOT_FOUND');
+        }
+
+        if (!AVATAR_DATA_URL_PATTERN.test(dto.avatarUrl)) {
+            throw new Error('INVALID_AVATAR');
+        }
+        if (dto.avatarUrl.length > MAX_AVATAR_DATA_URL_LENGTH) {
+            throw new Error('AVATAR_TOO_LARGE');
+        }
+
+        user.updateAvatar(dto.avatarUrl);
+        await this.userRepository.save(user);
+
+        return new UpdateAvatarResponseDto(true, 'Avatar updated successfully', dto.avatarUrl);
+    }
+
+    async deleteAccount(userId: bigint, dto: DeleteAccountDto): Promise<DeleteAccountResponseDto> {
+        const user = await this.userRepository.findById(userId);
+        if (!user) {
+            throw new Error('USER_NOT_FOUND');
+        }
+
+        // Re-verify the current password before an irreversible action —
+        // mirrors changePassword's confirmation pattern.
+        const isPasswordValid = await user.matchPassword(dto.password);
+        if (!isPasswordValid) {
+            throw new Error('CURRENT_PASSWORD_INVALID');
+        }
+
+        user.markDeleted();
+        await this.userRepository.save(user);
+        await this.userRepository.invalidateAllTokens(userId);
+
+        return new DeleteAccountResponseDto(true, 'Account deleted successfully');
     }
 }

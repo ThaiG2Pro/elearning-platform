@@ -2,6 +2,7 @@ export interface User {
     id: string;
     role: string;
     fullName: string;
+    avatarUrl?: string;
 }
 
 export interface LoginResponse {
@@ -83,5 +84,24 @@ export interface ChangePasswordRequest {
 }
 
 export interface ChangePasswordResponse {
+    message: string;
+}
+
+export interface UpdateAvatarRequest {
+    avatarUrl: string;
+}
+
+export interface UpdateAvatarResponse {
+    success: boolean;
+    message: string;
+    avatarUrl: string;
+}
+
+export interface DeleteAccountRequest {
+    password: string;
+}
+
+export interface DeleteAccountResponse {
+    success: boolean;
     message: string;
 }

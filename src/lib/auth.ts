@@ -1,5 +1,5 @@
 import api from './api';
-import { IdentifyRequest, IdentifyResponse, LoginRequest, LoginResponse, RegisterRequest, RegisterResponse, ForgotPasswordRequest, ForgotPasswordResponse, ResetPasswordRequest, ResetPasswordResponse, UpdateProfileRequest, UpdateProfileResponse, ChangePasswordRequest, ChangePasswordResponse, ActivateRequest, ActivateResponse, User } from '@/types/auth.types';
+import { IdentifyRequest, IdentifyResponse, LoginRequest, LoginResponse, RegisterRequest, RegisterResponse, ForgotPasswordRequest, ForgotPasswordResponse, ResetPasswordRequest, ResetPasswordResponse, UpdateProfileRequest, UpdateProfileResponse, ChangePasswordRequest, ChangePasswordResponse, ActivateRequest, ActivateResponse, UpdateAvatarRequest, UpdateAvatarResponse, DeleteAccountRequest, DeleteAccountResponse, User } from '@/types/auth.types';
 
 export const logout = async (): Promise<void> => {
     try {
@@ -127,7 +127,7 @@ export const updateProfile = async (request: UpdateProfileRequest): Promise<Upda
     }
 };
 
-export const getProfile = async (): Promise<{ id: bigint; email: string; fullName: string; age: number; role: string }> => {
+export const getProfile = async (): Promise<{ id: bigint; email: string; fullName: string; age: number; role: string; avatarUrl?: string }> => {
     try {
         const response = await api.get('/auth/profile');
         return response.data;
@@ -151,6 +151,33 @@ export const changePassword = async (request: ChangePasswordRequest): Promise<Ch
             throw new Error('Mật khẩu mới phải có ít nhất 6 ký tự.');
         }
         throw new Error('Có lỗi xảy ra khi đổi mật khẩu.');
+    }
+};
+
+export const updateAvatar = async (request: UpdateAvatarRequest): Promise<UpdateAvatarResponse> => {
+    try {
+        const response = await api.put('/auth/avatar', request);
+        return response.data as UpdateAvatarResponse;
+    } catch (error: any) {
+        if (error.response?.data?.error === 'Invalid avatar image') {
+            throw new Error('Ảnh không hợp lệ. Vui lòng chọn ảnh JPG, PNG hoặc WebP.');
+        }
+        if (error.response?.data?.error === 'Avatar image is too large') {
+            throw new Error('Ảnh quá lớn. Vui lòng chọn ảnh khác.');
+        }
+        throw new Error('Có lỗi xảy ra khi cập nhật ảnh đại diện.');
+    }
+};
+
+export const deleteAccount = async (request: DeleteAccountRequest): Promise<DeleteAccountResponse> => {
+    try {
+        const response = await api.delete('/auth/account', { data: request });
+        return response.data as DeleteAccountResponse;
+    } catch (error: any) {
+        if (error.response?.data?.error === 'Password is incorrect') {
+            throw new Error('Mật khẩu không chính xác.');
+        }
+        throw new Error('Có lỗi xảy ra khi xoá tài khoản.');
     }
 };
 

@@ -24,6 +24,29 @@ describe('UserEntity', () => {
         });
     });
 
+    describe('markDeleted', () => {
+        it('sets status to DELETED, distinct from INACTIVE', () => {
+            const user = makeUser('ACTIVE');
+            user.markDeleted();
+            expect(user.status).toBe('DELETED');
+            expect(user.status).not.toBe('INACTIVE');
+        });
+
+        it('makes isActive() return false', () => {
+            const user = makeUser('ACTIVE');
+            user.markDeleted();
+            expect(user.isActive()).toBe(false);
+        });
+    });
+
+    describe('updateAvatar', () => {
+        it('sets avatarUrl', () => {
+            const user = makeUser();
+            user.updateAvatar('data:image/jpeg;base64,abc123');
+            expect(user.avatarUrl).toBe('data:image/jpeg;base64,abc123');
+        });
+    });
+
     describe('updateProfile', () => {
         it('updates fullName and age', () => {
             const user = makeUser();

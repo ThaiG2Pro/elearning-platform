@@ -16,6 +16,11 @@ model users {
   role_id           Int                 @map("role_id")
   status            String              @db.VarChar(20) @map("status")
   created_at        DateTime?           @db.Timestamp(6) @map("created_at")
+  // WP1.5.6: client-side-resized avatar image, stored as a data: URL — no
+  // file storage exists anywhere in this codebase (no S3/disk-upload infra)
+  // and this app targets Vercel-style serverless where writing to disk at
+  // runtime isn't reliable, so the DB is the simplest safe place for it.
+  avatar_url        String?             @db.Text @map("avatar_url")
   owned_courses     courses[]           @relation("CourseOwner")
   lecturer_courses  courses[]           @relation("CourseLecturer")
   enrollments       enrollments[]

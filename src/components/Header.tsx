@@ -88,9 +88,14 @@ export default function Header({ user, onLogout, onJoin }: HeaderProps) {
                                     aria-expanded={isDropdownOpen}
                                     aria-label="User menu"
                                 >
-                                    <div className={`flex items-center justify-center w-7 h-7 rounded-full text-white text-xs font-semibold ${avatarColor.split(' ')[0]}`}>
-                                        {getInitial(user.fullName)}
-                                    </div>
+                                    {user.avatarUrl ? (
+                                        // eslint-disable-next-line @next/next/no-img-element -- data: URL, next/image doesn't support it
+                                        <img src={user.avatarUrl} alt="" className="w-7 h-7 rounded-full object-cover" />
+                                    ) : (
+                                        <div className={`flex items-center justify-center w-7 h-7 rounded-full text-white text-xs font-semibold ${avatarColor.split(' ')[0]}`}>
+                                            {getInitial(user.fullName)}
+                                        </div>
+                                    )}
                                     <span className="text-sm font-medium text-slate-700 hidden sm:block max-w-[120px] truncate">{user.fullName}</span>
                                     <svg className="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />

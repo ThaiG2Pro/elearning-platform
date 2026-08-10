@@ -12,6 +12,7 @@ export class UserEntity {
         public age?: number,
         public createdAt?: Date,
         public lastLoginAt?: Date,
+        public avatarUrl?: string,
     ) { }
 
     isActive(): boolean {
@@ -20,6 +21,21 @@ export class UserEntity {
 
     activate(): void {
         this.status = 'ACTIVE';
+    }
+
+    // WP1.5.6: soft delete only — hard-deleting the row would violate the
+    // RESTRICT foreign keys on courses.owner_id/lecturer_id, enrollments and
+    // notes for basically any real account. Reusing 'INACTIVE' would collide
+    // with the pending-activation meaning that status already has (see
+    // RegistrationPolicy / deleteInactiveUsersOlderThan24Hours), so this is
+    // a distinct status value. isActive() already returns false for it,
+    // which blocks login the same way an inactive account is blocked.
+    markDeleted(): void {
+        this.status = 'DELETED';
+    }
+
+    updateAvatar(avatarUrl: string): void {
+        this.avatarUrl = avatarUrl;
     }
 
     async matchPassword(password: string): Promise<boolean> {
