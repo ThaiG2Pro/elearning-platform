@@ -308,3 +308,217 @@ combination" in the original research, and this follow-up confirms it's the
 right second choice, not a second-best guess. But as a single-host, no
 external-dependency answer, Oracle remains the best $0 option surveyed for
 this specific Docker Next.js+Postgres workload.
+
+## Addendum 2 — Additional providers (Supabase, CockroachDB, Vercel, PaaS options, etc.)
+
+The founder asked for a wider sweep beyond AWS/Azure/GCP/Oracle/Fly.io/
+Railway/Render/Neon/Koyeb/Cloudflare D1/Deno Deploy/DigitalOcean-Linode-Vultr-
+Hetzner (all covered above). This section adds Supabase (detail beyond the
+one paragraph already in the main Findings), CockroachDB Serverless, MongoDB
+Atlas M0, Vercel Hobby, several newer PaaS options, and two hyperscaler
+"Lite"/trial tiers — researched live (WebSearch, Aug 2026 terms), not from
+training data.
+
+### 1. Supabase — revisited in more depth
+
+Confirms and extends the detail already in the main Findings section: **500MB
+database storage**, 1GB file storage, 5GB egress, 50,000 MAU, capped at 2
+active projects per account. **Free projects auto-pause after 7 days of
+inactivity** — not a hard expiry, data is retained and the project can be
+manually/API-resumed, but it goes fully offline until someone does so (no
+instant serverless wake like Neon's scale-to-zero). No credit card is required
+to sign up for the Free plan. This is **genuinely perpetual**, not a trial —
+the catch is the pause-on-idle behavior and the 500MB/60-direct-connection
+ceilings, not a time limit.
+Classification: **(a) perpetual**, with catches (7-day pause-on-idle, 500MB
+storage cap, 60 direct connections, 2-project cap).
+Sources: https://www.itpathsolutions.com/supabase-free-tier-limits , https://supabase.com/pricing
+
+### 2. CockroachDB Serverless (now "CockroachDB Basic") — Postgres-wire-compatible substitute
+
+CockroachDB rebranded its Serverless tier to **"Basic"** in 2026 but the free
+model is unchanged in substance: every CockroachDB Cloud organization gets
+**$15/month of free resource consumption** (≈50 million Request Units + 10
+GiB storage) on the Basic/Standard tiers, **recurring monthly, not a one-time
+trial** — plus a separate **$400 one-time trial credit** for new orgs on top.
+**No credit card required** to use the free allowance. If the RU quota is
+exceeded mid-month, the cluster is throttled/disabled until the next billing
+cycle or a limit increase; if storage exceeds 10GiB, writes fail until data is
+deleted or the limit raised. CockroachDB is **Postgres-wire-compatible**
+(speaks the `postgres://` protocol, works with standard Postgres drivers/ORMs
+like Prisma with caveats around some Postgres-specific SQL features), so it
+could genuinely substitute for Neon/Supabase as the managed-Postgres half of
+the stack. 10GiB free storage is **20x** Neon's 0.5GB and Supabase's 500MB —
+the most generous free managed-Postgres-compatible storage found in this
+entire survey (original + both addenda).
+Classification: **(a) perpetual free allowance** (not a trial — the $15/mo
+credit renews every billing cycle indefinitely), with catches (RU-based
+throttling rather than a hard connection cap, some Postgres SQL dialect gaps
+as a CockroachDB-not-actually-Postgres engine, "distributed SQL" operational
+quirks unfamiliar if the team has only run vanilla Postgres).
+Sources: https://www.cockroachlabs.com/pricing/ , https://www.cockroachlabs.com/blog/serverless-free/ , https://www.cockroachlabs.com/docs/cockroachcloud/plan-your-cluster-basic
+
+### 3. MongoDB Atlas free tier (M0) — out of scope, noted only for completeness
+
+M0 is **512MB storage, shared RAM/vCPU, up to 500 connections, one cluster per
+project, genuinely perpetual/free-forever** with no time limit. However this
+app is Postgres-based (per the confirmed deploy target), and MongoDB is a
+document store, not a relational/SQL engine — adopting it would mean
+rewriting the data layer and ORM (e.g. dropping Prisma/Postgres for a Mongo
+driver or Mongoose), not a drop-in substitution the way CockroachDB is. **Not
+relevant as an alternative DB strategy for this research question** — flagged
+only so the sweep is documented as complete, not because it competes with
+Neon/Supabase/CockroachDB for this app.
+Classification: **(c) not viable for this workload** (wrong database model,
+not a free-tier limitation).
+Sources: https://costbench.com/software/database-as-service/mongodb-atlas/free-plan/ , https://www.mongodb.com/docs/atlas/reference/free-shared-limitations/
+
+### 4. Vercel Hobby — excluded by design, noted for the record
+
+Vercel Hobby (2026): 100GB Fast Data Transfer, 1M edge requests, 1M function
+invocations, 4 CPU-hours, 360 GB-hours provisioned memory, 10-second max
+function duration, 1 concurrent build — genuinely free/perpetual for
+**personal, non-commercial use only** (explicit restriction in Vercel's
+terms). This is **excluded from the provider comparison by design**, not
+because it's a bad free tier: the project's confirmed deploy target is
+Docker/self-host (`docs/design/ai-integration-plan.md`), and Vercel Hobby is
+serverless-only — there is no way to run the app's own Docker container on
+it, so it doesn't answer this research question regardless of price.
+Vercel also **deprecated its own managed Postgres/KV in December 2024**;
+existing databases were migrated to Neon (Postgres) and Upstash (Redis), and
+today "Vercel Postgres" is just a thin integration layer in front of Neon's
+own free tier (already covered in the main Findings — same 0.5GB/100 CU-hour
+limits, no separate allowance). So even if Vercel Hobby were in scope, its
+"Postgres" option doesn't add anything beyond Neon free that isn't already
+counted.
+Classification: **(c) not viable for this workload** (architecture mismatch —
+no Docker/self-host path — not a free-tier generosity problem).
+Sources: https://www.promptstoproduct.com/vercel-free-tier-limits , https://www.fencode.dev/en/blog/vercel-free-vs-pro-2026-official-limits-pricing
+
+### 5. Newer container PaaS: Northflank, Zeabur, Sevalla, Qoddi
+
+- **Northflank** — Sandbox (free) tier: **2 services, 1 database, 2 cron
+  jobs, no credit card required, and no forced sleep/pause** on what is
+  deployed (unlike Render/Zeabur). Northflank supports arbitrary Docker
+  images (BYO container), which fits this app's deploy shape. However
+  the free Sandbox tier's per-service compute allocation is small and not
+  documented with precise vCPU/RAM numbers in available sources (the paid
+  tier bills per-vCPU-hour/GB-hour on a Kubernetes requests/limits model);
+  everything found suggests it's sized for a lightweight demo, not
+  necessarily for a Next.js+Postgres pair sustaining "dozens to low hundreds
+  of users" concurrently, but no source confirms it *can't* — this is a
+  documentation gap, not a disqualifier. Its one included free database
+  (unspecified engine/size in Sandbox tier docs found) could plausibly run
+  Postgres.
+  Classification: **(a) perpetual** (genuinely no time limit, no card), but
+  with an unresourced/thin allocation that would need direct hands-on
+  verification before relying on it — flagged as promising but unverified at
+  the resource-sizing level.
+  Sources: https://lowendtalk.com/discussion/181321/another-free-tier-northflank-small-containers , https://northflank.com/blog/best-cloud-hosting-platforms
+
+- **Zeabur** — Free plan: **no credit card required, genuinely perpetual**,
+  up to 1 vCPU/2GB memory per service, but **services auto-sleep after a
+  period of inactivity** (wakes on next request, few-seconds cold start) —
+  same shape as Render's problem, just a different vendor. No automated DB
+  backups on free tier. Workable for a demo/low-traffic deploy, but the
+  sleep-on-idle behavior reproduces the exact UX problem (cold start hits
+  whichever user requests first) that disqualified Render above for a live
+  product.
+  Classification: **(a) perpetual but (c)-adjacent for "live product" use** —
+  free-forever in principle, undermined by the same idle-sleep catch as
+  Render.
+  Sources: https://zeabur.com/docs/en-US/pricing/free-plan
+
+- **Sevalla** — **No permanent free tier.** New accounts get $20–50 in
+  one-time credit (sources disagree on exact amount, consistently describe
+  it as valid ~2 months), then usage-based billing with no ongoing free
+  allowance — structurally identical to Railway's now-dead "free tier"
+  (i.e., a trial, not free-forever).
+  Classification: **(b) trial only.**
+  Sources: https://sevalla.com/pricing/ , https://sevalla.com/signup/
+
+- **Qoddi** — Free tier is explicitly scoped to **"Dev Apps" for static
+  sites/staging only** (3 free Dev Apps) plus unlimited "Essential apps"
+  (database admin tools etc., not general-purpose app hosting). Despite
+  supporting Docker/Postgres on paid tiers, the free tier as documented is
+  not positioned for hosting a live containerized Next.js+Postgres app —
+  it's a staging/testing allowance, closer to a demo sandbox than a
+  production-capable free host.
+  Classification: **(c) not viable for this workload** (free scope too
+  narrow — static/staging only, not general container hosting).
+  Sources: https://devcenter.qoddi.com/how-the-free-tier-is-calculated-on-qoddi/
+
+### 6. IBM Cloud Lite and Alibaba Cloud free trial
+
+- **IBM Cloud Lite** — genuinely **perpetual**: 40+ "Lite" plan products
+  that never expire and can never be billed, renewing monthly on a
+  usage-quota basis (separate from a one-time $200/30-day promotional
+  credit for new signups). However, none of the Lite-plan products found in
+  research are a general-purpose container/VM host or a managed Postgres
+  service comparable to Oracle's Always Free compute or Neon/Supabase's free
+  Postgres — IBM's perpetual free tier is oriented at specific managed
+  services (Watson APIs, Cloudant, small object storage), not "run any
+  Docker container" or "get a free Postgres instance."
+  Classification: **(a) perpetual in principle, (c) not viable for this
+  workload** — the always-free products don't include Docker compute or
+  Postgres at a scope useful here.
+  Sources: https://resourify.com/resources/ibm-cloud-free-tier
+
+- **Alibaba Cloud** — free offerings are structured as **trials, not
+  perpetual**: a 12-month free ECS (ranging 1-core/1GB to 2-core/2GB
+  depending on tier) plus 80+ other trial-scoped services, alongside some
+  narrow always-free quotas on unrelated services (not compute/Postgres).
+  This is the same shape as AWS's legacy 12-month EC2/RDS tier — free for a
+  year, then billing starts. No Alibaba-specific perpetual Postgres or
+  general Docker-hosting free tier was found.
+  Classification: **(b) trial only** (12 months, then billed).
+  Sources: https://gofreetrial.co/service/alibaba-cloud , https://www.alibabacloud.com/blog/alibaba-cloud-free-trial-how-to-sign-up-and-get-started_598181
+
+### 7. Comparison table — Addendum 2 providers
+
+| Provider | What's free | Perpetual / trial / not viable | Catches |
+|---|---|---|---|
+| **Supabase** | 500MB Postgres, 1GB file storage, 2 projects | **(a) Perpetual** | Auto-pauses after 7 days idle; 60 direct connections |
+| **CockroachDB Basic** (Postgres-wire-compatible) | $15/mo recurring free allowance ≈ 10GiB storage + 50M RU | **(a) Perpetual** | Distributed-SQL dialect gaps vs. real Postgres; RU throttling on overage |
+| **MongoDB Atlas M0** | 512MB, free forever | **(a) Perpetual, but (c) not applicable** | Wrong DB model for a Postgres-based app — not a substitution candidate |
+| **Vercel Hobby** | Generous serverless compute quota | **(c) Not viable** | Personal/non-commercial only; no Docker self-host path; "Vercel Postgres" = Neon free under the hood, adds nothing new |
+| **Northflank** | 2 services, 1 DB, no forced sleep, no card | **(a) Perpetual** (unresourced) | Free-tier per-service compute size not documented; needs hands-on verification |
+| **Zeabur** | 1 vCPU/2GB per service, no card | **(a) Perpetual, undermined by sleep** | Auto-sleeps after inactivity — same cold-start problem as Render |
+| **Sevalla** | $20–50 one-time credit | **(b) Trial only** | No ongoing free allowance once credit exhausted (~2 months) |
+| **Qoddi** | 3 static/staging Dev Apps | **(c) Not viable** | Free scope is static/staging only, not general container hosting |
+| **IBM Cloud Lite** | 40+ always-free products | **(a) Perpetual, (c) not viable here** | No Docker compute or Postgres among the always-free products |
+| **Alibaba Cloud** | 12-month free ECS + 80 trial services | **(b) Trial only** | Same shape as AWS legacy tier — 12 months then billed |
+
+### 8. Verdict — does anything here beat or match Oracle Always Free?
+
+**No single provider in this addendum beats or matches Oracle's Always Free
+compute (2 OCPU/12GB RAM/200GB disk, one VM self-hosting both containers) as
+a complete $0 hosting answer.** Nothing here offers free perpetual general
+Docker container compute at anywhere near that scale — Northflank comes
+closest in principle (no card, no forced sleep, genuinely perpetual) but its
+free-tier compute sizing is thin and undocumented; Zeabur and Qoddi reproduce
+the idle-sleep or scope-limited problems that already disqualified Render;
+Sevalla, IBM Cloud Lite (for this purpose), and Alibaba Cloud are trials or
+scoped away from this workload.
+
+On the **database side**, however, this addendum does add one genuinely
+new, competitive option: **CockroachDB Basic's recurring $15/month free
+allowance (≈10GiB storage, 50M RU) is the single most generous free
+managed-Postgres-compatible database found across the entire research
+effort** — 20x Neon's storage ceiling and no forced scale-to-zero cold start
+(RU-based throttling instead), while remaining genuinely perpetual and
+requiring no credit card. It is Postgres-wire-compatible enough to be a real
+substitute for Neon/Supabase as the managed-DB half of a "free compute +
+free managed DB" combination, and arguably a better one than either given
+the storage headroom — worth naming explicitly alongside Neon/Supabase as a
+third fallback option if Oracle's single-VM approach is abandoned.
+
+**This reinforces rather than overturns the standing conclusion:** Oracle
+Cloud Always Free (single VM, both containers self-hosted) remains the best
+$0 floor for this specific Docker Next.js+Postgres workload. If a managed,
+decoupled Postgres is preferred, the ranked fallback list is now **Neon
+(most battle-tested, tightest storage) → CockroachDB Basic (most storage
+headroom, distributed-SQL quirks) → Supabase (friendliest pause window,
+lowest connection cap)** — paired with Oracle's VM or GCP Cloud Run as the
+free compute half. No provider surveyed in either addendum offers a
+single-box, no-external-dependency free tier that rivals Oracle's.
