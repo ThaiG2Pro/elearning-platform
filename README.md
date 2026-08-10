@@ -64,7 +64,6 @@ cp .env.example .env
 **Variables cần thiết:**
 - `DATABASE_URL` — PostgreSQL connection string
 - `JWT_SECRET` — Secret key cho JWT tokens
-- `YOUTUBE_API_KEY` — Google API key (optional, for video metadata)
 
 ---
 

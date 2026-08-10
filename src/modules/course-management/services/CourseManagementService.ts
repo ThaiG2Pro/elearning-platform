@@ -3,8 +3,6 @@ import { SectionRepository } from '../repositories/SectionRepository';
 import { LessonRepository } from '../repositories/LessonRepository';
 import { AccessControlPolicy } from '../domain/AccessControlPolicy';
 import { PublishingPolicy } from '../domain/PublishingPolicy';
-import { YouTubeAdapter } from '../../../shared/adapters/YouTubeAdapter';
-import { LessonFactory } from '../domain/LessonFactory';
 import { BulkCourseContentDto } from '../dtos/BulkCourseContentDto';
 import { LessonPreviewDto } from './ContentManagementService';
 import { QuizPolicy } from '../domain/QuizPolicy';
@@ -40,18 +38,8 @@ export class CourseManagementService {
         // active or not — no approval-driven lock.
         AccessControlPolicy.validateOwnership(userId, course.ownerId);
 
-        const youtubeAdapter = new YouTubeAdapter();
         const lessons: any[] = [];
         const { Lesson: LessonDomain, LessonType } = require('../domain/Lesson');
-
-        // Helper: fetch YouTube metadata gracefully (API failures must not block save)
-        const safeYoutubeMeta = async (url: string) => {
-            try {
-                return await youtubeAdapter.fetchMetadata(url);
-            } catch {
-                return { duration: 0, thumbnail: '' };
-            }
-        };
 
         // Helper: extract raw URL from potentially legacy JSON format {"url":"..."}
         const extractRawUrl = (url: string): string => {
@@ -72,14 +60,14 @@ export class CourseManagementService {
                     if ((lessonDto.type || 'VIDEO') === 'VIDEO') {
                         if (lessonDto.contentUrl) {
                             const rawUrl = extractRawUrl(lessonDto.contentUrl);
-                            const metadata = await safeYoutubeMeta(rawUrl);
-                            const lesson = LessonFactory.createVideoLesson({
-                                chapterId: BigInt(secId || lessonDto.chapterId),
-                                title: lessonDto.title,
-                                videoUrl: rawUrl,
-                                orderIndex: lessonDto.orderIndex,
-                            }, metadata);
-                            lesson.id = lessonId;
+                            const lesson = new LessonDomain(
+                                lessonId,
+                                BigInt(secId || lessonDto.chapterId),
+                                lessonDto.title,
+                                LessonType.VIDEO,
+                                rawUrl,
+                                lessonDto.orderIndex
+                            );
                             lessons.push(lesson);
                         } else {
                             const lesson = new LessonDomain(
@@ -112,14 +100,14 @@ export class CourseManagementService {
                 if ((lessonDto.type || 'VIDEO') === 'VIDEO') {
                     if (lessonDto.contentUrl) {
                         const rawUrl = extractRawUrl(lessonDto.contentUrl);
-                        const metadata = await safeYoutubeMeta(rawUrl);
-                        const lesson = LessonFactory.createVideoLesson({
-                            chapterId: BigInt(lessonDto.chapterId),
-                            title: lessonDto.title,
-                            videoUrl: rawUrl,
-                            orderIndex: lessonDto.orderIndex,
-                        }, metadata);
-                        lesson.id = lessonId;
+                        const lesson = new LessonDomain(
+                            lessonId,
+                            BigInt(lessonDto.chapterId),
+                            lessonDto.title,
+                            LessonType.VIDEO,
+                            rawUrl,
+                            lessonDto.orderIndex
+                        );
                         lessons.push(lesson);
                     } else {
                         const lesson = new LessonDomain(

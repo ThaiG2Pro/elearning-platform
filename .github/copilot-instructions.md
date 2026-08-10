@@ -42,7 +42,7 @@ src/
 │   ├── auth/               # controllers, services, domain, repositories, dtos
 │   └── course-management/  # same structure
 ├── shared/
-│   ├── adapters/           # EmailAdapter, YouTubeAdapter, ExcelAdapter
+│   ├── adapters/           # EmailAdapter, YouTubeOEmbedAdapter, ExcelAdapter
 │   ├── middleware/         # auth.ts (JWT middleware)
 │   └── config/             # database.ts (Prisma client singleton)
 └── types/                  # *.types.ts – API response/request shapes
