@@ -4,7 +4,7 @@ title: If the zero-cost premise breaks, does monetization trigger sequencing nee
 label: wayfinder:grilling
 status: open
 assignee: null
-blocked_by: [checkpoint2-feasibility/05]
+blocked_by: [checkpoint2-feasibility/05, checkpoint2-feasibility/16]
 ---
 
 ## Question

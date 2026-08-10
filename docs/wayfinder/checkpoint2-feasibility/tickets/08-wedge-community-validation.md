@@ -4,7 +4,7 @@ title: Is "self-taught devs learning via YouTube" the right Checkpoint 2 wedge, 
 label: wayfinder:grilling
 status: open
 assignee: null
-blocked_by: []
+blocked_by: [checkpoint2-feasibility/15]
 ---
 
 ## Question
