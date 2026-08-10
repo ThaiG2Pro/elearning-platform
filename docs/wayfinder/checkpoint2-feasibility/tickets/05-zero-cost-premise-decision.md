@@ -3,7 +3,7 @@ id: checkpoint2-feasibility/05
 title: Is the "zero-cost launch" premise (VISION.md §5.1/§7) actually achievable end-to-end?
 label: wayfinder:grilling
 status: open
-assignee: null
+assignee: claude
 blocked_by: [checkpoint2-feasibility/01, checkpoint2-feasibility/02]
 ---
 
