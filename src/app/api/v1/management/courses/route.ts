@@ -7,8 +7,8 @@ export async function GET(request: NextRequest) {
     try {
         // WP1.5.10: ownership-based, not role-gated — every user owns their
         // own personal courses now (see ContentManagementService.getLecturerCourses,
-        // which already filters by owner_id/lecturer_id). The old LECTURER-only
-        // check sent every STUDENT into a 401 when they clicked "Khóa học đã tạo".
+        // which already filters by owner_id). The old LECTURER-only check
+        // sent every STUDENT into a 401 when they clicked "Khóa học đã tạo".
         const user = await getUserFromRequest(request);
         if (!user) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

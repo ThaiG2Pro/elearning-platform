@@ -23,7 +23,7 @@ export async function GET(
         }
 
         // Ensure owner
-        if (course.lecturer_id !== userId) {
+        if (course.owner_id !== userId) {
             return NextResponse.json({ error: 'ACCESS_DENIED' }, { status: 403 });
         }
 
@@ -33,11 +33,21 @@ export async function GET(
         const controller = new ManagementController();
         const sections = await controller.getCourseSections(courseId);
 
+        // Found while smoke-testing this file's ownership check (WP1.6
+        // follow-up): SectionDto/LessonDto ids are bigint and this route
+        // never had a lecturer_id-style BigInt→Number pass over them like
+        // its sibling GET /management/courses does — every call crashed
+        // JSON.stringify. Zero frontend callers currently hit this GET (only
+        // the POST below is used), so it silently never surfaced.
+        const safeSections = JSON.parse(JSON.stringify(sections, (_key, value) =>
+            typeof value === 'bigint' ? Number(value) : value
+        ));
+
         // Guarantee stable contract: always return an object with courseId, status and sections array
         return NextResponse.json({
             courseId: Number(course.id),
             status: (course.status || 'ACTIVE').toUpperCase(),
-            sections: Array.isArray(sections) ? sections : []
+            sections: Array.isArray(safeSections) ? safeSections : []
         });
     } catch (error) {
         console.error('Get course sections error:', error);
@@ -67,8 +77,8 @@ export async function POST(
             return NextResponse.json({ error: 'COURSE_NOT_FOUND' }, { status: 404 });
         }
 
-        // Ensure the requester is the owner (lecturer)
-        if (course.lecturer_id !== userId) {
+        // Ensure the requester is the owner
+        if (course.owner_id !== userId) {
             return NextResponse.json({ error: 'ACCESS_DENIED' }, { status: 403 });
         }
 

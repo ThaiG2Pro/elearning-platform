@@ -23,7 +23,7 @@ export class CourseManagementService {
         const course = await this.courseRepository.findById(section.courseId);
         if (!course) throw new Error('COURSE_NOT_FOUND');
 
-        AccessControlPolicy.validateOwnership(userId, course.lecturerId);
+        AccessControlPolicy.validateOwnership(userId, course.ownerId);
 
         const currentCount = await this.sectionRepository.countByCourse(section.courseId);
 
@@ -38,7 +38,7 @@ export class CourseManagementService {
 
         // Personal-organizer model: the owner can sync content at any time,
         // active or not — no approval-driven lock.
-        AccessControlPolicy.validateOwnership(userId, course.lecturerId);
+        AccessControlPolicy.validateOwnership(userId, course.ownerId);
 
         const youtubeAdapter = new YouTubeAdapter();
         const lessons: any[] = [];
@@ -169,7 +169,7 @@ export class CourseManagementService {
         if (!course) throw new Error('COURSE_NOT_FOUND');
 
         if (!user) throw new Error('Unauthorized');
-        if (course.lecturerId !== user.id) throw new Error('FORBIDDEN');
+        if (course.ownerId !== user.id) throw new Error('FORBIDDEN');
 
         const quizQuestions = await this.lessonRepository.findQuizQuestions(lessonId);
 

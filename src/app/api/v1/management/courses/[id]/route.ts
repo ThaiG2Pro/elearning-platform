@@ -32,6 +32,16 @@ export async function PUT(
         return NextResponse.json({ message: 'Course updated successfully' });
     } catch (error) {
         console.error('Error updating course:', error);
+        // Found while smoke-testing this route (WP1.6 follow-up): ACCESS_DENIED
+        // (a non-owner editing someone else's course) fell into the generic
+        // catch-all and came back as 500 instead of 403 — same class of bug
+        // fixed for the quiz-upload route in WP1.6.4.
+        if (error instanceof Error && error.message === 'ACCESS_DENIED') {
+            return NextResponse.json({ error: 'ACCESS_DENIED', message: 'Bạn không sở hữu khóa học này' }, { status: 403 });
+        }
+        if (error instanceof Error && error.message === 'COURSE_NOT_FOUND') {
+            return NextResponse.json({ error: 'COURSE_NOT_FOUND' }, { status: 404 });
+        }
         const message = error instanceof Error ? error.message : 'Internal server error';
         return NextResponse.json({ error: message }, { status: 500 });
     }

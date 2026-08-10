@@ -40,20 +40,20 @@ export class ManagementController {
     }
 
     // Course Management
-    async getLecturerCourses(lecturerId: bigint, status?: string | null): Promise<CourseSummaryDto[]> {
-        return await this.contentService.getLecturerCourses(lecturerId, status);
+    async getLecturerCourses(ownerId: bigint, status?: string | null): Promise<CourseSummaryDto[]> {
+        return await this.contentService.getLecturerCourses(ownerId, status);
     }
 
-    async createCourse(lecturerId: bigint, dto: CreateCourseDto): Promise<bigint> {
-        return await this.contentService.createCourse(lecturerId, dto);
+    async createCourse(ownerId: bigint, dto: CreateCourseDto): Promise<bigint> {
+        return await this.contentService.createCourse(ownerId, dto);
     }
 
     async createCourseFromLink(ownerId: bigint, url: string): Promise<bigint> {
         return await this.contentService.createCourseFromLink(ownerId, url);
     }
 
-    async updateCourseMetadata(lecturerId: bigint, courseId: bigint, data: { title?: string; description?: string }): Promise<void> {
-        return await this.contentService.updateCourseMetadata(lecturerId, courseId, data);
+    async updateCourseMetadata(ownerId: bigint, courseId: bigint, data: { title?: string; description?: string }): Promise<void> {
+        return await this.contentService.updateCourseMetadata(ownerId, courseId, data);
     }
 
     async getOrCreateShareLink(userId: bigint, courseId: bigint): Promise<string> {

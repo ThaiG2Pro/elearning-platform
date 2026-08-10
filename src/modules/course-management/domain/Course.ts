@@ -11,21 +11,16 @@ export enum CourseStatus {
 }
 
 export class Course {
-    public ownerId: bigint;
-
     constructor(
         public id: bigint | null,
-        public lecturerId: bigint,
+        public ownerId: bigint,
         public title: string,
         public slug: string,
         public description: string | null,
         public status: CourseStatus = CourseStatus.ACTIVE,
         public chapters: Chapter[] = [],
-        ownerId?: bigint,
         public shareToken?: string | null,
-    ) {
-        this.ownerId = ownerId ?? lecturerId;
-    }
+    ) { }
 
     archive() {
         this.status = CourseStatus.ARCHIVED;

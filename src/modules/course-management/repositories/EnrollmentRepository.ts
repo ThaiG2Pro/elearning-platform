@@ -30,7 +30,10 @@ export class EnrollmentRepository {
         }
 
         const courses = await this.prisma.courses.findMany({
-            where: { OR: [{ owner_id: userId }, { lecturer_id: userId }] },
+            // WP1.6 follow-up — `lecturer_id` (dropped from the schema) was
+            // always equal to `owner_id` on every write path; querying it too
+            // was always a no-op OR.
+            where: { owner_id: userId },
             orderBy,
             include: {
                 chapters: {

@@ -35,13 +35,10 @@ export class ContentManagementService {
         private prisma: PrismaClient
     ) { }
 
-    async getLecturerCourses(lecturerId: bigint, status?: string | null): Promise<CourseSummaryDto[]> {
-        const whereClause: any = {
-            OR: [
-                { owner_id: lecturerId },
-                { lecturer_id: lecturerId },
-            ]
-        };
+    async getLecturerCourses(ownerId: bigint, status?: string | null): Promise<CourseSummaryDto[]> {
+        // WP1.6 follow-up — used to OR against the now-removed `lecturer_id`
+        // column too; owner_id was always the same value on every write path.
+        const whereClause: any = { owner_id: ownerId };
         if (status) {
             whereClause.status = status.toUpperCase();
         }
@@ -86,7 +83,7 @@ export class ContentManagementService {
         });
     }
 
-    async createCourse(lecturerId: bigint, dto: CreateCourseDto): Promise<bigint> {
+    async createCourse(ownerId: bigint, dto: CreateCourseDto): Promise<bigint> {
         const baseSlug = dto.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
         const suffix = Math.random().toString(36).slice(2, 7);
         const slug = `${baseSlug}-${suffix}`;
@@ -94,7 +91,7 @@ export class ContentManagementService {
         // no admin approval gate (Checkpoint 0 pivot).
         const course = new Course(
             null,
-            lecturerId,
+            ownerId,
             dto.title,
             slug,
             dto.description || '',
@@ -141,7 +138,6 @@ export class ContentManagementService {
             const course = await tx.courses.create({
                 data: {
                     owner_id: ownerId,
-                    lecturer_id: ownerId,
                     title: source!.title || 'Khóa học mới',
                     slug,
                     status: 'ACTIVE',
@@ -229,11 +225,11 @@ export class ContentManagementService {
         return await this.courseRepository.cloneForOwner(course.id, userId);
     }
 
-    async updateCourseMetadata(lecturerId: bigint, courseId: bigint, data: { title?: string; description?: string }): Promise<void> {
+    async updateCourseMetadata(ownerId: bigint, courseId: bigint, data: { title?: string; description?: string }): Promise<void> {
         const course = await this.courseRepository.findById(courseId);
         if (!course) throw new Error('COURSE_NOT_FOUND');
 
-        if (course.lecturerId !== lecturerId) {
+        if (course.ownerId !== ownerId) {
             throw new Error('ACCESS_DENIED');
         }
 

@@ -15,7 +15,7 @@ export class CourseRepository {
         if (!course) return null;
         return new Course(
             course.id,
-            course.lecturer_id,
+            course.owner_id,
             course.title,
             course.slug,
             course.description,
@@ -33,7 +33,7 @@ export class CourseRepository {
         if (!course) return null;
         return new Course(
             course.id,
-            course.lecturer_id,
+            course.owner_id,
             course.title,
             course.slug,
             course.description,
@@ -45,7 +45,7 @@ export class CourseRepository {
         const course = await this.prisma.courses.findUnique({
             where: { id },
             include: {
-                lecturer: {
+                owner: {
                     select: { full_name: true },
                 },
                 chapters: {
@@ -81,15 +81,14 @@ export class CourseRepository {
 
         const domainCourse = new Course(
             course.id,
-            course.lecturer_id,
+            course.owner_id,
             course.title,
             course.slug,
             course.description,
             course.status as CourseStatus,
             chapters,
-            course.owner_id,
         );
-        (domainCourse as any).lecturerName = course.lecturer.full_name;
+        (domainCourse as any).lecturerName = course.owner.full_name;
         return domainCourse;
     }
 
@@ -167,8 +166,7 @@ export class CourseRepository {
     async create(course: Course): Promise<void> {
         const created = await this.prisma.courses.create({
             data: {
-                owner_id: course.ownerId || course.lecturerId,
-                lecturer_id: course.lecturerId,
+                owner_id: course.ownerId,
                 title: course.title,
                 slug: course.slug,
                 description: course.description,
@@ -189,60 +187,6 @@ export class CourseRepository {
                 status: course.status,
             },
         });
-    }
-
-    async findByIdWithLecturer(id: bigint): Promise<{ course: Course; lecturerName: string } | null> {
-        const course = await this.prisma.courses.findUnique({
-            where: { id },
-            include: {
-                lecturer: {
-                    select: { full_name: true },
-                },
-                chapters: {
-                    include: {
-                        lessons: true,
-                    },
-                    orderBy: { order_index: 'asc' },
-                },
-            },
-        });
-
-        if (!course) return null;
-
-        const chapters = course.chapters.map(chapter => {
-            const lessons = chapter.lessons.map(lesson =>
-                new Lesson(
-                    lesson.id,
-                    lesson.chapter_id,
-                    lesson.title,
-                    lesson.type as any,
-                    lesson.content_url || '',
-                    lesson.order_index
-                )
-            );
-            return new Chapter(
-                chapter.id,
-                chapter.course_id,
-                chapter.title,
-                chapter.order_index,
-                lessons
-            );
-        });
-
-        const courseEntity = new Course(
-            course.id,
-            course.lecturer_id,
-            course.title,
-            course.slug,
-            course.description,
-            course.status as CourseStatus,
-            chapters
-        );
-
-        return {
-            course: courseEntity,
-            lecturerName: course.lecturer?.full_name || '',
-        };
     }
 
     /**
@@ -329,13 +273,12 @@ export class CourseRepository {
 
         const domainCourse = new Course(
             course.id,
-            course.lecturer_id,
+            course.owner_id,
             course.title,
             course.slug,
             course.description,
             course.status as CourseStatus,
             chapters,
-            course.owner_id,
             course.share_token,
         );
         (domainCourse as any).ownerName = course.owner?.full_name || '';
@@ -374,7 +317,6 @@ export class CourseRepository {
                 const created = await tx.courses.create({
                     data: {
                         owner_id: newOwnerId,
-                        lecturer_id: newOwnerId,
                         title: source.title,
                         slug,
                         description: source.description,
