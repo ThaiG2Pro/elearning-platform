@@ -269,6 +269,30 @@ cho người ngoài.**
     mờ như hiện tại). Không để vừa tồn tại vừa sai — đây là mẫu số chung gây
     ra cả 1.6.1–1.6.3, và sẽ tiếp tục gây bug tương tự nếu không chốt.
 
+- **WP1.7 — View "cùng học" (shared-course companions).** Trên course có
+  share lineage: hiển thị ai khác đang học *cùng* course gốc (owner gốc +
+  mọi người đã clone) và % tiến độ của họ — read-only, chỉ thấy trong phạm
+  vi lineage đó (không phải leaderboard công khai), mặc định hiển thị (đối
+  tượng Checkpoint 1 là nhóm bạn thật, và "thấy nhau" chính là giá trị).
+  Tái dùng `Course.forkedFromCourseId` đã có sẵn trong data model — chỉ
+  thêm một đường đọc mới trên cùng join. **Đây là cơ chế giữ chân chủ lực
+  của sản phẩm** (Vision mục 9, quyết định wayfinder ticket 07/13): sản
+  phẩm wrapper thuần đều chững; đối thủ "Notion + Sheet + ý chí" thua ở
+  cấu trúc nhưng không thua ở "một mình" — WP này đánh đúng trục đó.
+- **WP1.8 — Migrate hosting khỏi free-tier trước khi mở cho người ngoài.**
+  $0 tuyệt đối chỉ đúng ở giai đoạn founder-only (Oracle Always Free —
+  đã bị thu hẹp một lần trong 2026, rủi ro nền tảng thật). Ngay khi
+  Checkpoint 1 mở cho người ngoài: chuyển sang host ổn định ~$5–12/tháng
+  do founder tự gánh (quyết định wayfinder ticket 05/09 — bền vững vô thời
+  hạn, không gate trên retention). Kèm **nút donate thụ động** (Ko-fi/
+  GitHub Sponsors, khung chữ "ủng hộ" trung tính, không logic
+  subscription) — bật từ ngày đầu theo Vision mục 7.
+- **WP1.9 — Seed artifact: 3–5 course công khai dựng sẵn từ các playlist
+  YouTube free phổ biến.** Là deliverable của Checkpoint 1, không phải chi
+  tiết marketing (quyết định wayfinder ticket 08): đây là thứ làm bài post
+  ra mắt ở cộng đồng trở nên cụ thể/chia sẻ được thay vì "tôi làm ra một
+  tool" trừu tượng — mọi outreach ở Checkpoint 2 đứng trên artifact này.
+
 **Điều kiện qua checkpoint tiếp theo:** có người ngoài thật sự quay lại học
 tiếp (retention có ý nghĩa) — đúng exit signal Vision giai đoạn 1. **WP1.5 và
 WP1.6 phải xong trước khi bắt đầu WP2** — mời người ngoài vào một sản phẩm còn
@@ -278,12 +302,20 @@ mà checkpoint này cần, bất kể AI ở Checkpoint 2 tốt đến đâu.
 
 ---
 
-## Checkpoint 2 — Cộng đồng hẹp + lớp AI mặc định miễn phí (Vision giai đoạn 2)
+## Checkpoint 2 — Cộng đồng hẹp VN + lớp AI tích hợp tối thiểu (Vision giai đoạn 2)
 
-**Mô tả sản phẩm:** Mở cho 1 cộng đồng hẹp cụ thể (vd người tự học lập trình
-qua YouTube free). Mỗi course/bài giờ có thêm **tóm tắt & quiz tự sinh bằng
-AI** theo cấu hình mặc định của hệ thống — tự động có, không cần user làm gì,
-không tốn phí cho user lẫn nền tảng (trong giới hạn kiểm soát được).
+**Mô tả sản phẩm:** Mở cho wedge cụ thể: **người Việt tự học lập trình qua
+YouTube** (Vision mục 4, quyết định wayfinder ticket 08). Mỗi course/bài có
+thêm **tóm tắt & quiz tự sinh bằng AI** theo cấu hình mặc định — tự động có,
+không cần user làm gì, không tốn phí cho user lẫn nền tảng (trong giới hạn
+kiểm soát được). **Phạm vi AI chốt là integration-only** (Vision mục 6, ticket
+13): đúng 2 recipe mặc định, không mở rộng mindmap/flashcard/chat — điểm bán
+là kết quả nằm ngay trong vỏ course/tiến độ, không phải năng lực AI.
+
+**Kế hoạch outreach** (thứ tự, theo ticket 08/15): (1) FB group "Tự học lập
+trình miễn phí" → (2) J2TEAM Community (theo rules.j2team.org) — post seed
+artifact WP1.9 + câu chuyện; (3) bài viết Viblo / thread VOZ nhẹ nhàng.
+Kênh global chờ cổng retention bên dưới.
 
 **Chi tiết kỹ thuật:** `docs/design/ai-integration-plan.md`.
 
@@ -291,19 +323,34 @@ không tốn phí cho user lẫn nền tảng (trong giới hạn kiểm soát �
 - **WP2.1 — Data model `Source`/`AIGeneration`.** Theo
   `ai-personalization-economics.md` mục 3, gồm cả 2 ghi chú mới
   (`modelVersion` trong `recipeHash`, `generatedByUserId` → NULL khi xoá tài
-  khoản).
+  khoản). **Bước chuẩn bị (ticket 14):** trước khi code `TranscriptProvider`
+  và 2 recipe mặc định, dành ~nửa ngày đọc tham khảo Notex (Apache-2.0 —
+  được phép mượn code có ghi công: yt-dlp fallback, prompt, cách chunk
+  transcript dài) và PageLM (license cấm dùng thương mại — **chỉ đọc lấy ý
+  tưởng** thiết kế prompt/schema output, tuyệt đối không port code).
 - **WP2.2 — Pipeline generate AI mặc định có kiểm soát chi phí.** Lazy-generate
   (chỉ chạy khi user thật sự bấm dùng, không tự động khi thêm Source), cache
   theo `(sourceId, recipeHash mặc định)`, rate-limit Source mới/user/ngày (mục
   6.1), quota tính theo token thực chứ không theo lượt (mục 6.3).
 - **WP2.3 — UI hiển thị AI mặc định gắn vào course-item.** Luôn optional —
-  generate lỗi/chưa xong không chặn việc học.
+  generate lỗi/chưa xong không chặn việc học. **Gồm nhánh UX quota-cạn
+  (ticket 06):** khi quota SHARED_FREE toàn nền tảng (~250 req/ngày) cạn,
+  hiển thị rõ "thêm key miễn phí của bạn hoặc chờ ngày mai" — không âm thầm
+  chặn, không tự fallback.
 - **WP2.4 — Alerting chi phí AI theo ngày/tuần** (mục 6.7). Bắt buộc trước khi
   mở rộng thêm cộng đồng, để phát hiện sớm tăng trưởng đột biến ngoài dự tính.
+  **Đo cả số request/ngày, không chỉ $** (ticket 06) — với free tier, cạn
+  quota xảy ra trước khi phát sinh chi phí, nên $ một mình là chỉ số mù.
 
 **Điều kiện qua checkpoint tiếp theo:** retention tốt ở cộng đồng hẹp **và**
 chi phí AI mặc định nằm trong ngân sách quan sát được, ổn định (không phải chờ
 "có tiền" mà chờ số liệu ổn định để tự tin mở rộng).
+
+**Cổng mở kênh global (ticket 08 — con số thật, không phải hình thức):**
+đề xuất mặc định **≥30% người dùng ngoài (không phải founder) quay lại học
+trong tuần thứ 2–4 sau lần học đầu, trên cỡ mẫu ≥30 người** — founder chốt/
+chỉnh con số này trước khi bắt đầu outreach VN; chưa đạt thì chưa đụng Show
+HN / r/learnprogramming, tránh VN-first trượt dần thành "làm cả hai cùng lúc".
 
 ---
 
@@ -311,7 +358,7 @@ chi phí AI mặc định nằm trong ngân sách quan sát được, ổn đị
 
 **Mô tả sản phẩm:** User muốn tuỳ biến AI (độ khó, độ dài, giọng văn, tự chia
 segment) → nhập API key miễn phí của riêng họ (BYOK), dùng không giới hạn.
-Thêm hỗ trợ nguồn web/blog (không chỉ YouTube). Có nút donate/ủng hộ.
+Thêm hỗ trợ nguồn web/blog (không chỉ YouTube).
 
 **WP:**
 - **WP3.1 — Luồng BYOK.** UI nhập/validate key, generate qua key riêng của
@@ -324,8 +371,9 @@ Thêm hỗ trợ nguồn web/blog (không chỉ YouTube). Có nút donate/ủng 
   không phải sửa lại data model khi tới Checkpoint 4.
 - **WP3.3 — Hỗ trợ nguồn web/blog** (mục 6.8): fetch/parse trang, kèm
   `fetchedAt` để đánh dấu cache có thể cũ, rate-limit riêng theo domain nguồn.
-- **WP3.4 — Nút donate/ủng hộ.** Không cần logic subscription, bật ngay, rủi
-  ro gần như bằng 0.
+- ~~WP3.4 — Nút donate/ủng hộ~~ **Đã chuyển lên WP1.8** (quyết định
+  wayfinder ticket 09: link donate thụ động bật từ ngày đầu là vô hại;
+  chỉ khung chữ "cầu cứu" mới gây hại — xem Vision mục 7).
 
 **Điều kiện qua checkpoint tiếp theo:** 1 trong các tín hiệu thu phí ở Vision
 mục 7 xảy ra thật (retention ổn định + chi phí AI dùng chung chạm giới hạn
@@ -360,7 +408,7 @@ khi mở public — không mở rộng khi tín hiệu ở checkpoint trước c
 | Checkpoint | Ai dùng được | Có AI? | Có thu phí? | Rủi ro chính nếu bỏ qua thứ tự |
 |---|---|---|---|---|
 | 0 | Chỉ founder | Không | Không | Pivot dở dang, nợ kỹ thuật dồn sang mọi checkpoint sau |
-| 1 | Nhóm bạn bè | Không | Không | Ra mắt AI/thu phí trước khi core ổn định → phân tán nguồn lực, chưa có gì để giữ chân user |
-| 2 | Cộng đồng hẹp | Có (mặc định, free) | Không | Bỏ qua rate-limit/alerting (6.1, 6.7) → cost-DoS âm thầm trước khi kịp phát hiện |
-| 3 | Cộng đồng hẹp (mở rộng) | Có (tuỳ biến qua BYOK) | Donate only | Không xây sẵn fix free-rider (mục 5) → `PAID_TIER` tự triệt tiêu ngay khi bật ở Checkpoint 4 |
-| 4 | Public | Có (đủ 3 tier) | Có (khi tín hiệu thật) | Mở public/thu phí trước khi có tín hiệu retention thật → đốt chi phí hosting nhanh hơn doanh thu (mục 6.7) |
+| 1 | Nhóm bạn bè | Không | Donate thụ động (WP1.8) | Ra mắt AI/thu phí trước khi core ổn định → phân tán nguồn lực, chưa có gì để giữ chân user |
+| 2 | Cộng đồng hẹp VN | Có (2 recipe mặc định, free) | Donate thụ động | Bỏ qua rate-limit/alerting (6.1, 6.7) → cost-DoS âm thầm trước khi kịp phát hiện |
+| 3 | Cộng đồng hẹp (mở rộng) | Có (tuỳ biến qua BYOK) | Donate thụ động | Không xây sẵn fix free-rider (mục 5) → `PAID_TIER` tự triệt tiêu ngay khi bật ở Checkpoint 4 |
+| 4 | Public | Có (đủ 3 tier) | Có (khi feature-pull thật) | Mở public/thu phí trước khi có tín hiệu retention thật → đốt chi phí hosting nhanh hơn doanh thu (mục 6.7) |

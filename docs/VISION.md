@@ -44,10 +44,21 @@ Mở rộng theo từng vòng tròn nhỏ dần lớn, không nhảy thẳng lê
 |---|---|---|
 | 0 | Chính người sáng lập | ✅ Đã xong — đã tự kiểm chứng hiệu quả |
 | 1 | Một nhóm nhỏ, cùng chí hướng (bạn bè/đồng nghiệp tự học chung 1 kỹ năng) | Sắp tới |
-| 2 | Cộng đồng hẹp, có đặc điểm chung rõ ràng (ví dụ: người tự học lập trình qua YouTube free) | Sau khi giai đoạn 1 có tín hiệu tốt |
+| 2 | Cộng đồng hẹp: **người Việt tự học lập trình qua YouTube** (wedge VN-first) | Sau khi giai đoạn 1 có tín hiệu tốt |
 | 3 | Mở rộng công khai (public, free) | Chỉ khi có bằng chứng retention thật ở giai đoạn 2 |
 
 **Lí do đi từng bước nhỏ:** một audience quá rộng ("ai tự học cũng dùng được") không đo lường được, không lan truyền được, và không cho tín hiệu rõ ràng để ra quyết định tiếp theo. Một wedge hẹp, cụ thể, dễ đo hơn nhiều — và dễ lan truyền organic hơn (một cộng đồng cụ thể sẽ tự giới thiệu cho nhau).
+
+**Vì sao wedge VN-first (quyết định 2026-08, xem `docs/wayfinder/checkpoint2-feasibility/`):**
+nhãn rộng "self-taught devs" không có cộng đồng "nhà" nào trên thế giới, trong
+khi wedge VN có cùng lúc 3 đặc tính không lựa chọn nào khác có: (1) chưa có
+đối thủ cho đúng cơ chế này — F8/fullstack.edu.vn đã chứng minh "cấu trúc +
+tiến độ trên video YouTube free" ở VN nhưng chỉ cho catalog của chính họ,
+không cho playlist bất kỳ; (2) kênh tiếp cận thân thiện với "tôi vừa làm cái
+này" (FB group, J2TEAM) thay vì ~61% subreddit tiếng Anh cấm self-promo;
+(3) reach dày, đúng ngôn ngữ (~45k + ~630k chỉ trong 2 nhóm đầu). **Chỉ mở
+kênh global (Show HN, Reddit) sau khi đạt mốc retention VN cụ thể ghi ở
+`ROADMAP.md` Checkpoint 2 — đây là cổng thật, không phải hình thức.**
 
 ---
 
@@ -62,16 +73,34 @@ Mở rộng theo từng vòng tròn nhỏ dần lớn, không nhảy thẳng lê
 
 ---
 
-## 6. Tính năng AI (kiểu NotebookLM) — chiến lược & lí do
+## 6. Tính năng AI — chiến lược & lí do (đã thu hẹp, 2026-08)
 
-**Vì sao muốn có:** biến các nguồn (video, blog, link) người dùng thêm vào thành có thể hỏi-đáp, tự sinh quiz/flashcard, tóm tắt, mindmap — tăng chiều sâu học tập, giống trải nghiệm NotebookLM đang được nhiều nơi học theo và người dùng đã quen thuộc.
+**Định vị (sửa sau nghiên cứu cạnh tranh, xem `docs/wayfinder/checkpoint2-feasibility/`):**
+khả năng AI thô (sinh quiz từ YouTube, tóm tắt, flashcard) đã là **hàng
+commodity miễn phí** — Quizlet/Knowt/Wisdolia làm ở quy mô lớn từ lâu. Sản
+phẩm này **không cạnh tranh bằng độ sâu/độ rộng tính năng AI**, và không cố
+trở thành NotebookLM. Lợi thế duy nhất đáng nói là **sự tích hợp**: kết quả
+AI nằm ngay trong vỏ course/tiến độ/note (không phải chuyển tab sang tool
+khác), gắn vào đúng bài học sinh ra nó, và chia sẻ được theo lineage course.
 
-**Vấn đề:** các tính năng này cần gọi AI (LLM) liên tục — tốn chi phí API thật. Sản phẩm không có ngân sách để gánh chi phí này cho tất cả người dùng miễn phí, vô thời hạn.
+**Phạm vi AI ở Checkpoint 2 — chỉ 2 recipe mặc định:** tóm tắt + quiz cho
+mỗi bài. **Không** mở rộng sang mindmap, flashcard, hỏi-đáp chat, hay audio
+kiểu NotebookLM — người học cần các thứ đó cứ dùng tool chuyên miễn phí.
+Đây là quyết định phạm vi, không phải giới hạn tạm thời.
 
-**Quyết định:**
-- **Mặc định: BYOK (Bring Your Own Key)** — người dùng tự lấy API key miễn phí (vd Gemini free tier) và nhập vào app. Chi phí AI do người dùng tự chịu (gần như 0đ với họ, và 0đ với sản phẩm) — bền vững vô thời hạn.
-- **Tối ưu thêm: cache theo nguồn, không theo người dùng** — nếu nhiều người cùng thêm 1 video/blog phổ biến, chỉ xử lý AI **một lần** cho nguồn đó, tái sử dụng cho tất cả. Giảm chi phí thực tế đáng kể nếu sau này có key dùng chung.
-- **AI là lớp tính năng thêm (add-on), không phải điều kiện để ra mắt core.** Core (tổ chức học tập, tiến độ) ra mắt trước và tự đứng vững một mình; AI đi sau, không chặn đường.
+**Vấn đề chi phí:** gọi AI (LLM) tốn chi phí API thật. Sản phẩm không có ngân sách để gánh chi phí này cho tất cả người dùng miễn phí, vô thời hạn.
+
+**Quyết định (khớp thiết kế thật ở `ai-personalization-economics.md` mục 0):**
+- **Mặc định không-cần-key: `SHARED_FREE`** — 2 recipe mặc định chạy trên
+  key dùng chung của nền tảng, cache theo nguồn nên mỗi nguồn chỉ xử lý
+  **một lần**, tái sử dụng cho mọi người. Quota chung có hạn (~250 req/ngày
+  free tier); khi cạn, UX hiển thị rõ "thêm key của bạn hoặc chờ" — không
+  âm thầm chặn.
+- **BYOK (Bring Your Own Key) cho ai muốn hơn mặc định** — người dùng tự lấy
+  API key miễn phí (vd Gemini free tier) và nhập vào app để tuỳ biến/không
+  chịu quota chung. Thứ tự định tuyến chi phí: BYOK → SHARED_FREE (chỉ
+  recipe mặc định) → PAID_TIER → chặn có thông báo.
+- **AI là lớp tính năng thêm (add-on), không phải điều kiện để ra mắt core.** Core (tổ chức học tập, tiến độ) ra mắt trước và tự đứng vững một mình; AI đi sau, không chặn đường. **Lớp giữ chân chính là cơ chế "cùng học" (mục 9 / ROADMAP WP1.7), không phải AI.**
 
 ---
 
@@ -85,13 +114,25 @@ Tiền **không phải mục tiêu sống còn** của dự án này (khác hẳ
 - Sync nhiều thiết bị, backup, xuất dữ liệu
 - Gói nhóm/lớp học cho nhóm bạn bè học chung
 
-**Khi nào bắt đầu thu phí — theo tín hiệu, không theo lịch:**
-1. Có retention thật (người dùng quay lại học tiếp đều đặn)
-2. Chi phí AI dùng chung bắt đầu chạm giới hạn thường xuyên
-3. Người dùng tự chủ động hỏi xin thêm tính năng/giới hạn
-4. Đủ quy mô người dùng để việc thu phí đáng công sức vận hành
+**Khi nào bắt đầu thu phí — theo lực kéo tính năng (feature-pull), không theo số user hay theo lịch** (kiểm chứng bằng dữ liệu thật 2026-08, xem `docs/wayfinder/checkpoint2-feasibility/research/monetization-timing.md`):
+1. Có retention thật (người dùng quay lại học tiếp đều đặn), **và**
+2. Người dùng đụng giới hạn thật — quota AI dùng chung cạn thường xuyên,
+   hoặc tự chủ động hỏi xin trả tiền/thêm giới hạn.
 
-**Bước đệm rủi ro thấp, có thể bật ngay:** nút donate/ủng hộ (không ép buộc, không cần logic subscription) — mở khả năng có thu nhập từ ngày đầu mà không ảnh hưởng trải nghiệm free.
+Số lượng user **không** là trigger: dưới vài trăm user retained, tier trả
+phí chỉ mang lại vài chục $/tháng nhưng cộng thêm gánh vận hành
+subscription/support — bật sớm để "bù chi phí hạ tầng" là tính sai.
+Chi phí hạ tầng nền (~$5–12/tháng từ Checkpoint 1) do founder tự gánh —
+bền vững vô thời hạn cho một dự án proof-of-work/CV; ngưỡng đau thực tế
+(~$50/tháng do chi phí AI scale) đã được chặn bằng thiết kế BYOK-mặc-định
+ở mục 6.
+
+**Nút donate/ủng hộ: bật từ ngày đầu (Checkpoint 1), dạng thụ động.** Link
+Ko-fi/GitHub Sponsors lặng lẽ, khung chữ trung tính kiểu "ủng hộ dự án" —
+tuyệt đối không "giúp chúng tôi sống sót" (nghiên cứu cho thấy chỉ khung
+chữ tuyệt vọng mới gây hại niềm tin). Không cần logic subscription. Kỳ vọng
+thu về ở quy mô <1000 user là ~$0–5/tháng — đây là kênh tín hiệu
+willingness-to-pay, không phải kênh bù chi phí.
 
 ---
 
@@ -112,6 +153,16 @@ Không đo bằng số lượt đăng ký. Đo bằng:
 - **Retention:** % người quay lại học tiếp sau lần đầu
 - **Completion:** % khóa học tự tạo được học hoàn chỉnh
 - **Lan truyền tự nhiên:** người dùng tự chia sẻ link khóa học của họ cho người khác, không cần quảng cáo
+
+Hai bổ sung (2026-08):
+- **Cơ chế giữ chân chủ lực là "cùng học"** (thấy được ai đang học cùng
+  course theo lineage share/clone — ROADMAP WP1.7): các sản phẩm wrapper
+  thuần đều chững lại, còn các sản phẩm sống sót đều có một vòng lặp
+  reinforcement xã hội. AI (mục 6) là tiện ích tích hợp, không phải cơ chế
+  giữ chân.
+- **Retention của wedge VN là con số gác cổng**: `ROADMAP.md` Checkpoint 2
+  phải ghi một mốc retention VN cụ thể; chưa đạt mốc đó thì chưa mở kênh
+  outreach global (mục 4).
 
 ---
 
