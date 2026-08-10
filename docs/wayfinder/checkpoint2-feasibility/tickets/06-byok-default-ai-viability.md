@@ -3,7 +3,7 @@ id: checkpoint2-feasibility/06
 title: Is BYOK-only default AI viable, or does SHARED_FREE need to become primary?
 label: wayfinder:grilling
 status: open
-assignee: null
+assignee: claude
 blocked_by: [checkpoint2-feasibility/02]
 ---
 
