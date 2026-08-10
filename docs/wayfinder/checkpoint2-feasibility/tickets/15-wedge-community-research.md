@@ -2,7 +2,7 @@
 id: checkpoint2-feasibility/15
 title: Where do self-taught YouTube learners actually congregate, and how have comparable tools successfully recruited them?
 label: wayfinder:research
-status: open
+status: closed
 assignee: null
 blocked_by: []
 ---
@@ -36,3 +36,37 @@ before that can be confirmed or replaced. Research:
 Deliver findings specific enough that ticket 08 can name actual
 communities and an actual first-outreach sequence, not a demographic
 label.
+
+## Resolution
+
+Full findings: [research/wedge-community.md](../research/wedge-community.md)
+(2026-08, all claims sourced).
+
+**Summary.** (1) The broad "self-taught devs" label has no home community;
+what exists are curriculum/instructor cohorts (CS50 Discord ~220k, Odin
+~91k, 100Devs ~73k), a behavior community (Study Together Discord ~1.06M —
+live co-studying + progress tracking, the product's exact loop), and huge
+but promo-hostile subreddits (r/learnprogramming ~4.3M). Vietnamese energy
+lives in Facebook groups (J2TEAM ~630k; "Tự học lập trình miễn phí" ~45k —
+literally the wedge's name), the F8/fullstack.edu.vn ecosystem (which
+already validated "structure + progress on top of free YouTube" for VN,
+but only for its own catalog), Viblo, and VOZ (~1.16M). (2) Every studied
+tool's first cohort came from a congregation the founder belonged to or
+built around a specific curriculum — roadmap.sh (GitHub artifact, 10k
+stars/week), Class Central (built inside the Stanford AI-course cohort),
+Knowt (TikTok student-native), 100Devs (one instructor's free cohort) —
+never from broadcasting to a demographic. Show HN ≈ 25–600 signups/launch;
+Product Hunt is a poor fit. (3) Narrower wedges demonstrably out-organize
+the broad label (r/developersIndia ~1M+ proves geo wedges scale). (4) ~61%
+of founder-relevant subreddits ban self-promo; sanctioned slots only
+(Saturday threads, Showoff Saturday, "I Built This", Show HN) and the 9:1
+participation rule.
+
+**Recommendation:** adopt a **VN-first wedge — "người Việt tự học lập
+trình qua YouTube"** — replacing the broad global label. First communities,
+in sequence: (1) FB group "Tự học lập trình miễn phí" + (2) J2TEAM
+Community, with a seed artifact of 3–5 pre-built public courses from
+popular free YouTube curricula (post the artifact + story, per group
+rules); then (3) a Viblo write-up / low-key VOZ thread for long-tail reach.
+Go global (Show HN + r/learnprogramming Saturday thread) only after VN
+retention signal.
