@@ -151,3 +151,160 @@ $0 is achievable and is the recommended starting point (Oracle Always Free,
 single VM, both containers), but it carries platform/availability risk rather
 than usage-based cost risk; the fallback once that risk is unacceptable is a
 firm ~$5–12/month floor, not a gradual scale-up from $0.
+
+## Addendum — AWS/Azure/GCP/other comparison (follow-up)
+
+The original research picked Oracle Cloud Always Free without directly
+weighing it against AWS/Azure/GCP's own free tiers or other free-forever
+hosts. This addendum closes that gap with 2026-current research
+(WebSearch/WebFetch, not training data — these terms moved materially in
+2025–2026).
+
+### 1. AWS Free Tier (2026)
+
+AWS restructured its free tier on **July 15, 2025**. There are now two
+account generations with different rules:
+
+- **Legacy accounts (created before 2025-07-15):** the classic 12-month free
+  tier — 750 hrs/month of `t2.micro`/`t3.micro` EC2 (enough compute for this
+  app), 750 hrs/month of `db.t2.micro`/`db.t3.micro`/`db.t4g.micro` RDS
+  Postgres with 20GB storage — but **only for 12 months from account
+  creation**, then it silently converts to standard pay-as-you-go pricing
+  with **no automatic notification** (confirmed across multiple 2026 sources).
+- **New accounts (created on/after 2025-07-15):** no time-based free tier at
+  all. Instead a **$200 credit pool** (an automatic $100 + up to $100 more
+  from 5 onboarding tasks) that both EC2 and RDS usage draw down against,
+  expiring after **6 months or when the credits run out**, whichever is
+  first.
+- **Always Free (perpetual, not time-limited) services exist** but are
+  narrow and don't cover this workload: Lambda, DynamoDB, SNS-class services.
+  There is **no perpetually-free EC2 or RDS tier** on either account
+  generation.
+- New: **Aurora PostgreSQL Serverless** was added to the free tier in March
+  2026 (up to 4 ACUs, 1GB storage) — but it draws from the same time-limited
+  credit/12-month pool, not a new Always-Free bucket.
+- Account creation requires a valid credit card plus phone verification;
+  post-trial/post-credit billing starts automatically with no spend cap by
+  default.
+
+**Verdict: not viable as a $0-indefinitely option.** AWS is free for 6–12
+months (depending on account vintage) and then bills automatically and
+silently. It's a trial, not an always-free tier, for both EC2 and RDS.
+
+### 2. Azure (2026)
+
+- **Free VM compute is 12-months only:** 750 hrs/month of `B1S` burstable
+  Linux/Windows VMs (enough to run two simultaneously), expiring one year
+  after signup, then converting to paid with no default alert.
+- **Azure Database for PostgreSQL (Flexible Server) has no free tier at
+  all**, always-free or trial — it's pay-as-you-go from the start (Burstable
+  tier is the cheapest SKU, not a free one). This is a materially worse
+  starting position than AWS's RDS-for-12-months.
+- **Always Free (perpetual) services** exist but again don't cover this
+  workload: Azure Functions (1M executions/month), App Service F1 tier (which
+  is a real container-adjacent option but shared/limited and not commonly
+  used for a persistent Postgres-backed Next.js app), Cosmos DB free tier.
+- New accounts get an additional **$200 credit for 30 days** on top of the
+  12-month allowances. Azure has **no automatic spend cap** — overage bills
+  immediately once free/credit limits are exceeded.
+
+**Verdict: not viable.** Worse than AWS for this specific stack because there
+is no free Postgres option at all, perpetual or trial — only free-for-12-months
+compute.
+
+### 3. Google Cloud Platform (2026, revisited)
+
+- **Compute Engine Always Free (genuinely perpetual, not a trial):** one
+  `e2-micro` VM instance (0.25 vCPU baseline / burst, 1GB RAM), restricted to
+  three US regions (`us-west1`, `us-central1`, `us-east1`), plus 30GB-months
+  of standard persistent disk and 1GB/month egress to most destinations. This
+  is real and permanent — but 1GB RAM is tight for running both a Next.js
+  container and a Postgres container on the same box; it's meaningfully
+  smaller than Oracle's 12GB Always Free Ampere allocation. Workable only
+  with a very lean setup (e.g. swap, or offloading the DB elsewhere) and 1GB
+  egress/month is easy to blow through with real traffic.
+- **Cloud SQL (managed Postgres): confirmed no Always Free tier**, consistent
+  with the original research — it's billed pay-as-you-go from the start
+  (starts around $7+/month for the smallest instance), with only a 30-day
+  trial credit as any kind of "free" window.
+- **Cloud Run Always Free (revisited):** 2M requests/month, 360,000 GB-seconds
+  memory and 180,000 vCPU-seconds compute per month, scales to zero when idle
+  — this remains genuinely perpetual and is a strong fit for the Next.js
+  container specifically (not the DB). Because Cloud Run is stateless/serverless,
+  it cannot also host a persistent Postgres container on the same
+  free allocation — Postgres still has to live elsewhere (Neon/Supabase free
+  tier, or a separate Always Free e2-micro VM).
+
+**Verdict: GCP has two genuinely perpetual free options (e2-micro VM, Cloud
+Run), but neither one is a complete $0 Docker Next.js+Postgres self-host by
+itself** the way Oracle's single VM is — e2-micro is real but memory-starved
+for both containers together, and Cloud Run can't hold the DB. GCP's best
+role is as a *component* (free Next.js compute via Cloud Run, paired with
+Neon free Postgres) rather than a single-box replacement for Oracle.
+
+### 4. Other free-forever (not free-trial) providers for Docker+Postgres
+
+- **Koyeb:** no longer has a free *compute* tier as of 2026 (Pro plan
+  $29/mo required for web services); its free Postgres tier still exists but
+  is dev-only (0.25 vCPU/1GB RAM, 1GB storage, 5 compute-hours/month) — not
+  enough to pair with anything for a live app. Not viable.
+- **Cloudflare Workers/Pages + D1:** genuinely perpetual free tier (100K
+  requests/day, D1 at 5GB storage/5M row-reads-per-day) — but D1 is SQLite,
+  not Postgres, and Workers isn't a Docker container runtime; this is a
+  different architecture, not a drop-in for this app's confirmed
+  Docker/Postgres self-host target. Not applicable without a rewrite.
+  Cloudflare has since added Containers/Postgres-compatible Hyperdrive
+  offerings but these are paid, not free-forever.
+- **Deno Deploy:** edge JS/TS runtime, not a Docker host, and no bundled
+  Postgres; doesn't fit this app's deploy target.
+- **Fly.io, Railway, Render:** already covered above — no viable free-forever
+  tier in 2026 for any of them.
+- **DigitalOcean, Linode/Akamai, Vultr, Hetzner:** none offer an
+  always-free compute tier comparable to Oracle/GCP's — only signup credits
+  that expire (typically $100–200 over 30–60 days), after which billing is
+  immediate. Not free-forever options.
+
+**Verdict: no other provider in this survey offers a free-forever
+Docker+Postgres-capable combination that beats or matches Oracle's single-VM
+answer.** Cloudflare's D1 is the only other genuinely perpetual "free
+database," but it's the wrong database engine for this app.
+
+### 5. Comparison table
+
+| Provider | Compute for this app | Perpetual, trial, or not viable | Managed Postgres free option | Perpetual, trial, or not viable | Catches |
+|---|---|---|---|---|---|
+| **Oracle Cloud** | Always Free Ampere A1: 2 OCPU/12GB RAM/200GB disk (self-host both containers on one VM) | **(a) Perpetual** | N/A — self-hosted in Docker on the same VM | N/A | Tier already shrunk once (unannounced, mid-2026); instances can be terminated if temporarily over new limits; "out of host capacity" errors common; no credit-card-free signup |
+| **AWS** | 750 hrs/mo t2/t3.micro EC2 | **(b) Trial only** — 12mo (legacy accts) or 6mo/$200-credit (new accts, post-2025-07-15) | 750 hrs/mo db.t2/t3/t4g.micro RDS Postgres, 20GB | **(b) Trial only** — same 12mo/6mo window | Credit card + phone verification required; auto-converts to paid with **no default alert**; new-account model is credits-draw-down, not a parallel free allowance |
+| **Azure** | 750 hrs/mo B1S VM | **(b) Trial only** — 12 months | None | **(c) Not viable** — no free tier at all for Azure DB for PostgreSQL, ever | No spend cap by default; free VM is fine for 1yr then bills automatically |
+| **GCP** | e2-micro Always Free VM (1 vCPU-burst/1GB RAM, 3 US regions) *or* Cloud Run Always Free (2M req/mo, scales to zero) | **(a) Perpetual** (both options) | None (Cloud SQL has only a 30-day trial) | **(c) Not viable for managed Postgres** | e2-micro's 1GB RAM is too tight to comfortably run both containers together; Cloud Run can't host a stateful DB at all; 1GB/month egress on the VM tier is easy to exceed |
+| **Neon** (paired with any free compute) | N/A (DB only) | — | 0.5GB storage, 100 CU-hrs/mo, forced scale-to-zero | **(a) Perpetual** | 5-min mandatory idle-to-zero cold start; hard 0.5GB storage ceiling |
+| **Supabase** (paired with any free compute) | N/A (DB only) | — | 500MB storage, 60 direct conns | **(a) Perpetual** | Auto-pauses after 7 days idle; low connection cap |
+| **Koyeb** | Pro plan required ($29/mo) for compute | **(c) Not viable** | 0.25vCPU/1GB/1GB, 5 compute-hrs/mo | **(c) Not viable for a live app** | Free DB tier is dev-only, too little compute-time to matter |
+| **Cloudflare Workers/D1** | Workers (100K req/day) | **(a) Perpetual, but wrong runtime** (not Docker) | D1 (5GB, SQLite) | **(a) Perpetual, but wrong DB engine** (not Postgres) | Requires rewriting off Docker/Postgres — architecture mismatch, not a drop-in |
+| **Deno Deploy** | Edge JS runtime | **(c) Not viable** for this stack | None bundled | **(c) Not viable** | Not a Docker host |
+| **Fly.io / Railway / Render** | — | **(b)/(c)** — trial-only or unusable free (Render DB expires at 30 days) | — | **(b)/(c)** | Covered in main findings above; none is free-forever in 2026 |
+| **DigitalOcean / Linode / Vultr / Hetzner** | — | **(b) Trial only** ($100–200 signup credit, 30–60 days) | — | **(c) Not viable** | Immediate billing once credit exhausted; no always-free compute tier |
+
+### 6. Verdict: does this change the Oracle conclusion?
+
+**No — it reinforces it, with one clarification worth adding to the record.**
+Of every provider surveyed, **Oracle Cloud is the only one offering a
+perpetual, non-time-limited free tier generous enough (12GB RAM, 200GB disk)
+to self-host *both* the Next.js and Postgres Docker containers on a single
+box.** AWS, Azure, and their RDS/VM free tiers are **trials, not
+always-free** — 6–12 months, then automatic paid conversion, often without a
+default warning. Azure is strictly worse than AWS here: it has no free
+Postgres option at all, ever, not even a trial. GCP is the only other
+genuinely perpetual free compute (e2-micro VM, Cloud Run), and Cloudflare
+the only other genuinely perpetual free database (D1) — but neither pairs
+into a complete $0 Docker Next.js+Postgres self-host the way Oracle's single
+VM does: e2-micro's 1GB RAM can't comfortably hold both containers, Cloud Run
+can't hold a stateful DB at all, and D1 is the wrong database engine
+entirely. The honest caveat is that **GCP (Cloud Run + Neon free Postgres)**
+is a legitimate, fully-perpetual alternative *combination* if Oracle's
+platform risk (unannounced tier cuts, instance termination, capacity
+shortages) becomes unacceptable — it was already named as the "next-best $0
+combination" in the original research, and this follow-up confirms it's the
+right second choice, not a second-best guess. But as a single-host, no
+external-dependency answer, Oracle remains the best $0 option surveyed for
+this specific Docker Next.js+Postgres workload.
