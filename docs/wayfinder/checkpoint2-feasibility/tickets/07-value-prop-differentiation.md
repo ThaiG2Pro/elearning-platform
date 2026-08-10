@@ -3,7 +3,7 @@ id: checkpoint2-feasibility/07
 title: Does the core value proposition need sharpening beyond "distraction-free wrapper"?
 label: wayfinder:grilling
 status: open
-assignee: null
+assignee: claude
 blocked_by: [checkpoint2-feasibility/04]
 ---
 
