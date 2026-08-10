@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
+import { Button } from '@/components/ui/button';
 import { changePassword, logout as apiLogout, AuthUtils } from '@/lib/auth';
 import { User } from '@/types/auth.types';
 
@@ -135,15 +136,13 @@ export default function ChangePasswordPage() {
                         )}
 
                         <div className="flex gap-3 pt-1">
-                            <button type="button" onClick={handleCancel} disabled={appState === 'submitting'}
-                                className="flex-1 py-2.5 px-4 border border-slate-300 rounded-lg text-sm font-medium text-slate-700 bg-white hover:bg-slate-50 transition-colors disabled:opacity-50">
+                            <Button type="button" variant="outline" onClick={handleCancel} disabled={appState === 'submitting'} className="flex-1">
                                 Hủy
-                            </button>
-                            <button type="submit" disabled={appState === 'submitting'}
-                                className="flex-1 py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 flex items-center justify-center gap-2">
+                            </Button>
+                            <Button type="submit" disabled={appState === 'submitting'} className="flex-1">
                                 {appState === 'submitting' && <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
                                 {appState === 'submitting' ? 'Đang đổi...' : 'Đổi mật khẩu'}
-                            </button>
+                            </Button>
                         </div>
                     </form>
                 </div>

@@ -6,6 +6,10 @@ import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
 import { getEnrolledCourses } from '@/lib/course';
 import { Skeleton } from '@/components/ui/skeleton';
+// WP1.5.8: this was the last hand-rolled tab strip in the app — every other
+// page's filter/status tabs already use the shared Tabs component.
+import { Button } from '@/components/ui/button';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { EnrolledCourse } from '@/types/course.types';
 import { User } from '@/types/auth.types';
 import { logout as apiLogout, AuthUtils } from '@/lib/auth';
@@ -66,8 +70,8 @@ export default function MyLearningPage() {
         router.push(`/join?continueUrl=${encodeURIComponent(currentUrl)}`);
     };
 
-    const handleFilterChange = (newFilter: 'in_progress' | 'completed') => {
-        setFilter(newFilter);
+    const handleFilterChange = (newFilter: string) => {
+        setFilter(newFilter === 'all' ? undefined : (newFilter as 'in_progress' | 'completed'));
     };
 
     const handleCourseClick = (courseId: string) => {
@@ -101,37 +105,13 @@ export default function MyLearningPage() {
 
                 {/* Section 01: Bộ lọc */}
                 <div className="mb-6">
-                    <div className="border-b border-slate-200">
-                        <nav className="-mb-px flex space-x-1">
-                            <button
-                                onClick={() => handleFilterChange('in_progress')}
-                                className={`py-2 px-4 border-b-2 font-medium text-sm rounded-t-md transition-colors ${filter === 'in_progress'
-                                    ? 'border-blue-600 text-blue-600 bg-blue-50'
-                                    : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
-                                    }`}
-                            >
-                                Đang học
-                            </button>
-                            <button
-                                onClick={() => handleFilterChange('completed')}
-                                className={`py-2 px-4 border-b-2 font-medium text-sm rounded-t-md transition-colors ${filter === 'completed'
-                                    ? 'border-blue-600 text-blue-600 bg-blue-50'
-                                    : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
-                                    }`}
-                            >
-                                Hoàn thành
-                            </button>
-                            <button
-                                onClick={() => setFilter(undefined)}
-                                className={`py-2 px-4 border-b-2 font-medium text-sm rounded-t-md transition-colors ${filter === undefined
-                                    ? 'border-blue-600 text-blue-600 bg-blue-50'
-                                    : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
-                                    }`}
-                            >
-                                Tất cả
-                            </button>
-                        </nav>
-                    </div>
+                    <Tabs value={filter ?? 'all'} onValueChange={handleFilterChange}>
+                        <TabsList>
+                            <TabsTrigger value="in_progress">Đang học</TabsTrigger>
+                            <TabsTrigger value="completed">Hoàn thành</TabsTrigger>
+                            <TabsTrigger value="all">Tất cả</TabsTrigger>
+                        </TabsList>
+                    </Tabs>
                 </div>
 
                 {/* Section 02: Danh sách khóa học */}
@@ -221,12 +201,9 @@ export default function MyLearningPage() {
                             <p className="text-sm text-slate-500 mb-4">
                                 Bạn chưa tham gia khóa học nào trong mục này.
                             </p>
-                            <button
-                                onClick={() => router.push('/')}
-                                className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
-                            >
+                            <Button onClick={() => router.push('/')}>
                                 Khám phá khóa học
-                            </button>
+                            </Button>
                         </div>
                     )}
 
@@ -243,12 +220,9 @@ export default function MyLearningPage() {
                             <p className="text-sm text-slate-500 mb-4">
                                 {errorMessage}
                             </p>
-                            <button
-                                onClick={handleRetry}
-                                className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
-                            >
+                            <Button onClick={handleRetry}>
                                 Thử lại
-                            </button>
+                            </Button>
                         </div>
                     )}
                 </div>

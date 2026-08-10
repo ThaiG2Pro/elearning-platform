@@ -7,6 +7,13 @@ import Header from '@/components/Header';
 import { getLecturerCourses, createCourseFromLink } from '@/lib/lecturer';
 import Toast from '@/components/Toast';
 import { Skeleton } from '@/components/ui/skeleton';
+// WP1.5.8: standardize on the shared component set — this page used to have
+// a hand-rolled modal despite ui/dialog.tsx already being installed, plus
+// raw bg-indigo-600 buttons and a hand-rolled tab strip despite ui/tabs.tsx
+// existing too.
+import { Button } from '@/components/ui/button';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { LecturerCourse } from '@/types/lecturer.types';
 import { User } from '@/types/auth.types';
 import { logout as apiLogout, AuthUtils } from '@/lib/auth';
@@ -73,8 +80,8 @@ const LecturerCoursesPage = () => {
         router.push(`/join?continueUrl=${encodeURIComponent(currentUrl)}`);
     };
 
-    const handleStatusChange = (status: Status) => {
-        setSelectedStatus(status);
+    const handleStatusChange = (status: string) => {
+        setSelectedStatus(status as Status);
     };
 
     const handleCreateFromLink = async () => {
@@ -92,8 +99,6 @@ const LecturerCoursesPage = () => {
             setCreating(false);
         }
     };
-
-
 
     const handleCourseClick = (course: LecturerCourse) => {
         // Personal-organizer model: the owner can always edit their course,
@@ -114,6 +119,12 @@ const LecturerCoursesPage = () => {
         }
     };
 
+    const closeLinkModal = () => {
+        setShowLinkModal(false);
+        setLinkUrl('');
+        setCreateError(null);
+    };
+
     return (
         <div className="min-h-screen bg-slate-50">
             <Header user={user} onLogout={handleLogout} onJoin={handleJoin} />
@@ -124,35 +135,25 @@ const LecturerCoursesPage = () => {
                         <p className="text-sm text-slate-500 mt-0.5">Quản lý và xuất bản khóa học</p>
                     </div>
                     <div className="flex items-center gap-3">
-                        <button
+                        <Button
                             onClick={() => { setCreateError(null); setShowLinkModal(true); }}
-                            className="inline-flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
                             disabled={creating}
                         >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/></svg>
                             Tạo khóa học từ link
-                        </button>
+                        </Button>
                     </div>
                 </div>
 
                 {/* Section 01: Bộ lọc trạng thái */}
                 <div className="mb-6">
-                    <div className="border-b border-slate-200">
-                        <nav className="-mb-px flex space-x-1">
-                            {(['All', 'Active', 'Archived'] as Status[]).map((status) => (
-                                <button
-                                    key={status}
-                                    onClick={() => handleStatusChange(status)}
-                                    className={`py-2 px-4 border-b-2 font-medium text-sm rounded-t-md transition-colors ${selectedStatus === status
-                                        ? 'border-indigo-600 text-indigo-600 bg-indigo-50'
-                                        : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
-                                        }`}
-                                >
-                                    {status === 'All' ? 'Tất cả' : status === 'Active' ? 'Hoạt động' : 'Lưu trữ'}
-                                </button>
-                            ))}
-                        </nav>
-                    </div>
+                    <Tabs value={selectedStatus} onValueChange={handleStatusChange}>
+                        <TabsList>
+                            <TabsTrigger value="All">Tất cả</TabsTrigger>
+                            <TabsTrigger value="Active">Hoạt động</TabsTrigger>
+                            <TabsTrigger value="Archived">Lưu trữ</TabsTrigger>
+                        </TabsList>
+                    </Tabs>
                 </div>
 
                 {createError && (
@@ -180,12 +181,9 @@ const LecturerCoursesPage = () => {
                             </svg>
                         </div>
                         <p className="text-sm text-slate-600 mb-4">{getErrorMessage(error)}</p>
-                        <button
-                            onClick={() => fetchCourses(selectedStatus)}
-                            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors"
-                        >
+                        <Button onClick={() => fetchCourses(selectedStatus)}>
                             Thử lại
-                        </button>
+                        </Button>
                     </div>
                 ) : (!courses || courses.length === 0) ? (
                     <div className="flex flex-col items-center py-16 text-center">
@@ -197,12 +195,9 @@ const LecturerCoursesPage = () => {
                         <h3 className="text-sm font-semibold text-slate-700 mb-1">Không có khóa học</h3>
                         <p className="text-sm text-slate-500 mb-5">Bạn chưa có khóa học nào trong mục này.</p>
                         {user?.role === 'LECTURER' && (
-                            <button
-                                onClick={() => { setCreateError(null); setShowLinkModal(true); }}
-                                className="inline-flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors"
-                            >
+                            <Button onClick={() => { setCreateError(null); setShowLinkModal(true); }}>
                                 Tạo khóa học đầu tiên
-                            </button>
+                            </Button>
                         )}
                     </div>
                 ) : (
@@ -248,41 +243,33 @@ const LecturerCoursesPage = () => {
             </div>
 
             {/* WP1.1 — dán link đầu tiên → tự tạo course có cấu trúc chương/bài */}
-            {showLinkModal && (
-                <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
-                    <div className="bg-white rounded-xl shadow-lg w-full max-w-md p-6">
-                        <h2 className="text-lg font-semibold text-slate-900 mb-1">Tạo khóa học từ link</h2>
-                        <p className="text-sm text-slate-500 mb-4">
+            <Dialog open={showLinkModal} onOpenChange={(open) => { if (!open) closeLinkModal(); }}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Tạo khóa học từ link</DialogTitle>
+                        <DialogDescription>
                             Dán link video YouTube — hệ thống sẽ tự lấy tiêu đề, ảnh và tạo khóa học có sẵn bài học đầu tiên.
-                        </p>
-                        <input
-                            type="text"
-                            value={linkUrl}
-                            onChange={(e) => setLinkUrl(e.target.value)}
-                            onKeyDown={(e) => { if (e.key === 'Enter') handleCreateFromLink(); }}
-                            placeholder="https://www.youtube.com/watch?v=..."
-                            autoFocus
-                            className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm mb-4 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                        />
-                        <div className="flex justify-end gap-2">
-                            <button
-                                onClick={() => { setShowLinkModal(false); setLinkUrl(''); setCreateError(null); }}
-                                className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 transition-colors"
-                                disabled={creating}
-                            >
-                                Hủy
-                            </button>
-                            <button
-                                onClick={handleCreateFromLink}
-                                disabled={creating || !linkUrl.trim()}
-                                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors"
-                            >
-                                {creating ? 'Đang tạo…' : 'Tạo khóa học'}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <input
+                        type="text"
+                        value={linkUrl}
+                        onChange={(e) => setLinkUrl(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') handleCreateFromLink(); }}
+                        placeholder="https://www.youtube.com/watch?v=..."
+                        autoFocus
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                    <DialogFooter>
+                        <Button variant="outline" onClick={closeLinkModal} disabled={creating}>
+                            Hủy
+                        </Button>
+                        <Button onClick={handleCreateFromLink} disabled={creating || !linkUrl.trim()}>
+                            {creating ? 'Đang tạo…' : 'Tạo khóa học'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 };
