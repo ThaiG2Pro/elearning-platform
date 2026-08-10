@@ -19,11 +19,6 @@ export interface CourseDetail {
     completionRate?: number; // WP1.3 — % of lessons finished by the logged-in user
 }
 
-export interface EnrollResponse {
-    enrollmentId: number;
-    message: string;
-}
-
 export interface EnrolledCourse {
     id: string;
     title: string;

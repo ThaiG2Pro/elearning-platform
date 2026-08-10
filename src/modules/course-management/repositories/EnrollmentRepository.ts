@@ -1,146 +1,99 @@
 import { PrismaClient } from '@prisma/client';
-import { Enrollment } from '../domain/Enrollment';
 import { EnrolledCourseDto } from '../dtos/EnrolledCourseDto';
 import { VideoThumbnailUtil } from '../../shared/utils/VideoThumbnailUtil';
 
+// WP1.6.3 — findByStudentAndCourse/findByStudent/findById/save (reads/writes
+// of the legacy `enrollments` table) were removed along with their only
+// callers: EnrollmentService.enrollStudent/checkEnrollmentStatus (zero UI
+// usage) and LessonController.getVideoContext (an orphaned route that
+// 403'd everyone, since nothing creates `enrollments` rows anymore). Only
+// getEnrolledCoursesWithDetails remains — it now reads owned courses
+// directly instead of the `enrollments` table.
 export class EnrollmentRepository {
     constructor(private prisma: PrismaClient) { }
 
-    async findByStudentAndCourse(studentId: bigint, courseId: bigint): Promise<Enrollment | null> {
-        const enrollment = await this.prisma.enrollments.findFirst({
-            where: {
-                student_id: studentId,
-                course_id: courseId,
-            },
-        });
-
-        if (!enrollment) return null;
-
-        return new Enrollment(
-            enrollment.id,
-            enrollment.student_id,
-            enrollment.course_id,
-            enrollment.completion_rate,
-            enrollment.enrolled_at || new Date()
-        );
-    }
-
-    async findByStudent(studentId: bigint): Promise<Enrollment[]> {
-        const enrollments = await this.prisma.enrollments.findMany({
-            where: { student_id: studentId },
-        });
-
-        return enrollments.map(enrollment => new Enrollment(
-            enrollment.id,
-            enrollment.student_id,
-            enrollment.course_id,
-            enrollment.completion_rate,
-            enrollment.enrolled_at || new Date()
-        ));
-    }
-
-    async getEnrolledCoursesWithDetails(studentId: bigint, filter?: string | null, sort?: string | null): Promise<EnrolledCourseDto[]> {
-        let whereClause: any = {
-            student_id: studentId,
-        };
-
-        if (filter === 'in_progress') {
-            whereClause.completion_rate = { lt: 100 };
-        } else if (filter === 'completed') {
-            whereClause.completion_rate = { gte: 100 };
-        }
-
-        let orderBy: any = { enrolled_at: 'desc' };
+    // WP1.6.2 — this used to read the legacy `enrollments` table
+    // (student_id/completion_rate/enrolled_at), which nothing has written to
+    // since the ownership pivot (WP0.2): course access/learn/lessons are all
+    // gated on owner_id now (see AccessControlPolicy), so `/my-learning` was
+    // permanently empty even for users with real, owned courses. This now
+    // mirrors ContentManagementService.getLecturerCourses' owner_id query
+    // and computes progress from `learning_progress` the same way
+    // LearnService.getCourseProgress does for course-detail — one definition
+    // of "done" across the app instead of two disconnected ones.
+    async getEnrolledCoursesWithDetails(userId: bigint, filter?: string | null, sort?: string | null): Promise<EnrolledCourseDto[]> {
+        let orderBy: any = { created_at: 'desc' };
         if (sort === 'enrolled_at_asc') {
-            orderBy = { enrolled_at: 'asc' };
+            orderBy = { created_at: 'asc' };
         }
 
-        const enrollments = await this.prisma.enrollments.findMany({
-            where: whereClause,
+        const courses = await this.prisma.courses.findMany({
+            where: { OR: [{ owner_id: userId }, { lecturer_id: userId }] },
             orderBy,
             include: {
-                course: {
+                chapters: {
+                    orderBy: { order_index: 'asc' },
                     include: {
-                        chapters: {
+                        lessons: {
+                            where: { content_url: { not: null } },
                             orderBy: { order_index: 'asc' },
-                            include: {
-                                lessons: {
-                                    where: { content_url: { not: null } },
-                                    orderBy: { order_index: 'asc' },
-                                },
-                            },
                         },
                     },
                 },
             },
         });
 
-        return enrollments.map(enrollment => {
-            // Find the first video across all chapters and lessons
-            const firstVideoUrl = VideoThumbnailUtil.findFirstVideoUrl(enrollment.course.chapters);
+        if (courses.length === 0) return [];
+
+        const lessonIdsByCourse = new Map<bigint, Set<bigint>>();
+        const allLessonIds: bigint[] = [];
+        for (const course of courses) {
+            const ids = new Set<bigint>();
+            for (const chapter of course.chapters) {
+                for (const lesson of chapter.lessons) {
+                    ids.add(lesson.id);
+                    allLessonIds.push(lesson.id);
+                }
+            }
+            lessonIdsByCourse.set(course.id, ids);
+        }
+
+        const finishedProgress = allLessonIds.length > 0
+            ? await this.prisma.learning_progress.findMany({
+                where: { user_id: userId, lesson_id: { in: allLessonIds }, is_finished: true },
+                select: { lesson_id: true },
+            })
+            : [];
+        const finishedLessonIds = new Set(finishedProgress.map(p => p.lesson_id));
+
+        const results: EnrolledCourseDto[] = courses.map(course => {
+            const firstVideoUrl = VideoThumbnailUtil.findFirstVideoUrl(course.chapters);
             const thumbnailUrl = firstVideoUrl
                 ? VideoThumbnailUtil.deriveThumbnailFromVideoUrl(firstVideoUrl)
                 : 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIwIiBoZWlnaHQ9IjE4MCIgdmlld0JveD0iMCAwIDMyMCAxODAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIzMjAiIGhlaWdodD0iMTgwIiBmaWxsPSIjRjNGNEY2Ii8+Cjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTgiIGZpbGw9IiM5Q0E0QUYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5ObyBUaHVtYm5haWw8L3RleHQ+Cjwvc3ZnPg==';
 
+            const lessonIds = lessonIdsByCourse.get(course.id)!;
+            const totalLessons = lessonIds.size;
+            let finishedLessons = 0;
+            for (const id of lessonIds) {
+                if (finishedLessonIds.has(id)) finishedLessons++;
+            }
+            const completionRate = totalLessons > 0 ? Math.round((finishedLessons / totalLessons) * 100) : 0;
+            const status = completionRate >= 100 ? 'completed' : 'in_progress';
+
             return {
-                id: Number(enrollment.course.id),
-                title: enrollment.course.title,
-                slug: enrollment.course.slug,
-                status: enrollment.course.status,
+                id: Number(course.id),
+                title: course.title,
+                slug: course.slug,
+                status,
                 thumbnailUrl,
-                completionRate: enrollment.completion_rate,
-                enrolledAt: enrollment.enrolled_at || new Date(),
+                completionRate,
+                enrolledAt: course.created_at,
             };
         });
-    }
 
-    async findById(id: bigint): Promise<Enrollment | null> {
-        const enrollment = await this.prisma.enrollments.findUnique({
-            where: { id },
-        });
-
-        if (!enrollment) return null;
-
-        return new Enrollment(
-            enrollment.id,
-            enrollment.student_id,
-            enrollment.course_id,
-            enrollment.completion_rate,
-            enrollment.enrolled_at || new Date()
-        );
-    }
-
-    async save(enrollment: Enrollment): Promise<Enrollment> {
-        const data = {
-            student_id: enrollment.studentId,
-            course_id: enrollment.courseId,
-            completion_rate: enrollment.completionRate,
-            enrolled_at: enrollment.enrolledAt,
-        };
-
-        if (enrollment.id) {
-            const updated = await this.prisma.enrollments.update({
-                where: { id: enrollment.id },
-                data,
-            });
-            return new Enrollment(
-                updated.id,
-                updated.student_id,
-                updated.course_id,
-                updated.completion_rate,
-                updated.enrolled_at || new Date()
-            );
-        } else {
-            const created = await this.prisma.enrollments.create({
-                data,
-            });
-            return new Enrollment(
-                created.id,
-                created.student_id,
-                created.course_id,
-                created.completion_rate,
-                created.enrolled_at || new Date()
-            );
-        }
+        if (filter === 'in_progress') return results.filter(r => r.status !== 'completed');
+        if (filter === 'completed') return results.filter(r => r.status === 'completed');
+        return results;
     }
 }

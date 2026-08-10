@@ -194,7 +194,13 @@ const LecturerCoursesPage = () => {
                         </div>
                         <h3 className="text-sm font-semibold text-slate-700 mb-1">Không có khóa học</h3>
                         <p className="text-sm text-slate-500 mb-5">Bạn chưa có khóa học nào trong mục này.</p>
-                        {user?.role === 'LECTURER' && (
+                        {/* WP1.6.4 — ownership-based, not role-gated: every user owns their
+                            own personal courses now (management/courses route already
+                            dropped this same check at WP1.5.10). A STUDENT-role user
+                            landing here with 0 courses had no way to create their first
+                            one, unlike the identical "dán link" box on the homepage which
+                            never checked role. */}
+                        {user && (
                             <Button onClick={() => { setCreateError(null); setShowLinkModal(true); }}>
                                 Tạo khóa học đầu tiên
                             </Button>

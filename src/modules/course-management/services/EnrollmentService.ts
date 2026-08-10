@@ -1,45 +1,20 @@
-import { CourseRepository } from '../repositories/CourseRepository';
 import { EnrollmentRepository } from '../repositories/EnrollmentRepository';
-import { EnrollmentPolicy } from '../domain/EnrollmentPolicy';
-import { EnrollmentFactory } from '../domain/EnrollmentFactory';
-import { EnrollResult } from '../dtos/EnrollResult';
 import { EnrolledCourseDto } from '../dtos/EnrolledCourseDto';
 
+// WP1.6.3 — enrollStudent/checkEnrollmentStatus (the marketplace-style
+// STUDENT-enrolls-in-LECTURER's-course write path) were removed: zero UI
+// callers anywhere in src/app (confirmed by grep), dead since the ownership
+// pivot (WP0.2) made course access owner_id-based instead. Keeping a
+// functioning-but-unused write path around is a trap — a future UI/AI
+// change could wire it back up and silently reintroduce a second,
+// disconnected "enrolled" concept alongside owner_id. getEnrolledCourses is
+// the one enrollment-shaped read path still in real use (/my-learning, the
+// homepage's "học tiếp" strip) and it no longer touches the `enrollments`
+// table at all — see EnrollmentRepository.getEnrolledCoursesWithDetails.
 export class EnrollmentService {
     constructor(
-        private courseRepository: CourseRepository,
         private enrollmentRepository: EnrollmentRepository,
     ) { }
-
-    async enrollStudent(userId: bigint, courseId: bigint): Promise<EnrollResult> {
-        // Step 1: Validate Course
-        const course = await this.courseRepository.findActiveById(courseId);
-        EnrollmentPolicy.validateCourseAvailability(course);
-
-        // Step 2: Idempotency Check
-        const existingEnrollment = await this.enrollmentRepository.findByStudentAndCourse(userId, courseId);
-        if (existingEnrollment) {
-            return this.generateEnrollResult(course!.slug);
-        }
-
-        // Step 3: Creation (Factory Pattern)
-        const newEnrollment = EnrollmentFactory.createEnrollment(userId, courseId);
-        await this.enrollmentRepository.save(newEnrollment);
-
-        // Step 4: Response
-        return this.generateEnrollResult(course!.slug);
-    }
-
-    private generateEnrollResult(courseSlug: string): EnrollResult {
-        return {
-            redirectUrl: `/learn/${courseSlug}`,
-        };
-    }
-
-    async checkEnrollmentStatus(userId: bigint, courseId: bigint): Promise<boolean> {
-        const enrollment = await this.enrollmentRepository.findByStudentAndCourse(userId, courseId);
-        return enrollment !== null;
-    }
 
     async getEnrolledCourses(userId: bigint, filter?: string | null, sort?: string | null): Promise<EnrolledCourseDto[]> {
         return this.enrollmentRepository.getEnrolledCoursesWithDetails(userId, filter || undefined, sort || undefined);

@@ -33,8 +33,8 @@ export class QuizController {
         return await this.service.parseQuizFile(file);
     }
 
-    async uploadQuizForLesson(lessonId: bigint, file: Buffer): Promise<{ uploadedCount: number }> {
-        return await this.service.uploadQuizForLesson(lessonId, file);
+    async uploadQuizForLesson(userId: bigint, lessonId: bigint, file: Buffer): Promise<{ uploadedCount: number }> {
+        return await this.service.uploadQuizForLesson(userId, lessonId, file);
     }
 
     async generateQuiz(lessonId: bigint): Promise<QuizQuestionsDto> {

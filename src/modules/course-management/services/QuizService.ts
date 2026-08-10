@@ -4,6 +4,7 @@ import { ParsedQuestionDto } from '../dtos/ParsedQuestionDto';
 import { QuestionRepository } from '../repositories/QuestionRepository';
 import { QuizQuestionsDto } from '../dtos/QuizQuestionsDto';
 import { QuizPolicy } from '../domain/QuizPolicy';
+import { AccessControlPolicy } from '../domain/AccessControlPolicy';
 import { LearningProgressRepository } from '../repositories/LearningProgressRepository';
 import { EnrollmentRepository } from '../repositories/EnrollmentRepository';
 import { LearningProgress } from '../domain/LearningProgress';
@@ -58,9 +59,23 @@ export class QuizService {
         return parsedQuestions;
     }
 
-    async uploadQuizForLesson(lessonId: bigint, file: Buffer): Promise<{ uploadedCount: number }> {
+    // WP1.6.4 — ownership-based, not role-gated. The route used to block
+    // any non-LECTURER/ADMIN role, which meant a STUDENT-role user (the
+    // default role for every new signup — see WP1.5.10) couldn't upload a
+    // quiz to a lesson inside a course they themselves own.
+    async uploadQuizForLesson(userId: bigint, lessonId: bigint, file: Buffer): Promise<{ uploadedCount: number }> {
         if (!this.questionRepo) {
             throw new Error('QuestionRepository not provided');
+        }
+        if (this.prisma) {
+            const lesson = await this.prisma.lessons.findUnique({
+                where: { id: lessonId },
+                include: { chapter: { include: { course: true } } },
+            });
+            if (!lesson) {
+                throw new Error('LESSON_NOT_FOUND');
+            }
+            AccessControlPolicy.validateOwnership(userId, lesson.chapter.course.owner_id);
         }
 
         // Step 1: Parse and validate file

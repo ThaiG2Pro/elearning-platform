@@ -78,6 +78,10 @@ model courses {
   // cloneForOwner can dedupe: same (owner, source) pair reuses the existing
   // clone instead of creating a duplicate on a double-submit/double-fire.
   cloned_from_course_id BigInt?             @map("cloned_from_course_id")
+  // WP1.6.2 — needed so "/my-learning" can show a real "enrolled at" date
+  // once it stops reading the legacy `enrollments` table (which had its own
+  // enrolled_at) and reads owned courses directly instead.
+  created_at            DateTime            @default(now()) @map("created_at")
   chapters          chapters[]
   enrollments       enrollments[]
   learning_progress learning_progress[]

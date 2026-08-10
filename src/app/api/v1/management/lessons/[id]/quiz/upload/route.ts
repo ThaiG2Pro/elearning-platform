@@ -14,11 +14,6 @@ export async function POST(
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        // Check if user is lecturer/admin
-        if (user.role !== 'LECTURER' && user.role !== 'ADMIN') {
-            return NextResponse.json({ error: 'ACCESS_DENIED', message: 'Lecturer or admin role required' }, { status: 403 });
-        }
-
         const lessonId = BigInt(params.id);
 
         // Get file from form data
@@ -38,7 +33,7 @@ export async function POST(
         const fileBuffer = Buffer.from(await file.arrayBuffer());
 
         // Upload quiz questions (BR-UPLOAD-01: Replace all)
-        const result = await controller.uploadQuizForLesson(lessonId, fileBuffer);
+        const result = await controller.uploadQuizForLesson(user.id, lessonId, fileBuffer);
 
         return NextResponse.json({
             message: 'Quiz questions uploaded successfully',
@@ -47,6 +42,12 @@ export async function POST(
 
     } catch (error) {
         console.error('Error uploading quiz:', error);
+        if (error instanceof Error && error.message === 'ACCESS_DENIED') {
+            return NextResponse.json({ error: 'ACCESS_DENIED', message: 'Bạn không sở hữu bài học này' }, { status: 403 });
+        }
+        if (error instanceof Error && error.message === 'LESSON_NOT_FOUND') {
+            return NextResponse.json({ error: 'LESSON_NOT_FOUND', message: 'Bài học không tồn tại' }, { status: 404 });
+        }
         const message = error instanceof Error ? error.message : 'Internal server error';
         return NextResponse.json({ error: message }, { status: 500 });
     }

@@ -142,7 +142,7 @@ export default function CourseDetailPage() {
                             {course.description && (
                                 <p className="text-sm text-slate-600 leading-relaxed">{course.description}</p>
                             )}
-                            {user && typeof course.completionRate === 'number' && (
+                            {course.isEnrolled && typeof course.completionRate === 'number' && (
                                 <div className="mt-4">
                                     <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
                                         <span>Tiến độ học của bạn</span>
@@ -159,8 +159,22 @@ export default function CourseDetailPage() {
                         </section>
 
                         {/* Interaction Section */}
+                        {/* WP1.6.1 — the catalog (GET /courses) lists every user's ACTIVE
+                            courses, not just the viewer's own, but course access (learn/
+                            lessons) is ownership-based. This button used to show "Bắt đầu
+                            học" for ANY logged-in user regardless of ownership, sending
+                            non-owners straight into a 403 NOT_ENROLLED dead-end on
+                            /courses/[id]/learn. `course.isEnrolled` (owner match, already
+                            computed by CourseService.getCourseDetail) is the real signal. */}
                         <section>
-                            {user ? (
+                            {!user ? (
+                                <button
+                                    onClick={handleJoin}
+                                    className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors shadow-sm"
+                                >
+                                    Tham gia để học
+                                </button>
+                            ) : course.isEnrolled ? (
                                 <button
                                     onClick={handleLearn}
                                     className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg transition-colors shadow-sm"
@@ -172,12 +186,9 @@ export default function CourseDetailPage() {
                                     Bắt đầu học
                                 </button>
                             ) : (
-                                <button
-                                    onClick={handleJoin}
-                                    className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors shadow-sm"
-                                >
-                                    Tham gia để học
-                                </button>
+                                <p className="text-sm text-slate-500 bg-slate-100 rounded-lg px-4 py-3">
+                                    Đây là khóa học của người dùng khác — bạn không thể học trực tiếp khóa học này.
+                                </p>
                             )}
                         </section>
                     </>
