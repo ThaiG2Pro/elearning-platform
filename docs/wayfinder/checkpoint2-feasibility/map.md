@@ -1,7 +1,7 @@
 ---
 label: wayfinder:map
 title: Checkpoint 2+ Feasibility Map
-status: open
+status: closed
 ---
 
 # Checkpoint 2+ Feasibility Map
@@ -54,17 +54,11 @@ out of scope, not to be relitigated.**
 - [How do zero-revenue indie tools realistically cover a small infra floor?](tickets/16-monetization-timing-research.md) — donations at <1000 users are noise ($0–5/mo expected; ~15% of GitHub Sponsors participants receive anything); a *passive* donate link from day one is costless (harm only comes from "help us survive" framing); paid-tier triggers converge on feature-pull (quota exhaustion, users asking to pay), not user counts; founder-funded $5–12/mo is common and sustainable for a CV project (pain starts ~$50/mo, which BYOK-default prevents). Research recommends keeping VISION §7 sequencing as-is. Final sequencing decision is ticket 09's.
 - [Does monetization trigger sequencing need to move earlier?](tickets/09-monetization-trigger-timing.md) — confirmed: keep §7's sequencing; founder absorbs the ~$5–12/mo floor at Checkpoint 1–2 with a passive Ko-fi/GitHub Sponsors link live from day one ("support" framing, no subscription code); `PAID_TIER` stays gated on Checkpoint 3–4, triggered by feature-pull (quota exhaustion / users asking to pay), not user counts.
 - [Is "self-taught devs via YouTube" the right wedge, and what's the reach-out plan?](tickets/08-wedge-community-validation.md) — confirmed: **VN-first wedge** ("người Việt tự học lập trình qua YouTube") replaces the broad label; seed FB "Tự học lập trình miễn phí" → J2TEAM → Viblo/VOZ, with 3–5 pre-built public courses as a **Checkpoint 1 deliverable** (not a GTM detail), and a **named VN retention number** in Checkpoint 2's success criteria gating any global outreach.
+- [Fold confirmed/changed conclusions back into VISION.md and ROADMAP.md](tickets/10-revise-docs-synthesis.md) — done and founder-approved (WP1.7 signed off; global gate confirmed at ≥30% outside-user return in weeks 2–4, n≥30); merged via `wayfinder/checkpoint2-synthesis`. **Destination reached — map closed.**
 
 ## Not yet specified
 
-- Exact shape of a revised AI/monetization design, if the zero-cost premise
-  or the BYOK-only default breaks — depends on [Is the "zero-cost launch" premise actually achievable end-to-end?](tickets/05-zero-cost-premise-decision.md)
-  and [Is BYOK-only default AI viable?](tickets/06-byok-default-ai-viability.md)
-  landing first.
-- Whether additional differentiators (social/community features,
-  gamification) are needed beyond "distraction-free" — depends on
-  [Does the value proposition need sharpening?](tickets/07-value-prop-differentiation.md)'s
-  outcome.
+- (none — all fog resolved into tickets; map closed 2026-08-10)
 
 ## Out of scope
 

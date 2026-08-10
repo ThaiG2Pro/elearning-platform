@@ -346,11 +346,11 @@ Kênh global chờ cổng retention bên dưới.
 chi phí AI mặc định nằm trong ngân sách quan sát được, ổn định (không phải chờ
 "có tiền" mà chờ số liệu ổn định để tự tin mở rộng).
 
-**Cổng mở kênh global (ticket 08 — con số thật, không phải hình thức):**
-đề xuất mặc định **≥30% người dùng ngoài (không phải founder) quay lại học
-trong tuần thứ 2–4 sau lần học đầu, trên cỡ mẫu ≥30 người** — founder chốt/
-chỉnh con số này trước khi bắt đầu outreach VN; chưa đạt thì chưa đụng Show
-HN / r/learnprogramming, tránh VN-first trượt dần thành "làm cả hai cùng lúc".
+**Cổng mở kênh global (ticket 08 — con số thật, không phải hình thức, đã
+được founder chốt 2026-08):** **≥30% người dùng ngoài (không phải founder)
+quay lại học trong tuần thứ 2–4 sau lần học đầu, trên cỡ mẫu ≥30 người**.
+Chưa đạt thì chưa đụng Show HN / r/learnprogramming, tránh VN-first trượt
+dần thành "làm cả hai cùng lúc".
 
 ---
 
