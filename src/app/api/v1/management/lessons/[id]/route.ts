@@ -24,15 +24,14 @@ export async function PUT(
         );
 
         const controller = new ManagementController();
-        await controller.updateLesson(lessonId, dto);
+        await controller.updateLesson(userId, lessonId, dto);
 
         return NextResponse.json({ message: 'Lesson updated successfully' });
     } catch (error) {
         console.error('Update lesson error:', error);
-        return NextResponse.json(
-            { error: 'Internal server error' },
-            { status: 500 }
-        );
+        const message = error instanceof Error ? error.message : 'Internal server error';
+        const status = message === 'ACCESS_DENIED' ? 403 : message === 'LESSON_NOT_FOUND' ? 404 : 500;
+        return NextResponse.json({ error: message }, { status });
     }
 }
 
@@ -49,14 +48,13 @@ export async function DELETE(
         const lessonId = BigInt(params.id);
 
         const controller = new ManagementController();
-        await controller.deleteLesson(lessonId);
+        await controller.deleteLesson(userId, lessonId);
 
         return NextResponse.json({ message: 'Lesson deleted successfully' });
     } catch (error) {
         console.error('Delete lesson error:', error);
-        return NextResponse.json(
-            { error: 'Internal server error' },
-            { status: 500 }
-        );
+        const message = error instanceof Error ? error.message : 'Internal server error';
+        const status = message === 'ACCESS_DENIED' ? 403 : message === 'LESSON_NOT_FOUND' ? 404 : 500;
+        return NextResponse.json({ error: message }, { status });
     }
 }

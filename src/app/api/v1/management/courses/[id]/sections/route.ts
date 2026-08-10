@@ -85,7 +85,7 @@ export async function POST(
         // Owner can add sections at any time — no approval-driven lock.
 
         const controller = new ManagementController();
-        const sectionId = await controller.createSection(courseId, body);
+        const sectionId = await controller.createSection(userId, courseId, body);
 
         return NextResponse.json({
             sectionId: Number(sectionId),

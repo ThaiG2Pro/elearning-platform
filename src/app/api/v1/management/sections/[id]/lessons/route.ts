@@ -17,14 +17,13 @@ export async function POST(
         const body: CreateLessonDto = await request.json();
 
         const controller = new ManagementController();
-        const lessonId = await controller.createLesson(sectionId, body);
+        const lessonId = await controller.createLesson(userId, sectionId, body);
 
         return NextResponse.json({ lessonId: Number(lessonId) }, { status: 201 });
     } catch (error) {
         console.error('Create lesson error:', error);
-        return NextResponse.json(
-            { error: 'Internal server error' },
-            { status: 500 }
-        );
+        const message = error instanceof Error ? error.message : 'Internal server error';
+        const status = message === 'ACCESS_DENIED' ? 403 : message === 'SECTION_NOT_FOUND' ? 404 : 500;
+        return NextResponse.json({ error: message }, { status });
     }
 }

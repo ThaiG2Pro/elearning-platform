@@ -254,6 +254,34 @@ export class ContentManagementService {
         await this.courseRepository.save(course);
     }
 
+    /**
+     * WP1.6 follow-up (round 4) — security fix: createSection/updateSection/
+     * createLesson/updateLesson/deleteLesson took a bare sectionId/lessonId
+     * with no ownership check anywhere in the call chain (some routes
+     * checked the parent course, most didn't; the service never did).
+     * Confirmed live: an authenticated non-owner could edit/delete any
+     * other user's lessons and sections by guessing sequential ids. These
+     * two helpers resolve the owning course so every mutation below can be
+     * gated the same way as the rest of the module.
+     */
+    private async getOwnerIdForSection(sectionId: bigint): Promise<bigint> {
+        const section = await this.prisma.chapters.findUnique({
+            where: { id: sectionId },
+            select: { course: { select: { owner_id: true } } },
+        });
+        if (!section) throw new Error('SECTION_NOT_FOUND');
+        return section.course.owner_id;
+    }
+
+    private async getOwnerIdForLesson(lessonId: bigint): Promise<bigint> {
+        const lesson = await this.prisma.lessons.findUnique({
+            where: { id: lessonId },
+            select: { chapter: { select: { course: { select: { owner_id: true } } } } },
+        });
+        if (!lesson) throw new Error('LESSON_NOT_FOUND');
+        return lesson.chapter.course.owner_id;
+    }
+
     async getCourseSections(courseId: bigint): Promise<SectionDto[]> {
         const sections = await this.prisma.chapters.findMany({
             where: { course_id: courseId },
@@ -283,7 +311,11 @@ export class ContentManagementService {
         });
     }
 
-    async createSection(courseId: bigint, dto: CreateSectionDto): Promise<bigint> {
+    async createSection(userId: bigint, courseId: bigint, dto: CreateSectionDto): Promise<bigint> {
+        const course = await this.courseRepository.findById(courseId);
+        if (!course) throw new Error('COURSE_NOT_FOUND');
+        AccessControlPolicy.validateOwnership(userId, course.ownerId);
+
         const section = await this.prisma.chapters.create({
             data: {
                 course_id: courseId,
@@ -294,7 +326,9 @@ export class ContentManagementService {
         return section.id;
     }
 
-    async updateSection(sectionId: bigint, dto: UpdateSectionDto): Promise<void> {
+    async updateSection(userId: bigint, sectionId: bigint, dto: UpdateSectionDto): Promise<void> {
+        AccessControlPolicy.validateOwnership(userId, await this.getOwnerIdForSection(sectionId));
+
         await this.prisma.chapters.update({
             where: { id: sectionId },
             data: {
@@ -304,7 +338,9 @@ export class ContentManagementService {
         });
     }
 
-    async createLesson(sectionId: bigint, dto: CreateLessonDto): Promise<bigint> {
+    async createLesson(userId: bigint, sectionId: bigint, dto: CreateLessonDto): Promise<bigint> {
+        AccessControlPolicy.validateOwnership(userId, await this.getOwnerIdForSection(sectionId));
+
         const lesson = await this.prisma.lessons.create({
             data: {
                 chapter_id: sectionId,
@@ -317,7 +353,9 @@ export class ContentManagementService {
         return lesson.id;
     }
 
-    async updateLesson(lessonId: bigint, dto: UpdateLessonDto): Promise<void> {
+    async updateLesson(userId: bigint, lessonId: bigint, dto: UpdateLessonDto): Promise<void> {
+        AccessControlPolicy.validateOwnership(userId, await this.getOwnerIdForLesson(lessonId));
+
         await this.prisma.lessons.update({
             where: { id: lessonId },
             data: {
@@ -328,7 +366,9 @@ export class ContentManagementService {
         });
     }
 
-    async deleteLesson(lessonId: bigint): Promise<void> {
+    async deleteLesson(userId: bigint, lessonId: bigint): Promise<void> {
+        AccessControlPolicy.validateOwnership(userId, await this.getOwnerIdForLesson(lessonId));
+
         await this.prisma.lessons.delete({
             where: { id: lessonId },
         });

@@ -18,15 +18,14 @@ export async function PUT(
         const body: UpdateSectionDto = await request.json();
 
         const controller = new ManagementController();
-        await controller.updateSection(sectionId, body);
+        await controller.updateSection(userId, sectionId, body);
 
         return NextResponse.json({ message: 'Section updated successfully' });
     } catch (error) {
         console.error('Update section error:', error);
-        return NextResponse.json(
-            { error: 'Internal server error' },
-            { status: 500 }
-        );
+        const message = error instanceof Error ? error.message : 'Internal server error';
+        const status = message === 'ACCESS_DENIED' ? 403 : message === 'SECTION_NOT_FOUND' ? 404 : 500;
+        return NextResponse.json({ error: message }, { status });
     }
 }
 

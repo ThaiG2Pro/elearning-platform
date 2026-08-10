@@ -70,24 +70,24 @@ export class ManagementController {
         return await this.contentService.getCourseSections(courseId);
     }
 
-    async createSection(courseId: bigint, dto: CreateSectionDto): Promise<bigint> {
-        return await this.contentService.createSection(courseId, dto);
+    async createSection(userId: bigint, courseId: bigint, dto: CreateSectionDto): Promise<bigint> {
+        return await this.contentService.createSection(userId, courseId, dto);
     }
 
-    async updateSection(sectionId: bigint, dto: UpdateSectionDto): Promise<void> {
-        await this.contentService.updateSection(sectionId, dto);
+    async updateSection(userId: bigint, sectionId: bigint, dto: UpdateSectionDto): Promise<void> {
+        await this.contentService.updateSection(userId, sectionId, dto);
     }
 
     // Lesson Management
-    async createLesson(sectionId: bigint, dto: CreateLessonDto): Promise<bigint> {
-        return await this.contentService.createLesson(sectionId, dto);
+    async createLesson(userId: bigint, sectionId: bigint, dto: CreateLessonDto): Promise<bigint> {
+        return await this.contentService.createLesson(userId, sectionId, dto);
     }
 
-    async updateLesson(lessonId: bigint, dto: UpdateLessonDto): Promise<void> {
-        await this.contentService.updateLesson(lessonId, dto);
+    async updateLesson(userId: bigint, lessonId: bigint, dto: UpdateLessonDto): Promise<void> {
+        await this.contentService.updateLesson(userId, lessonId, dto);
     }
 
-    async deleteLesson(lessonId: bigint): Promise<void> {
-        await this.contentService.deleteLesson(lessonId);
+    async deleteLesson(userId: bigint, lessonId: bigint): Promise<void> {
+        await this.contentService.deleteLesson(userId, lessonId);
     }
 }
