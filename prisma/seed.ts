@@ -46,7 +46,7 @@ async function main() {
 
     // Clear existing data — use TRUNCATE to ensure tables are fully cleared and sequences reset
     console.log('🧹 Truncating tables and resetting sequences...');
-    await prisma.$executeRaw`TRUNCATE TABLE "questions","learning_progress","enrollments","lessons","sources","chapters","courses","tokens","users","roles" RESTART IDENTITY CASCADE;`;
+    await prisma.$executeRaw`TRUNCATE TABLE "questions","learning_progress","notes","enrollments","lessons","sources","chapters","courses","tokens","users","roles" RESTART IDENTITY CASCADE;`;
     console.log('✅ Tables truncated and sequences reset');
 
     // Create roles
@@ -485,6 +485,21 @@ async function main() {
     });
 
     console.log('✅ Learning progress created');
+
+    // WP1.5.1 — seed the `notes` table too (added under WP1.5.4, after this
+    // file's original data set): a fresh clone should have a real timestamped
+    // note to exercise "click note → seek video" without adding one by hand.
+    await prisma.notes.create({
+        data: {
+            user_id: john.id,
+            course_id: javaCourse.id,
+            lesson_id: javaVideoLesson.id,
+            content: 'Nhớ ôn lại phần JVM và bytecode ở đoạn này.',
+            video_timestamp_sec: 95,
+        },
+    });
+
+    console.log('✅ Notes created');
 
     console.log('🎉 Database seeded successfully!');
     console.log('\n📊 Test Data Summary:');
