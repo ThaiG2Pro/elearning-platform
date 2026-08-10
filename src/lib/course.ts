@@ -1,11 +1,11 @@
 import api from './api';
-import { EnrolledCoursesResponse, Lesson, LessonProgress, QuizSession, QuizResult, LessonNote } from '@/types/course.types';
+import { MyLearningCoursesResponse, Lesson, LessonProgress, QuizSession, QuizResult, LessonNote } from '@/types/course.types';
 
-export const getEnrolledCourses = async (filter?: 'in_progress' | 'completed'): Promise<EnrolledCoursesResponse> => {
+export const getMyLearningCourses = async (filter?: 'in_progress' | 'completed'): Promise<MyLearningCoursesResponse> => {
     try {
         const params = filter ? { filter } : {};
-        const response = await api.get('/courses/enrolled', { params });
-        return response.data as EnrolledCoursesResponse;
+        const response = await api.get('/courses/owned', { params });
+        return response.data as MyLearningCoursesResponse;
     } catch (error: any) {
         if (error.response?.status === 401) {
             throw new Error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');

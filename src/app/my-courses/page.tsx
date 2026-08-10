@@ -4,7 +4,7 @@ import Image from 'next/image';
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
-import { getLecturerCourses, createCourseFromLink } from '@/lib/lecturer';
+import { getOwnedCourses, createCourseFromLink } from '@/lib/management';
 import Toast from '@/components/Toast';
 import { Skeleton } from '@/components/ui/skeleton';
 // WP1.5.8: standardize on the shared component set — this page used to have
@@ -14,14 +14,14 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { LecturerCourse } from '@/types/lecturer.types';
+import { ManagedCourse } from '@/types/management.types';
 import { User } from '@/types/auth.types';
 import { logout as apiLogout, AuthUtils } from '@/lib/auth';
 
 type Status = 'All' | 'Active' | 'Archived';
 
-const LecturerCoursesPage = () => {
-    const [courses, setCourses] = useState<LecturerCourse[]>([]);
+const MyCoursesPage = () => {
+    const [courses, setCourses] = useState<ManagedCourse[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [selectedStatus, setSelectedStatus] = useState<Status>('All');
@@ -39,7 +39,7 @@ const LecturerCoursesPage = () => {
             // If status is 'All' we pass undefined so the API returns all courses
             const apiStatus = status === 'All' ? undefined : status;
             const params = apiStatus ? { status: apiStatus } : undefined;
-            const response = await getLecturerCourses(params);
+            const response = await getOwnedCourses(params);
             // Guard against unexpected API shapes — API may return either an array or { courses: [] }
             const normalized = Array.isArray(response) ? response : response?.courses || [];
             setCourses(normalized);
@@ -92,7 +92,7 @@ const LecturerCoursesPage = () => {
             const res = await createCourseFromLink(linkUrl.trim());
             setShowLinkModal(false);
             setLinkUrl('');
-            router.push(`/lecturer/courses/${res.courseId}/edit`);
+            router.push(`/my-courses/${res.courseId}/edit`);
         } catch (err: any) {
             setCreateError(err.message || 'Lỗi khi tạo khóa học');
         } finally {
@@ -100,16 +100,16 @@ const LecturerCoursesPage = () => {
         }
     };
 
-    const handleCourseClick = (course: LecturerCourse) => {
+    const handleCourseClick = (course: ManagedCourse) => {
         // Personal-organizer model: the owner can always edit their course,
         // there is no separate draft-vs-published destination anymore.
-        router.push(`/lecturer/courses/${course.id}/edit`);
+        router.push(`/my-courses/${course.id}/edit`);
     };
 
     const getErrorMessage = (errorCode: string) => {
         switch (errorCode) {
             case 'ACCESS_DENIED':
-                return 'Bạn không có quyền giảng viên để xem danh sách này';
+                return 'Bạn không có quyền xem danh sách này';
             case 'UNAUTHORIZED':
                 return 'Phiên đăng nhập đã hết hạn';
             case 'COURSE_NOT_FOUND':
@@ -280,4 +280,4 @@ const LecturerCoursesPage = () => {
     );
 };
 
-export default LecturerCoursesPage;
+export default MyCoursesPage;

@@ -8,11 +8,11 @@ export class LoginNavigationPolicy {
         }
         // WP1.5.10: personal-organizer model has no per-role dashboards — every
         // role lands on the same home page. '/student/dashboard' and
-        // '/admin/pending' never existed as routes; '/lecturer/courses' is kept
+        // '/admin/pending' never existed as routes; '/my-courses' is kept
         // since STUDENT can also own courses now (ownership-based, not role-gated).
         switch (user.roleName) {
             case 'LECTURER':
-                return '/lecturer/courses';
+                return '/my-courses';
             default:
                 return '/';
         }

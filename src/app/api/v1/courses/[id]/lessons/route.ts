@@ -28,9 +28,9 @@ export async function GET(
             );
         }
 
-        if (!course.isEnrolled) {
+        if (!course.isOwner) {
             return NextResponse.json(
-                { error: 'NOT_ENROLLED' },
+                { error: 'ACCESS_DENIED' },
                 { status: 403 }
             );
         }

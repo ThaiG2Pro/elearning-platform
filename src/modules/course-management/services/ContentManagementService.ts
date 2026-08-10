@@ -35,7 +35,7 @@ export class ContentManagementService {
         private prisma: PrismaClient
     ) { }
 
-    async getLecturerCourses(ownerId: bigint, status?: string | null): Promise<CourseSummaryDto[]> {
+    async getOwnedCourses(ownerId: bigint, status?: string | null): Promise<CourseSummaryDto[]> {
         // WP1.6 follow-up — used to OR against the now-removed `lecturer_id`
         // column too; owner_id was always the same value on every write path.
         const whereClause: any = { owner_id: ownerId };

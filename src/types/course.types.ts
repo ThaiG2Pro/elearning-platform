@@ -12,24 +12,28 @@ export interface CourseDetail {
     title: string;
     slug: string;
     description?: string;
-    lecturerName?: string;
-    isEnrolled: boolean;
+    ownerName?: string;
+    isOwner: boolean;
     thumbnailUrl?: string;
     chapters: any[]; // TODO: Define chapter type
     completionRate?: number; // WP1.3 — % of lessons finished by the logged-in user
 }
 
-export interface EnrolledCourse {
+// WP1.6 follow-up (round 2) — renamed from EnrolledCourse: this is a course
+// the user owns, annotated with their own learning progress, for the
+// /my-learning screen and the homepage "continue learning" strip. It was
+// never actually enrollment-shaped once the ownership pivot landed.
+export interface MyLearningCourse {
     id: string;
     title: string;
     completionRate: number; // 0-100
     status: 'in_progress' | 'completed';
-    enrolledAt: string; // ISO date string
+    createdAt: string; // ISO date string
     thumbnailUrl?: string;
 }
 
-export interface EnrolledCoursesResponse {
-    courses: EnrolledCourse[];
+export interface MyLearningCoursesResponse {
+    courses: MyLearningCourse[];
 }
 
 export interface Lesson {

@@ -2,7 +2,6 @@ import { CourseService } from '../services/CourseService';
 import { ContentManagementService } from '../services/ContentManagementService';
 import { LearnService } from '../services/LearnService';
 import { CourseRepository } from '../repositories/CourseRepository';
-import { EnrollmentRepository } from '../repositories/EnrollmentRepository';
 import { LearningProgressRepository } from '../repositories/LearningProgressRepository';
 import { CourseListDto } from '../dtos/CourseListDto';
 import { CourseDetailDto, PublicCourseDto } from '../dtos/CourseDetailDto';
@@ -14,10 +13,9 @@ export class CourseController {
 
     constructor() {
         const courseRepo = new CourseRepository(prisma);
-        const enrollmentRepo = new EnrollmentRepository(prisma);
         const progressRepo = new LearningProgressRepository(prisma);
-        const learnService = new LearnService(progressRepo, enrollmentRepo, prisma);
-        this.service = new CourseService(courseRepo, enrollmentRepo, learnService);
+        const learnService = new LearnService(progressRepo, prisma);
+        this.service = new CourseService(courseRepo, learnService);
         this.contentService = new ContentManagementService(courseRepo, prisma);
     }
 

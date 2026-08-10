@@ -11,7 +11,7 @@ export class SectionRepository {
         return {
             id: section.id,
             courseId: section.course_id,
-            ownerId: section.course_id, // Assuming owner is lecturer of course, but need to adjust
+            ownerId: section.course_id, // Assuming owner is the course's owner, but need to adjust
             // Add other fields
         };
     }

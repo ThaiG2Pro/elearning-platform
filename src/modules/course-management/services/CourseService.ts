@@ -1,5 +1,4 @@
 import { CourseRepository } from '../repositories/CourseRepository';
-import { EnrollmentRepository } from '../repositories/EnrollmentRepository';
 import { LearnService } from './LearnService';
 import { CourseListDto } from '../dtos/CourseListDto';
 import { CourseDetailDto, ChapterDto, LessonDto } from '../dtos/CourseDetailDto';
@@ -8,13 +7,10 @@ import { VideoThumbnailUtil } from '../../shared/utils/VideoThumbnailUtil';
 export class CourseService {
     constructor(
         private courseRepository: CourseRepository,
-        // WP1.5.9: no longer read here — getCourseDetail's access check is
-        // ownership-based now, not enrollment-based (see below). Kept in the
-        // constructor signature for compatibility with existing call sites
-        // (CourseController wires it via LearnService too). Plain parameter
-        // (no `private`) so it isn't a class field noUnusedLocals complains
-        // about — matches the QuizService precedent for the same situation.
-        _enrollmentRepository?: EnrollmentRepository,
+        // WP1.6 follow-up — the dead `_enrollmentRepository` compatibility
+        // param (never read since WP1.5.9's ownership-based access check)
+        // was dropped entirely, along with the matching call-site arg in
+        // CourseController.
         private learnService?: LearnService,
     ) { }
 
@@ -42,7 +38,7 @@ export class CourseService {
         // row, so GET /courses/[id]/lessons 403'd for literally every user,
         // including on their own course. Personal-organizer model: a course
         // is accessible to the user who owns it, full stop.
-        const isEnrolled = !!userId && fullCourse.ownerId === userId;
+        const isOwner = !!userId && fullCourse.ownerId === userId;
 
         // WP1.3: surface the logged-in user's own progress on course-detail —
         // ownership-based, no enrollment required.
@@ -72,8 +68,8 @@ export class CourseService {
             fullCourse.title,
             fullCourse.slug,
             fullCourse.description,
-            fullCourse.lecturerName,
-            isEnrolled,
+            fullCourse.ownerName,
+            isOwner,
             chapters,
             VideoThumbnailUtil.findFirstVideoUrl(fullCourse.chapters)
                 ? VideoThumbnailUtil.deriveThumbnailFromVideoUrl(

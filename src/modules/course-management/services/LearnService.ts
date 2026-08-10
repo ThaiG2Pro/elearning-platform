@@ -1,5 +1,4 @@
 import { LearningProgressRepository } from '../repositories/LearningProgressRepository';
-import { EnrollmentRepository } from '../repositories/EnrollmentRepository';
 import { ProgressPolicy } from '../domain/ProgressPolicy';
 import { LearningProgress } from '../domain/LearningProgress';
 import { ProgressResult } from '../dtos/ProgressResult';
@@ -9,10 +8,10 @@ import { PrismaClient } from '@prisma/client';
 export class LearnService {
     constructor(
         private progressRepo: LearningProgressRepository,
-        // Accepted only for constructor-shape compatibility with existing call
-        // sites; progress tracking itself no longer depends on an enrollment
-        // existing (WP1.3 — progress is keyed by ownership, not enrollment).
-        _enrollmentRepo: EnrollmentRepository | undefined,
+        // WP1.6 follow-up — the dead `_enrollmentRepo` compatibility param
+        // (progress tracking has been ownership-keyed since WP1.3) was
+        // dropped, along with the matching call-site arg everywhere this
+        // constructor is called.
         private prisma: PrismaClient,
     ) { }
 

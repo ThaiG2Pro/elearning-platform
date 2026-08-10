@@ -6,7 +6,7 @@ import { CreateCourseDto } from '@/modules/course-management/dtos/CourseManageme
 export async function GET(request: NextRequest) {
     try {
         // WP1.5.10: ownership-based, not role-gated — every user owns their
-        // own personal courses now (see ContentManagementService.getLecturerCourses,
+        // own personal courses now (see ContentManagementService.getOwnedCourses,
         // which already filters by owner_id). The old LECTURER-only check
         // sent every STUDENT into a 401 when they clicked "Khóa học đã tạo".
         const user = await getUserFromRequest(request);
@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
         const status = searchParams.get('status');
 
         const controller = new ManagementController();
-        const courses = await controller.getLecturerCourses(user.id, status);
+        const courses = await controller.getOwnedCourses(user.id, status);
 
         // Convert BigInt fields to strings to avoid JSON serialization errors
         const safeCourses = (courses || []).map((c: any) => {
@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
 
         return NextResponse.json(safeCourses);
     } catch (error) {
-        console.error('Get lecturer courses error:', error);
+        console.error('Get owned courses error:', error);
         return NextResponse.json(
             { error: 'Internal server error' },
             { status: 500 }

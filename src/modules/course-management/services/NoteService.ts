@@ -1,5 +1,4 @@
 import { NoteRepository } from '../repositories/NoteRepository';
-import { EnrollmentRepository } from '../repositories/EnrollmentRepository';
 import { Note } from '../domain/Note';
 import { PrismaClient } from '@prisma/client';
 
@@ -15,8 +14,8 @@ export interface NoteView {
 export class NoteService {
     constructor(
         private noteRepo: NoteRepository,
-        // Accepted only for constructor-shape compatibility with existing call sites.
-        _enrollmentRepo: EnrollmentRepository | undefined,
+        // WP1.6 follow-up — dropped the dead `_enrollmentRepo` compatibility
+        // param and its matching call-site arg.
         private prisma: PrismaClient,
     ) { }
 

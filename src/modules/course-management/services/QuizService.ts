@@ -6,7 +6,6 @@ import { QuizQuestionsDto } from '../dtos/QuizQuestionsDto';
 import { QuizPolicy } from '../domain/QuizPolicy';
 import { AccessControlPolicy } from '../domain/AccessControlPolicy';
 import { LearningProgressRepository } from '../repositories/LearningProgressRepository';
-import { EnrollmentRepository } from '../repositories/EnrollmentRepository';
 import { LearningProgress } from '../domain/LearningProgress';
 import { QuizResultDto, SubmitQuizIndexDto } from '../dtos/QuizResultDto';
 import { Question } from '../domain/Question';
@@ -26,9 +25,8 @@ export class QuizService {
     constructor(
         private questionRepo?: QuestionRepository,
         private progressRepo?: LearningProgressRepository,
-        // Kept only for constructor-shape compatibility with existing call sites;
-        // quiz progress no longer depends on an enrollment existing (WP1.3).
-        _enrollmentRepo?: EnrollmentRepository,
+        // WP1.6 follow-up — dropped the dead `_enrollmentRepo` compatibility
+        // param and its matching call-site arg.
         private prisma?: PrismaClient
     ) {
         this.excelAdapter = new ExcelAdapter();

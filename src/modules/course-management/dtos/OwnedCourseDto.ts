@@ -1,9 +1,9 @@
-export interface EnrolledCourseDto {
+export interface OwnedCourseDto {
     id: number;
     title: string;
     slug: string;
     status: string;
     thumbnailUrl?: string;
     completionRate: number;
-    enrolledAt: Date;
+    createdAt: Date;
 }

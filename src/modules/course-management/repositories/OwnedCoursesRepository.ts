@@ -1,17 +1,22 @@
 import { PrismaClient } from '@prisma/client';
-import { EnrolledCourseDto } from '../dtos/EnrolledCourseDto';
+import { OwnedCourseDto } from '../dtos/OwnedCourseDto';
 import { VideoThumbnailUtil } from '../../shared/utils/VideoThumbnailUtil';
 
 // WP1.6.3 — findByStudentAndCourse/findByStudent/findById/save (reads/writes
 // of the legacy `enrollments` table) were removed along with their only
-// callers: EnrollmentService.enrollStudent/checkEnrollmentStatus (zero UI
-// usage) and LessonController.getVideoContext (an orphaned route that
-// 403'd everyone, since nothing creates `enrollments` rows anymore). Only
-// getEnrolledCoursesWithDetails remains — it now reads owned courses
+// callers: the old EnrollmentService.enrollStudent/checkEnrollmentStatus
+// (zero UI usage) and LessonController.getVideoContext (an orphaned route
+// that 403'd everyone, since nothing creates `enrollments` rows anymore).
+// Only getOwnedCoursesWithDetails remains — it now reads owned courses
 // directly instead of the `enrollments` table. The `enrollments` table
 // itself and `learning_progress.enrollment_id` have since been dropped
 // entirely (WP1.6 follow-up cleanup) — both were confirmed empty.
-export class EnrollmentRepository {
+//
+// WP1.6 follow-up (round 2) — renamed from EnrollmentRepository: the class
+// had nothing left to do with "enrollment" (the marketplace concept), it
+// reads courses the user owns and folds in their learning progress for the
+// /my-learning and homepage "continue learning" views.
+export class OwnedCoursesRepository {
     constructor(private prisma: PrismaClient) { }
 
     // WP1.6.2 — this used to read the legacy `enrollments` table
@@ -19,20 +24,17 @@ export class EnrollmentRepository {
     // since the ownership pivot (WP0.2): course access/learn/lessons are all
     // gated on owner_id now (see AccessControlPolicy), so `/my-learning` was
     // permanently empty even for users with real, owned courses. This now
-    // mirrors ContentManagementService.getLecturerCourses' owner_id query
+    // mirrors ContentManagementService.getOwnedCourses' owner_id query
     // and computes progress from `learning_progress` the same way
     // LearnService.getCourseProgress does for course-detail — one definition
     // of "done" across the app instead of two disconnected ones.
-    async getEnrolledCoursesWithDetails(userId: bigint, filter?: string | null, sort?: string | null): Promise<EnrolledCourseDto[]> {
+    async getOwnedCoursesWithDetails(userId: bigint, filter?: string | null, sort?: string | null): Promise<OwnedCourseDto[]> {
         let orderBy: any = { created_at: 'desc' };
         if (sort === 'enrolled_at_asc') {
             orderBy = { created_at: 'asc' };
         }
 
         const courses = await this.prisma.courses.findMany({
-            // WP1.6 follow-up — `lecturer_id` (dropped from the schema) was
-            // always equal to `owner_id` on every write path; querying it too
-            // was always a no-op OR.
             where: { owner_id: userId },
             orderBy,
             include: {
@@ -71,7 +73,7 @@ export class EnrollmentRepository {
             : [];
         const finishedLessonIds = new Set(finishedProgress.map(p => p.lesson_id));
 
-        const results: EnrolledCourseDto[] = courses.map(course => {
+        const results: OwnedCourseDto[] = courses.map(course => {
             const firstVideoUrl = VideoThumbnailUtil.findFirstVideoUrl(course.chapters);
             const thumbnailUrl = firstVideoUrl
                 ? VideoThumbnailUtil.deriveThumbnailFromVideoUrl(firstVideoUrl)
@@ -93,7 +95,7 @@ export class EnrollmentRepository {
                 status,
                 thumbnailUrl,
                 completionRate,
-                enrolledAt: course.created_at,
+                createdAt: course.created_at,
             };
         });
 

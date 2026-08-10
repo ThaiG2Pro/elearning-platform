@@ -4,7 +4,6 @@ import { ParsedQuestionDto } from '../dtos/ParsedQuestionDto';
 import { QuizQuestionsDto } from '../dtos/QuizQuestionsDto';
 import { SubmitQuizDto, SubmitQuizIndexDto } from '../dtos/QuizResultDto';
 import { LearningProgressRepository } from '../repositories/LearningProgressRepository';
-import { EnrollmentRepository } from '../repositories/EnrollmentRepository';
 import { prisma } from '../../../shared/config/database';
 import { Question } from '../domain/Question';
 import { QuizPolicy } from '../domain/QuizPolicy';
@@ -24,9 +23,8 @@ export class QuizController {
     constructor() {
         const questionRepo = new QuestionRepository(prisma);
         const progressRepo = new LearningProgressRepository(prisma);
-        const enrollmentRepo = new EnrollmentRepository(prisma);
         this.questionRepo = questionRepo;
-        this.service = new QuizService(questionRepo, progressRepo, enrollmentRepo, prisma);
+        this.service = new QuizService(questionRepo, progressRepo, prisma);
     }
 
     async parseQuizFile(file: Buffer): Promise<ParsedQuestionDto[]> {

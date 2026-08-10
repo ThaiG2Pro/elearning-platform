@@ -1,7 +1,6 @@
 import { LearnService } from '../services/LearnService';
 import { NoteService, NoteView } from '../services/NoteService';
 import { LearningProgressRepository } from '../repositories/LearningProgressRepository';
-import { EnrollmentRepository } from '../repositories/EnrollmentRepository';
 import { NoteRepository } from '../repositories/NoteRepository';
 import { ProgressResult } from '../dtos/ProgressResult';
 import { prisma } from '../../../shared/config/database';
@@ -12,10 +11,9 @@ export class LearnController {
 
     constructor() {
         const progressRepo = new LearningProgressRepository(prisma);
-        const enrollmentRepo = new EnrollmentRepository(prisma);
         const noteRepo = new NoteRepository(prisma);
-        this.service = new LearnService(progressRepo, enrollmentRepo, prisma);
-        this.noteService = new NoteService(noteRepo, enrollmentRepo, prisma);
+        this.service = new LearnService(progressRepo, prisma);
+        this.noteService = new NoteService(noteRepo, prisma);
     }
 
     async trackVideoProgress(

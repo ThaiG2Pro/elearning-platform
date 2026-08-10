@@ -45,7 +45,7 @@ export default function Header({ user, onLogout, onJoin }: HeaderProps) {
 
     const handleMyCoursesClick = () => {
         setIsDropdownOpen(false);
-        router.push('/lecturer/courses');
+        router.push('/my-courses');
     };
 
     const handleMySharesClick = () => {

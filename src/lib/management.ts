@@ -1,13 +1,15 @@
-// src/lib/lecturer.ts
+// src/lib/management.ts
 
 import api from './api';
-import { LecturerCoursesResponse, LecturerCoursesRequest, CourseStructure, LessonPreview, Chapter, Lesson, QuizParseResponse, PublishValidation } from '@/types/lecturer.types';
+import { ManagedCoursesResponse, ManagedCoursesRequest, CourseStructure, LessonPreview, Chapter, Lesson, QuizParseResponse, PublishValidation } from '@/types/management.types';
 
-export const getLecturerCourses = async (
-    params?: LecturerCoursesRequest
-): Promise<LecturerCoursesResponse> => {
+// WP1.6 follow-up (round 2) — renamed from getLecturerCourses: lists the
+// courses the current user owns, for the /my-courses management screen.
+export const getOwnedCourses = async (
+    params?: ManagedCoursesRequest
+): Promise<ManagedCoursesResponse> => {
     try {
-        const response = await api.get<LecturerCoursesResponse>(
+        const response = await api.get<ManagedCoursesResponse>(
             '/management/courses',
             {
                 params,
@@ -341,7 +343,7 @@ export interface MyShareLink {
 
 // WP1.5.11 — "quản lý share link của tôi": list every owned course with its
 // current share status (previously the only way to see a link again was the
-// orphaned lecturer/courses/[id]/view page).
+// orphaned lecturer/courses/[id]/view page, now /my-courses/[id]/view).
 export const listMyShareLinks = async (): Promise<MyShareLink[]> => {
     try {
         const response = await api.get('/management/courses/share');

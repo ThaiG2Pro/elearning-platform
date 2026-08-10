@@ -133,16 +133,16 @@ export default function CourseDetailPage() {
                         <section className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm mb-6">
                             <h1 className="text-xl font-bold text-slate-900 mb-3 leading-snug">{course.title}</h1>
                             <div className="flex flex-wrap items-center gap-4 mb-4">
-                                {course.lecturerName && (
+                                {course.ownerName && (
                                     <p className="text-sm text-slate-500">
-                                        Giảng viên: <span className="font-medium text-slate-800">{course.lecturerName}</span>
+                                        Tác giả: <span className="font-medium text-slate-800">{course.ownerName}</span>
                                     </p>
                                 )}
                             </div>
                             {course.description && (
                                 <p className="text-sm text-slate-600 leading-relaxed">{course.description}</p>
                             )}
-                            {course.isEnrolled && typeof course.completionRate === 'number' && (
+                            {course.isOwner && typeof course.completionRate === 'number' && (
                                 <div className="mt-4">
                                     <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
                                         <span>Tiến độ học của bạn</span>
@@ -163,8 +163,8 @@ export default function CourseDetailPage() {
                             courses, not just the viewer's own, but course access (learn/
                             lessons) is ownership-based. This button used to show "Bắt đầu
                             học" for ANY logged-in user regardless of ownership, sending
-                            non-owners straight into a 403 NOT_ENROLLED dead-end on
-                            /courses/[id]/learn. `course.isEnrolled` (owner match, already
+                            non-owners straight into a 403 ACCESS_DENIED dead-end on
+                            /courses/[id]/learn. `course.isOwner` (owner match, already
                             computed by CourseService.getCourseDetail) is the real signal. */}
                         <section>
                             {!user ? (
@@ -174,7 +174,7 @@ export default function CourseDetailPage() {
                                 >
                                     Tham gia để học
                                 </button>
-                            ) : course.isEnrolled ? (
+                            ) : course.isOwner ? (
                                 <button
                                     onClick={handleLearn}
                                     className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg transition-colors shadow-sm"

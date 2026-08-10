@@ -4,20 +4,20 @@ import Image from 'next/image';
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
-import { getEnrolledCourses } from '@/lib/course';
+import { getMyLearningCourses } from '@/lib/course';
 import { Skeleton } from '@/components/ui/skeleton';
 // WP1.5.8: this was the last hand-rolled tab strip in the app — every other
 // page's filter/status tabs already use the shared Tabs component.
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { EnrolledCourse } from '@/types/course.types';
+import { MyLearningCourse } from '@/types/course.types';
 import { User } from '@/types/auth.types';
 import { logout as apiLogout, AuthUtils } from '@/lib/auth';
 
 export default function MyLearningPage() {
     const router = useRouter();
 
-    const [courses, setCourses] = useState<EnrolledCourse[]>([]);
+    const [courses, setCourses] = useState<MyLearningCourse[]>([]);
     const [filter, setFilter] = useState<'in_progress' | 'completed' | undefined>(undefined);
     const [appState, setAppState] = useState<'idle' | 'loading' | 'no_results' | 'error'>('idle');
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -28,7 +28,7 @@ export default function MyLearningPage() {
         setErrorMessage(null);
 
         try {
-            const response = await getEnrolledCourses(filter);
+            const response = await getMyLearningCourses(filter);
             setCourses(response.courses);
 
             if (response.courses.length === 0) {
@@ -175,13 +175,13 @@ export default function MyLearningPage() {
                                     </div>
                                 </div>
 
-                                {/* Status and Enrollment Date */}
+                                {/* Status and creation date */}
                                 <div className="flex justify-between items-center text-xs text-slate-400">
                                     <span className={`px-2 py-0.5 rounded-full font-medium ${course.status === 'completed' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'}`}>
                                         {course.status === 'in_progress' ? 'Đang học' : 'Hoàn thành'}
                                     </span>
                                     <span>
-                                        {formatDate(course.enrolledAt)}
+                                        {formatDate(course.createdAt)}
                                     </span>
                                 </div>
                             </div>

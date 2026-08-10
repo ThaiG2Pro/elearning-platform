@@ -88,7 +88,7 @@ export class CourseRepository {
             course.status as CourseStatus,
             chapters,
         );
-        (domainCourse as any).lecturerName = course.owner.full_name;
+        (domainCourse as any).ownerName = course.owner.full_name;
         return domainCourse;
     }
 

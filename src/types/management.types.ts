@@ -1,6 +1,9 @@
-// src/types/lecturer.types.ts
+// src/types/management.types.ts
 
-export interface LecturerCourse {
+// WP1.6 follow-up (round 2) — renamed from LecturerCourse: the /my-courses
+// management screen (formerly /lecturer/courses) lists courses by
+// ownership, not a lecturer role — every user manages their own.
+export interface ManagedCourse {
     id: number;
     title: string;
     status: 'Active' | 'Archived';
@@ -8,11 +11,11 @@ export interface LecturerCourse {
     createdAt?: string; // optional because API might not provide it
 }
 
-export interface LecturerCoursesResponse {
-    courses: LecturerCourse[];
+export interface ManagedCoursesResponse {
+    courses: ManagedCourse[];
 }
 
-export interface LecturerCoursesRequest {
+export interface ManagedCoursesRequest {
     status?: 'Active' | 'Archived';
 }
 
@@ -37,8 +40,8 @@ export interface CourseStructure {
     title: string;
     slug: string;
     description?: string;
-    lecturerName?: string;
-    isEnrolled: boolean;
+    ownerName?: string;
+    isOwner: boolean;
     thumbnailUrl?: string;
     chapters: Chapter[];
     // WP1.5.10: 'Draft'/'Pending' dropped — no route creates that state

@@ -1,6 +1,5 @@
 import { LearnService } from '../services/LearnService';
 import { LearningProgressRepository } from '../repositories/LearningProgressRepository';
-import { EnrollmentRepository } from '../repositories/EnrollmentRepository';
 import { ProgressResult } from '../dtos/ProgressResult';
 import { ContentManagementService } from '../services/ContentManagementService';
 import { CourseRepository } from '../repositories/CourseRepository';
@@ -22,8 +21,7 @@ export class ManagementController {
 
     constructor() {
         const progressRepo = new LearningProgressRepository(prisma);
-        const enrollmentRepo = new EnrollmentRepository(prisma);
-        this.learnService = new LearnService(progressRepo, enrollmentRepo, prisma);
+        this.learnService = new LearnService(progressRepo, prisma);
 
         const courseRepo = new CourseRepository(prisma);
         this.contentService = new ContentManagementService(courseRepo, prisma);
@@ -40,8 +38,8 @@ export class ManagementController {
     }
 
     // Course Management
-    async getLecturerCourses(ownerId: bigint, status?: string | null): Promise<CourseSummaryDto[]> {
-        return await this.contentService.getLecturerCourses(ownerId, status);
+    async getOwnedCourses(ownerId: bigint, status?: string | null): Promise<CourseSummaryDto[]> {
+        return await this.contentService.getOwnedCourses(ownerId, status);
     }
 
     async createCourse(ownerId: bigint, dto: CreateCourseDto): Promise<bigint> {

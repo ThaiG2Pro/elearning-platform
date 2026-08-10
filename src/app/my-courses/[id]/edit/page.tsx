@@ -12,7 +12,7 @@ import {
     parseQuizFile,
     uploadQuizFile,
     updateCourseContent,
-} from '@/lib/lecturer';
+} from '@/lib/management';
 import {
     CourseStructure,
     Chapter,
@@ -20,7 +20,7 @@ import {
     LessonEdit,
     ChapterEdit,
     QuizParseResponse
-} from '@/types/lecturer.types';
+} from '@/types/management.types';
 // WP1.5.8: standardize on the shared Button component instead of each
 // action re-implementing its own Tailwind classes — this page previously
 // mixed bg-blue-600 and bg-indigo-600 for equivalent primary actions.

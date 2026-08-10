@@ -6,12 +6,12 @@ import Header from '@/components/Header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { listMyShareLinks, revokeShareLink, getOrCreateShareLink, MyShareLink } from '@/lib/lecturer';
+import { listMyShareLinks, revokeShareLink, getOrCreateShareLink, MyShareLink } from '@/lib/management';
 import { User } from '@/types/auth.types';
 import { logout as apiLogout, AuthUtils } from '@/lib/auth';
 
 // WP1.5.11 — previously the only way to see a share link again was the
-// orphaned /lecturer/courses/[id]/view page, and there was no way to revoke
+// orphaned /my-courses/[id]/view page, and there was no way to revoke
 // one at any layer. This is the single place to view/create/revoke every
 // share link across all owned courses.
 export default function MySharesPage() {

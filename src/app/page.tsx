@@ -6,11 +6,11 @@ import Header from '@/components/Header';
 import SearchBar from '@/components/SearchBar';
 import CourseList from '@/components/CourseList';
 import { Button } from '@/components/ui/button';
-import { Course, EnrolledCourse } from '@/types/course.types';
+import { Course, MyLearningCourse } from '@/types/course.types';
 import { User } from '@/types/auth.types';
 import { getCourses } from '@/lib/courses';
-import { getEnrolledCourses } from '@/lib/course';
-import { createCourseFromLink } from '@/lib/lecturer';
+import { getMyLearningCourses } from '@/lib/course';
+import { createCourseFromLink } from '@/lib/management';
 import { logout as apiLogout, AuthUtils } from '@/lib/auth';
 
 type AppState = 'idle' | 'loading' | 'error' | 'success';
@@ -29,12 +29,12 @@ export default function Home() {
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
     // WP1.5.5 — "học tiếp" (continue learning) strip for returning users.
-    const [continueCourses, setContinueCourses] = useState<EnrolledCourse[]>([]);
+    const [continueCourses, setContinueCourses] = useState<MyLearningCourse[]>([]);
     const [continueState, setContinueState] = useState<ContinueState>('idle');
 
     // WP1.5.5 — prominent paste-link box (the core WP1.1 feature), now
     // reachable straight from the homepage instead of only inside the
-    // /lecturer/courses modal.
+    // /my-courses modal.
     const [linkUrl, setLinkUrl] = useState('');
     const [creatingFromLink, setCreatingFromLink] = useState(false);
     const [linkError, setLinkError] = useState<string | null>(null);
@@ -87,7 +87,7 @@ export default function Home() {
         (async () => {
             setContinueState('loading');
             try {
-                const response = await getEnrolledCourses('in_progress');
+                const response = await getMyLearningCourses('in_progress');
                 if (cancelled) return;
                 setContinueCourses(response.courses);
                 setContinueState('loaded');
@@ -107,7 +107,7 @@ export default function Home() {
         try {
             const res = await createCourseFromLink(linkUrl.trim());
             setLinkUrl('');
-            router.push(`/lecturer/courses/${res.courseId}/edit`);
+            router.push(`/my-courses/${res.courseId}/edit`);
         } catch (err: any) {
             const message = err.message;
             if (message === 'UNAUTHORIZED') {
@@ -164,7 +164,7 @@ export default function Home() {
 
                 {/* WP1.5.5 — ô dán link nổi bật: đưa tính năng lõi (dán link
                     -> tự tạo khóa học) ra ngay trang chủ thay vì chỉ nằm
-                    trong modal ở /lecturer/courses. */}
+                    trong modal ở /my-courses. */}
                 {user && (
                     <section className="mb-8 bg-blue-600 rounded-xl p-6 shadow-sm">
                         <div className="flex flex-col md:flex-row md:items-center gap-4">
