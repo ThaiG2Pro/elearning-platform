@@ -43,6 +43,7 @@ out of scope, not to be relitigated.**
 - [Real-world BYOK LLM free-tier quotas (Gemini + alternatives)](tickets/02-llm-byok-quota-research.md) — Gemini's free tier is the best-fit BYOK option (only one with enough context+TPM for long transcripts) but not "always on"; visible rate-limit UX must be a required feature, not an edge case.
 - [ToS/legal exposure of unofficial YouTube transcript extraction + blog scraping at planned scale](tickets/03-transcript-scraping-legal-research.md) — no legal action has ever targeted a transcript/scraping tool at this pattern of use; accepted, typical risk at Checkpoint 2–3 scale, no added mitigation needed now.
 - [Comparable "structure wrapper around free content" products — real adoption/retention signal](tickets/04-comparable-products-research.md) — Class Central/roadmap.sh succeeded via their own content + SEO, not pure wrapping; plain "paste-a-playlist" wrapper tools plateau at hundreds of users with no breakout. The wrapper alone is likely necessary but not sufficient — Phase 1's small aligned group and the Phase 2 AI layer are probably load-bearing for retention, not optional polish.
+- [Is the "zero-cost launch" premise actually achievable end-to-end?](tickets/05-zero-cost-premise-decision.md) — confirmed: $0 only through Checkpoint 0 (Oracle Always Free, founder-only); migrate to a stable ~$5–12/mo host the moment Checkpoint 1 opens to outside users, not gated on retention — `VISION.md` §5.1's free-to-users promise is unaffected, this is purely who funds infra and when.
 
 ## Not yet specified
 
