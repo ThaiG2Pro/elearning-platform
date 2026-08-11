@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { QuizController } from '../../../../../../modules/course-management/controllers/QuizController';
 import { getUserIdFromRequest } from '../../../../../../shared/middleware/auth';
+import { QuizPolicy } from '../../../../../../modules/course-management/domain/QuizPolicy';
 
 export async function POST(request: NextRequest) {
     try {
@@ -33,11 +34,34 @@ export async function POST(request: NextRequest) {
         const controller = new QuizController();
         const parsedQuestions = await controller.parseQuizFile(buffer);
 
-        return NextResponse.json({
-            success: true,
-            data: parsedQuestions,
-            count: parsedQuestions.length
+        // The client (`parseQuizFile` in lib/management.ts) types this
+        // response as `QuizParseResponse` (`{ questions: QuizQuestion[] }`,
+        // consumed by the edit page's "Xem trước danh sách câu hỏi" preview
+        // as `q.text` / `q.correctId`) but this route was actually returning
+        // `{ success, data: ParsedQuestionDto[], count }` — a completely
+        // different, untransformed shape with no `questions` key at all and
+        // no `text`/`correctId` fields on each item. `parsedQuestions.
+        // questions.length` in the preview JSX crashed on `undefined` the
+        // instant a lecturer clicked "Xem trước câu hỏi" — the preview
+        // feature never actually rendered anything since parseQuizFile
+        // existed. Reshape here (and compute correctId the same way
+        // getLessonPreview does for the "existing questions" list) instead
+        // of just satisfying the type — the type was correct, the runtime
+        // response wasn't.
+        const questions = parsedQuestions.map((q, idx) => {
+            const correctIndexRaw = QuizPolicy.resolveCorrectIndex(q.correctAnswer, q.options);
+            return {
+                id: idx,
+                text: q.content,
+                content: q.content,
+                options: q.options,
+                correctId: correctIndexRaw >= 0 ? correctIndexRaw : undefined,
+                correctIndex: correctIndexRaw >= 0 ? correctIndexRaw : undefined,
+                answerKey: q.correctAnswer,
+            };
         });
+
+        return NextResponse.json({ questions });
     } catch (error: any) {
         console.error('Error parsing quiz file:', error);
 

@@ -67,7 +67,19 @@ export class QuizController {
         // BR-QUIZ-03 — must match LearningProgress.isQuizTimeout()'s actual
         // enforcement window, or the countdown shown to the student lies
         // about how long they really have (see LearningProgress.QUIZ_TIME_LIMIT_MS).
-        const expiresAt = new Date(Date.now() + LearningProgress.QUIZ_TIME_LIMIT_MS).toISOString();
+        //
+        // This must be derived from `progress.quizStartTime`, NOT `Date.now()`.
+        // QuizService.startQuiz's re-entry guard (added to fix the
+        // double-start race) reuses an existing live attempt without calling
+        // `progress.startQuiz()` again — quizStartTime stays at its original
+        // value. Computing expiresAt from `Date.now()` here regardless meant
+        // a student reloading mid-attempt (e.g. at minute 5 of 10) was handed
+        // a brand new "10 minutes left" countdown, while the server's actual
+        // isQuizTimeout() check still enforced the original minute-10
+        // deadline — the countdown looked like it had 5 extra minutes it
+        // didn't really have, and submitting in that gap silently auto-
+        // scored 0 with no warning.
+        const expiresAt = new Date((progress.quizStartTime ?? new Date()).getTime() + LearningProgress.QUIZ_TIME_LIMIT_MS).toISOString();
 
         return {
             sessionId,
@@ -77,6 +89,15 @@ export class QuizController {
     }
 
     async submitQuiz(userId: bigint, lessonId: bigint, dto: SubmitQuizDto): Promise<any> {
+        // `dto` is `request.json()` output at the route boundary — nothing
+        // guarantees `.answers` actually exists (a client sending `{}` or a
+        // malformed body). Object.entries(undefined) throws immediately,
+        // which used to surface as a raw, unhandled 500. Missing answers
+        // should just grade as "nothing answered", not crash the request.
+        if (!dto.answers || typeof dto.answers !== 'object') {
+            dto = { ...dto, answers: {} };
+        }
+
         // Get progress to get question ids. Same combined check as
         // QuizService.submitQuiz — quizStartTime === null also covers an
         // attempt already consumed by a prior submit (anti-resubmit guard).

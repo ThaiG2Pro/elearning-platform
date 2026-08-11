@@ -23,8 +23,20 @@ export class QuestionRepository {
             new Question(q.id, q.lesson_id, q.content, buildOptions(q), q.answer_key)
         );
 
-        // Shuffle and take limit
-        const shuffled = domainQuestions.sort(() => 0.5 - Math.random());
+        // Shuffle and take limit. `sort(() => 0.5 - Math.random())` (the
+        // previous implementation) is a well-known biased shuffle — it does
+        // pairwise comparisons whose outcome depends on the sort
+        // algorithm's merge/partition pattern, not a uniform permutation, so
+        // some questions are systematically more likely to land in the
+        // first `limit` slots than others. Only matters once a lesson has
+        // more questions than `limit` (10) — below that every question gets
+        // picked regardless of shuffle quality — but a proper Fisher-Yates
+        // costs nothing extra and removes the bias entirely.
+        const shuffled = [...domainQuestions];
+        for (let i = shuffled.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
         return shuffled.slice(0, Math.min(limit, shuffled.length));
     }
 

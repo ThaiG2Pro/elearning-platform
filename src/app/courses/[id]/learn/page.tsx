@@ -706,10 +706,20 @@ export default function LearningPage() {
                                         <h3 className="text-base font-semibold text-slate-800 mb-3">
                                             Kết quả bài kiểm tra
                                         </h3>
-                                        <div className={`inline-flex items-center justify-center w-20 h-20 rounded-full text-2xl font-bold ${quizResult.score >= 50 ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
+                                        {/* Was thresholded on `score >= 50` — a leftover from before the
+                                            80% pass rule (Rule 27) existed. A student scoring e.g. 60%
+                                            saw this badge in the same green "success" color as a real
+                                            pass, with no text anywhere on this screen saying whether they
+                                            actually passed (`quizResult.isPassed`, which the backend
+                                            computes at >= 80%, was never even read here) — the color was
+                                            actively lying about the result. */}
+                                        <div className={`inline-flex items-center justify-center w-20 h-20 rounded-full text-2xl font-bold ${quizResult.isPassed ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
                                             {quizResult.score}
                                         </div>
                                         <p className="text-xs text-slate-400 mt-2">/ 100 điểm</p>
+                                        <p className={`text-sm font-semibold mt-2 ${quizResult.isPassed ? 'text-emerald-600' : 'text-red-600'}`}>
+                                            {quizResult.isPassed ? '✓ Đạt' : '✗ Chưa đạt (cần từ 80 điểm trở lên)'}
+                                        </p>
                                     </div>
 
                                     <div className="space-y-4">
