@@ -98,6 +98,18 @@ export class QuizService {
         // Step 1: Get Random Questions
         const questions = await this.questionRepo.findRandomByLesson(lessonId, 10);
 
+        // A QUIZ lesson with no uploaded questions used to sail through here
+        // silently: startQuiz would persist an "in progress" row with an
+        // empty quizQuestionIds array and return 200 with `questions: []`,
+        // so the student saw a quiz they could never finish — submit then
+        // failed with the confusing "Quiz not started" (technically true:
+        // there were never any questions to start). Both callers of this
+        // (quiz/start and the bare quiz/route.ts preview) already had
+        // NO_QUESTIONS_FOUND -> 404 mapping wired up and waiting for this.
+        if (questions.length === 0) {
+            throw new Error('NO_QUESTIONS_FOUND');
+        }
+
         // Step 2: Data Transformation (Security) - Strip correct answers
         const blindQuestions = questions.map(q => ({
             id: q.id!,

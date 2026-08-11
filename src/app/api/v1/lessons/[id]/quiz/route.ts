@@ -20,6 +20,7 @@ export async function GET(
     } catch (error) {
         console.error('Error generating quiz:', error);
         const message = error instanceof Error ? error.message : 'Internal server error';
-        return NextResponse.json({ error: message }, { status: 500 });
+        const status = message === 'NO_QUESTIONS_FOUND' ? 404 : 500;
+        return NextResponse.json({ error: message }, { status });
     }
 }

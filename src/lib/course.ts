@@ -52,6 +52,9 @@ export const startQuiz = async (lessonId: string): Promise<QuizSession> => {
         if (error.response?.data?.code === 'QUIZ_TIME_EXPIRED') {
             throw new Error('Thời gian làm bài đã kết thúc. Hệ thống đang tự động nộp bài.');
         }
+        if (error.response?.data?.error === 'NO_QUESTIONS_FOUND') {
+            throw new Error('Bài kiểm tra này chưa có câu hỏi nào. Vui lòng liên hệ người tạo khóa học.');
+        }
         throw new Error('Không thể bắt đầu bài kiểm tra.');
     }
 };
