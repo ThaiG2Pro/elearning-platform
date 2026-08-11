@@ -38,7 +38,7 @@ export async function GET(
     } catch (error) {
         console.error('Error getting progress:', error);
         const message = error instanceof Error ? error.message : 'Internal server error';
-        const status = message === 'ACCESS_DENIED' ? 403 : message === 'LESSON_NOT_FOUND' ? 404 : 500;
+        const status = message === 'ACCESS_DENIED' || message === 'FORBIDDEN' ? 403 : message === 'LESSON_NOT_FOUND' ? 404 : 500;
         return NextResponse.json({ error: message }, { status });
     }
 }
@@ -71,6 +71,7 @@ export async function POST(
     } catch (error) {
         console.error('Error tracking video progress:', error);
         const message = error instanceof Error ? error.message : 'Internal server error';
-        return NextResponse.json({ error: message }, { status: 500 });
+        const status = message === 'FORBIDDEN' ? 403 : message === 'LESSON_NOT_FOUND' ? 404 : 500;
+        return NextResponse.json({ error: message }, { status });
     }
 }

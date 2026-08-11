@@ -1,4 +1,5 @@
 import api from './api';
+import { AuthUtils } from './auth';
 import { MyLearningCoursesResponse, Lesson, LessonProgress, QuizSession, QuizResult, LessonNote } from '@/types/course.types';
 
 export const getMyLearningCourses = async (filter?: 'in_progress' | 'completed'): Promise<MyLearningCoursesResponse> => {
@@ -41,6 +42,35 @@ export const updateLessonProgress = async (lessonId: string, currentPosition: nu
         return response.data as LessonProgress;
     } catch (error: any) {
         throw new Error('Không thể cập nhật tiến độ.');
+    }
+};
+
+/**
+ * WP1.5.13 — flush used specifically for "the page/tab is going away right
+ * now" (beforeunload/pagehide), not for normal periodic syncing. A regular
+ * axios/XHR call started at that moment can be silently aborted by the
+ * browser before it ever reaches the network, dropping the last watch
+ * position for good. `fetch(..., { keepalive: true })` tells the browser to
+ * finish the request in the background after the page unloads — unlike
+ * navigator.sendBeacon, it still lets us set the Authorization header this
+ * API requires, at the cost of a small body-size cap we're nowhere near.
+ * Fire-and-forget by design: there's no UI left to react to the result.
+ */
+export const flushLessonProgress = (lessonId: string, currentPosition: number, duration: number): void => {
+    try {
+        const token = AuthUtils.getAccessToken();
+        const baseURL = process.env.NEXT_PUBLIC_API_URL || '/api/v1';
+        fetch(`${baseURL}/lessons/${lessonId}/progress`, {
+            method: 'POST',
+            keepalive: true,
+            headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+            body: JSON.stringify({ position: currentPosition, duration }),
+        }).catch(() => { /* best-effort — nothing left to recover here */ });
+    } catch {
+        // e.g. fetch/keepalive unsupported — still best-effort
     }
 };
 

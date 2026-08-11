@@ -6,7 +6,7 @@ import Header from '@/components/Header';
 import YoutubePlayer, { VideoPlayerHandle } from '@/components/YoutubePlayer';
 import VimeoPlayer from '@/components/VimeoPlayer';
 import { Skeleton } from '@/components/ui/skeleton';
-import { getLessons, getLessonProgress, updateLessonProgress, startQuiz, submitQuiz, addLessonNote, getLessonNotes, deleteLessonNote } from '@/lib/course';
+import { getLessons, getLessonProgress, updateLessonProgress, flushLessonProgress, startQuiz, submitQuiz, addLessonNote, getLessonNotes, deleteLessonNote } from '@/lib/course';
 import { Lesson, LessonProgress, QuizSession, QuizResult, LessonNote } from '@/types/course.types';
 import { User } from '@/types/auth.types';
 import { logout as apiLogout, AuthUtils } from '@/lib/auth';
@@ -138,18 +138,16 @@ export default function LearningPage() {
         }
     }, [currentLesson, videoDuration, markLessonCompleted]);
 
-    const handleFlushUpdate = useCallback(async (time: number) => {
-        const roundedTime = Math.floor(time);
+    // WP1.5.13 — this fires from the players' `beforeunload` handler, i.e.
+    // the tab is closing right now. A normal awaited axios call can be
+    // silently aborted mid-flight by the browser before it reaches the
+    // network, and there's no UI left afterwards to show a sync-error banner
+    // anyway — so this is fire-and-forget via flushLessonProgress
+    // (fetch+keepalive), not the regular updateLessonProgress path.
+    const handleFlushUpdate = useCallback((time: number) => {
         if (!currentLesson) return;
-        try {
-            const progress = await updateLessonProgress(currentLesson.id, roundedTime, videoDuration);
-            setProgressSyncError(false);
-            if (progress?.isCompleted) markLessonCompleted(currentLesson.id);
-        } catch (err) {
-            console.error('Flush Error:', err);
-            setProgressSyncError(true);
-        }
-    }, [currentLesson, videoDuration, markLessonCompleted]);
+        flushLessonProgress(currentLesson.id, Math.floor(time), videoDuration);
+    }, [currentLesson, videoDuration]);
 
     const handleDurationUpdate = useCallback((duration: number) => {
         setVideoDuration(duration);
@@ -280,6 +278,34 @@ export default function LearningPage() {
         setAppState('loading');
     };
 
+    // WP1.5.13 — every place that navigates away from a playing video
+    // (auto-advance on end, manually picking another lesson) now goes
+    // through this one function, so the current position is always flushed
+    // before the player unmounts. Previously only a true page unload
+    // (beforeunload, inside YoutubePlayer/VimeoPlayer) flushed; switching
+    // lessons within the SPA relied entirely on the last periodic 5s-delta
+    // sync, which for a lesson shorter than that window (or one that ends
+    // right after a sync tick) could mean the final watch position — and for
+    // very short videos, the 80% completion mark itself — was never sent.
+    // This is an in-app transition (not an unload race), so a normal
+    // awaited call is fine here — no need for the keepalive/beacon path.
+    const switchLesson = useCallback(async (next: Lesson) => {
+        if (currentLesson?.type?.toLowerCase() === 'video') {
+            const t = playerHandleRef.current?.getCurrentTime() ?? videoRef.current?.currentTime;
+            if (typeof t === 'number' && Number.isFinite(t)) {
+                try {
+                    const progress = await updateLessonProgress(currentLesson.id, Math.floor(t), videoDuration);
+                    setProgressSyncError(false);
+                    if (progress?.isCompleted) markLessonCompleted(currentLesson.id);
+                } catch (err) {
+                    console.error('Flush-on-switch error:', err);
+                    setProgressSyncError(true);
+                }
+            }
+        }
+        handleLessonSelect(next);
+    }, [currentLesson, videoDuration, markLessonCompleted]);
+
     // WP1.5.3: no lesson auto-advanced to the next one when its video ended —
     // the learner had to manually pick the next item from the sidebar every
     // single time.
@@ -288,10 +314,10 @@ export default function LearningPage() {
         const currentIndex = lessons.findIndex(l => l.id === currentLesson.id);
         const next = currentIndex >= 0 ? lessons[currentIndex + 1] : undefined;
         if (next) {
-            handleLessonSelect(next);
+            switchLesson(next);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [currentLesson, lessons]);
+    }, [currentLesson, lessons, switchLesson]);
 
     const handleVideoProgress = async () => {
         if (videoRef.current && currentLesson) {
@@ -887,7 +913,7 @@ export default function LearningPage() {
                                                 return (
                                                     <button
                                                         key={lesson.id}
-                                                        onClick={() => handleLessonSelect(lesson)}
+                                                        onClick={() => switchLesson(lesson)}
                                                         className={`w-full text-left p-2.5 rounded-xl transition-all flex items-start gap-2.5 ${
                                                             isSelected
                                                                 ? 'bg-indigo-50/90 text-indigo-900 border border-indigo-200 shadow-xs font-semibold'

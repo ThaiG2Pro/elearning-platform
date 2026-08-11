@@ -22,6 +22,15 @@ export class LearnService {
         duration: number,
         isPreview: boolean = false
     ): Promise<ProgressResult> {
+        // Ownership check — this used to be implicit (only reachable via the
+        // owner-gated /courses/[id]/lessons list), but this endpoint takes a
+        // bare lessonId straight from the request body: without this check,
+        // any authenticated user could POST progress for a lesson belonging
+        // to a course they don't own, spoofing a "finished" state and
+        // creating orphan learning_progress rows for content they can't see.
+        const courseId = await this.findCourseIdByLesson(lessonId);
+        await this.assertOwnership(courseId, userId);
+
         const shouldPersist = PreviewPolicy.shouldPersist(isPreview);
 
         if (!shouldPersist) {
@@ -32,7 +41,6 @@ export class LearnService {
         // Step 1: Load State
         let progress = await this.progressRepo.findByStudentAndLesson(userId, lessonId);
         if (!progress) {
-            const courseId = await this.findCourseIdByLesson(lessonId);
             progress = LearningProgress.create(userId, courseId, lessonId);
         }
 
@@ -52,6 +60,13 @@ export class LearnService {
     }
 
     async getProgress(userId: bigint, lessonId: bigint): Promise<{ currentPosition: number; isCompleted: boolean; lastAccessedAt: string } | null> {
+        // Same ownership gap as trackVideoProgress above — reading someone
+        // else's lesson progress wouldn't leak much (it's already keyed by
+        // this userId), but a non-owner shouldn't be able to probe whether a
+        // given lessonId exists/belongs to a course at all via this route.
+        const courseId = await this.findCourseIdByLesson(lessonId);
+        await this.assertOwnership(courseId, userId);
+
         const progress = await this.progressRepo.findByStudentAndLesson(userId, lessonId);
         if (!progress) {
             return null;
@@ -92,6 +107,17 @@ export class LearnService {
             throw new Error('LESSON_NOT_FOUND');
         }
         return lesson.chapter.course.id;
+    }
+
+    /** Personal-organizer model: only the course's owner may read/write progress on its lessons. */
+    private async assertOwnership(courseId: bigint, userId: bigint): Promise<void> {
+        const course = await this.prisma.courses.findUnique({
+            where: { id: courseId },
+            select: { owner_id: true },
+        });
+        if (!course || course.owner_id !== userId) {
+            throw new Error('FORBIDDEN');
+        }
     }
 
     private calculateMockResult(position: number, duration: number): ProgressResult {
