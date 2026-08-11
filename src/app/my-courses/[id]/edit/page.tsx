@@ -101,6 +101,12 @@ export default function CourseEditPage() {
     // Confirm-dialog state (replaces native confirm())
     const [chapterToDelete, setChapterToDelete] = useState<number | null>(null);
     const [lessonToDelete, setLessonToDelete] = useState<{ chapterId: number; lessonId: number } | null>(null);
+    // In-flight guards for the two delete dialogs — previously a double-click
+    // (or a slow network) on "Xoá chương"/"Xoá bài học" could fire the same
+    // delete call twice before the first response came back and disabled
+    // anything, racing a second DELETE against an id that's already gone.
+    const [isDeletingChapter, setIsDeletingChapter] = useState(false);
+    const [isDeletingLesson, setIsDeletingLesson] = useState(false);
 
     // Share & Metadata States
     const [shareUrl, setShareUrl] = useState<string | null>(null);
@@ -122,6 +128,7 @@ export default function CourseEditPage() {
     const [addingLessonChapterId, setAddingLessonChapterId] = useState<number | null>(null);
     const [newLessonTitle, setNewLessonTitle] = useState('');
     const [newLessonType, setNewLessonType] = useState<'VIDEO' | 'QUIZ'>('VIDEO');
+    const [creatingLesson, setCreatingLesson] = useState(false);
     const [quizFile, setQuizFile] = useState<File | null>(null);
     const [quizUploadedCount, setQuizUploadedCount] = useState<number | null>(null);
 
@@ -295,6 +302,8 @@ export default function CourseEditPage() {
 
     // Delete Chapter — confirmed via Dialog (see chapterToDelete state)
     const handleDeleteChapter = async (chapterId: number) => {
+        if (isDeletingChapter) return; // guard against double-click on the dialog's confirm button
+        setIsDeletingChapter(true);
         try {
             await deleteSection(chapterId);
             setCourse(prev => prev ? {
@@ -306,18 +315,21 @@ export default function CourseEditPage() {
         } catch (err: any) {
             setToast({ message: 'Không thể xóa chương: ' + getErrorMessage(err.message), type: 'error' });
         } finally {
+            setIsDeletingChapter(false);
             setChapterToDelete(null);
         }
     };
 
     // Quick Add Lesson to Chapter
     const handleQuickAddLesson = async (chapterId: number) => {
+        if (creatingLesson) return; // guard against double-click / Enter+click race
         const targetChapter = course?.chapters.find(c => c.id === chapterId);
         if (!targetChapter) return;
 
         const nextIndex = targetChapter.lessons.length + 1;
         const titleToUse = newLessonTitle.trim() || `Bài ${nextIndex}`;
 
+        setCreatingLesson(true);
         try {
             const res = await createLesson(chapterId, {
                 title: titleToUse,
@@ -347,11 +359,15 @@ export default function CourseEditPage() {
             setToast({ message: 'Đã thêm bài học mới!', type: 'success' });
         } catch (err: any) {
             setToast({ message: 'Không thể thêm bài học: ' + getErrorMessage(err.message), type: 'error' });
+        } finally {
+            setCreatingLesson(false);
         }
     };
 
     // Delete Lesson — confirmed via Dialog (see lessonToDelete state)
     const handleDeleteLesson = async (chapterId: number, lessonId: number) => {
+        if (isDeletingLesson) return; // guard against double-click on the dialog's confirm button
+        setIsDeletingLesson(true);
         try {
             await deleteLesson(lessonId);
             setCourse(prev => prev ? {
@@ -368,6 +384,7 @@ export default function CourseEditPage() {
         } catch (err: any) {
             setToast({ message: 'Không thể xóa bài học: ' + getErrorMessage(err.message), type: 'error' });
         } finally {
+            setIsDeletingLesson(false);
             setLessonToDelete(null);
         }
     };
@@ -601,6 +618,14 @@ export default function CourseEditPage() {
 
     const totalLessons = course.chapters.reduce((sum, ch) => sum + ch.lessons.length, 0);
 
+    // Breadcrumb for the lesson editor panel — which chapter the open lesson
+    // belongs to. Previously the panel only showed the lesson's own title,
+    // giving no orientation once a course had more than a couple of
+    // chapters open in the sidebar at once.
+    const parentChapterOfSelected = selectedItem && !('lessons' in selectedItem)
+        ? course.chapters.find(ch => ch.lessons.some(l => l.id === selectedItem.id))
+        : undefined;
+
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col">
             {/* Toast Notification */}
@@ -616,12 +641,13 @@ export default function CourseEditPage() {
                         </DialogDescription>
                     </DialogHeader>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setChapterToDelete(null)}>Hủy</Button>
+                        <Button variant="outline" onClick={() => setChapterToDelete(null)} disabled={isDeletingChapter}>Hủy</Button>
                         <Button
                             className="bg-red-600 hover:bg-red-700 text-white"
+                            disabled={isDeletingChapter}
                             onClick={() => chapterToDelete !== null && handleDeleteChapter(chapterToDelete)}
                         >
-                            Xoá chương
+                            {isDeletingChapter ? 'Đang xoá…' : 'Xoá chương'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -637,12 +663,13 @@ export default function CourseEditPage() {
                         </DialogDescription>
                     </DialogHeader>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setLessonToDelete(null)}>Hủy</Button>
+                        <Button variant="outline" onClick={() => setLessonToDelete(null)} disabled={isDeletingLesson}>Hủy</Button>
                         <Button
                             className="bg-red-600 hover:bg-red-700 text-white"
+                            disabled={isDeletingLesson}
                             onClick={() => lessonToDelete && handleDeleteLesson(lessonToDelete.chapterId, lessonToDelete.lessonId)}
                         >
-                            Xoá bài học
+                            {isDeletingLesson ? 'Đang xoá…' : 'Xoá bài học'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -671,8 +698,12 @@ export default function CourseEditPage() {
                                     <h1 className="text-sm font-bold text-slate-900 truncate max-w-xs sm:max-w-md leading-none">
                                         {course.title}
                                     </h1>
-                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200">
-                                        {course.status === 'Active' ? 'Đang hoạt động' : course.status}
+                                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold border ${
+                                        course.status === 'Active'
+                                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                            : 'bg-amber-50 text-amber-700 border-amber-200'
+                                    }`}>
+                                        {course.status === 'Active' ? 'Đang hoạt động' : 'Đã lưu trữ'}
                                     </span>
                                 </div>
                                 <p className="text-xs text-slate-400 mt-0.5">
@@ -878,16 +909,18 @@ export default function CourseEditPage() {
                                                                 <div className="flex items-center gap-1">
                                                                     <button
                                                                         onClick={() => setAddingLessonChapterId(null)}
-                                                                        className="px-2 py-1 text-xs text-slate-500 hover:text-slate-700"
+                                                                        disabled={creatingLesson}
+                                                                        className="px-2 py-1 text-xs text-slate-500 hover:text-slate-700 disabled:opacity-50"
                                                                     >
                                                                         Hủy
                                                                     </button>
                                                                     <Button
                                                                         onClick={() => handleQuickAddLesson(chapter.id)}
+                                                                        disabled={creatingLesson}
                                                                         size="sm"
                                                                         className="text-xs py-1 h-7 bg-indigo-600 text-white"
                                                                     >
-                                                                        Tạo
+                                                                        {creatingLesson ? 'Đang tạo…' : 'Tạo'}
                                                                     </Button>
                                                                 </div>
                                                             </div>
@@ -1063,6 +1096,11 @@ export default function CourseEditPage() {
                                     <div className="space-y-6">
                                         <div className="flex items-center justify-between border-b border-slate-100 pb-4">
                                             <div>
+                                                {parentChapterOfSelected && (
+                                                    <p className="text-xs text-slate-400 mb-1.5">
+                                                        {parentChapterOfSelected.title} <span className="mx-1">›</span> {lessonForm.title || 'Bài học mới'}
+                                                    </p>
+                                                )}
                                                 <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-full mb-1">
                                                     📹 Bài học Video
                                                 </span>
@@ -1149,6 +1187,11 @@ export default function CourseEditPage() {
                                     <div className="space-y-6">
                                         <div className="flex items-center justify-between border-b border-slate-100 pb-4">
                                             <div>
+                                                {parentChapterOfSelected && (
+                                                    <p className="text-xs text-slate-400 mb-1.5">
+                                                        {parentChapterOfSelected.title} <span className="mx-1">›</span> {lessonForm.title || 'Bài học mới'}
+                                                    </p>
+                                                )}
                                                 <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-purple-600 bg-purple-50 px-2.5 py-0.5 rounded-full mb-1">
                                                     📝 Bài học Quiz Trắc nghiệm
                                                 </span>
