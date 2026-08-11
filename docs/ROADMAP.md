@@ -167,9 +167,13 @@ cho người ngoài.**
     tạo ra state đó. Việc cần làm: thống nhất toàn bộ theo ownership-based
     (đã đúng ở hầu hết endpoint khác), xoá routes/state không dùng, sửa nút
     "Khóa học đã tạo" hoạt động cho mọi user.
-  - **WP1.5.11 — Bổ sung màn hình còn thiếu.** Không có `not-found.tsx`,
-    `error.tsx`, hay bất kỳ `loading.tsx` nào trong toàn bộ `src/app` — 404
-    và lỗi runtime rơi về trang mặc định không thương hiệu của Next.js.
+  - **WP1.5.11 — Bổ sung màn hình còn thiếu.**
+    ~~Không có `not-found.tsx`, `error.tsx`, hay bất kỳ `loading.tsx` nào
+    trong toàn bộ `src/app` — 404 và lỗi runtime rơi về trang mặc định
+    không thương hiệu của Next.js.~~ **[Đã đóng — `not-found.tsx`/`error.tsx`/
+    `loading.tsx` thêm 2026-08-07; `global-error.tsx` (bắt lỗi ngay trong
+    root layout — boundary riêng mà `error.tsx` không phủ tới) bổ sung
+    2026-08-11 để đóng nốt phần còn thiếu]**.
     Không có màn hình "quản lý share link của tôi" (xem lại/thu hồi link đã
     tạo) dù `WP1.4` đã có API tạo link — hiện chỉ tạo được, không xem lại
     được trừ vào đúng trang `view` (đã mồ côi, xem WP1.5.10) và **không có
@@ -183,8 +187,8 @@ cho người ngoài.**
     `confirm()`), lưu tức thời theo từng hành động (bỏ mô hình "lưu tất cả"
     cũ, đồng bộ 2 mô hình lưu về một), xem trước nội dung quiz đã tải lên
     trước khi ghi đè, validate URL YouTube inline, và breadcrumb chương ›
-    bài học. Các mục còn lại của WP1.5.11 (`not-found`/`error`/`loading`,
-    quản lý/thu hồi share link, xoá tài khoản/export dữ liệu) vẫn mở.
+    bài học. Mục còn mở của WP1.5.11: quản lý/thu hồi share link, xoá tài
+    khoản/export dữ liệu.
   - **WP1.5.12 — Vá các lỗi logic cụ thể phát hiện qua rà soát toàn màn
     hình.** Danh sách đầy đủ có file:line ở phụ lục audit; các lỗi ảnh hưởng
     trực tiếp tới user, ưu tiên cao nhất:

@@ -112,9 +112,9 @@ Chưa có mục cụ thể — mở khi lộ ra trong lúc thực thi WP1.5.1–
 | `/admin/approval-queue` | **Legacy, đã tự-deprecate đúng cách** | Đã là stub "đã bãi bỏ", không cần xoá gấp nhưng nên dọn khỏi namespace `/admin` |
 | `/share/[token]` | Có bug race condition | Double-clone khi bấm nhanh/effect double-fire |
 
-**Màn hình còn thiếu hoàn toàn** (không có file nào): `not-found.tsx`,
-`error.tsx`, `loading.tsx` (bất kỳ đâu), trang quản lý/thu hồi share link,
-trang xoá tài khoản/export dữ liệu.
+**Màn hình còn thiếu hoàn toàn**: trang quản lý/thu hồi share link, trang
+xoá tài khoản/export dữ liệu. (`not-found.tsx`/`error.tsx`/`loading.tsx`/
+`global-error.tsx` đã đóng — xem mục 11.)
 
 ### 9. Lỗi logic/UI cụ thể theo từng màn hình (WP1.5.12)
 
@@ -204,9 +204,13 @@ lưu ở lịch sử phiên làm việc):
 
 ### 11. Màn hình còn thiếu hoàn toàn (WP1.5.11)
 
-- Không có `not-found.tsx`, `error.tsx`, hay `loading.tsx` nào trong toàn bộ
-  `src/app` (`find` xác nhận 0 kết quả) — 404/lỗi runtime rơi về trang mặc
-  định không thương hiệu của Next.js.
+- ~~Không có `not-found.tsx`, `error.tsx`, hay `loading.tsx` nào trong toàn
+  bộ `src/app` (`find` xác nhận 0 kết quả) — 404/lỗi runtime rơi về trang
+  mặc định không thương hiệu của Next.js.~~ **[ĐÃ ĐÓNG]** Cả ba đã có ở
+  `src/app/{not-found,error,loading}.tsx` (thêm 2026-08-07). Còn thiếu
+  riêng `global-error.tsx` — boundary Next.js dành cho lỗi xảy ra ngay
+  trong root `layout.tsx`, mà `error.tsx` (render bên trong layout đó) về
+  bản chất không thể bắt được — đã bổ sung 2026-08-11.
 - Không có màn hình "quản lý share link của tôi": chỉ có 1 nút "Chia sẻ" duy
   nhất trong toàn app (`lecturer/courses/[id]/view/page.tsx:63`, chính là
   trang mồ côi ở mục 10) tạo/lấy lại token qua `getOrCreateShareLink`
