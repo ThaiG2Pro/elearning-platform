@@ -181,6 +181,28 @@ export const deleteAccount = async (request: DeleteAccountRequest): Promise<Dele
     }
 };
 
+// WP1.5.11 — self-service data export. Uses the shared `api` axios instance
+// (not a plain <a href> link) specifically so the JWT auth header interceptor
+// applies — this is not a public URL. responseType 'blob' + a throwaway
+// object URL is the standard way to turn an authenticated fetch response
+// into a browser "Save As" download.
+export const exportMyData = async (): Promise<void> => {
+    try {
+        const response = await api.get('/auth/export-data', { responseType: 'blob' });
+        const blob = new Blob([response.data], { type: 'application/json' });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'du-lieu-cua-toi.json';
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
+    } catch (error: any) {
+        throw new Error('Có lỗi xảy ra khi xuất dữ liệu. Vui lòng thử lại.');
+    }
+};
+
 export const activateUser = async (request: ActivateRequest): Promise<ActivateResponse> => {
     try {
         const response = await api.post('/auth/activate', request);

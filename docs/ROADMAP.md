@@ -187,18 +187,30 @@ cho người ngoài.**
     link cho 1 course, xác nhận trang share công khai trả 200, thu hồi, xác
     nhận URL cũ trả 404 và danh sách quay về đúng trạng thái ban đầu.
 
-    Không có màn hình xoá tài khoản/
+    ~~Không có màn hình xoá tài khoản/
     export dữ liệu (thuộc phạm vi rộng hơn WP1.5.6) — mục còn mở duy nhất
-    của WP1.5.11. ~~Không có UI xoá/sắp
-    xếp lại bài học sau khi tạo course (`deleteLesson`/`updateLesson` đã có
-    API nhưng không nơi nào trong `edit/page.tsx` gọi tới).~~ **[Đã đóng —
-    2026-08-11]** Refactor `src/app/my-courses/[id]/edit/page.tsx` (3 bước,
-    chi tiết ở `docs/design/wp1.5-core-product-debt-audit.md#11`) đã thêm:
-    xoá/sắp xếp bài học và chương (nút ↑/↓, xác nhận qua `Dialog` thay
-    `confirm()`), lưu tức thời theo từng hành động (bỏ mô hình "lưu tất cả"
-    cũ, đồng bộ 2 mô hình lưu về một), xem trước nội dung quiz đã tải lên
-    trước khi ghi đè, validate URL YouTube inline, và breadcrumb chương ›
-    bài học. Mục còn mở duy nhất của WP1.5.11: xoá tài khoản/export dữ liệu.
+    của WP1.5.11.~~ **[Đã đóng — 2026-08-11]** Xoá tài khoản hoá ra đã có
+    sẵn từ WP1.5.6 (`f5734f5`): `DELETE /auth/account`, soft-delete qua
+    `UserEntity.markDeleted()` (status → `DELETED`, giữ nguyên row vì
+    `courses.owner_id` là RESTRICT FK), yêu cầu xác nhận mật khẩu, có UI ở
+    `/profile`. Phần thực sự còn thiếu là export dữ liệu — đã thêm mới:
+    `GET /auth/export-data` (`AuthService.exportUserData`,
+    `DataExportRepository`) trả về JSON tải xuống gồm hồ sơ, toàn bộ course
+    sở hữu (cây chương → bài học → câu hỏi), tiến độ học, ghi chú; nút "Tải
+    xuống dữ liệu (JSON)" trên `/profile` cạnh khối xoá tài khoản. Xác nhận
+    trực tiếp trên dữ liệu thật của jack@gmail.com: gọi API trả 200 kèm
+    `Content-Disposition: attachment`, JSON chứa đúng 6 course sở hữu với
+    cây chương/bài học lồng nhau, request không kèm token trả 401. ~~Không
+    có UI xoá/sắp xếp lại bài học sau khi tạo course (`deleteLesson`/
+    `updateLesson` đã có API nhưng không nơi nào trong `edit/page.tsx` gọi
+    tới).~~ **[Đã đóng — 2026-08-11]** Refactor
+    `src/app/my-courses/[id]/edit/page.tsx` (3 bước, chi tiết ở
+    `docs/design/wp1.5-core-product-debt-audit.md#11`) đã thêm: xoá/sắp xếp
+    bài học và chương (nút ↑/↓, xác nhận qua `Dialog` thay `confirm()`), lưu
+    tức thời theo từng hành động (bỏ mô hình "lưu tất cả" cũ, đồng bộ 2 mô
+    hình lưu về một), xem trước nội dung quiz đã tải lên trước khi ghi đè,
+    validate URL YouTube inline, và breadcrumb chương › bài học. WP1.5.11
+    nay đã đóng toàn bộ.
   - **WP1.5.12 — Vá các lỗi logic cụ thể phát hiện qua rà soát toàn màn
     hình.** Danh sách đầy đủ có file:line ở phụ lục audit; các lỗi ảnh hưởng
     trực tiếp tới user, ưu tiên cao nhất:

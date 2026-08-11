@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { updateProfile, getProfile, updateAvatar, deleteAccount, logout as apiLogout, AuthUtils } from '@/lib/auth';
+import { updateProfile, getProfile, updateAvatar, deleteAccount, exportMyData, logout as apiLogout, AuthUtils } from '@/lib/auth';
 import { User } from '@/types/auth.types';
 
 const MAX_AVATAR_SOURCE_BYTES = 8 * 1024 * 1024; // 8MB — resized down before upload anyway
@@ -67,6 +67,10 @@ export default function EditProfilePage() {
     const [deletePassword, setDeletePassword] = useState('');
     const [deleteError, setDeleteError] = useState<string | null>(null);
     const [deleting, setDeleting] = useState(false);
+
+    // WP1.5.11 — export data state.
+    const [exporting, setExporting] = useState(false);
+    const [exportError, setExportError] = useState<string | null>(null);
 
     useEffect(() => {
         if (AuthUtils.isAuthenticated()) {
@@ -187,6 +191,19 @@ export default function EditProfilePage() {
 
     const handleCancel = () => {
         router.back();
+    };
+
+    const handleExportData = async () => {
+        if (exporting) return;
+        setExportError(null);
+        setExporting(true);
+        try {
+            await exportMyData();
+        } catch (error: any) {
+            setExportError(error.message || 'Có lỗi xảy ra khi xuất dữ liệu.');
+        } finally {
+            setExporting(false);
+        }
     };
 
     const closeDeleteDialog = () => {
@@ -318,6 +335,21 @@ export default function EditProfilePage() {
                             Đổi mật khẩu →
                         </Button>
                     </div>
+                </div>
+
+                {/* WP1.5.11 — xuất dữ liệu cá nhân (nửa "export" của cặp
+                    xoá tài khoản/export dữ liệu; xoá tài khoản đã có từ
+                    WP1.5.6 ở khối dưới). */}
+                <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-6">
+                    <h2 className="text-sm font-semibold text-slate-900 mb-1">Xuất dữ liệu của tôi</h2>
+                    <p className="text-sm text-slate-500 mb-4">
+                        Tải về một bản sao dữ liệu của bạn (hồ sơ, khóa học đã tạo, tiến độ học, ghi chú) dưới dạng tệp JSON.
+                    </p>
+                    <Button type="button" variant="outline" size="sm" onClick={handleExportData} disabled={exporting}>
+                        {exporting && <span className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />}
+                        {exporting ? 'Đang chuẩn bị...' : 'Tải xuống dữ liệu (JSON)'}
+                    </Button>
+                    {exportError && <p className="mt-2 text-xs text-red-600">{exportError}</p>}
                 </div>
 
                 {/* WP1.5.6 — xoá tài khoản */}

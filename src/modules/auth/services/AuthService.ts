@@ -26,6 +26,8 @@ import { UpdateAvatarDto } from '../dtos/UpdateAvatarDto';
 import { UpdateAvatarResponseDto } from '../dtos/UpdateAvatarResponseDto';
 import { DeleteAccountDto } from '../dtos/DeleteAccountDto';
 import { DeleteAccountResponseDto } from '../dtos/DeleteAccountResponseDto';
+import { DataExportRepository } from '../repositories/DataExportRepository';
+import { UserDataExportDto } from '../dtos/UserDataExportDto';
 
 // WP1.5.6 — data: URL only (no file-storage infra exists in this app), and
 // capped well below the client-side resize target (see profile/page.tsx) so
@@ -38,6 +40,10 @@ export class AuthService {
         private userRepository: UserRepository,
         private tokenRepository: TokenRepository,
         private emailAdapter: NodemailerEmailAdapter,
+        // Defaulted (not required) so the existing test suite's 3-arg
+        // instantiation keeps working — this dependency only backs the new
+        // exportUserData path.
+        private dataExportRepository: DataExportRepository = new DataExportRepository(),
     ) { }
 
     async identifyUser(email: string): Promise<NavigationAction> {
@@ -290,5 +296,25 @@ export class AuthService {
         await this.userRepository.invalidateAllTokens(userId);
 
         return new DeleteAccountResponseDto(true, 'Account deleted successfully');
+    }
+
+    // WP1.5.11 — self-service data export (the GDPR "export" half; deletion
+    // already shipped as WP1.5.6 above). Deliberately allowed for any
+    // account status, including 'DELETED' — deletion is soft, the row and
+    // its owned data still exist, and a user who deleted their account may
+    // still want a copy of what's left before it's gone for good.
+    async exportUserData(userId: bigint): Promise<UserDataExportDto> {
+        const user = await this.userRepository.findById(userId);
+        if (!user) {
+            throw new Error('USER_NOT_FOUND');
+        }
+
+        const [courses, progress, notes] = await Promise.all([
+            this.dataExportRepository.getOwnedCoursesFullTree(userId),
+            this.dataExportRepository.getLearningProgress(userId),
+            this.dataExportRepository.getNotes(userId),
+        ]);
+
+        return new UserDataExportDto(user, courses, progress, notes);
     }
 }

@@ -22,6 +22,7 @@ import { UpdateAvatarDto } from '../dtos/UpdateAvatarDto';
 import { UpdateAvatarResponseDto } from '../dtos/UpdateAvatarResponseDto';
 import { DeleteAccountDto } from '../dtos/DeleteAccountDto';
 import { DeleteAccountResponseDto } from '../dtos/DeleteAccountResponseDto';
+import { UserDataExportDto } from '../dtos/UserDataExportDto';
 
 export class AuthController {
     private authService: AuthService;
@@ -115,5 +116,9 @@ export class AuthController {
             throw new Error('VALIDATION_ERROR');
         }
         return await this.authService.deleteAccount(userId, dto);
+    }
+
+    async exportUserData(userId: bigint): Promise<UserDataExportDto> {
+        return await this.authService.exportUserData(userId);
     }
 }
