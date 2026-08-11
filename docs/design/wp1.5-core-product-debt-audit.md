@@ -107,7 +107,7 @@ Chưa có mục cụ thể — mở khi lộ ra trong lúc thực thi WP1.5.1–
 | `/courses/[id]` | Có bug logic | `courseId NaN` treo trắng vĩnh viễn; không hiện nội dung chương/bài |
 | `/courses/[id]/learn` | Nhiều bug + thiếu tính năng | Trọng tâm WP1.5.3/1.5.4/1.5.7 |
 | `/lecturer/courses` | **Xung đột với pivot** | Nút chính bị 401 cho mọi user STUDENT-role (xem WP1.5.10) |
-| `/lecturer/courses/[id]/edit` | Còn dead code + bug UI | State `'readOnly'` không thể tới được; màu nút lệch |
+| `/my-courses/[id]/edit` (đổi tên từ `/lecturer/courses/[id]/edit`) | **Đã refactor — 2026-08-11** | State `'readOnly'` đã bỏ (WP1.5.10); xoá/sắp xếp bài học+chương, lưu tức thời, xem trước quiz, validate URL đã có (xem mục 11) |
 | `/lecturer/courses/[id]/view` | **Mồ côi (orphan)** | Không route nào link tới — chỉ vào được bằng gõ URL |
 | `/admin/approval-queue` | **Legacy, đã tự-deprecate đúng cách** | Đã là stub "đã bãi bỏ", không cần xoá gấp nhưng nên dọn khỏi namespace `/admin` |
 | `/share/[token]` | Có bug race condition | Double-clone khi bấm nhanh/effect double-fire |
@@ -215,7 +215,7 @@ lưu ở lịch sử phiên làm việc):
   không có cách nào thu hồi link đó**.
 - Không có màn hình xoá tài khoản/export dữ liệu (grep toàn repo cho
   "xoá/xóa tài khoản", "delete account", "export data" → 0 kết quả).
-- Không có UI xoá/sắp xếp lại bài học sau khi tạo: `deleteLesson` và
+- ~~Không có UI xoá/sắp xếp lại bài học sau khi tạo: `deleteLesson` và
   `updateLesson` đã có API hoạt động đầy đủ
   (`api/v1/management/lessons/[id]/route.ts:27,52`) nhưng
   `lecturer/courses/[id]/edit/page.tsx` **không import và không gọi** tới cả
@@ -223,4 +223,17 @@ lưu ở lịch sử phiên làm việc):
   filter ra khỏi lần lưu tiếp theo (`edit/page.tsx:87`,
   `.filter(l => l.title && l.id)`) — hành vi ẩn, không phải tính năng chủ
   đích. Không có kéo-thả hay nút lên/xuống để sắp xếp lại thứ tự — chỉ có ô
-  nhập số `orderIndex` thủ công.
+  nhập số `orderIndex` thủ công.~~
+
+  **[ĐÃ ĐÓNG — 2026-08-11]** Trang đã đổi tên/đường dẫn thành
+  `src/app/my-courses/[id]/edit/page.tsx` và được refactor theo kế hoạch
+  3 bước (`Dialog` xác nhận xoá, nút ↑/↓ sắp xếp cho cả bài học lẫn
+  chương, `deleteLesson`/`updateLesson`/`deleteSection`/`updateSection`
+  gọi trực tiếp và lưu ngay lập tức thay vì mô hình "lưu tất cả" cũ). Cùng
+  đợt refactor này cũng dọn thêm phần lớn nợ liệt kê ở mục 7 (WP1.5.8) cho
+  riêng màn hình này: dùng lại `Toast`/`Dialog`/`Button` có sẵn thay vì
+  `confirm()`/class Tailwind rời rạc, thêm xem trước quiz đã upload trước
+  khi ghi đè, validate URL YouTube inline, breadcrumb chương › bài học, và
+  guard chống double-submit cho các nút xoá/tạo nhanh. Xem chi tiết từng
+  bước tại lịch sử commit `feat(course-edit)`/`refactor(course-edit)`
+  trên `main` quanh mốc 2026-08-11.

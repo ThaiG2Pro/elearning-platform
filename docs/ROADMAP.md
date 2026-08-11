@@ -174,9 +174,17 @@ cho người ngoài.**
     tạo) dù `WP1.4` đã có API tạo link — hiện chỉ tạo được, không xem lại
     được trừ vào đúng trang `view` (đã mồ côi, xem WP1.5.10) và **không có
     cách thu hồi link** ở bất kỳ tầng nào. Không có màn hình xoá tài khoản/
-    export dữ liệu (thuộc phạm vi rộng hơn WP1.5.6). Không có UI xoá/sắp xếp
-    lại bài học sau khi tạo course (`deleteLesson`/`updateLesson` đã có API
-    nhưng không nơi nào trong `edit/page.tsx` gọi tới).
+    export dữ liệu (thuộc phạm vi rộng hơn WP1.5.6). ~~Không có UI xoá/sắp
+    xếp lại bài học sau khi tạo course (`deleteLesson`/`updateLesson` đã có
+    API nhưng không nơi nào trong `edit/page.tsx` gọi tới).~~ **[Đã đóng —
+    2026-08-11]** Refactor `src/app/my-courses/[id]/edit/page.tsx` (3 bước,
+    chi tiết ở `docs/design/wp1.5-core-product-debt-audit.md#11`) đã thêm:
+    xoá/sắp xếp bài học và chương (nút ↑/↓, xác nhận qua `Dialog` thay
+    `confirm()`), lưu tức thời theo từng hành động (bỏ mô hình "lưu tất cả"
+    cũ, đồng bộ 2 mô hình lưu về một), xem trước nội dung quiz đã tải lên
+    trước khi ghi đè, validate URL YouTube inline, và breadcrumb chương ›
+    bài học. Các mục còn lại của WP1.5.11 (`not-found`/`error`/`loading`,
+    quản lý/thu hồi share link, xoá tài khoản/export dữ liệu) vẫn mở.
   - **WP1.5.12 — Vá các lỗi logic cụ thể phát hiện qua rà soát toàn màn
     hình.** Danh sách đầy đủ có file:line ở phụ lục audit; các lỗi ảnh hưởng
     trực tiếp tới user, ưu tiên cao nhất:
