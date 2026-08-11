@@ -112,9 +112,9 @@ Chưa có mục cụ thể — mở khi lộ ra trong lúc thực thi WP1.5.1–
 | `/admin/approval-queue` | **Legacy, đã tự-deprecate đúng cách** | Đã là stub "đã bãi bỏ", không cần xoá gấp nhưng nên dọn khỏi namespace `/admin` |
 | `/share/[token]` | Có bug race condition | Double-clone khi bấm nhanh/effect double-fire |
 
-**Màn hình còn thiếu hoàn toàn**: trang quản lý/thu hồi share link, trang
-xoá tài khoản/export dữ liệu. (`not-found.tsx`/`error.tsx`/`loading.tsx`/
-`global-error.tsx` đã đóng — xem mục 11.)
+**Màn hình còn thiếu hoàn toàn**: trang xoá tài khoản/export dữ liệu.
+(`not-found.tsx`/`error.tsx`/`loading.tsx`/`global-error.tsx` và trang
+quản lý/thu hồi share link `/my-shares` đã đóng — xem mục 11.)
 
 ### 9. Lỗi logic/UI cụ thể theo từng màn hình (WP1.5.12)
 
@@ -211,12 +211,21 @@ lưu ở lịch sử phiên làm việc):
   riêng `global-error.tsx` — boundary Next.js dành cho lỗi xảy ra ngay
   trong root `layout.tsx`, mà `error.tsx` (render bên trong layout đó) về
   bản chất không thể bắt được — đã bổ sung 2026-08-11.
-- Không có màn hình "quản lý share link của tôi": chỉ có 1 nút "Chia sẻ" duy
+- ~~Không có màn hình "quản lý share link của tôi": chỉ có 1 nút "Chia sẻ" duy
   nhất trong toàn app (`lecturer/courses/[id]/view/page.tsx:63`, chính là
   trang mồ côi ở mục 10) tạo/lấy lại token qua `getOrCreateShareLink`
   (`src/lib/lecturer.ts:320-330`). Không có API `DELETE`/revoke ở bất kỳ
   tầng nào (route, service, hay repository) — **một khi đã share, chủ course
-  không có cách nào thu hồi link đó**.
+  không có cách nào thu hồi link đó**.~~ **[ĐÃ ĐÓNG — 2026-08-07]**
+  `src/app/my-shares/page.tsx` liệt kê mọi course sở hữu kèm trạng thái
+  share, tạo link tại chỗ, và thu hồi qua `DELETE
+  /management/courses/[id]/share` (`ContentManagementService.revokeShareLink`
+  → `courseRepository.clearShareToken`, owner-only qua
+  `AccessControlPolicy.validateOwnership`) — URL cũ 404 ngay lập tức vì
+  token đã bị xoá khỏi DB, không phải soft-revoke. Có lối vào từ dropdown
+  Header ("Link chia sẻ của tôi"). Xác nhận lại bằng round-trip trên dữ
+  liệu thật 2026-08-11 (tạo → xác nhận trang share công khai 200 → thu hồi
+  → xác nhận URL cũ 404 → danh sách quay về đúng trạng thái ban đầu).
 - Không có màn hình xoá tài khoản/export dữ liệu (grep toàn repo cho
   "xoá/xóa tài khoản", "delete account", "export data" → 0 kết quả).
 - ~~Không có UI xoá/sắp xếp lại bài học sau khi tạo: `deleteLesson` và

@@ -174,11 +174,22 @@ cho người ngoài.**
     `loading.tsx` thêm 2026-08-07; `global-error.tsx` (bắt lỗi ngay trong
     root layout — boundary riêng mà `error.tsx` không phủ tới) bổ sung
     2026-08-11 để đóng nốt phần còn thiếu]**.
-    Không có màn hình "quản lý share link của tôi" (xem lại/thu hồi link đã
+    ~~Không có màn hình "quản lý share link của tôi" (xem lại/thu hồi link đã
     tạo) dù `WP1.4` đã có API tạo link — hiện chỉ tạo được, không xem lại
     được trừ vào đúng trang `view` (đã mồ côi, xem WP1.5.10) và **không có
-    cách thu hồi link** ở bất kỳ tầng nào. Không có màn hình xoá tài khoản/
-    export dữ liệu (thuộc phạm vi rộng hơn WP1.5.6). ~~Không có UI xoá/sắp
+    cách thu hồi link** ở bất kỳ tầng nào.~~ **[Đã đóng — cùng đợt 2026-08-07
+    với mục trên]** `/my-shares` (`src/app/my-shares/page.tsx`) liệt kê toàn
+    bộ course sở hữu kèm trạng thái share hiện tại, tạo link
+    (`getOrCreateShareLink`) và thu hồi (`revokeShareLink` →
+    `DELETE /management/courses/[id]/share`, xoá token nên URL cũ 404 ngay
+    lập tức), có lối vào từ dropdown Header ("Link chia sẻ của tôi"). Xác
+    nhận lại bằng round-trip trực tiếp trên dữ liệu thật 2026-08-11: tạo
+    link cho 1 course, xác nhận trang share công khai trả 200, thu hồi, xác
+    nhận URL cũ trả 404 và danh sách quay về đúng trạng thái ban đầu.
+
+    Không có màn hình xoá tài khoản/
+    export dữ liệu (thuộc phạm vi rộng hơn WP1.5.6) — mục còn mở duy nhất
+    của WP1.5.11. ~~Không có UI xoá/sắp
     xếp lại bài học sau khi tạo course (`deleteLesson`/`updateLesson` đã có
     API nhưng không nơi nào trong `edit/page.tsx` gọi tới).~~ **[Đã đóng —
     2026-08-11]** Refactor `src/app/my-courses/[id]/edit/page.tsx` (3 bước,
@@ -187,8 +198,7 @@ cho người ngoài.**
     `confirm()`), lưu tức thời theo từng hành động (bỏ mô hình "lưu tất cả"
     cũ, đồng bộ 2 mô hình lưu về một), xem trước nội dung quiz đã tải lên
     trước khi ghi đè, validate URL YouTube inline, và breadcrumb chương ›
-    bài học. Mục còn mở của WP1.5.11: quản lý/thu hồi share link, xoá tài
-    khoản/export dữ liệu.
+    bài học. Mục còn mở duy nhất của WP1.5.11: xoá tài khoản/export dữ liệu.
   - **WP1.5.12 — Vá các lỗi logic cụ thể phát hiện qua rà soát toàn màn
     hình.** Danh sách đầy đủ có file:line ở phụ lục audit; các lỗi ảnh hưởng
     trực tiếp tới user, ưu tiên cao nhất:
