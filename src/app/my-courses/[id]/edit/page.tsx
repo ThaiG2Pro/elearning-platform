@@ -1,17 +1,18 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import {
     getCourseStructure,
+    getLessonPreview,
     createSection,
     updateSection,
     deleteSection,
     createLesson,
+    updateLesson,
     deleteLesson,
     parseQuizFile,
     uploadQuizFile,
-    updateCourseContent,
     updateCourseMetadata,
     getOrCreateShareLink,
 } from '@/lib/management';
@@ -21,10 +22,40 @@ import {
     Lesson,
     LessonEdit,
     ChapterEdit,
+    QuizQuestion,
     QuizParseResponse
 } from '@/types/management.types';
 import { Button } from '@/components/ui/button';
 import Toast from '@/components/Toast';
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+    DialogFooter,
+} from '@/components/ui/dialog';
+
+// Resolves "which option is correct" across the several incompatible shapes
+// the backend has emitted over time for a QuizQuestion (see
+// CourseManagementService.getLessonPreview): a numeric correctIndex, a
+// correctId that may itself be numeric or a string like "option_0", or a
+// bare answerKey letter ("A", "B", …). Returns null if none resolve.
+const getCorrectOptionIndex = (q: QuizQuestion): number | null => {
+    if (typeof q.correctIndex === 'number') return q.correctIndex;
+    if (typeof q.correctId === 'number') return q.correctId;
+    if (typeof q.correctId === 'string') {
+        const match = q.correctId.match(/(\d+)$/);
+        if (match) return parseInt(match[1], 10);
+    }
+    if (q.answerKey) {
+        const idx = q.answerKey.trim().toUpperCase().charCodeAt(0) - 65; // 'A' -> 0
+        if (idx >= 0) return idx;
+    }
+    return null;
+};
+
+const getQuestionText = (q: QuizQuestion): string => q.content ?? q.text ?? '';
 
 type EditState = 'idle' | 'editingVideo' | 'editingQuiz' | 'processing' | 'reviewing';
 
@@ -43,8 +74,8 @@ export default function CourseEditPage() {
     const [activeTab, setActiveTab] = useState<'curriculum' | 'settings'>('curriculum');
     const [course, setCourse] = useState<CourseStructure | null>(null);
     const [loading, setLoading] = useState(true);
-    const [saving, setSaving] = useState(false);
-    const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+    const [savingChapter, setSavingChapter] = useState(false);
+    const [savingLesson, setSavingLesson] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
 
@@ -52,6 +83,12 @@ export default function CourseEditPage() {
     const [editState, setEditState] = useState<EditState>('idle');
     const [selectedItem, setSelectedItem] = useState<Chapter | Lesson | null>(null);
     const [parsedQuestions, setParsedQuestions] = useState<QuizParseResponse | null>(null);
+    const [loadingLessonDetail, setLoadingLessonDetail] = useState(false);
+    const [existingQuizQuestions, setExistingQuizQuestions] = useState<QuizQuestion[] | null>(null);
+
+    // Confirm-dialog state (replaces native confirm())
+    const [chapterToDelete, setChapterToDelete] = useState<number | null>(null);
+    const [lessonToDelete, setLessonToDelete] = useState<{ chapterId: number; lessonId: number } | null>(null);
 
     // Share & Metadata States
     const [shareUrl, setShareUrl] = useState<string | null>(null);
@@ -64,7 +101,6 @@ export default function CourseEditPage() {
     const [chapterForm, setChapterForm] = useState<ChapterEdit>({ title: '', orderIndex: 0 });
     const [lessonForm, setLessonForm] = useState<LessonEdit>({
         title: '',
-        content: '',
         videoUrl: '',
         orderIndex: 0,
         type: 'VIDEO'
@@ -79,7 +115,6 @@ export default function CourseEditPage() {
 
     const isProcessing = editState === 'processing';
     const isReviewing = editState === 'reviewing';
-    const skipNextSync = useRef(false);
 
     // Fetch Course Structure
     const fetchCourseStructure = useCallback(async () => {
@@ -96,16 +131,7 @@ export default function CourseEditPage() {
                 const firstChapter = courseData.chapters[0];
                 if (firstChapter.lessons.length > 0) {
                     const firstLesson = firstChapter.lessons[0];
-                    setSelectedItem(firstLesson);
-                    setLessonForm({
-                        id: firstLesson.id,
-                        title: firstLesson.title,
-                        content: '',
-                        videoUrl: firstLesson.videoUrl || (firstLesson as any).contentUrl || '',
-                        orderIndex: firstLesson.orderIndex ?? 0,
-                        type: firstLesson.type
-                    });
-                    setEditState(firstLesson.type === 'VIDEO' ? 'editingVideo' : 'editingQuiz');
+                    selectLesson(firstLesson);
                 } else {
                     setSelectedItem(firstChapter);
                     setChapterForm({ id: firstChapter.id, title: firstChapter.title, orderIndex: firstChapter.orderIndex });
@@ -121,44 +147,8 @@ export default function CourseEditPage() {
 
     useEffect(() => {
         fetchCourseStructure();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [fetchCourseStructure]);
-
-    // Build Content Payload for Bulk Save
-    const buildContentPayload = () => {
-        return {
-            sections: course?.chapters.map(ch => ({
-                id: ch.id,
-                title: ch.title,
-                orderIndex: ch.orderIndex,
-                lessons: ch.lessons
-                    .filter(l => l.title && l.id)
-                    .map(l => ({
-                        id: l.id,
-                        title: l.title,
-                        type: l.type,
-                        orderIndex: l.orderIndex ?? 0,
-                        contentUrl: l.videoUrl || (l as any).contentUrl || undefined,
-                    }))
-            })) || []
-        };
-    };
-
-    // Bulk Save Handler
-    const handleSave = async () => {
-        if (!course) return;
-        setSaving(true);
-        try {
-            const payload = buildContentPayload();
-            await updateCourseContent(courseId, payload);
-            setHasUnsavedChanges(false);
-            setToast({ message: 'Đã lưu cấu trúc khóa học thành công!', type: 'success' });
-        } catch (err: any) {
-            setError(err.message);
-            setToast({ message: 'Không thể lưu khóa học: ' + err.message, type: 'error' });
-        } finally {
-            setSaving(false);
-        }
-    };
 
     // Share Link Handler
     const handleCopyShareLink = async () => {
@@ -196,24 +186,43 @@ export default function CourseEditPage() {
         setEditState('idle');
     };
 
-    // Lesson Select
-    const handleLessonSelect = (lesson: Lesson) => {
-        skipNextSync.current = true;
+    // Lesson Select — loads the lesson's real current state (video URL,
+    // existing quiz questions) via getLessonPreview instead of trusting only
+    // the sidebar's shallow shape. Previously this just copied whatever the
+    // sidebar already had and left a comment that loading details "would
+    // need an additional API call" — that call already existed and was
+    // simply never made, so re-opening an existing quiz lesson showed an
+    // empty upload box with no memory of what was already there.
+    const selectLesson = async (lesson: Lesson) => {
         setSelectedItem(lesson);
         setQuizUploadedCount(null);
-        if (lesson.type === 'VIDEO') {
-            setEditState('editingVideo');
-        } else if (lesson.type === 'QUIZ') {
-            setEditState('editingQuiz');
-        }
+        setExistingQuizQuestions(null);
+        setParsedQuestions(null);
+        setQuizFile(null);
+        setEditState(lesson.type === 'VIDEO' ? 'editingVideo' : 'editingQuiz');
         setLessonForm({
             id: lesson.id,
             title: lesson.title,
-            content: '',
             videoUrl: lesson.videoUrl || (lesson as any).contentUrl || '',
             orderIndex: lesson.orderIndex ?? 0,
             type: lesson.type
         });
+
+        setLoadingLessonDetail(true);
+        try {
+            const preview = await getLessonPreview(courseId, lesson.id);
+            setLessonForm(prev => prev.id === lesson.id ? {
+                ...prev,
+                videoUrl: preview.videoUrl || prev.videoUrl,
+            } : prev);
+            if (lesson.type === 'QUIZ') {
+                setExistingQuizQuestions(preview.quizQuestions ?? []);
+            }
+        } catch (err: any) {
+            setToast({ message: 'Không thể tải chi tiết bài học: ' + getErrorMessage(err.message), type: 'error' });
+        } finally {
+            setLoadingLessonDetail(false);
+        }
     };
 
     // Create Chapter
@@ -241,9 +250,8 @@ export default function CourseEditPage() {
             setShowAddChapter(false);
             setSelectedItem(newChapter);
             setToast({ message: `Đã thêm Chương ${nextChapterIndex}!`, type: 'success' });
-            setHasUnsavedChanges(true);
         } catch (err: any) {
-            setError(err.message);
+            setToast({ message: 'Không thể tạo chương: ' + getErrorMessage(err.message), type: 'error' });
         } finally {
             setChapterCreating(false);
         }
@@ -253,7 +261,7 @@ export default function CourseEditPage() {
     const handleUpdateChapter = async () => {
         if (!chapterForm.id) return;
         try {
-            setSaving(true);
+            setSavingChapter(true);
             await updateSection(chapterForm.id, {
                 title: chapterForm.title,
                 orderIndex: chapterForm.orderIndex
@@ -266,15 +274,14 @@ export default function CourseEditPage() {
             } : null);
             setToast({ message: 'Đã cập nhật tên chương!', type: 'success' });
         } catch (err: any) {
-            setError(err.message);
+            setToast({ message: 'Không thể cập nhật chương: ' + getErrorMessage(err.message), type: 'error' });
         } finally {
-            setSaving(false);
+            setSavingChapter(false);
         }
     };
 
-    // Delete Chapter
+    // Delete Chapter — confirmed via Dialog (see chapterToDelete state)
     const handleDeleteChapter = async (chapterId: number) => {
-        if (!confirm('Xoá chương này và tất cả bài học bên trong? Không thể hoàn tác.')) return;
         try {
             await deleteSection(chapterId);
             setCourse(prev => prev ? {
@@ -283,9 +290,10 @@ export default function CourseEditPage() {
             } : null);
             setSelectedItem(null);
             setToast({ message: 'Đã xóa chương!', type: 'info' });
-            setHasUnsavedChanges(true);
         } catch (err: any) {
-            setError(err.message);
+            setToast({ message: 'Không thể xóa chương: ' + getErrorMessage(err.message), type: 'error' });
+        } finally {
+            setChapterToDelete(null);
         }
     };
 
@@ -300,7 +308,6 @@ export default function CourseEditPage() {
         try {
             const res = await createLesson(chapterId, {
                 title: titleToUse,
-                content: '',
                 videoUrl: '',
                 orderIndex: nextIndex,
                 type: newLessonType
@@ -323,17 +330,15 @@ export default function CourseEditPage() {
             } : null);
             setNewLessonTitle('');
             setAddingLessonChapterId(null);
-            handleLessonSelect(newLesson);
+            selectLesson(newLesson);
             setToast({ message: 'Đã thêm bài học mới!', type: 'success' });
-            setHasUnsavedChanges(true);
         } catch (err: any) {
-            setError(err.message);
+            setToast({ message: 'Không thể thêm bài học: ' + getErrorMessage(err.message), type: 'error' });
         }
     };
 
-    // Delete Lesson
+    // Delete Lesson — confirmed via Dialog (see lessonToDelete state)
     const handleDeleteLesson = async (chapterId: number, lessonId: number) => {
-        if (!confirm('Xoá bài học này? Không thể hoàn tác.')) return;
         try {
             await deleteLesson(lessonId);
             setCourse(prev => prev ? {
@@ -347,59 +352,97 @@ export default function CourseEditPage() {
                 setEditState('idle');
             }
             setToast({ message: 'Đã xóa bài học!', type: 'info' });
-            setHasUnsavedChanges(true);
         } catch (err: any) {
-            setError(err.message);
+            setToast({ message: 'Không thể xóa bài học: ' + getErrorMessage(err.message), type: 'error' });
+        } finally {
+            setLessonToDelete(null);
         }
     };
 
-    // Move Lesson
-    const handleMoveLesson = (chapterId: number, lessonId: number, direction: -1 | 1) => {
+    // Move Lesson — persists immediately (there is no more global "save all"
+    // to fall back on), by swapping the two affected lessons' orderIndex via
+    // updateLesson. Optimistic in-memory swap first, toast + best-effort
+    // revert if either persist call fails.
+    const handleMoveLesson = async (chapterId: number, lessonId: number, direction: -1 | 1) => {
+        const chapter = course?.chapters.find(ch => ch.id === chapterId);
+        if (!chapter) return;
+        const index = chapter.lessons.findIndex(l => l.id === lessonId);
+        const targetIndex = index + direction;
+        if (index < 0 || targetIndex < 0 || targetIndex >= chapter.lessons.length) return;
+
+        const a = chapter.lessons[index];
+        const b = chapter.lessons[targetIndex];
+
         setCourse(prev => {
             if (!prev) return prev;
             return {
                 ...prev,
                 chapters: prev.chapters.map(ch => {
                     if (ch.id !== chapterId) return ch;
-                    const index = ch.lessons.findIndex(l => l.id === lessonId);
-                    const targetIndex = index + direction;
-                    if (index < 0 || targetIndex < 0 || targetIndex >= ch.lessons.length) return ch;
                     const lessons = [...ch.lessons];
-                    [lessons[index], lessons[targetIndex]] = [lessons[targetIndex], lessons[index]];
-                    lessons.forEach((l, i) => { l.orderIndex = i; });
+                    [lessons[index], lessons[targetIndex]] = [
+                        { ...lessons[targetIndex], orderIndex: a.orderIndex ?? index },
+                        { ...lessons[index], orderIndex: b.orderIndex ?? targetIndex },
+                    ];
                     return { ...ch, lessons };
                 })
             };
         });
-        setHasUnsavedChanges(true);
+
+        try {
+            await Promise.all([
+                updateLesson(a.id, { title: a.title, videoUrl: a.videoUrl, orderIndex: b.orderIndex ?? targetIndex }),
+                updateLesson(b.id, { title: b.title, videoUrl: b.videoUrl, orderIndex: a.orderIndex ?? index }),
+            ]);
+        } catch (err: any) {
+            setToast({ message: 'Không thể lưu thứ tự bài học: ' + getErrorMessage(err.message), type: 'error' });
+            // Revert the optimistic swap
+            setCourse(prev => {
+                if (!prev) return prev;
+                return {
+                    ...prev,
+                    chapters: prev.chapters.map(ch => {
+                        if (ch.id !== chapterId) return ch;
+                        const lessons = [...ch.lessons];
+                        [lessons[index], lessons[targetIndex]] = [lessons[targetIndex], lessons[index]];
+                        return { ...ch, lessons };
+                    })
+                };
+            });
+        }
     };
 
-    // In-memory sync of lessonForm edits into course state
-    useEffect(() => {
-        if (skipNextSync.current) {
-            skipNextSync.current = false;
-            return;
+    // Save Lesson Field (title / video URL) — mirrors handleUpdateChapter:
+    // immediate, explicit persistence instead of the old silent in-memory
+    // sync that only ever reached the server via the (now removed) global
+    // bulk save.
+    const handleSaveLesson = async () => {
+        if (!lessonForm.id) return;
+        try {
+            setSavingLesson(true);
+            await updateLesson(lessonForm.id, {
+                title: lessonForm.title,
+                videoUrl: lessonForm.videoUrl,
+                orderIndex: lessonForm.orderIndex,
+            });
+            setCourse(prev => prev ? {
+                ...prev,
+                chapters: prev.chapters.map(ch => ({
+                    ...ch,
+                    lessons: ch.lessons.map(l => l.id === lessonForm.id ? {
+                        ...l,
+                        title: lessonForm.title,
+                        videoUrl: lessonForm.videoUrl,
+                    } : l)
+                }))
+            } : null);
+            setToast({ message: 'Đã lưu bài học!', type: 'success' });
+        } catch (err: any) {
+            setToast({ message: 'Không thể lưu bài học: ' + getErrorMessage(err.message), type: 'error' });
+        } finally {
+            setSavingLesson(false);
         }
-
-        if (!selectedItem || (selectedItem as Chapter).lessons) return;
-        const lesson = selectedItem as Lesson;
-        if (!lesson.id) return;
-
-        setCourse(prev => prev ? {
-            ...prev,
-            chapters: prev.chapters.map(ch => ({
-                ...ch,
-                lessons: ch.lessons.map(l => l.id === lesson.id ? {
-                    ...l,
-                    title: lessonForm.title,
-                    videoUrl: lessonForm.videoUrl,
-                    orderIndex: lessonForm.orderIndex,
-                    type: lessonForm.type as Lesson['type'],
-                } : l)
-            }))
-        } : null);
-        setHasUnsavedChanges(true);
-    }, [lessonForm.title, lessonForm.videoUrl, lessonForm.orderIndex, lessonForm.type, selectedItem]);
+    };
 
     // Parse Quiz
     const handleParseQuiz = async () => {
@@ -427,8 +470,16 @@ export default function CourseEditPage() {
             setParsedQuestions(null);
             setEditState('editingQuiz');
             setToast({ message: `Đã tải lên ${result.uploadedCount} câu hỏi Quiz!`, type: 'success' });
+            // Upload fully replaces the question set (BR-UPLOAD-01) — refetch
+            // so the "existing questions" list reflects what's actually there now.
+            try {
+                const preview = await getLessonPreview(courseId, lesson.id);
+                setExistingQuizQuestions(preview.quizQuestions ?? []);
+            } catch {
+                // non-fatal — the upload itself already succeeded
+            }
         } catch (err: any) {
-            setError(err.message);
+            setToast({ message: 'Không thể tải lên bộ câu hỏi: ' + getErrorMessage(err.message), type: 'error' });
             setEditState('editingQuiz');
         }
     };
@@ -443,6 +494,8 @@ export default function CourseEditPage() {
                 return 'Dung lượng tệp vượt quá giới hạn cho phép.';
             case 'SECTION_NOT_FOUND':
                 return 'Dữ liệu chương không tồn tại hoặc đã bị xóa.';
+            case 'LESSON_NOT_FOUND':
+                return 'Bài học không tồn tại hoặc đã bị xóa.';
             default:
                 return errorCode || 'Lỗi hệ thống.';
         }
@@ -487,6 +540,48 @@ export default function CourseEditPage() {
             {/* Toast Notification */}
             {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
+            {/* Delete Chapter Confirmation */}
+            <Dialog open={chapterToDelete !== null} onOpenChange={(open) => { if (!open) setChapterToDelete(null); }}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Xoá chương này?</DialogTitle>
+                        <DialogDescription>
+                            Toàn bộ bài học bên trong chương này sẽ bị xoá theo. Hành động này không thể hoàn tác.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setChapterToDelete(null)}>Hủy</Button>
+                        <Button
+                            className="bg-red-600 hover:bg-red-700 text-white"
+                            onClick={() => chapterToDelete !== null && handleDeleteChapter(chapterToDelete)}
+                        >
+                            Xoá chương
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Delete Lesson Confirmation */}
+            <Dialog open={lessonToDelete !== null} onOpenChange={(open) => { if (!open) setLessonToDelete(null); }}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Xoá bài học này?</DialogTitle>
+                        <DialogDescription>
+                            Hành động này không thể hoàn tác.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setLessonToDelete(null)}>Hủy</Button>
+                        <Button
+                            className="bg-red-600 hover:bg-red-700 text-white"
+                            onClick={() => lessonToDelete && handleDeleteLesson(lessonToDelete.chapterId, lessonToDelete.lessonId)}
+                        >
+                            Xoá bài học
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
             {/* Top Navigation Bar */}
             <header className="bg-white border-b border-slate-200 sticky top-0 z-20 shadow-xs">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -510,15 +605,9 @@ export default function CourseEditPage() {
                                     <h1 className="text-sm font-bold text-slate-900 truncate max-w-xs sm:max-w-md leading-none">
                                         {course.title}
                                     </h1>
-                                    {hasUnsavedChanges ? (
-                                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
-                                            Chưa lưu
-                                        </span>
-                                    ) : (
-                                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                            Đã lưu
-                                        </span>
-                                    )}
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200">
+                                        {course.status === 'Active' ? 'Đang hoạt động' : course.status}
+                                    </span>
                                 </div>
                                 <p className="text-xs text-slate-400 mt-0.5">
                                     {course.chapters.length} chương • {totalLessons} bài học
@@ -559,28 +648,6 @@ export default function CourseEditPage() {
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                 </svg>
                                 <span>Vào học</span>
-                            </Button>
-
-                            {/* Save Button */}
-                            <Button
-                                onClick={handleSave}
-                                disabled={saving}
-                                size="sm"
-                                className="bg-indigo-600 hover:bg-indigo-700 text-white font-medium shadow-xs"
-                            >
-                                {saving ? (
-                                    <>
-                                        <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"/>
-                                        <span>Đang lưu…</span>
-                                    </>
-                                ) : (
-                                    <>
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/>
-                                        </svg>
-                                        <span>Lưu thay đổi</span>
-                                    </>
-                                )}
                             </Button>
                         </div>
                     </div>
@@ -694,7 +761,7 @@ export default function CourseEditPage() {
                                                                 + Bài học
                                                             </button>
                                                             <button
-                                                                onClick={() => handleDeleteChapter(chapter.id)}
+                                                                onClick={() => setChapterToDelete(chapter.id)}
                                                                 className="text-slate-400 hover:text-red-600 p-1 hover:bg-red-50 rounded transition-colors text-xs"
                                                                 title="Xóa chương"
                                                             >
@@ -757,7 +824,7 @@ export default function CourseEditPage() {
                                                                 return (
                                                                     <div
                                                                         key={lesson.id}
-                                                                        onClick={() => handleLessonSelect(lesson)}
+                                                                        onClick={() => selectLesson(lesson)}
                                                                         className={`group flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-xs cursor-pointer transition-all ${
                                                                             isLessonSelected
                                                                                 ? 'bg-indigo-50/90 text-indigo-900 font-semibold'
@@ -790,7 +857,7 @@ export default function CourseEditPage() {
                                                                                 ↓
                                                                             </button>
                                                                             <button
-                                                                                onClick={() => handleDeleteLesson(chapter.id, lesson.id)}
+                                                                                onClick={() => setLessonToDelete({ chapterId: chapter.id, lessonId: lesson.id })}
                                                                                 className="p-1 text-slate-400 hover:text-red-600 rounded hover:bg-red-50"
                                                                                 title="Xóa"
                                                                             >
@@ -894,14 +961,14 @@ export default function CourseEditPage() {
                                             <div className="flex items-center gap-3 pt-2">
                                                 <Button
                                                     onClick={handleUpdateChapter}
-                                                    disabled={saving}
+                                                    disabled={savingChapter}
                                                     className="bg-indigo-600 hover:bg-indigo-700 text-white"
                                                 >
-                                                    Cập nhật tên chương
+                                                    {savingChapter ? 'Đang lưu…' : 'Cập nhật tên chương'}
                                                 </Button>
                                                 <Button
                                                     variant="outline"
-                                                    onClick={() => handleDeleteChapter(selectedItem.id)}
+                                                    onClick={() => setChapterToDelete(selectedItem.id)}
                                                     className="text-red-600 border-red-200 hover:bg-red-50"
                                                 >
                                                     Xóa chương này
@@ -950,23 +1017,24 @@ export default function CourseEditPage() {
                                                         placeholder="https://www.youtube.com/watch?v=…"
                                                         className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                                                     />
-                                                    <p className="text-[11px] text-slate-400 mt-1">
-                                                        Hỗ trợ link YouTube tiêu chuẩn hoặc link ngắn (youtu.be).
-                                                    </p>
+                                                    {lessonForm.videoUrl && !extractYoutubeId(lessonForm.videoUrl) ? (
+                                                        <p className="text-[11px] text-red-600 mt-1 font-medium">
+                                                            Không phải link YouTube hợp lệ.
+                                                        </p>
+                                                    ) : (
+                                                        <p className="text-[11px] text-slate-400 mt-1">
+                                                            Hỗ trợ link YouTube tiêu chuẩn hoặc link ngắn (youtu.be).
+                                                        </p>
+                                                    )}
                                                 </div>
 
-                                                <div>
-                                                    <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                                                        Mô tả / Ghi chú cho bài học
-                                                    </label>
-                                                    <textarea
-                                                        value={lessonForm.content}
-                                                        onChange={(e) => setLessonForm(prev => ({ ...prev, content: e.target.value }))}
-                                                        rows={4}
-                                                        placeholder="Nhập ghi chú hoặc hướng dẫn cho người học…"
-                                                        className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
-                                                    />
-                                                </div>
+                                                <Button
+                                                    onClick={handleSaveLesson}
+                                                    disabled={savingLesson || !lessonForm.title.trim()}
+                                                    className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                                                >
+                                                    {savingLesson ? 'Đang lưu…' : 'Lưu bài học'}
+                                                </Button>
                                             </div>
 
                                             {/* Preview Column */}
@@ -1022,9 +1090,62 @@ export default function CourseEditPage() {
                                                 />
                                             </div>
 
+                                            <Button
+                                                onClick={handleSaveLesson}
+                                                disabled={savingLesson || !lessonForm.title.trim()}
+                                                className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                                            >
+                                                {savingLesson ? 'Đang lưu…' : 'Lưu tên bài học'}
+                                            </Button>
+
+                                            {/* Existing Questions — shown so the owner never re-uploads blind into
+                                                a destructive replace-all (BR-UPLOAD-01) without seeing what's there. */}
+                                            {loadingLessonDetail ? (
+                                                <p className="text-xs text-slate-400">Đang tải câu hỏi hiện có…</p>
+                                            ) : existingQuizQuestions && existingQuizQuestions.length > 0 ? (
+                                                <div className="border-t border-slate-100 pt-4">
+                                                    <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-3">
+                                                        Câu hỏi hiện có ({existingQuizQuestions.length})
+                                                    </h4>
+                                                    <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
+                                                        {existingQuizQuestions.map((q, idx) => {
+                                                            const correctIdx = getCorrectOptionIndex(q);
+                                                            return (
+                                                                <div key={q.id ?? idx} className="border border-slate-200 rounded-xl p-4 bg-slate-50/50">
+                                                                    <p className="text-xs font-bold text-slate-800 mb-2">
+                                                                        Câu {idx + 1}: {getQuestionText(q)}
+                                                                    </p>
+                                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                                                        {q.options.map((opt, optIdx) => (
+                                                                            <div
+                                                                                key={optIdx}
+                                                                                className={`px-3 py-1.5 rounded-lg text-xs flex items-center justify-between ${
+                                                                                    optIdx === correctIdx
+                                                                                        ? 'bg-emerald-100/70 text-emerald-800 font-semibold border border-emerald-300'
+                                                                                        : 'bg-white text-slate-600 border border-slate-200'
+                                                                                }`}
+                                                                            >
+                                                                                <span>{opt}</span>
+                                                                                {optIdx === correctIdx && (
+                                                                                    <span className="text-[10px] bg-emerald-600 text-white px-1.5 py-0.2 rounded font-bold">
+                                                                                        ĐÚNG
+                                                                                    </span>
+                                                                                )}
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <p className="text-xs text-slate-400">Chưa có câu hỏi nào trong bài học này.</p>
+                                            )}
+
                                             <div>
                                                 <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                                                    Tải lên bộ câu hỏi từ Excel (.xlsx)
+                                                    Tải lên bộ câu hỏi từ Excel (.xlsx) — sẽ thay thế toàn bộ câu hỏi hiện có
                                                 </label>
                                                 <div className="border-2 border-dashed border-slate-200 hover:border-indigo-400 bg-slate-50/50 rounded-2xl p-6 text-center transition-colors">
                                                     <input

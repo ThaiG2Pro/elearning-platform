@@ -14,7 +14,20 @@ export async function POST(
         }
 
         const sectionId = BigInt(params.id);
-        const body: CreateLessonDto = await request.json();
+        const rawBody = await request.json();
+        // Editor UI course-management refactor — the frontend has always
+        // posted the video URL under the field name `videoUrl` (matching its
+        // own form state), but this route forwarded the raw body straight
+        // through to a raw-Prisma create that only reads `contentUrl`. The
+        // sibling PUT (update) route already falls back to `videoUrl` for
+        // this exact reason; this route never did, so every lesson created
+        // through the "Thêm bài học" form has silently had no video attached
+        // until a later edit-and-resave touched it. Applying the same
+        // fallback here closes that gap.
+        const body: CreateLessonDto = {
+            ...rawBody,
+            contentUrl: rawBody.contentUrl ?? (rawBody.videoUrl || undefined),
+        };
 
         const controller = new ManagementController();
         const lessonId = await controller.createLesson(userId, sectionId, body);

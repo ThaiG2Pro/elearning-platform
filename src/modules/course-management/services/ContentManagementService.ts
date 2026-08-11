@@ -388,8 +388,15 @@ export class ContentManagementService {
     async deleteLesson(userId: bigint, lessonId: bigint): Promise<void> {
         AccessControlPolicy.validateOwnership(userId, await this.getOwnerIdForLesson(lessonId));
 
-        await this.prisma.lessons.delete({
-            where: { id: lessonId },
-        });
+        // See SectionRepository.deleteWithLessons for why: none of
+        // questions/notes/learning_progress cascade from `lessons` in the
+        // schema, so deleting a quiz lesson with uploaded questions (or one a
+        // learner has notes/progress on) 500'd with a FK violation.
+        await this.prisma.$transaction([
+            this.prisma.questions.deleteMany({ where: { lesson_id: lessonId } }),
+            this.prisma.notes.deleteMany({ where: { lesson_id: lessonId } }),
+            this.prisma.learning_progress.deleteMany({ where: { lesson_id: lessonId } }),
+            this.prisma.lessons.delete({ where: { id: lessonId } }),
+        ]);
     }
 }

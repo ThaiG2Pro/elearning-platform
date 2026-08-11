@@ -73,7 +73,6 @@ export interface LessonPreview {
 export interface LessonEdit {
     id?: number;
     title: string;
-    content: string;
     videoUrl?: string;
     orderIndex: number;
     type: 'VIDEO' | 'QUIZ';
