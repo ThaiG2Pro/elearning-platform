@@ -372,6 +372,46 @@ export default function CourseEditPage() {
         }
     };
 
+    // Move Chapter — same immediate-persist swap pattern as handleMoveLesson
+    // below, applied to chapters via updateSection's orderIndex. Chapters
+    // previously had no reorder control at all (lessons did), forcing a
+    // delete-and-recreate-in-the-right-order workaround to fix ordering.
+    const handleMoveChapter = async (chapterId: number, direction: -1 | 1) => {
+        if (!course) return;
+        const index = course.chapters.findIndex(ch => ch.id === chapterId);
+        const targetIndex = index + direction;
+        if (index < 0 || targetIndex < 0 || targetIndex >= course.chapters.length) return;
+
+        const a = course.chapters[index];
+        const b = course.chapters[targetIndex];
+
+        setCourse(prev => {
+            if (!prev) return prev;
+            const chapters = [...prev.chapters];
+            [chapters[index], chapters[targetIndex]] = [
+                { ...chapters[targetIndex], orderIndex: a.orderIndex ?? index },
+                { ...chapters[index], orderIndex: b.orderIndex ?? targetIndex },
+            ];
+            return { ...prev, chapters };
+        });
+
+        try {
+            await Promise.all([
+                updateSection(a.id, { title: a.title, orderIndex: b.orderIndex ?? targetIndex }),
+                updateSection(b.id, { title: b.title, orderIndex: a.orderIndex ?? index }),
+            ]);
+        } catch (err: any) {
+            setToast({ message: 'Không thể lưu thứ tự chương: ' + getErrorMessage(err.message), type: 'error' });
+            // Revert the optimistic swap
+            setCourse(prev => {
+                if (!prev) return prev;
+                const chapters = [...prev.chapters];
+                [chapters[index], chapters[targetIndex]] = [chapters[targetIndex], chapters[index]];
+                return { ...prev, chapters };
+            });
+        }
+    };
+
     // Move Lesson — persists immediately (there is no more global "save all"
     // to fall back on), by swapping the two affected lessons' orderIndex via
     // updateLesson. Optimistic in-memory swap first, toast + best-effort
@@ -775,7 +815,23 @@ export default function CourseEditPage() {
                                                             </span>
                                                         </div>
 
-                                                        <div className="flex items-center gap-1 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                                                        <div className="flex items-center gap-0.5 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                                                            <button
+                                                                disabled={chIdx === 0}
+                                                                onClick={() => handleMoveChapter(chapter.id, -1)}
+                                                                className="p-1 text-slate-400 hover:text-slate-700 disabled:opacity-30 rounded hover:bg-slate-200"
+                                                                title="Chuyển lên"
+                                                            >
+                                                                ↑
+                                                            </button>
+                                                            <button
+                                                                disabled={chIdx === course.chapters.length - 1}
+                                                                onClick={() => handleMoveChapter(chapter.id, 1)}
+                                                                className="p-1 text-slate-400 hover:text-slate-700 disabled:opacity-30 rounded hover:bg-slate-200"
+                                                                title="Chuyển xuống"
+                                                            >
+                                                                ↓
+                                                            </button>
                                                             <button
                                                                 onClick={() => {
                                                                     setAddingLessonChapterId(addingLessonChapterId === chapter.id ? null : chapter.id);
