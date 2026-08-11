@@ -79,6 +79,16 @@ export class QuizService {
         // Step 1: Parse and validate file
         const parsedQuestions = await this.parseQuizFile(file);
 
+        // A header-only or genuinely empty workbook parses to `[]` with no
+        // error — without this check, replaceAllForLesson would still run
+        // its delete step and wipe out every existing question for this
+        // lesson, then report `{ uploadedCount: 0 }` as a 200 success. A
+        // lecturer fat-fingering an empty file would silently destroy their
+        // entire question bank with no warning.
+        if (parsedQuestions.length === 0) {
+            throw new Error('EMPTY_QUIZ_FILE');
+        }
+
         // Step 2: Convert to domain objects
         const domainQuestions: Omit<Question, 'id'>[] = parsedQuestions.map(dto =>
             new Question(BigInt(0), lessonId, dto.content, dto.options, dto.correctAnswer)
@@ -160,6 +170,7 @@ export class QuizService {
         if (progress && progress.isQuizTimeout()) {
             // Auto-submit with 0 score
             progress.updateQuizResult(0, false);
+            progress.consumeQuizAttempt();
             await this.progressRepo.save(progress);
 
             return {
@@ -169,8 +180,12 @@ export class QuizService {
             };
         }
 
-        // Get progress to get question ids
-        if (!progress || !progress.quizQuestionIds || progress.quizQuestionIds.length === 0) {
+        // Get progress to get question ids. `quizStartTime === null` covers
+        // both "never started" and "already consumed by a prior submit"
+        // (see LearningProgress.consumeQuizAttempt) — without the latter, a
+        // student could resubmit repeatedly using the correct answers the
+        // first response reveals.
+        if (!progress || progress.quizStartTime === null || !progress.quizQuestionIds || progress.quizQuestionIds.length === 0) {
             throw new Error('Quiz not started');
         }
 
@@ -191,7 +206,7 @@ export class QuizService {
         for (const q of questionsData) {
             const questionIdStr = q.id!.toString();
             const userIndex = userAnswers.get(questionIdStr);
-            const correctIndex = QuizPolicy.keyToIndex(q.correctAnswer);
+            const correctIndex = QuizPolicy.resolveCorrectIndex(q.correctAnswer, q.options);
 
             if (userIndex != null && correctIndex >= 0 && userIndex === correctIndex) {
                 correctCount++;
@@ -200,8 +215,13 @@ export class QuizService {
             correction[questionIdStr] = `option_${correctIndex}`;
         }
 
-        const totalAnswered = userAnswers.size;
-        const score = totalAnswered > 0 ? Math.round((correctCount / totalAnswered) * 100) : 0;
+        // Score is a percentage of the QUIZ's total questions, not of how
+        // many the student bothered to answer — grading against
+        // `userAnswers.size` let a student answer only the 1 question they
+        // knew, leave the rest blank, and still score 100%. Unanswered
+        // questions are simply wrong, same as any other incorrect pick.
+        const totalQuestions = questionsData.length;
+        const score = totalQuestions > 0 ? Math.round((correctCount / totalQuestions) * 100) : 0;
         const isPassed = score >= 80; // Rule 27: >= 80%
 
         // Step 2: Update Progress
@@ -211,6 +231,9 @@ export class QuizService {
         }
 
         progress.updateQuizResult(score, isPassed);
+        // Consume the attempt so a second submit() call can't be graded
+        // again using the correct answers this very response reveals.
+        progress.consumeQuizAttempt();
 
         // Step 3: Persist
         await this.progressRepo.save(progress);
@@ -233,9 +256,14 @@ export class QuizService {
         }
 
         // For now, return the current best attempt
-        // In a real system, you'd have a quiz_attempts table with history
-        const totalQuestions = 10; // Assuming 10 questions per quiz
-        const isPassed = progress.quizMaxScore >= 8; // Assuming 80% pass rate
+        // In a real system, you'd have a quiz_attempts table with history.
+        // `quizMaxScore` is always a 0-100 percentage (see submitQuiz) — this
+        // used to compare it against 8 and report a hardcoded 10 questions,
+        // as if it were a raw "N correct out of 10" count. A 10% score
+        // (quizMaxScore = 10) was reported as passed (10 >= 8) even though
+        // the actual pass bar submitQuiz enforces is 80%.
+        const totalQuestions = progress.quizQuestionIds?.length ?? 0;
+        const isPassed = progress.quizMaxScore >= 80; // Rule 27: >= 80%, matches submitQuiz
 
         return [{
             id: progress.id!,

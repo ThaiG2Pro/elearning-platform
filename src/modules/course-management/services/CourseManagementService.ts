@@ -169,13 +169,14 @@ export class CourseManagementService {
             videoUrl: lesson.contentUrl || undefined,
             quizQuestions: quizQuestions.map(q => {
                 const answerKey = (q as any).answerKey || undefined;
-                const correctIdx = typeof answerKey === 'string' ? QuizPolicy.keyToIndex(answerKey) : null;
+                const options = [q.optionA, q.optionB, q.optionC, q.optionD];
+                const correctIdx = typeof answerKey === 'string' ? QuizPolicy.resolveCorrectIndex(answerKey, options) : null;
                 const correctId = correctIdx !== null && correctIdx >= 0 ? `option_${correctIdx}` : null;
 
                 return {
                     id: q.id,
                     content: q.content,
-                    options: [q.optionA, q.optionB, q.optionC, q.optionD],
+                    options,
                     answerKey: answerKey || undefined,
                     correctIndex: correctIdx !== null ? correctIdx : null,
                     correctId: correctId,

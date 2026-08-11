@@ -78,6 +78,7 @@ export interface QuizSession {
 
 export interface QuizResult {
     score: number;
+    isPassed: boolean;
     questions: QuizQuestion[];
     submittedAt: string;
 }

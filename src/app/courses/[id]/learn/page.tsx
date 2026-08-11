@@ -342,8 +342,15 @@ export default function LearningPage() {
             setQuizResult(result);
             setAppState('quiz_result');
             // WP1.5.12: submitting a quiz completes the lesson — reflect that
-            // in the sidebar/progress-bar `lessons` list right away.
-            markLessonCompleted(currentLesson.id);
+            // in the sidebar/progress-bar `lessons` list right away. Only do
+            // this on an actual pass: the backend (LearningProgress.
+            // updateQuizResult) only marks is_finished when isPassed, so
+            // unconditionally completing here made a failed or timed-out
+            // attempt show as "done" in the sidebar until the next refetch
+            // silently reverted it.
+            if (result.isPassed) {
+                markLessonCompleted(currentLesson.id);
+            }
         } catch (error: any) {
             setErrorMessage(error.message);
         }

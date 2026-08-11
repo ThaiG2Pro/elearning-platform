@@ -4,6 +4,7 @@ import { ParsedQuestionDto } from '../dtos/ParsedQuestionDto';
 import { QuizQuestionsDto } from '../dtos/QuizQuestionsDto';
 import { SubmitQuizDto, SubmitQuizIndexDto } from '../dtos/QuizResultDto';
 import { LearningProgressRepository } from '../repositories/LearningProgressRepository';
+import { LearningProgress } from '../domain/LearningProgress';
 import { prisma } from '../../../shared/config/database';
 import { Question } from '../domain/Question';
 import { QuizPolicy } from '../domain/QuizPolicy';
@@ -63,7 +64,10 @@ export class QuizController {
 
         // Create session info
         const sessionId = `quiz_${lessonId}_${Date.now()}`;
-        const expiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString(); // 30 minutes
+        // BR-QUIZ-03 — must match LearningProgress.isQuizTimeout()'s actual
+        // enforcement window, or the countdown shown to the student lies
+        // about how long they really have (see LearningProgress.QUIZ_TIME_LIMIT_MS).
+        const expiresAt = new Date(Date.now() + LearningProgress.QUIZ_TIME_LIMIT_MS).toISOString();
 
         return {
             sessionId,
@@ -73,9 +77,11 @@ export class QuizController {
     }
 
     async submitQuiz(userId: bigint, lessonId: bigint, dto: SubmitQuizDto): Promise<any> {
-        // Get progress to get question ids
+        // Get progress to get question ids. Same combined check as
+        // QuizService.submitQuiz — quizStartTime === null also covers an
+        // attempt already consumed by a prior submit (anti-resubmit guard).
         const progress = await this.service.getProgress(userId, lessonId);
-        if (!progress || !progress.quizQuestionIds || progress.quizQuestionIds.length === 0) {
+        if (!progress || progress.quizStartTime === null || !progress.quizQuestionIds || progress.quizQuestionIds.length === 0) {
             throw new Error('Quiz not started');
         }
 
@@ -112,7 +118,7 @@ export class QuizController {
             }
 
             // Get correct index from answer_key (NOT from correction result)
-            const correctIndexRaw = QuizPolicy.keyToIndex(q.correctAnswer);
+            const correctIndexRaw = QuizPolicy.resolveCorrectIndex(q.correctAnswer, q.options);
             const correctIndex = correctIndexRaw >= 0 ? correctIndexRaw : null;
 
             return {
@@ -129,6 +135,7 @@ export class QuizController {
 
         return {
             score: result.score,
+            isPassed: result.isPassed,
             questions,
             submittedAt: new Date().toISOString()
         };

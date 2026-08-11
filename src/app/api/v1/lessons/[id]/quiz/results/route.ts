@@ -16,7 +16,11 @@ export async function GET(
         const controller = new QuizController();
         const results = await controller.getQuizResults(userId, lessonId);
 
-        return NextResponse.json(results);
+        // QuizAttemptDto.id is a raw bigint (progress.id) — same
+        // BigInt-serialization crash as the other two routes fixed
+        // alongside this one; this endpoint has no frontend caller yet but
+        // would 500 on its very first real call once one exists.
+        return NextResponse.json(results.map(r => ({ ...r, id: r.id.toString() })));
     } catch (error) {
         console.error('Error getting quiz results:', error);
         const message = error instanceof Error ? error.message : 'Internal server error';

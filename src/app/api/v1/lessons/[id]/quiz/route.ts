@@ -16,7 +16,17 @@ export async function GET(
         const controller = new QuizController();
         const result = await controller.generateQuiz(lessonId);
 
-        return NextResponse.json(result, { status: 200 });
+        // QuizQuestionsDto carries raw bigint question ids straight from the
+        // domain layer — NextResponse.json's JSON.stringify throws "Do not
+        // know how to serialize a BigInt" on those. This route calls
+        // service.generateQuiz directly (bypassing QuizController.startQuiz,
+        // which already does `.toString()` on ids before responding), so it
+        // 500'd on every call once a lesson had ≥1 question. Same class of
+        // bug as the lesson-preview route fix.
+        return NextResponse.json({
+            ...result,
+            questions: result.questions.map(q => ({ ...q, id: q.id.toString() })),
+        }, { status: 200 });
     } catch (error) {
         console.error('Error generating quiz:', error);
         const message = error instanceof Error ? error.message : 'Internal server error';

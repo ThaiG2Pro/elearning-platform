@@ -1,8 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { QuizController } from '../../../../../../modules/course-management/controllers/QuizController';
+import { getUserIdFromRequest } from '../../../../../../shared/middleware/auth';
 
 export async function POST(request: NextRequest) {
     try {
+        // Unlike its sibling management/lessons/[id]/quiz/upload — which
+        // persists data and correctly requires auth — this route had no
+        // auth check at all, letting anyone parse arbitrary Excel files
+        // through the app's server for free with no rate limiting tied to
+        // an account.
+        const userId = await getUserIdFromRequest(request);
+        if (!userId) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
         const formData = await request.formData();
         const file = formData.get('file') as File;
 

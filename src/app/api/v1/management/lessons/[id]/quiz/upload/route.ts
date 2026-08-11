@@ -48,6 +48,17 @@ export async function POST(
         if (error instanceof Error && error.message === 'LESSON_NOT_FOUND') {
             return NextResponse.json({ error: 'LESSON_NOT_FOUND', message: 'Bài học không tồn tại' }, { status: 404 });
         }
+        if (error instanceof Error && error.message === 'EMPTY_QUIZ_FILE') {
+            return NextResponse.json({ error: 'EMPTY_QUIZ_FILE', message: 'Tệp Excel không chứa câu hỏi nào' }, { status: 400 });
+        }
+        // Row-level validation errors (missing fields, too many/few options,
+        // CorrectAnswer not matching an option) were previously falling
+        // through to a bare 500 here — this route never had the same
+        // ExcelInvalidException -> 400 mapping its sibling parse-preview
+        // route already had.
+        if (error instanceof Error && error.name === 'ExcelInvalidException') {
+            return NextResponse.json({ error: 'INVALID_EXCEL_FORMAT', message: error.message }, { status: 400 });
+        }
         const message = error instanceof Error ? error.message : 'Internal server error';
         return NextResponse.json({ error: message }, { status: 500 });
     }
