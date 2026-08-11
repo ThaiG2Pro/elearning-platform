@@ -131,7 +131,7 @@ export class QuizService {
     }
 
     async startQuiz(userId: bigint, lessonId: bigint): Promise<void> {
-        if (!this.progressRepo) {
+        if (!this.progressRepo || !this.questionRepo) {
             throw new Error('Required repositories not provided');
         }
 
@@ -140,6 +140,28 @@ export class QuizService {
         if (!progress) {
             const courseId = await this.findCourseIdByLesson(lessonId);
             progress = LearningProgress.create(userId, courseId, lessonId);
+        }
+
+        // If there's already a live, unconsumed attempt (quizStartTime set,
+        // not timed out — see consumeQuizAttempt), reuse it instead of
+        // rerolling a fresh random question set. Without this, two
+        // concurrent start calls for the same student (double-click, two
+        // browser tabs) each independently pick 10 random questions and
+        // save whichever wins the race — but the FIRST call's response has
+        // already been sent to that tab with the OTHER set's questions, so
+        // that tab's student answers questions the persisted progress row
+        // no longer references, and grades 0 regardless of correctness.
+        //
+        // Guard: only reuse if those question ids still actually resolve.
+        // If a lecturer re-uploaded the quiz (replaceAllForLesson deletes +
+        // recreates all rows) while this attempt was still "live", the old
+        // ids are gone — reusing them would hand back an empty question
+        // list instead of the current quiz.
+        if (progress.quizStartTime !== null && !progress.isQuizTimeout() && progress.quizQuestionIds && progress.quizQuestionIds.length > 0) {
+            const stillValid = await this.questionRepo!.findByIds(progress.quizQuestionIds);
+            if (stillValid.length === progress.quizQuestionIds.length) {
+                return;
+            }
         }
 
         // Start quiz timer

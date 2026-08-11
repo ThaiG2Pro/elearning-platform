@@ -169,7 +169,12 @@ export class CourseManagementService {
             videoUrl: lesson.contentUrl || undefined,
             quizQuestions: quizQuestions.map(q => {
                 const answerKey = (q as any).answerKey || undefined;
-                const options = [q.optionA, q.optionB, q.optionC, q.optionD];
+                // Same padding-strip as QuestionRepository.buildOptions —
+                // questions uploaded with fewer than 4 options are padded
+                // with '' at insert time; without filtering, this preview
+                // (shown to the lecturer before they re-upload) displayed
+                // phantom empty options alongside the real ones.
+                const options = [q.optionA, q.optionB, q.optionC, q.optionD].filter(opt => opt.trim().length > 0);
                 const correctIdx = typeof answerKey === 'string' ? QuizPolicy.resolveCorrectIndex(answerKey, options) : null;
                 const correctId = correctIdx !== null && correctIdx >= 0 ? `option_${correctIdx}` : null;
 

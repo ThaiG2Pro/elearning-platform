@@ -41,8 +41,16 @@ export class OwnedCoursesRepository {
                 chapters: {
                     orderBy: { order_index: 'asc' },
                     include: {
+                        // No `content_url: { not: null }` filter here — that
+                        // excluded every QUIZ lesson (which never has a
+                        // content_url) from both totalLessons and
+                        // finishedLessons, so a course could show 100%/
+                        // "completed" here purely from watched videos while
+                        // its quiz was never attempted — inconsistent with
+                        // LearnService.getCourseProgress (used on the
+                        // course-detail page), which has no such filter and
+                        // correctly counts quiz lessons.
                         lessons: {
-                            where: { content_url: { not: null } },
                             orderBy: { order_index: 'asc' },
                         },
                     },

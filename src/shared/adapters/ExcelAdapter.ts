@@ -13,6 +13,11 @@ export class ExcelAdapter {
                 cellNF: false,
                 cellText: false
             });
+            // Only the first sheet is ever read. A workbook with the real
+            // question data on a later sheet (e.g. a template with an
+            // "Instructions" sheet placed first) parses as empty with no
+            // indication other sheets were ignored — noted here since it's
+            // not obvious from the call sites.
             const sheetName = workbook.SheetNames[0];
             const worksheet = workbook.Sheets[sheetName];
 

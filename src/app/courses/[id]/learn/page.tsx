@@ -29,6 +29,10 @@ export default function LearningPage() {
     const [quizResult, setQuizResult] = useState<QuizResult | null>(null);
     const [timeLeft, setTimeLeft] = useState<number>(0);
     const [answers, setAnswers] = useState<Record<string, string>>({});
+    // Guards against a fast double-click on "Nộp bài" firing two concurrent
+    // submitQuiz requests, and against the auto-submit-on-timeout timer
+    // firing on top of a manual submit already in flight.
+    const [isSubmittingQuiz, setIsSubmittingQuiz] = useState(false);
 
     // UI states — WP1.5.4: a lesson can have many notes now, not one blob.
     const [notes, setNotes] = useState<LessonNote[]>([]);
@@ -323,6 +327,11 @@ export default function LearningPage() {
             }
             setAnswers(initialAnswers);
         } catch (error: any) {
+            // Previously only set errorMessage without appState — since only
+            // the 'error' branch renders errorMessage, a failed start (e.g.
+            // NO_QUESTIONS_FOUND) left the UI showing nothing at all, as if
+            // the "Bắt đầu" click had silently done nothing.
+            setAppState('error');
             setErrorMessage(error.message);
         }
     };
@@ -336,7 +345,9 @@ export default function LearningPage() {
 
     const handleSubmitQuiz = useCallback(async () => {
         if (!currentLesson || !quizSession) return;
+        if (isSubmittingQuiz) return; // already submitting — ignore double-click / timer overlap
 
+        setIsSubmittingQuiz(true);
         try {
             const result = await submitQuiz(currentLesson.id, quizSession.sessionId, answers);
             setQuizResult(result);
@@ -352,9 +363,16 @@ export default function LearningPage() {
                 markLessonCompleted(currentLesson.id);
             }
         } catch (error: any) {
+            // Previously only set errorMessage without appState — since only
+            // the 'error' branch renders errorMessage, a failed submit (e.g.
+            // a stale/expired session) left the quiz screen looking frozen
+            // with no feedback at all.
+            setAppState('error');
             setErrorMessage(error.message);
+        } finally {
+            setIsSubmittingQuiz(false);
         }
-    }, [currentLesson, quizSession, answers, markLessonCompleted]);
+    }, [currentLesson, quizSession, answers, markLessonCompleted, isSubmittingQuiz]);
 
     // WP1.5.4: notes are added (not overwritten) and can carry the video
     // timestamp they were written at, so clicking one later seeks back there.
@@ -673,9 +691,10 @@ export default function LearningPage() {
                                     <div className="mt-8 flex justify-end">
                                         <button
                                             onClick={handleSubmitQuiz}
-                                            className="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition-colors"
+                                            disabled={isSubmittingQuiz}
+                                            className="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors"
                                         >
-                                            Nộp bài
+                                            {isSubmittingQuiz ? 'Đang nộp…' : 'Nộp bài'}
                                         </button>
                                     </div>
                                 </div>
