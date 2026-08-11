@@ -88,7 +88,12 @@ export class QuizController {
         // Convert answers from "option_X" to indices
         const answersIndex: Record<string, number> = {};
         for (const [questionIdStr, answerRaw] of Object.entries(dto.answers)) {
-            if (answerRaw.startsWith('option_')) {
+            // `answerRaw` is client-controlled JSON — any value the DTO type
+            // doesn't actually enforce at runtime (a number, `null`, an
+            // object) reached `.startsWith` directly and crashed the whole
+            // request with a raw, unhandled "answerRaw.startsWith is not a
+            // function" 500 instead of just skipping that one bad answer.
+            if (typeof answerRaw === 'string' && answerRaw.startsWith('option_')) {
                 const index = parseInt(answerRaw.split('_')[1]);
                 if (!isNaN(index) && index >= 0 && index <= 3) {
                     answersIndex[questionIdStr] = index;
@@ -110,7 +115,7 @@ export class QuizController {
 
             // Parse user answer: if it's "option_X", get the index
             let selectedIndex: number | undefined;
-            if (userAnswerRaw && userAnswerRaw.startsWith('option_')) {
+            if (typeof userAnswerRaw === 'string' && userAnswerRaw.startsWith('option_')) {
                 const index = parseInt(userAnswerRaw.split('_')[1]);
                 if (!isNaN(index) && index >= 0 && index < q.options.length) {
                     selectedIndex = index;

@@ -1,3 +1,5 @@
+import { QuizPolicy } from './QuizPolicy';
+
 export interface QuizRow {
     Content?: string;
     Options?: string;
@@ -40,10 +42,19 @@ export class QuizValidationPolicy {
             throw new ExcelInvalidException(rowIndex, `Row ${rowIndex}: At most 4 options are supported, got ${options.length}`);
         }
 
-        // Validate correct answer is one of the options
+        // Validate correct answer resolves to one of the options. This must
+        // use the exact same rule the grader (QuizPolicy.resolveCorrectIndex)
+        // applies at submit time — it matches option text case-insensitively
+        // AND falls back to a bare letter ('A'-'D', as seed data and some
+        // hand-authored sheets use). The old check here was a strict,
+        // case-sensitive `options.includes(correctAnswer)` with no letter
+        // fallback: a perfectly gradable file (e.g. CorrectAnswer="A", or
+        // CorrectAnswer="đúng" against an option "Đúng") was rejected at
+        // upload time even though QuizService/QuizPolicy would have graded
+        // it correctly. Validation must not be stricter than grading.
         const correctAnswer = row.CorrectAnswer.trim();
-        if (!options.includes(correctAnswer)) {
-            throw new ExcelInvalidException(rowIndex, `Row ${rowIndex}: CorrectAnswer must be one of the provided options`);
+        if (QuizPolicy.resolveCorrectIndex(correctAnswer, options) < 0) {
+            throw new ExcelInvalidException(rowIndex, `Row ${rowIndex}: CorrectAnswer must match one of the provided options (by text, case-insensitive) or be a valid option letter (A-${String.fromCharCode(64 + options.length)})`);
         }
     }
 }

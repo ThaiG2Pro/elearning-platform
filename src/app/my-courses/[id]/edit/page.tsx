@@ -13,6 +13,7 @@ import {
     deleteLesson,
     parseQuizFile,
     uploadQuizFile,
+    downloadQuizTemplate,
     updateCourseMetadata,
     getOrCreateShareLink,
 } from '@/lib/management';
@@ -57,7 +58,17 @@ const getCorrectOptionIndex = (q: QuizQuestion): number | null => {
 
 const getQuestionText = (q: QuizQuestion): string => q.content ?? q.text ?? '';
 
-type EditState = 'idle' | 'editingVideo' | 'editingQuiz' | 'processing' | 'reviewing';
+type EditState = 'idle' | 'editingVideo' | 'editingQuiz';
+// Separate from EditState (which panel is shown) — this tracks the
+// parse/upload sub-flow *within* the quiz panel. These used to be values of
+// EditState itself ('processing'/'reviewing'), but the panel render below
+// gates on `editState === 'editingQuiz'` exactly — flipping editState to
+// 'processing' while parsing a file, or 'reviewing' after parsing succeeded,
+// made that check fail and the ENTIRE quiz panel (title field, existing
+// questions, upload box, and the parsed-questions preview itself) vanish
+// mid-flow, falling back to the "chọn một bài học" empty state. A lecturer
+// clicking "Xem trước câu hỏi" would watch their own editor disappear.
+type QuizFlowStatus = 'idle' | 'processing' | 'reviewing';
 
 const extractYoutubeId = (url: string): string | null => {
     if (!url) return null;
@@ -81,6 +92,7 @@ export default function CourseEditPage() {
 
     // Selection & Edit States
     const [editState, setEditState] = useState<EditState>('idle');
+    const [quizFlowStatus, setQuizFlowStatus] = useState<QuizFlowStatus>('idle');
     const [selectedItem, setSelectedItem] = useState<Chapter | Lesson | null>(null);
     const [parsedQuestions, setParsedQuestions] = useState<QuizParseResponse | null>(null);
     const [loadingLessonDetail, setLoadingLessonDetail] = useState(false);
@@ -113,8 +125,8 @@ export default function CourseEditPage() {
     const [quizFile, setQuizFile] = useState<File | null>(null);
     const [quizUploadedCount, setQuizUploadedCount] = useState<number | null>(null);
 
-    const isProcessing = editState === 'processing';
-    const isReviewing = editState === 'reviewing';
+    const isProcessing = quizFlowStatus === 'processing';
+    const isReviewing = quizFlowStatus === 'reviewing';
 
     // Fetch Course Structure
     const fetchCourseStructure = useCallback(async () => {
@@ -199,6 +211,7 @@ export default function CourseEditPage() {
         setExistingQuizQuestions(null);
         setParsedQuestions(null);
         setQuizFile(null);
+        setQuizFlowStatus('idle');
         setEditState(lesson.type === 'VIDEO' ? 'editingVideo' : 'editingQuiz');
         setLessonForm({
             id: lesson.id,
@@ -444,17 +457,22 @@ export default function CourseEditPage() {
         }
     };
 
-    // Parse Quiz
+    // Parse Quiz (preview only — does not persist anything)
     const handleParseQuiz = async () => {
         if (!quizFile) return;
-        setEditState('processing');
+        setQuizFlowStatus('processing');
         try {
             const result = await parseQuizFile(quizFile);
             setParsedQuestions(result);
-            setEditState('reviewing');
+            setQuizFlowStatus('reviewing');
         } catch (err: any) {
-            setError(err.message);
-            setEditState('editingQuiz');
+            // A failed preview is a transient, in-panel error, not a
+            // page-level one — routing it through the global `error` state
+            // used to swap the ENTIRE editor for a full-page "Đã có lỗi xảy
+            // ra" dead-end (see the `if (error) return ...` render guard
+            // below) over something as recoverable as a bad Excel row.
+            setToast({ message: 'Không thể đọc tệp: ' + getErrorMessage(err.message), type: 'error' });
+            setQuizFlowStatus('idle');
         }
     };
 
@@ -462,13 +480,13 @@ export default function CourseEditPage() {
     const handleUploadQuiz = async () => {
         if (!quizFile || !selectedItem || (selectedItem as Lesson).type !== 'QUIZ') return;
         const lesson = selectedItem as Lesson;
-        setEditState('processing');
+        setQuizFlowStatus('processing');
         try {
             const result = await uploadQuizFile(lesson.id, quizFile);
             setQuizUploadedCount(result.uploadedCount);
             setQuizFile(null);
             setParsedQuestions(null);
-            setEditState('editingQuiz');
+            setQuizFlowStatus('idle');
             setToast({ message: `Đã tải lên ${result.uploadedCount} câu hỏi Quiz!`, type: 'success' });
             // Upload fully replaces the question set (BR-UPLOAD-01) — refetch
             // so the "existing questions" list reflects what's actually there now.
@@ -480,7 +498,15 @@ export default function CourseEditPage() {
             }
         } catch (err: any) {
             setToast({ message: 'Không thể tải lên bộ câu hỏi: ' + getErrorMessage(err.message), type: 'error' });
-            setEditState('editingQuiz');
+            setQuizFlowStatus('idle');
+        }
+    };
+
+    const handleDownloadQuizTemplate = async () => {
+        try {
+            await downloadQuizTemplate();
+        } catch (err: any) {
+            setToast({ message: 'Không thể tải file mẫu: ' + getErrorMessage(err.message), type: 'error' });
         }
     };
 
@@ -1144,9 +1170,18 @@ export default function CourseEditPage() {
                                             )}
 
                                             <div>
-                                                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                                                    Tải lên bộ câu hỏi từ Excel (.xlsx) — sẽ thay thế toàn bộ câu hỏi hiện có
-                                                </label>
+                                                <div className="flex items-center justify-between mb-1.5 gap-2">
+                                                    <label className="block text-xs font-semibold text-slate-700">
+                                                        Tải lên bộ câu hỏi từ Excel (.xlsx) — sẽ thay thế toàn bộ câu hỏi hiện có
+                                                    </label>
+                                                    <button
+                                                        type="button"
+                                                        onClick={handleDownloadQuizTemplate}
+                                                        className="shrink-0 text-xs font-semibold text-indigo-600 hover:text-indigo-700 hover:underline whitespace-nowrap"
+                                                    >
+                                                        ⬇ Tải file mẫu
+                                                    </button>
+                                                </div>
                                                 <div className="border-2 border-dashed border-slate-200 hover:border-indigo-400 bg-slate-50/50 rounded-2xl p-6 text-center transition-colors">
                                                     <input
                                                         type="file"

@@ -257,13 +257,43 @@ export const parseQuizFile = async (file: File): Promise<QuizParseResponse> => {
         return response.data;
     } catch (error: any) {
         if (error.response) {
-            const { status } = error.response;
-            if (status === 400) throw new Error('INVALID_FILE_FORMAT');
+            const { status, data } = error.response;
+            // A 400 here almost always carries the actual, specific reason
+            // (row-level ExcelInvalidException message + row number) — the
+            // old code discarded it and threw a fixed 'INVALID_FILE_FORMAT'
+            // string, so a lecturer whose file failed on row 7 for a
+            // specific reason only ever saw "Định dạng tệp không hợp lệ"
+            // with no way to know which row or why.
+            if (status === 400) throw new Error(data?.details ? `${data.details}` : (data?.error || 'INVALID_FILE_FORMAT'));
             else if (status === 413) throw new Error('FILE_TOO_LARGE');
             else if (status === 401) throw new Error('UNAUTHORIZED');
             else if (status === 403) throw new Error('ACCESS_DENIED');
             else throw new Error('SERVER_ERROR');
         } else throw new Error('NETWORK_ERROR');
+    }
+};
+
+// Downloads the sample quiz Excel template. Fetched as a blob (rather than a
+// plain `<a href>` to the API route) because auth here is a Bearer JWT from
+// localStorage attached by the axios interceptor (see api.ts) — a bare
+// anchor tag's browser-initiated GET carries no Authorization header and
+// would just 401.
+export const downloadQuizTemplate = async (): Promise<void> => {
+    try {
+        const response = await api.get('/management/quiz/template', {
+            responseType: 'blob',
+        });
+        const url = window.URL.createObjectURL(new Blob([response.data]));
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', 'mau-cau-hoi-quiz.xlsx');
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
+    } catch (error: any) {
+        if (error.response?.status === 401) throw new Error('UNAUTHORIZED');
+        throw new Error('SERVER_ERROR');
     }
 };
 
@@ -281,8 +311,12 @@ export const uploadQuizFile = async (lessonId: number, file: File): Promise<{ up
         return response.data;
     } catch (error: any) {
         if (error.response) {
-            const { status } = error.response;
-            if (status === 400) throw new Error('INVALID_FILE_FORMAT');
+            const { status, data } = error.response;
+            // Same fix as parseQuizFile above — the upload route reports
+            // EMPTY_QUIZ_FILE / INVALID_EXCEL_FORMAT (with the specific row
+            // reason) in `message`, which was previously discarded in favor
+            // of a fixed 'INVALID_FILE_FORMAT' string.
+            if (status === 400) throw new Error(data?.message || data?.error || 'INVALID_FILE_FORMAT');
             else if (status === 413) throw new Error('FILE_TOO_LARGE');
             else if (status === 401) throw new Error('UNAUTHORIZED');
             else if (status === 403) throw new Error('ACCESS_DENIED');
