@@ -1,0 +1,30 @@
+---
+title: Khóa học như không gian học
+label: wayfinder:map
+created: 2026-08-12
+---
+
+## Destination
+
+Spec đã chốt cho mô hình tổ chức nội dung khóa học cá nhân: glossary + ADR + cấu trúc dữ liệu đích (chương tùy chọn, sources ghi xuất xứ playlist) **cộng** các quyết định UX là hệ quả trực tiếp (luồng tạo "dán 1 URL → không gian học"). Xong khi không còn gì phải quyết trước lúc lập kế hoạch triển khai.
+
+## Notes
+
+- Domain: e-learning cá nhân, nguồn chủ yếu YouTube (video lẻ / playlist chủ kênh / playlist tự gom). Vimeo và nguồn khác hưởng ké ở tầng khái niệm, không ticket riêng.
+- Skills mỗi session nên dùng: `/grilling` + `/domain-modeling` (glossary tại `CONTEXT.md`, ADR tại `docs/adr/`).
+- Ngôn ngữ làm việc: tiếng Việt.
+- Tracker: local-markdown theo `docs/wayfinder/TRACKER.md`.
+
+## Decisions so far
+
+- [CONTEXT.md — glossary nền](../../../CONTEXT.md) — "Khóa học" = không gian học cá nhân quanh nội dung nguồn; Chương tùy chọn; Nguồn ghi xuất xứ; Hoàn thành đồng nhất mọi hình thái.
+- [ADR-0001 — Một container duy nhất](../../adr/0001-mot-container-duy-nhat-cho-moi-hinh-thai-noi-dung-hoc.md) — không thêm container thứ hai; giữ chữ "khóa học" ở code/DB, nới nghĩa.
+
+## Not yet specified
+
+- Ảnh hưởng của container 1-video lên share/clone và trang danh sách khóa học (lọc/nhóm theo hình thái?) — chỉ sắc nét sau khi luồng tạo (ticket 04) được chốt.
+
+## Out of scope
+
+- **Tự động hóa import playlist YouTube** (dán URL playlist → tự sinh bài học) — chủ dự án đánh giá khó ở mức lập trình, ngoài phạm vi effort này; mô hình dữ liệu vẫn phải chừa chỗ (ticket 03).
+- **Trải nghiệm học / hiển thị tiến độ khác nhau theo hình thái** — quyết định Q10 chốt destination ở domain + UX luồng tạo; ngữ nghĩa "hoàn thành" đã chốt đồng nhất.
