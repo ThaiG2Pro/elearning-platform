@@ -3,7 +3,7 @@ id: khong-gian-hoc/07
 title: Container 1-video trên danh sách khóa học và share/clone
 label: wayfinder:grilling
 status: open
-assignee: null
+assignee: "claude (session 8c9c7d10)"
 blocked_by: [khong-gian-hoc/05]
 ---
 ## Question
