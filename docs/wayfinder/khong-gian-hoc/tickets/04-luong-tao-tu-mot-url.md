@@ -3,7 +3,7 @@ id: khong-gian-hoc/04
 title: Luồng tạo "dán 1 URL → không gian học"
 label: wayfinder:prototype
 status: open
-assignee: null
+assignee: "claude (session 8c9c7d10)"
 blocked_by: [khong-gian-hoc/01, khong-gian-hoc/02]
 ---
 ## Question
