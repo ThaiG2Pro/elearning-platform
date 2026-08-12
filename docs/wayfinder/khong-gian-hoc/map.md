@@ -22,10 +22,11 @@ Spec đã chốt cho mô hình tổ chức nội dung khóa học cá nhân: glo
 - [Hiện trạng luồng tạo course/chapter/lesson](tickets/01-hien-trang-luong-tao.md) — luồng "dán URL → course" đã tồn tại (from-link, 1 API); "Chương 1" mặc định đã là tiền lệ production; chapter bắt buộc 3 tầng nhưng learn page đã tolerant; `sources` write-only, normalize URL copy ≥4 nơi.
 - [Cài đặt "chương tùy chọn" — chương mặc định ẩn hay migration nullable](tickets/02-cai-dat-chuong-tuy-chon.md) — chốt chương mặc định ẩn, schema nguyên trạng; luật ẩn thuần theo đếm (đúng 1 chương → ẩn), áp dụng mọi bề mặt; tên default giữ `'Chương 1'`.
 - [Ghi xuất xứ playlist trong sources](tickets/03-xuat-xu-playlist-trong-sources.md) — playlist là dòng `sources` riêng + cột mới `courses.source_id` (nullable); chi tiết vào `metadata` JSON; không phân biệt loại playlist bằng `type`; chuẩn hóa `type` = `YOUTUBE_VIDEO`/`YOUTUBE_PLAYLIST`; from-link video lẻ cũng ghi `source_id`, clone copy nguyên.
+- [Luồng tạo "dán 1 URL → không gian học"](tickets/04-luong-tao-tu-mot-url.md) — hero dán-URL thay modal from-link; tạo xong vào thẳng trang học (không qua editor, không chèn bước enrichment); trang học có nút "Chỉnh sửa" thường trực + banner giới thiệu quiz/sum một lần; oEmbed fail vẫn tạo với title tạm; URL playlist bị từ chối ở ô nhập; luồng tạo trống/editor giữ nguyên làm đường phụ.
 
 ## Not yet specified
 
-- Ảnh hưởng của container 1-video lên share/clone và trang danh sách khóa học (lọc/nhóm theo hình thái?) — chỉ sắc nét sau khi luồng tạo (ticket 04) được chốt.
+(trống — mọi mảng fog đã sắc nét thành ticket, xem frontier)
 
 ## Out of scope
 
