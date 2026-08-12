@@ -19,3 +19,5 @@ Gom mọi quyết định đã đóng (glossary, ADR, các ticket 02–05, 07) t
 Đã gom toàn bộ quyết định (glossary `CONTEXT.md`, ADR-0001, ticket 01–05, 07) thành một tài liệu bàn giao duy nhất — xem Assets. Không có quyết định mới ở ticket này, chỉ tổng hợp + rút ra checklist việc triển khai (mục 6 của spec) từ những gì đã chốt rải rác qua các ticket.
 
 **Đây là ticket cuối của map — không còn quyết định nào phải chốt trước khi lập kế hoạch triển khai. Destination đã đạt, map đóng.**
+
+**Cập nhật sau khi đóng map** (theo yêu cầu, cùng pattern checkpoint2-feasibility ticket "Fold confirmed/changed conclusions"): spec đã fold vào `docs/ROADMAP.md` thành **WP1.10** (6 sub-item, ứng với 6 mục của spec) — Checkpoint 1, đứng ngay sau WP1.9. Không sửa `VISION.md` — nội dung ở đó dùng "khóa học" ở mức chiến lược/prose, không phải UI copy, không mâu thuẫn với quyết định đổi từ hiển thị.

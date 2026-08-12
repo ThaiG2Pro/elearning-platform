@@ -326,6 +326,42 @@ cho người ngoài.**
   tiết marketing (quyết định wayfinder ticket 08): đây là thứ làm bài post
   ra mắt ở cộng đồng trở nên cụ thể/chia sẻ được thay vì "tôi làm ra một
   tool" trừu tượng — mọi outreach ở Checkpoint 2 đứng trên artifact này.
+- **WP1.10 — Khóa học như "không gian học": sửa luồng tạo từ link, ẩn chương
+  nhất quán, đổi từ hiển thị.** WP1.1 đã ship luồng "dán URL → course", nhưng
+  đổ về trang editor thay vì trang học, chưa xử lý oEmbed fail/playlist, và
+  chương mặc định `'Chương 1'` lộ ra khắp nơi dù course chỉ có 1 bài — không
+  khớp lời hứa "1 video lẻ cũng là một không gian học nhẹ nhàng, không phải
+  giáo trình". Nguồn quyết định: wayfinder map [Khóa học như không gian
+  học](../wayfinder/khong-gian-hoc/map.md), gom lại tại
+  [`docs/design/khong-gian-hoc-spec.md`](design/khong-gian-hoc-spec.md).
+  - **WP1.10.1 — Schema.** Thêm cột `courses.source_id` (nullable, FK →
+    `sources`) ghi course sinh từ nguồn nào (video lẻ hay playlist); chuẩn
+    hoá `sources.type` = `YOUTUBE_VIDEO`/`YOUTUBE_PLAYLIST` (sửa
+    `prisma/seed.ts` đang ghi `'VIDEO'` lệch với service `'YOUTUBE'`).
+  - **WP1.10.2 — Backend from-link.** oEmbed fail không còn trả 422 chặn
+    hoàn toàn — vẫn tạo course với title tạm `"Video YouTube (<videoId>)"`;
+    từ chối URL playlist ở tầng validate (chưa hỗ trợ, báo lỗi rõ); ghi
+    `courses.source_id` cho mọi course tạo từ from-link.
+  - **WP1.10.3 — Luồng tạo ở `/my-courses`.** Hero paste-box thay 2 nút
+    "Tạo khóa học"/"Tạo từ link YouTube" hiện tại; sau khi dán URL, card lựa
+    chọn "Học ngay" (→ thẳng `/courses/{id}/learn`) hoặc "Thêm quiz/tóm tắt
+    trước khi học" (→ editor đầy đủ hiện có, tự nhiên gọn vì course chỉ 1
+    bài). "Tạo khóa học trống" giữ nguyên làm đường phụ.
+  - **WP1.10.4 — Trang học: link về editor còn thiếu + cue tái diễn.** Vá lỗ
+    hổng hiện tại (0 link từ `learn/page.tsx` về editor); thêm thẻ sidebar
+    thường trực "+ Thêm quiz/tóm tắt cho bài này" và gợi ý khi video kết
+    thúc/lesson hoàn thành.
+  - **WP1.10.5 — Luật ẩn chương nhất quán ở mọi bề mặt.** Course có đúng 1
+    chương (bất kể tên) → ẩn tầng chương, in phẳng danh sách bài — đã đúng ở
+    editor/sidebar learn page, nhưng **`share/[token]/page.tsx` hiện luôn in
+    tiêu đề chương cho mọi chương**, lệch thật với phần còn lại; fix để nhất
+    quán.
+  - **WP1.10.6 — Từ ngữ hiển thị: "Khóa học" → "Space".** Đổi mọi chuỗi
+    hiển thị (không đổi code/DB/route `course`) trên toàn bộ UI — trang chủ,
+    `/my-courses`, `/my-learning`, `/share/{token}`, editor, learn page.
+    Thêm badge "N bài" trên card ở `/my-courses`/`/my-learning` để phân biệt
+    hình thái (1 video vs nhiều chương) — không thêm tab/lọc riêng theo
+    nguồn.
 
 **Điều kiện qua checkpoint tiếp theo:** có người ngoài thật sự quay lại học
 tiếp (retention có ý nghĩa) — đúng exit signal Vision giai đoạn 1. **WP1.5 và
