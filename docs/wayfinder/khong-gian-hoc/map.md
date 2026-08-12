@@ -19,6 +19,7 @@ Spec đã chốt cho mô hình tổ chức nội dung khóa học cá nhân: glo
 
 - [CONTEXT.md — glossary nền](../../../CONTEXT.md) — "Khóa học" = không gian học cá nhân quanh nội dung nguồn; Chương tùy chọn; Nguồn ghi xuất xứ; Hoàn thành đồng nhất mọi hình thái.
 - [ADR-0001 — Một container duy nhất](../../adr/0001-mot-container-duy-nhat-cho-moi-hinh-thai-noi-dung-hoc.md) — không thêm container thứ hai; giữ chữ "khóa học" ở code/DB, nới nghĩa.
+- [Hiện trạng luồng tạo course/chapter/lesson](tickets/01-hien-trang-luong-tao.md) — luồng "dán URL → course" đã tồn tại (from-link, 1 API); "Chương 1" mặc định đã là tiền lệ production; chapter bắt buộc 3 tầng nhưng learn page đã tolerant; `sources` write-only, normalize URL copy ≥4 nơi.
 
 ## Not yet specified
 
