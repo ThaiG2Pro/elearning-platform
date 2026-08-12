@@ -21,6 +21,7 @@ Spec đã chốt cho mô hình tổ chức nội dung khóa học cá nhân: glo
 - [ADR-0001 — Một container duy nhất](../../adr/0001-mot-container-duy-nhat-cho-moi-hinh-thai-noi-dung-hoc.md) — không thêm container thứ hai; giữ chữ "khóa học" ở code/DB, nới nghĩa.
 - [Hiện trạng luồng tạo course/chapter/lesson](tickets/01-hien-trang-luong-tao.md) — luồng "dán URL → course" đã tồn tại (from-link, 1 API); "Chương 1" mặc định đã là tiền lệ production; chapter bắt buộc 3 tầng nhưng learn page đã tolerant; `sources` write-only, normalize URL copy ≥4 nơi.
 - [Cài đặt "chương tùy chọn" — chương mặc định ẩn hay migration nullable](tickets/02-cai-dat-chuong-tuy-chon.md) — chốt chương mặc định ẩn, schema nguyên trạng; luật ẩn thuần theo đếm (đúng 1 chương → ẩn), áp dụng mọi bề mặt; tên default giữ `'Chương 1'`.
+- [Ghi xuất xứ playlist trong sources](tickets/03-xuat-xu-playlist-trong-sources.md) — playlist là dòng `sources` riêng + cột mới `courses.source_id` (nullable); chi tiết vào `metadata` JSON; không phân biệt loại playlist bằng `type`; chuẩn hóa `type` = `YOUTUBE_VIDEO`/`YOUTUBE_PLAYLIST`; from-link video lẻ cũng ghi `source_id`, clone copy nguyên.
 
 ## Not yet specified
 
