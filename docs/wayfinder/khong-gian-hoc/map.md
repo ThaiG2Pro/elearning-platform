@@ -23,6 +23,7 @@ Spec đã chốt cho mô hình tổ chức nội dung khóa học cá nhân: glo
 - [Cài đặt "chương tùy chọn" — chương mặc định ẩn hay migration nullable](tickets/02-cai-dat-chuong-tuy-chon.md) — chốt chương mặc định ẩn, schema nguyên trạng; luật ẩn thuần theo đếm (đúng 1 chương → ẩn), áp dụng mọi bề mặt; tên default giữ `'Chương 1'`.
 - [Ghi xuất xứ playlist trong sources](tickets/03-xuat-xu-playlist-trong-sources.md) — playlist là dòng `sources` riêng + cột mới `courses.source_id` (nullable); chi tiết vào `metadata` JSON; không phân biệt loại playlist bằng `type`; chuẩn hóa `type` = `YOUTUBE_VIDEO`/`YOUTUBE_PLAYLIST`; from-link video lẻ cũng ghi `source_id`, clone copy nguyên.
 - [Luồng tạo "dán 1 URL → không gian học"](tickets/04-luong-tao-tu-mot-url.md) — hero dán-URL thay modal from-link; sau dán hiện card lựa chọn "Học ngay" / "Thêm quiz-tóm tắt trước" (nhánh sau mở editor đầy đủ, gọn sẵn nhờ luật ẩn chương); trang học có cue tái diễn (thẻ sidebar thường trực + gợi ý khi video kết thúc), không chỉ banner một lần; oEmbed fail vẫn tạo với title tạm; URL playlist bị từ chối ở ô nhập; luồng tạo trống/editor giữ nguyên làm đường phụ.
+- [Từ hiển thị container trên UI](tickets/05-tu-hien-thi-container-tren-ui.md) — đổi "Khóa học" → "Space" trên toàn bộ UI (mọi màn hình đồng nhất); code/DB/route giữ nguyên theo ADR-0001; thêm badge "N bài" phân biệt hình thái (1 video vs nhiều chương) trên trang liệt kê.
 
 ## Not yet specified
 
