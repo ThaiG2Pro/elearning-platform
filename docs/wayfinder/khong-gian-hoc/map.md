@@ -24,6 +24,7 @@ Spec đã chốt cho mô hình tổ chức nội dung khóa học cá nhân: glo
 - [Ghi xuất xứ playlist trong sources](tickets/03-xuat-xu-playlist-trong-sources.md) — playlist là dòng `sources` riêng + cột mới `courses.source_id` (nullable); chi tiết vào `metadata` JSON; không phân biệt loại playlist bằng `type`; chuẩn hóa `type` = `YOUTUBE_VIDEO`/`YOUTUBE_PLAYLIST`; from-link video lẻ cũng ghi `source_id`, clone copy nguyên.
 - [Luồng tạo "dán 1 URL → không gian học"](tickets/04-luong-tao-tu-mot-url.md) — hero dán-URL thay modal from-link; sau dán hiện card lựa chọn "Học ngay" / "Thêm quiz-tóm tắt trước" (nhánh sau mở editor đầy đủ, gọn sẵn nhờ luật ẩn chương); trang học có cue tái diễn (thẻ sidebar thường trực + gợi ý khi video kết thúc), không chỉ banner một lần; oEmbed fail vẫn tạo với title tạm; URL playlist bị từ chối ở ô nhập; luồng tạo trống/editor giữ nguyên làm đường phụ.
 - [Từ hiển thị container trên UI](tickets/05-tu-hien-thi-container-tren-ui.md) — đổi "Khóa học" → "Space" trên toàn bộ UI (mọi màn hình đồng nhất); code/DB/route giữ nguyên theo ADR-0001; thêm badge "N bài" phân biệt hình thái (1 video vs nhiều chương) trên trang liệt kê.
+- [Container 1-video trên danh sách khóa học và share/clone](tickets/07-container-1-video-tren-danh-sach-va-share.md) — `/my-courses`/`/my-learning` chỉ badge "N bài", không tab/lọc theo nguồn (giữ ADR-0001); fix `/share/{token}` để áp dụng luật ẩn-chương-đơn (đang lệch, luôn lộ "Chương 1"); share không cần badge (chỉ 1 course/trang); nhãn đổi theo "Space"; "Sao chép về học" giữ nguyên hành vi.
 
 ## Not yet specified
 
