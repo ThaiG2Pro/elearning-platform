@@ -3,7 +3,7 @@ id: khong-gian-hoc/03
 title: Ghi xuất xứ playlist trong sources
 label: wayfinder:grilling
 status: open
-assignee: null
+assignee: "claude (session 8c9c7d10)"
 blocked_by: []
 ---
 ## Question
