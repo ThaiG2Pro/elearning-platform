@@ -3,7 +3,7 @@ id: khong-gian-hoc/06
 title: Tổng hợp spec đích
 label: wayfinder:task
 status: open
-assignee: null
+assignee: "claude (session 8c9c7d10)"
 blocked_by: [khong-gian-hoc/02, khong-gian-hoc/03, khong-gian-hoc/04, khong-gian-hoc/05, khong-gian-hoc/07]
 ---
 ## Question
