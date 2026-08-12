@@ -3,7 +3,7 @@ id: khong-gian-hoc/02
 title: Cài đặt "chương tùy chọn" — chương mặc định ẩn hay migration nullable
 label: wayfinder:grilling
 status: open
-assignee: null
+assignee: "claude (session 8c9c7d10)"
 blocked_by: [khong-gian-hoc/01]
 ---
 ## Question
