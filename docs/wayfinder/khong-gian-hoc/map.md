@@ -2,6 +2,7 @@
 title: Khóa học như không gian học
 label: wayfinder:map
 created: 2026-08-12
+status: closed
 ---
 
 ## Destination
@@ -25,10 +26,15 @@ Spec đã chốt cho mô hình tổ chức nội dung khóa học cá nhân: glo
 - [Luồng tạo "dán 1 URL → không gian học"](tickets/04-luong-tao-tu-mot-url.md) — hero dán-URL thay modal from-link; sau dán hiện card lựa chọn "Học ngay" / "Thêm quiz-tóm tắt trước" (nhánh sau mở editor đầy đủ, gọn sẵn nhờ luật ẩn chương); trang học có cue tái diễn (thẻ sidebar thường trực + gợi ý khi video kết thúc), không chỉ banner một lần; oEmbed fail vẫn tạo với title tạm; URL playlist bị từ chối ở ô nhập; luồng tạo trống/editor giữ nguyên làm đường phụ.
 - [Từ hiển thị container trên UI](tickets/05-tu-hien-thi-container-tren-ui.md) — đổi "Khóa học" → "Space" trên toàn bộ UI (mọi màn hình đồng nhất); code/DB/route giữ nguyên theo ADR-0001; thêm badge "N bài" phân biệt hình thái (1 video vs nhiều chương) trên trang liệt kê.
 - [Container 1-video trên danh sách khóa học và share/clone](tickets/07-container-1-video-tren-danh-sach-va-share.md) — `/my-courses`/`/my-learning` chỉ badge "N bài", không tab/lọc theo nguồn (giữ ADR-0001); fix `/share/{token}` để áp dụng luật ẩn-chương-đơn (đang lệch, luôn lộ "Chương 1"); share không cần badge (chỉ 1 course/trang); nhãn đổi theo "Space"; "Sao chép về học" giữ nguyên hành vi.
+- [Tổng hợp spec đích](tickets/06-tong-hop-spec-dich.md) — mọi quyết định gom vào [docs/design/khong-gian-hoc-spec.md](../../design/khong-gian-hoc-spec.md): khái niệm nền, cấu trúc dữ liệu đích, luồng tạo dán-URL, từ ngữ hiển thị, container 1-video, checklist triển khai, ngoài phạm vi. **Destination đạt — map đóng.**
 
 ## Not yet specified
 
 (trống — mọi mảng fog đã sắc nét thành ticket, xem frontier)
+
+## Kết quả
+
+Map đóng 2026-08-12. Toàn bộ 7 ticket đã resolve; spec bàn giao tại [docs/design/khong-gian-hoc-spec.md](../../design/khong-gian-hoc-spec.md).
 
 ## Out of scope
 
