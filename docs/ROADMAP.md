@@ -561,10 +561,38 @@ Kênh global chờ cổng retention bên dưới.
   được phép mượn code có ghi công: yt-dlp fallback, prompt, cách chunk
   transcript dài) và PageLM (license cấm dùng thương mại — **chỉ đọc lấy ý
   tưởng** thiết kế prompt/schema output, tuyệt đối không port code).
+  **[Đã đóng — 2026-08-14]** Bảng `ai_generations` (migration
+  `20260814180000_add_ai_generations`, additive) đúng theo mục 3: `recipe_hash`
+  gồm cả `model_version` (ghi chú 1), `generated_by_user_id` nullable với
+  `onDelete: SetNull` (ghi chú 2 — xoá tài khoản không cascade-delete bản
+  `SHARED`), `key_source`/`visibility`/`is_default_recipe`/`status` (enqueue
+  nhẹ PENDING/READY/FAILED theo `ai-integration-plan.md` mục 4). Ràng buộc 1
+  (`unique(source_id, recipe_hash) WHERE key_source = 'SHARED_FREE'`) là
+  partial unique index viết tay trong migration SQL (Prisma schema syntax
+  không biểu diễn được partial index). `lessons.ai_generation_id` nullable —
+  AI luôn optional (mục 8), gán là bước UI riêng, generate không tự gán.
+  Đã verify: `prisma migrate deploy` áp sạch vào DB local, `\d ai_generations`
+  xác nhận partial unique index đúng, `tsc --noEmit` sạch. **Chưa làm**:
+  đọc Notex/PageLM tham khảo (bước chuẩn bị ticket 14) — hoãn tới khi thật sự
+  code `TranscriptProvider`/prompt ở WP2.2.
 - **WP2.2 — Pipeline generate AI mặc định có kiểm soát chi phí.** Lazy-generate
   (chỉ chạy khi user thật sự bấm dùng, không tự động khi thêm Source), cache
   theo `(sourceId, recipeHash mặc định)`, rate-limit Source mới/user/ngày (mục
   6.1), quota tính theo token thực chứ không theo lượt (mục 6.3).
+  **[Bắt đầu — 2026-08-14]** Đã code phần domain thuần (không đụng DB/LLM):
+  `src/modules/ai-generation/domain/RecipeHash.ts` (hash ổn định bất kể thứ
+  tự key) và `AIGenerationPolicy.ts` — 4 nhánh routing chi phí (mục 4), fix
+  free-rider ép `PAID_TIER` luôn `PRIVATE` (mục 5), ranh giới default/custom
+  theo segment (mục 2), chặn kế thừa `PAID_TIER` khi fork/clone, ngưỡng
+  rate-limit/ngày (mục 6.1) và token budget (mục 6.3). 23 unit test riêng,
+  `pnpm test` 87/87 xanh. **Chưa làm** (còn lại của WP2.2): `TranscriptProvider`
+  thật (`youtube-transcript-plus`), `LLMProvider`/`GeminiProvider`
+  (`@google/genai`, cần `GEMINI_API_KEY` thật để test end-to-end),
+  `AIGenerationRepository`/`AIGenerationService` nối domain layer vào DB thật,
+  route `POST/GET /api/v1/sources/:sourceId/ai-generations`. Đây là phần còn
+  lại nặng nhất — cần quyết định thêm dependency mới (`@google/genai`,
+  thư viện transcript) và một API key thật, ngoài phạm vi tự làm được trong
+  một phiên không có key.
 - **WP2.3 — UI hiển thị AI mặc định gắn vào course-item.** Luôn optional —
   generate lỗi/chưa xong không chặn việc học. **Gồm nhánh UX quota-cạn
   (ticket 06):** khi quota SHARED_FREE toàn nền tảng (~250 req/ngày) cạn,

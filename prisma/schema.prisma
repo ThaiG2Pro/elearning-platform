@@ -9,30 +9,34 @@ datasource db {
 
 model users {
   id                BigInt              @id @default(autoincrement()) @map("id")
-  email             String              @unique @db.VarChar(255) @map("email")
-  password_hash     String              @db.VarChar(255) @map("password_hash")
-  full_name         String              @db.VarChar(100) @map("full_name")
+  email             String              @unique @map("email") @db.VarChar(255)
+  password_hash     String              @map("password_hash") @db.VarChar(255)
+  full_name         String              @map("full_name") @db.VarChar(100)
   age               Int?                @map("age")
   role_id           Int                 @map("role_id")
-  status            String              @db.VarChar(20) @map("status")
-  created_at        DateTime?           @db.Timestamp(6) @map("created_at")
+  status            String              @map("status") @db.VarChar(20)
+  created_at        DateTime?           @map("created_at") @db.Timestamp(6)
   // WP1.5.6: client-side-resized avatar image, stored as a data: URL — no
   // file storage exists anywhere in this codebase (no S3/disk-upload infra)
   // and this app targets Vercel-style serverless where writing to disk at
   // runtime isn't reliable, so the DB is the simplest safe place for it.
-  avatar_url        String?             @db.Text @map("avatar_url")
+  avatar_url        String?             @map("avatar_url") @db.Text
   owned_courses     courses[]           @relation("CourseOwner")
   learning_progress learning_progress[]
   notes             notes[]
   role              roles               @relation(fields: [role_id], references: [id])
   tokens            tokens[]
+  // WP2.1 — AI generations this user personally triggered (BYOK/PAID_TIER,
+  // or the first SHARED_FREE cache-miss for a Source). Set to NULL on
+  // account deletion, never cascade-deleted (ghi chú 2, mục 3 economics doc).
+  ai_generations    ai_generations[]
 
   @@map("users")
 }
 
 model roles {
   id    Int     @id @default(autoincrement()) @map("id")
-  name  String  @db.VarChar(20) @map("name")
+  name  String  @map("name") @db.VarChar(20)
   users users[]
 
   @@map("roles")
@@ -41,9 +45,9 @@ model roles {
 model tokens {
   id         BigInt   @id @default(autoincrement()) @map("id")
   user_id    BigInt   @map("user_id")
-  code       String   @unique @db.Uuid @map("code")
-  type       String   @db.VarChar(20) @map("type")
-  expires_at DateTime @db.Timestamp(6) @map("expires_at")
+  code       String   @unique @map("code") @db.Uuid
+  type       String   @map("type") @db.VarChar(20)
+  expires_at DateTime @map("expires_at") @db.Timestamp(6)
   is_used    Boolean  @map("is_used")
   user       users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
@@ -51,18 +55,70 @@ model tokens {
 }
 
 model sources {
-  id             BigInt    @id @default(autoincrement()) @map("id")
-  url            String    @unique @db.VarChar(1000) @map("url")
-  normalized_url String    @unique @db.VarChar(1000) @map("normalized_url")
-  title          String?   @db.VarChar(255) @map("title")
-  type           String    @db.VarChar(50) @map("type")
-  metadata       String?   @db.Text @map("metadata")
-  created_at     DateTime? @default(now()) @db.Timestamp(6) @map("created_at")
+  id             BigInt           @id @default(autoincrement()) @map("id")
+  url            String           @unique @map("url") @db.VarChar(1000)
+  normalized_url String           @unique @map("normalized_url") @db.VarChar(1000)
+  title          String?          @map("title") @db.VarChar(255)
+  type           String           @map("type") @db.VarChar(50)
+  metadata       String?          @map("metadata") @db.Text
+  created_at     DateTime?        @default(now()) @map("created_at") @db.Timestamp(6)
   lessons        lessons[]
   // WP1.10.1 — courses created from this source (1 URL → 1 không gian học).
   courses        courses[]
+  // WP2.1 — every AI output (summary/quiz) generated from this source's
+  // content. Transcript lives only here (economics doc mục 6.5) — never
+  // duplicated into ai_generations.
+  ai_generations ai_generations[]
 
   @@map("sources")
+}
+
+// WP2.1 — 1 bản output AI cụ thể (tóm tắt hoặc quiz), theo
+// docs/design/ai-personalization-economics.md mục 3. Additive, không đổi
+// bảng cũ (nguyên tắc #1 ở ROADMAP.md từ Checkpoint 1 trở đi).
+model ai_generations {
+  id                   BigInt   @id @default(autoincrement()) @map("id")
+  source_id            BigInt   @map("source_id")
+  // hash(type, params, segmentRange, modelVersion) — modelVersion bắt buộc
+  // nằm trong hash (ghi chú 1, mục 3 economics doc) để nâng cấp model tự
+  // tạo cache-miss có kiểm soát, không cần xoá tay bản cache cũ.
+  recipe_hash          String   @map("recipe_hash") @db.VarChar(128)
+  // 'summary' | 'quiz' — slice tối thiểu Checkpoint 2 (ai-integration-plan.md
+  // mục 3): không mở rộng flashcard/mindmap/chat.
+  recipe_type          String   @map("recipe_type") @db.VarChar(20)
+  // true chỉ khi recipe == cấu hình mặc định hệ thống, không do user chọn
+  // tham số nào (kể cả segment) — ranh giới cứng ở mục 2 economics doc.
+  is_default_recipe    Boolean  @default(false) @map("is_default_recipe")
+  // SHARED_FREE | BYOK | PAID_TIER — nguồn chi phí gốc, quyết định luật
+  // free-rider ở mục 5 economics doc.
+  key_source           String   @map("key_source") @db.VarChar(20)
+  // NULL nếu hệ thống seed HOẶC user gốc đã xoá tài khoản (ghi chú 2, mục 3)
+  // — không cascade-delete theo user, giữ nguyên content/visibility.
+  generated_by_user_id BigInt?  @map("generated_by_user_id")
+  // PRIVATE | SHARED — SHARED chỉ hợp lệ khi key_source = BYOK (ràng buộc 2,
+  // mục 3); key_source = PAID_TIER luôn bị ép cứng PRIVATE ở tầng service.
+  visibility           String   @default("PRIVATE") @map("visibility") @db.VarChar(20)
+  // PENDING | READY | FAILED — enqueue nhẹ (ai-integration-plan.md mục 4):
+  // route POST trả 202 ngay với PENDING, xử lý trong cùng process, UI poll.
+  status               String   @default("PENDING") @map("status") @db.VarChar(20)
+  model_version        String   @map("model_version") @db.VarChar(50)
+  // Output đã xử lý — KHÔNG chứa lại transcript gốc (mục 6.5 economics doc).
+  content              String?  @map("content") @db.Text
+  error                String?  @map("error") @db.Text
+  created_at           DateTime @default(now()) @map("created_at")
+  updated_at           DateTime @default(now()) @updatedAt @map("updated_at")
+
+  source            sources   @relation(fields: [source_id], references: [id])
+  generated_by_user users?    @relation(fields: [generated_by_user_id], references: [id])
+  lessons           lessons[]
+
+  // Non-unique here on purpose: Prisma schema syntax can't express a partial
+  // unique index. The real RÀNG BUỘC 1 constraint — unique(source_id,
+  // recipe_hash) WHERE key_source = 'SHARED_FREE' — lives directly in the
+  // migration SQL (prisma/migrations/20260814180000_add_ai_generations).
+  @@index([source_id, recipe_hash])
+  @@index([generated_by_user_id, created_at])
+  @@map("ai_generations")
 }
 
 model courses {
@@ -73,11 +129,11 @@ model courses {
   // every write path set both to the same value — so `lecturer_id` was
   // dropped entirely; `owner_id` is now the sole identity field.
   owner_id              BigInt              @map("owner_id")
-  title                 String              @db.VarChar(255) @map("title")
-  slug                  String              @unique @db.VarChar(255) @map("slug")
-  share_token           String?             @unique @db.VarChar(100) @map("share_token")
-  description           String?             @db.Text @map("description")
-  status                String              @default("active") @db.VarChar(20) @map("status")
+  title                 String              @map("title") @db.VarChar(255)
+  slug                  String              @unique @map("slug") @db.VarChar(255)
+  share_token           String?             @unique @map("share_token") @db.VarChar(100)
+  description           String?             @map("description") @db.Text
+  status                String              @default("active") @map("status") @db.VarChar(20)
   // WP1.5.12 — records which course a "Sao chép về học" clone came from, so
   // cloneForOwner can dedupe: same (owner, source) pair reuses the existing
   // clone instead of creating a duplicate on a double-submit/double-fire.
@@ -97,11 +153,11 @@ model courses {
   // Nullable vì course tạo trống (không qua from-link) không có nguồn.
   // Clone copy nguyên giá trị này — xuất xứ nội dung không đổi khi đổi chủ.
   source_id             BigInt?             @map("source_id")
-  chapters          chapters[]
-  learning_progress learning_progress[]
-  notes             notes[]
-  owner             users               @relation("CourseOwner", fields: [owner_id], references: [id])
-  source             sources?           @relation(fields: [source_id], references: [id])
+  chapters              chapters[]
+  learning_progress     learning_progress[]
+  notes                 notes[]
+  owner                 users               @relation("CourseOwner", fields: [owner_id], references: [id])
+  source                sources?            @relation(fields: [source_id], references: [id])
 
   // Postgres allows multiple NULLs through a unique index, so this only
   // constrains actual clones (cloned_from_course_id set) — owner-authored
@@ -114,7 +170,7 @@ model courses {
 model chapters {
   id          BigInt    @id @default(autoincrement()) @map("id")
   course_id   BigInt    @map("course_id")
-  title       String    @db.VarChar(255) @map("title")
+  title       String    @map("title") @db.VarChar(255)
   order_index Int       @map("order_index")
   course      courses   @relation(fields: [course_id], references: [id])
   lessons     lessons[]
@@ -126,12 +182,17 @@ model lessons {
   id                BigInt              @id @default(autoincrement()) @map("id")
   chapter_id        BigInt              @map("chapter_id")
   source_id         BigInt?             @map("source_id")
-  title             String              @db.VarChar(255) @map("title")
-  type              String              @db.VarChar(20) @map("type")
-  content_url       String?             @db.VarChar(500) @map("content_url")
+  title             String              @map("title") @db.VarChar(255)
+  type              String              @map("type") @db.VarChar(20)
+  content_url       String?             @map("content_url") @db.VarChar(500)
   order_index       Int                 @map("order_index")
+  // WP2.1 — NULL hợp lệ luôn: tổ chức/học/theo dõi tiến độ không cần chạm AI
+  // (mục 8 economics doc, "core free mãi mãi"). Gán bản AIGeneration cụ thể
+  // là bước UI riêng, generate không tự gán.
+  ai_generation_id  BigInt?             @map("ai_generation_id")
   chapter           chapters            @relation(fields: [chapter_id], references: [id])
   source            sources?            @relation(fields: [source_id], references: [id])
+  ai_generation     ai_generations?     @relation(fields: [ai_generation_id], references: [id])
   learning_progress learning_progress[]
   questions         questions[]
   notes             notes[]
@@ -148,7 +209,7 @@ model notes {
   user_id             BigInt   @map("user_id")
   lesson_id           BigInt   @map("lesson_id")
   course_id           BigInt   @map("course_id")
-  content             String   @db.Text @map("content")
+  content             String   @map("content") @db.Text
   video_timestamp_sec Int?     @map("video_timestamp_sec")
   created_at          DateTime @default(now()) @map("created_at")
   updated_at          DateTime @default(now()) @updatedAt @map("updated_at")
@@ -169,8 +230,8 @@ model learning_progress {
   video_last_position Int?      @map("video_last_position")
   quiz_max_score      Int?      @map("quiz_max_score")
   quiz_start_time     DateTime? @map("quiz_start_time")
-  personal_note       String?   @db.Text @map("personal_note")
-  quiz_question_ids   String?   @db.Text @map("quiz_question_ids")
+  personal_note       String?   @map("personal_note") @db.Text
+  quiz_question_ids   String?   @map("quiz_question_ids") @db.Text
   lesson              lessons   @relation(fields: [lesson_id], references: [id])
   user                users?    @relation(fields: [user_id], references: [id])
   course              courses?  @relation(fields: [course_id], references: [id])
@@ -185,15 +246,15 @@ model learning_progress {
 }
 
 model questions {
-  id          BigInt  @id @default(autoincrement()) @map("id")
-  lesson_id   BigInt  @map("lesson_id")
-  content     String  @db.Text @map("content")
-  answer_key  String? @db.VarChar(255) @map("answer_key")
-  option_a    String  @db.VarChar(255) @map("option_a")
-  option_b    String  @db.VarChar(255) @map("option_b")
-  option_c    String  @db.VarChar(255) @map("option_c")
-  option_d    String  @db.VarChar(255) @map("option_d")
-  lesson      lessons @relation(fields: [lesson_id], references: [id])
+  id         BigInt  @id @default(autoincrement()) @map("id")
+  lesson_id  BigInt  @map("lesson_id")
+  content    String  @map("content") @db.Text
+  answer_key String? @map("answer_key") @db.VarChar(255)
+  option_a   String  @map("option_a") @db.VarChar(255)
+  option_b   String  @map("option_b") @db.VarChar(255)
+  option_c   String  @map("option_c") @db.VarChar(255)
+  option_d   String  @map("option_d") @db.VarChar(255)
+  lesson     lessons @relation(fields: [lesson_id], references: [id])
 
   @@map("questions")
 }
