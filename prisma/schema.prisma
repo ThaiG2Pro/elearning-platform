@@ -55,20 +55,26 @@ model tokens {
 }
 
 model sources {
-  id             BigInt           @id @default(autoincrement()) @map("id")
-  url            String           @unique @map("url") @db.VarChar(1000)
-  normalized_url String           @unique @map("normalized_url") @db.VarChar(1000)
-  title          String?          @map("title") @db.VarChar(255)
-  type           String           @map("type") @db.VarChar(50)
-  metadata       String?          @map("metadata") @db.Text
-  created_at     DateTime?        @default(now()) @map("created_at") @db.Timestamp(6)
-  lessons        lessons[]
+  id                    BigInt           @id @default(autoincrement()) @map("id")
+  url                   String           @unique @map("url") @db.VarChar(1000)
+  normalized_url        String           @unique @map("normalized_url") @db.VarChar(1000)
+  title                 String?          @map("title") @db.VarChar(255)
+  type                  String           @map("type") @db.VarChar(50)
+  metadata              String?          @map("metadata") @db.Text
+  created_at            DateTime?        @default(now()) @map("created_at") @db.Timestamp(6)
+  // WP2.2 — transcript lưu Ở ĐÂY DUY NHẤT (mục 6.5 economics doc): mọi
+  // AIGeneration của Source này tham chiếu qua source_id, không tự lưu lại
+  // transcript riêng — tránh nhân bản phần nặng nhất N lần theo số bản AI.
+  // Nullable + fetched_at: fetch lazy khi user bấm dùng AI lần đầu.
+  transcript            String?          @map("transcript") @db.Text
+  transcript_fetched_at DateTime?        @map("transcript_fetched_at")
+  lessons               lessons[]
   // WP1.10.1 — courses created from this source (1 URL → 1 không gian học).
-  courses        courses[]
+  courses               courses[]
   // WP2.1 — every AI output (summary/quiz) generated from this source's
   // content. Transcript lives only here (economics doc mục 6.5) — never
   // duplicated into ai_generations.
-  ai_generations ai_generations[]
+  ai_generations        ai_generations[]
 
   @@map("sources")
 }

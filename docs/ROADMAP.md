@@ -579,20 +579,37 @@ Kênh global chờ cổng retention bên dưới.
   (chỉ chạy khi user thật sự bấm dùng, không tự động khi thêm Source), cache
   theo `(sourceId, recipeHash mặc định)`, rate-limit Source mới/user/ngày (mục
   6.1), quota tính theo token thực chứ không theo lượt (mục 6.3).
-  **[Bắt đầu — 2026-08-14]** Đã code phần domain thuần (không đụng DB/LLM):
-  `src/modules/ai-generation/domain/RecipeHash.ts` (hash ổn định bất kể thứ
-  tự key) và `AIGenerationPolicy.ts` — 4 nhánh routing chi phí (mục 4), fix
+  **[Cập nhật 2026-08-14 — ✅ pipeline code xong, ❌ chưa test end-to-end với
+  key Gemini thật]** Domain thuần: `RecipeHash.ts` (hash ổn định bất kể thứ tự
+  key) + `AIGenerationPolicy.ts` — 4 nhánh routing chi phí (mục 4), fix
   free-rider ép `PAID_TIER` luôn `PRIVATE` (mục 5), ranh giới default/custom
   theo segment (mục 2), chặn kế thừa `PAID_TIER` khi fork/clone, ngưỡng
-  rate-limit/ngày (mục 6.1) và token budget (mục 6.3). 23 unit test riêng,
-  `pnpm test` 87/87 xanh. **Chưa làm** (còn lại của WP2.2): `TranscriptProvider`
-  thật (`youtube-transcript-plus`), `LLMProvider`/`GeminiProvider`
-  (`@google/genai`, cần `GEMINI_API_KEY` thật để test end-to-end),
-  `AIGenerationRepository`/`AIGenerationService` nối domain layer vào DB thật,
-  route `POST/GET /api/v1/sources/:sourceId/ai-generations`. Đây là phần còn
-  lại nặng nhất — cần quyết định thêm dependency mới (`@google/genai`,
-  thư viện transcript) và một API key thật, ngoài phạm vi tự làm được trong
-  một phiên không có key.
+  rate-limit/ngày (mục 6.1) và token budget theo ký tự transcript ước lượng
+  (mục 6.3). Providers: `TranscriptProvider` interface +
+  `YoutubeTranscriptPlusProvider` (`youtube-transcript-plus`); `LLMProvider`
+  interface + `GeminiProvider` (`@google/genai`, model `gemini-2.5-flash`) —
+  lỗi Gemini bọc riêng thành `LLMGenerationError`, không tự fallback ngầm
+  sang nguồn khác (mục 6.2). `AIGenerationRepository` (cache lookup theo
+  `(sourceId, recipeHash)`, đếm activation/ngày) + `AIGenerationService` nối
+  domain → transcript (lazy-fetch, lưu 1 lần ở `sources.transcript` — mục
+  6.5) → LLM → lưu `ai_generations` (enqueue nhẹ PENDING→READY/FAILED, đúng
+  ai-integration-plan.md mục 4). Route `POST/GET
+  /api/v1/sources/[sourceId]/ai-generations`. 10 unit test service-level
+  (mock transcript/LLM provider, không cần key thật) + 23 test domain, tổng
+  `pnpm test` 97/97 xanh, `tsc --noEmit` sạch. Env mới trong `.env.example`:
+  `GEMINI_API_KEY` (không set = tắt hẳn AI, không chặn phần còn lại — lỗi rõ
+  `SHARED_FREE_NOT_CONFIGURED`), `AI_DAILY_ACTIVATION_LIMIT`,
+  `AI_SHARED_FREE_MAX_TRANSCRIPT_CHARS`. Migration đi kèm:
+  `20260814190000_add_sources_transcript` (transcript lưu ở Source, không
+  lặp lại ở AIGeneration).
+  **Chưa làm**: (a) test thật với `GEMINI_API_KEY` sống (chưa có key trong
+  phiên này — mọi test hiện tại mock LLM/transcript, chưa xác nhận
+  `@google/genai`/`youtube-transcript-plus` hoạt động đúng với API thật);
+  (b) đọc Notex/PageLM tham khảo (bước chuẩn bị ticket 14, WP2.1) — bỏ qua vì
+  đã tự thiết kế xong prompt/pipeline, không còn chặn đường; (c) UI gắn
+  `CourseItem.aiGenerationId`/nút bấm dùng AI (thuộc WP2.3, chưa bắt đầu).
+  **Chưa mở Checkpoint 2 ra ngoài** — code này là chuẩn bị kỹ thuật trước,
+  không đồng nghĩa gate retention ở cuối Checkpoint 1 đã đạt.
 - **WP2.3 — UI hiển thị AI mặc định gắn vào course-item.** Luôn optional —
   generate lỗi/chưa xong không chặn việc học. **Gồm nhánh UX quota-cạn
   (ticket 06):** khi quota SHARED_FREE toàn nền tảng (~250 req/ngày) cạn,
