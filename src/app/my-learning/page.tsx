@@ -18,7 +18,7 @@ export default function MyLearningPage() {
     const router = useRouter();
 
     const [courses, setCourses] = useState<MyLearningCourse[]>([]);
-    const [filter, setFilter] = useState<'in_progress' | 'completed' | undefined>(undefined);
+    const [filter, setFilter] = useState<'not_started' | 'in_progress' | 'completed' | undefined>(undefined);
     const [appState, setAppState] = useState<'idle' | 'loading' | 'no_results' | 'error'>('idle');
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [user, setUser] = useState<User | null>(null);
@@ -38,7 +38,7 @@ export default function MyLearningPage() {
             }
         } catch (error: any) {
             setAppState('error');
-            setErrorMessage(error.message || 'Có lỗi xảy ra khi tải danh sách khóa học.');
+            setErrorMessage(error.message || 'Có lỗi xảy ra khi tải danh sách Space.');
         }
     }, [filter]);
 
@@ -71,7 +71,7 @@ export default function MyLearningPage() {
     };
 
     const handleFilterChange = (newFilter: string) => {
-        setFilter(newFilter === 'all' ? undefined : (newFilter as 'in_progress' | 'completed'));
+        setFilter(newFilter === 'all' ? undefined : (newFilter as 'not_started' | 'in_progress' | 'completed'));
     };
 
     const handleCourseClick = (courseId: string) => {
@@ -88,6 +88,26 @@ export default function MyLearningPage() {
         return date.toLocaleDateString('vi-VN');
     };
 
+    // WP1.6.4 — for the "đã xem 3:20" readout on courses that are in_progress
+    // but still 0% (no lesson duration is persisted anywhere, so this only
+    // works with the raw saved position, not a percentage).
+    const formatWatchedTime = (seconds: number) => {
+        const mins = Math.floor(seconds / 60);
+        const secs = Math.floor(seconds % 60);
+        return `${mins}:${secs.toString().padStart(2, '0')}`;
+    };
+
+    const STATUS_LABEL: Record<MyLearningCourse['status'], string> = {
+        not_started: 'Chưa bắt đầu',
+        in_progress: 'Đang học',
+        completed: 'Hoàn thành',
+    };
+    const STATUS_BADGE_CLASS: Record<MyLearningCourse['status'], string> = {
+        not_started: 'bg-slate-100 text-slate-500',
+        in_progress: 'bg-blue-50 text-blue-600',
+        completed: 'bg-emerald-50 text-emerald-600',
+    };
+
     return (
         <div className="min-h-screen bg-slate-50">
             <Header user={user} onLogout={handleLogout} onJoin={handleJoin} />
@@ -96,7 +116,7 @@ export default function MyLearningPage() {
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 <div className="mb-6">
                     <h1 className="text-2xl font-bold text-slate-900 mb-1">
-                        Khóa học của tôi
+                        Space của tôi
                     </h1>
                     <p className="text-sm text-slate-500">
                         Tiếp tục hành trình học tập của bạn
@@ -108,6 +128,7 @@ export default function MyLearningPage() {
                     <Tabs value={filter ?? 'all'} onValueChange={handleFilterChange}>
                         <TabsList>
                             <TabsTrigger value="in_progress">Đang học</TabsTrigger>
+                            <TabsTrigger value="not_started">Chưa bắt đầu</TabsTrigger>
                             <TabsTrigger value="completed">Hoàn thành</TabsTrigger>
                             <TabsTrigger value="all">Tất cả</TabsTrigger>
                         </TabsList>
@@ -157,28 +178,47 @@ export default function MyLearningPage() {
 
                             <div className="p-5">
                                 {/* Course Title */}
-                                <h3 className="text-sm font-semibold text-slate-900 mb-3 leading-snug line-clamp-2">
+                                <h3 className="text-sm font-semibold text-slate-900 mb-1 leading-snug line-clamp-2">
                                     {course.title}
                                 </h3>
+                                {/* WP1.10.6 — badge "N bài" phân biệt hình thái, không thêm
+                                    tab/lọc riêng theo nguồn. */}
+                                <p className="text-xs text-slate-400 mb-3">{course.lessonCount} bài</p>
 
-                                {/* Progress */}
+                                {/* Progress — WP1.6.4: a course with very few lessons (e.g. a
+                                    single video) can only ever show completionRate 0 or 100, so
+                                    a 0% bar while the user is 70% through that one video reads as
+                                    untouched. When we have no finished lesson yet but do have a
+                                    saved video position, show "đã xem 3:20" instead of a flat 0%
+                                    bar — there's no persisted lesson duration to turn that into a
+                                    real percentage. */}
                                 <div className="mb-3">
-                                    <div className="flex justify-between text-xs text-slate-500 mb-1.5">
-                                        <span>Tiến độ</span>
-                                        <span className="font-medium text-blue-600">{course.completionRate}%</span>
-                                    </div>
-                                    <div className="w-full bg-slate-100 rounded-full h-1.5">
-                                        <div
-                                            className="bg-blue-600 h-1.5 rounded-full transition-all"
-                                            style={{ width: `${course.completionRate}%` }}
-                                        ></div>
-                                    </div>
+                                    {course.status === 'not_started' ? (
+                                        <p className="text-xs text-slate-400">Chưa xem</p>
+                                    ) : course.completionRate > 0 ? (
+                                        <>
+                                            <div className="flex justify-between text-xs text-slate-500 mb-1.5">
+                                                <span>Tiến độ</span>
+                                                <span className="font-medium text-blue-600">{course.completionRate}%</span>
+                                            </div>
+                                            <div className="w-full bg-slate-100 rounded-full h-1.5">
+                                                <div
+                                                    className="bg-blue-600 h-1.5 rounded-full transition-all"
+                                                    style={{ width: `${course.completionRate}%` }}
+                                                ></div>
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <p className="text-xs text-blue-600 font-medium">
+                                            Đã xem {formatWatchedTime(course.lastWatchedPositionSec || 0)}
+                                        </p>
+                                    )}
                                 </div>
 
                                 {/* Status and creation date */}
                                 <div className="flex justify-between items-center text-xs text-slate-400">
-                                    <span className={`px-2 py-0.5 rounded-full font-medium ${course.status === 'completed' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'}`}>
-                                        {course.status === 'in_progress' ? 'Đang học' : 'Hoàn thành'}
+                                    <span className={`px-2 py-0.5 rounded-full font-medium ${STATUS_BADGE_CLASS[course.status]}`}>
+                                        {STATUS_LABEL[course.status]}
                                     </span>
                                     <span>
                                         {formatDate(course.createdAt)}
@@ -196,13 +236,13 @@ export default function MyLearningPage() {
                                 </svg>
                             </div>
                             <h3 className="text-sm font-semibold text-slate-700 mb-1">
-                                Chưa có khóa học
+                                Chưa có Space
                             </h3>
                             <p className="text-sm text-slate-500 mb-4">
-                                Bạn chưa tham gia khóa học nào trong mục này.
+                                Bạn chưa có Space nào trong mục này.
                             </p>
                             <Button onClick={() => router.push('/')}>
-                                Khám phá khóa học
+                                Khám phá Space
                             </Button>
                         </div>
                     )}

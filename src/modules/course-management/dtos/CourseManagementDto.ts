@@ -11,5 +11,8 @@ export class CourseSummaryDto {
         public title: string,
         public status: string,
         public thumbnailUrl?: string,
+        // WP1.10.6 — badge "N bài" trên card /my-courses, phân biệt hình thái
+        // (1 video vs nhiều chương/bài) không cần tab/lọc riêng theo nguồn.
+        public lessonCount?: number,
     ) { }
 }

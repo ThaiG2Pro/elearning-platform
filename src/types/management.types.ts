@@ -9,6 +9,9 @@ export interface ManagedCourse {
     status: 'Active' | 'Archived';
     thumbnailUrl?: string;
     createdAt?: string; // optional because API might not provide it
+    // WP1.10.6 — badge "N bài" trên card, phân biệt hình thái (1 video vs
+    // nhiều chương/bài) không cần tab/lọc riêng theo nguồn.
+    lessonCount?: number;
 }
 
 export interface ManagedCoursesResponse {

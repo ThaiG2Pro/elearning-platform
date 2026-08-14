@@ -190,7 +190,7 @@ export default function CourseEditPage() {
             setSavingMeta(true);
             await updateCourseMetadata(courseId, { title: metaTitle, description: metaDesc });
             setCourse(prev => prev ? { ...prev, title: metaTitle, description: metaDesc } : null);
-            setToast({ message: 'Đã cập nhật thông tin khóa học!', type: 'success' });
+            setToast({ message: 'Đã cập nhật thông tin Space!', type: 'success' });
         } catch (err: any) {
             setToast({ message: err.message, type: 'error' });
         } finally {
@@ -589,7 +589,7 @@ export default function CourseEditPage() {
             <div className="min-h-screen bg-slate-50 flex items-center justify-center">
                 <div className="flex flex-col items-center gap-3">
                     <div className="animate-spin rounded-full h-9 w-9 border-2 border-indigo-600 border-t-transparent"/>
-                    <p className="text-xs text-slate-500 font-medium">Đang tải trình chỉnh sửa khóa học…</p>
+                    <p className="text-xs text-slate-500 font-medium">Đang tải trình chỉnh sửa Space…</p>
                 </div>
             </div>
         );
@@ -721,7 +721,7 @@ export default function CourseEditPage() {
                                 onClick={handleCopyShareLink}
                                 disabled={generatingShare}
                                 className="hidden sm:inline-flex items-center gap-1.5"
-                                title="Sao chép link chia sẻ khóa học"
+                                title="Sao chép link chia sẻ Space"
                             >
                                 {generatingShare ? (
                                     <span className="w-3.5 h-3.5 border-2 border-slate-400 border-t-transparent rounded-full animate-spin"/>
@@ -791,7 +791,7 @@ export default function CourseEditPage() {
                             <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-4 sticky top-36">
                                 <div className="flex items-center justify-between mb-3 pb-3 border-b border-slate-100">
                                     <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                                        Nội dung khóa học
+                                        Nội dung Space
                                     </h2>
                                     <span className="text-xs text-slate-400 font-medium">
                                         {course.chapters.length} chương
@@ -1399,13 +1399,13 @@ export default function CourseEditPage() {
                                 <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                                 </svg>
-                                Thông tin cơ bản khóa học
+                                Thông tin cơ bản Space
                             </h2>
 
                             <div className="space-y-4">
                                 <div>
                                     <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                                        Tên khóa học
+                                        Tên Space
                                     </label>
                                     <input
                                         type="text"
@@ -1417,7 +1417,7 @@ export default function CourseEditPage() {
 
                                 <div>
                                     <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                                        Mô tả tổng quan khóa học
+                                        Mô tả tổng quan Space
                                     </label>
                                     <textarea
                                         value={metaDesc}
@@ -1445,10 +1445,10 @@ export default function CourseEditPage() {
                                 <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/>
                                 </svg>
-                                Link chia sẻ khóa học (Public Share)
+                                Link chia sẻ Space (Public Share)
                             </h2>
                             <p className="text-xs text-slate-500 mb-4 leading-relaxed">
-                                Tạo đường dẫn ổn định cho khóa học. Bất kỳ ai có link này đều có thể xem trước nội dung và bấm &quot;Sao chép về học&quot; để lưu khóa học vào tài khoản cá nhân của họ.
+                                Tạo đường dẫn ổn định cho Space. Bất kỳ ai có link này đều có thể xem trước nội dung và bấm &quot;Sao chép về học&quot; để lưu Space vào tài khoản cá nhân của họ.
                             </p>
 
                             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">

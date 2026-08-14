@@ -1,0 +1,24 @@
+# WP1.8 — deploy config for migrating off Oracle Always Free onto a paid,
+# stable host (~$5–12/tháng, quyết định wayfinder ticket 05/09). Fly.io builds
+# directly off the existing Dockerfile — no new Dockerfile needed. This file
+# alone doesn't migrate anything; it's the config half of the move. The
+# account/payment/DNS half is an operational step (see docs/DEPLOY.md).
+app = "elearning-platform"
+primary_region = "sin" # Singapore — closest Fly region to VN users
+
+[build]
+
+[env]
+  PORT = "3000"
+  NODE_ENV = "production"
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  auto_stop_machines = false   # keep it warm — auto-stop reintroduces cold-start UX regressions
+  auto_start_machines = true
+  min_machines_running = 1
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"

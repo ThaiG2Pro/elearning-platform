@@ -43,12 +43,25 @@ export default function LearningPage() {
     // (console.error only); this surfaces a small non-blocking banner so the
     // learner knows their last watch position may not have been saved.
     const [progressSyncError, setProgressSyncError] = useState(false);
+    // WP1.10.4 — dismissible cue shown once a lesson is marked complete,
+    // suggesting the owner add a quiz/tóm tắt for it (separate from the
+    // always-visible sidebar card below, which doesn't need a trigger).
+    const [showQuizCue, setShowQuizCue] = useState(false);
     // WP1.2 — focus mode: hides the site header + lesson sidebar so the
     // learner sees only the video/quiz, no nav/recommendation distractions.
     const [focusMode, setFocusMode] = useState(false);
 
     // YouTube states
     const [videoDuration, setVideoDuration] = useState<number>(0);
+    // WP1.5.14 — the "Tiến độ: mm:ss / mm:ss" readout used to read straight off
+    // `lessonProgress.currentPosition`, which for YouTube/Vimeo only gets set
+    // once (on lesson load) — the throttled ≥5s-delta sync path never wrote it
+    // back, so the number froze at whatever it was when the page loaded even
+    // though the video kept playing. This is purely a local/client-side
+    // display value updated on every player tick, decoupled from the (still
+    // throttled) DB-persistence path — no need for it to round-trip the
+    // server just to redraw a label.
+    const [livePosition, setLivePosition] = useState<number>(0);
 
     // Progress tracking refs (lesson-bound)
     const lastSentTimeRef = useRef<number>(0);
@@ -108,11 +121,16 @@ export default function LearningPage() {
     // patched again).
     const markLessonCompleted = useCallback((lessonId: string) => {
         setLessons(prev => prev.map(l => l.id === lessonId ? { ...l, isCompleted: true } : l));
+        // WP1.10.4 — cue theo thời điểm: lesson vừa hoàn thành → gợi ý tạo
+        // quiz/tóm tắt, không phụ thuộc việc bấm đúng lúc tạo course.
+        setShowQuizCue(true);
     }, []);
 
     // Memoize callbacks to prevent remounting
     const handleProgressUpdate = useCallback(async (currentTime: number) => {
         const roundedTime = Math.floor(currentTime);
+        // Local display only — every tick, no throttle, no network round-trip.
+        setLivePosition(roundedTime);
 
         if (Math.abs(roundedTime - lastSentTimeRef.current) >= 5) {
             if (!currentLesson) return;
@@ -186,6 +204,9 @@ export default function LearningPage() {
 
             // console.log('Progress and notes loaded:', { progress, lessonNotes });
             setLessonProgress(progress);
+            // Seed the live display with the saved resume position — it's
+            // then driven purely by player ticks until the lesson changes.
+            setLivePosition(progress?.currentPosition || 0);
             setNotes(lessonNotes);
             setNoteDraft('');
 
@@ -227,7 +248,7 @@ export default function LearningPage() {
         } catch (error: any) {
             // console.error('Error in loadCourseData:', error);
             setAppState('error');
-            setErrorMessage(error.message || 'Không thể tải dữ liệu khóa học.');
+            setErrorMessage(error.message || 'Không thể tải dữ liệu Space.');
         }
     }, [courseId]);
 
@@ -270,6 +291,10 @@ export default function LearningPage() {
 
         // Reset video states
         setVideoDuration(0);
+        // Avoid flashing the previous lesson's position while the new one
+        // loads — loadLessonData reseeds this from the new lesson's saved
+        // progress once it lands.
+        setLivePosition(0);
 
         setCurrentLesson(lesson);
         setQuizSession(null);
@@ -319,20 +344,33 @@ export default function LearningPage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [currentLesson, lessons, switchLesson]);
 
+    // WP1.5.14 — this fired on every native `timeupdate` event (browsers emit
+    // these several times a second) and hit the API on every single one,
+    // completely unthrottled — unlike the YouTube/Vimeo path, which only
+    // syncs on a ≥5s position delta. Now matches that same throttle: the
+    // display (`livePosition`) still updates every tick locally, but the
+    // network/DB write follows the same cadence as the other two players.
     const handleVideoProgress = async () => {
-        if (videoRef.current && currentLesson) {
-            const currentTime = Math.floor(videoRef.current.currentTime);
-            const duration = Math.floor(videoRef.current.duration || 0);
-            try {
-                const progress = await updateLessonProgress(currentLesson.id, currentTime, duration);
-                setLessonProgress(progress);
-                setProgressSyncError(false);
-                if (progress?.isCompleted) markLessonCompleted(currentLesson.id);
-            } catch (error) {
-                // WP1.5.12: was a fully silent fail — surface it instead.
-                console.error('Video progress sync error:', error);
-                setProgressSyncError(true);
-            }
+        if (!videoRef.current || !currentLesson) return;
+
+        const currentTime = Math.floor(videoRef.current.currentTime);
+        const duration = Math.floor(videoRef.current.duration || 0);
+        setLivePosition(currentTime);
+
+        if (Math.abs(currentTime - lastSentTimeRef.current) < 5) return;
+
+        const previousSentTime = lastSentTimeRef.current;
+        lastSentTimeRef.current = currentTime;
+        try {
+            const progress = await updateLessonProgress(currentLesson.id, currentTime, duration);
+            setLessonProgress(progress);
+            setProgressSyncError(false);
+            if (progress?.isCompleted) markLessonCompleted(currentLesson.id);
+        } catch (error) {
+            // WP1.5.12: was a fully silent fail — surface it instead.
+            console.error('Video progress sync error:', error);
+            lastSentTimeRef.current = previousSentTime;
+            setProgressSyncError(true);
         }
     };
 
@@ -496,7 +534,7 @@ export default function LearningPage() {
 
         lessons.forEach((lesson) => {
             const cId = lesson.chapterId || 'default';
-            const cTitle = lesson.chapterTitle || 'Nội dung khóa học';
+            const cTitle = lesson.chapterTitle || 'Nội dung Space';
             const cOrder = lesson.chapterOrder || (groups.length + 1);
 
             if (!groupMap.has(cId)) {
@@ -534,6 +572,20 @@ export default function LearningPage() {
                             </p>
                         </div>
                         <div className="flex items-center gap-3 flex-shrink-0">
+                            {/* WP1.10.4 — trang học trước đây không có link nào về editor;
+                                đây là owner đang xem course của mình (route này không public). */}
+                            {!focusMode && (
+                                <button
+                                    onClick={() => router.push(`/my-courses/${courseId}/edit`)}
+                                    title="Thêm quiz/tóm tắt cho Space này"
+                                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-500 hover:bg-slate-100 transition-colors"
+                                >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                    </svg>
+                                    Chỉnh sửa
+                                </button>
+                            )}
                             <button
                                 onClick={toggleFocusMode}
                                 title={focusMode ? 'Thoát chế độ tập trung' : 'Bật chế độ tập trung'}
@@ -634,7 +686,7 @@ export default function LearningPage() {
                                         )}
                                         {lessonProgress && (
                                             <div className="mt-3 text-xs text-slate-400">
-                                                Tiến độ: {formatTime(lessonProgress.currentPosition)} / {formatTime(videoDuration || currentLesson.duration || 0)}
+                                                Tiến độ: {formatTime(livePosition)} / {formatTime(videoDuration || currentLesson.duration || 0)}
                                             </div>
                                         )}
                                         {progressSyncError && (
@@ -885,7 +937,7 @@ export default function LearningPage() {
                         <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-4 sticky top-28 space-y-4">
                             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                                 <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                                    Nội dung khóa học
+                                    Nội dung Space
                                 </h3>
                                 <span className="text-xs text-slate-400 font-medium">
                                     {lessons.filter(l => l.isCompleted).length}/{lessons.length} bài
@@ -895,15 +947,18 @@ export default function LearningPage() {
                             <div className="space-y-4 max-h-[calc(100vh-220px)] overflow-y-auto pr-1">
                                 {groupedChapters.map((chapterGroup, cIdx) => (
                                     <div key={chapterGroup.chapterId || cIdx} className="space-y-1.5">
-                                        {/* Chapter Header */}
-                                        <div className="flex items-center gap-2 px-1 py-1">
-                                            <span className="text-[11px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md flex-shrink-0">
-                                                Chương {chapterGroup.chapterOrder || (cIdx + 1)}
-                                            </span>
-                                            <span className="text-xs font-semibold text-slate-800 truncate">
-                                                {chapterGroup.chapterTitle}
-                                            </span>
-                                        </div>
+                                        {/* Chapter Header — WP1.10.5: course có đúng 1 chương thì ẩn
+                                            tầng chương, in phẳng danh sách bài (khớp luật ở share/editor). */}
+                                        {groupedChapters.length > 1 && (
+                                            <div className="flex items-center gap-2 px-1 py-1">
+                                                <span className="text-[11px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md flex-shrink-0">
+                                                    Chương {chapterGroup.chapterOrder || (cIdx + 1)}
+                                                </span>
+                                                <span className="text-xs font-semibold text-slate-800 truncate">
+                                                    {chapterGroup.chapterTitle}
+                                                </span>
+                                            </div>
+                                        )}
 
                                         {/* Lessons List */}
                                         <div className="space-y-1 pl-1">
@@ -954,6 +1009,38 @@ export default function LearningPage() {
                                     </div>
                                 ))}
                             </div>
+
+                            {/* WP1.10.4 — cue theo thời điểm: hiện ngay sau khi 1 lesson
+                                vừa được đánh dấu hoàn thành, không phụ thuộc 1 lần bấm đúng
+                                lúc tạo course. */}
+                            {showQuizCue && (
+                                <div className="flex items-start gap-2 p-2.5 rounded-xl bg-indigo-50 border border-indigo-100">
+                                    <p className="flex-1 text-xs text-indigo-800 leading-snug">
+                                        Đã xong video. Tạo quiz để ôn lại?
+                                    </p>
+                                    <button
+                                        onClick={() => router.push(`/my-courses/${courseId}/edit`)}
+                                        className="text-xs font-semibold text-indigo-700 hover:text-indigo-900 flex-shrink-0"
+                                    >
+                                        Tạo ngay
+                                    </button>
+                                    <button
+                                        onClick={() => setShowQuizCue(false)}
+                                        className="text-indigo-400 hover:text-indigo-600 flex-shrink-0"
+                                        title="Đóng"
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
+                            )}
+
+                            {/* Thẻ tĩnh thường trực — không phụ thuộc trạng thái hoàn thành */}
+                            <button
+                                onClick={() => router.push(`/my-courses/${courseId}/edit`)}
+                                className="w-full text-left p-2.5 rounded-xl border border-dashed border-slate-300 text-xs font-medium text-slate-500 hover:border-indigo-300 hover:text-indigo-600 hover:bg-indigo-50/40 transition-colors"
+                            >
+                                + Thêm quiz/tóm tắt cho bài này
+                            </button>
                         </div>
                     </div>
                     )}

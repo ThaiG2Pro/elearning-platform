@@ -36,7 +36,9 @@ async function upsertVideoSource(url: string, title: string) {
             url,
             normalized_url: normalizedUrl,
             title,
-            type: 'VIDEO',
+            // WP1.10.1 — standardized to YOUTUBE_VIDEO/YOUTUBE_PLAYLIST; this
+            // used to write 'VIDEO', mismatched with the service's 'YOUTUBE'.
+            type: 'YOUTUBE_VIDEO',
         },
     });
 }

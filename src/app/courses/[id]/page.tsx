@@ -5,9 +5,9 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Header from '@/components/Header';
 import { Skeleton } from '@/components/ui/skeleton';
-import { CourseDetail } from '@/types/course.types';
+import { CourseDetail, Companion } from '@/types/course.types';
 import { User } from '@/types/auth.types';
-import { getCourseDetail, copySharedCourse } from '@/lib/courses';
+import { getCourseDetail, copySharedCourse, getCompanions } from '@/lib/courses';
 import { logout as apiLogout, AuthUtils } from '@/lib/auth';
 
 type AppState = 'idle' | 'loading' | 'processing' | 'error' | 'success';
@@ -22,6 +22,7 @@ export default function CourseDetailPage() {
     const [appState, setAppState] = useState<AppState>('idle');
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [copying, setCopying] = useState(false);
+    const [companions, setCompanions] = useState<Companion[]>([]);
 
     // Fetch course detail on mount
     useEffect(() => {
@@ -40,12 +41,23 @@ export default function CourseDetailPage() {
 
         if (Number.isNaN(courseId)) {
             setAppState('error');
-            setErrorMessage('Đường dẫn khóa học không hợp lệ.');
+            setErrorMessage('Đường dẫn Space không hợp lệ.');
             return;
         }
 
         fetchCourse();
     }, [courseId]);
+
+    // WP1.7 — "cùng học": only fetch once we know the caller owns a course
+    // in this lineage (companions is a lineage-member-only view, not a
+    // public leaderboard), so we don't fire it for a course we can't see yet.
+    useEffect(() => {
+        if (!course?.isOwner) {
+            setCompanions([]);
+            return;
+        }
+        getCompanions(courseId).then(setCompanions);
+    }, [courseId, course?.isOwner]);
 
     // Load user from token on mount
     useEffect(() => {
@@ -172,6 +184,35 @@ export default function CourseDetailPage() {
                             )}
                         </section>
 
+                        {/* WP1.7 — Companions Section: who else is learning this
+                            course's clone lineage, read-only, lineage-scoped. */}
+                        {companions.length > 0 && (
+                            <section className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm mb-6">
+                                <h2 className="text-sm font-semibold text-slate-800 mb-3">Cùng học</h2>
+                                <ul className="space-y-3">
+                                    {companions.map((companion) => (
+                                        <li key={companion.courseId} className="flex items-center gap-3">
+                                            <span className="flex-1 text-sm text-slate-700 truncate">
+                                                {companion.name}
+                                                {companion.isSelf && (
+                                                    <span className="text-slate-400"> (Bạn)</span>
+                                                )}
+                                            </span>
+                                            <div className="w-28 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                                <div
+                                                    className="h-full bg-emerald-500 rounded-full transition-all"
+                                                    style={{ width: `${companion.completionRate}%` }}
+                                                />
+                                            </div>
+                                            <span className="w-10 text-right text-xs font-medium text-slate-500">
+                                                {companion.completionRate}%
+                                            </span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </section>
+                        )}
+
                         {/* Interaction Section */}
                         <section>
                             {!user ? (
@@ -200,7 +241,7 @@ export default function CourseDetailPage() {
                                         <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                         </svg>
-                                        Chỉnh sửa khóa học
+                                        Chỉnh sửa Space
                                     </button>
                                 </div>
                             ) : course.shareToken ? (
@@ -226,13 +267,13 @@ export default function CourseDetailPage() {
                             ) : (
                                 <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
                                     <p className="text-sm text-slate-500 bg-slate-100 rounded-lg px-4 py-3">
-                                        Đây là khóa học của người dùng khác.
+                                        Đây là Space của người dùng khác.
                                     </p>
                                     <button
                                         onClick={handleBack}
                                         className="px-4 py-2 border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-sm font-medium rounded-lg transition-colors"
                                     >
-                                        Khám phá khóa học khác
+                                        Khám phá Space khác
                                     </button>
                                 </div>
                             )}

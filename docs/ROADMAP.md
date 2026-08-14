@@ -213,35 +213,72 @@ cho người ngoài.**
     nay đã đóng toàn bộ.
   - **WP1.5.12 — Vá các lỗi logic cụ thể phát hiện qua rà soát toàn màn
     hình.** Danh sách đầy đủ có file:line ở phụ lục audit; các lỗi ảnh hưởng
-    trực tiếp tới user, ưu tiên cao nhất:
+    trực tiếp tới user, ưu tiên cao nhất. **[Đã đóng toàn bộ — audit lại
+    2026-08-12, vá nốt mục avatar/API còn mở]**
     - `courses/[id]/page.tsx` — `courseId = parseInt(...)` không kiểm tra
       `NaN`, URL course-id sai dạng làm trang treo trắng vĩnh viễn (không
-      loading, không error, không gì cả).
+      loading, không error, không gì cả). **[Đã đóng]** Dòng 18 parseInt,
+      dòng 42-46 check `Number.isNaN(courseId)` → set `appState('error')` +
+      thông báo "Đường dẫn khóa học không hợp lệ." trước khi fetch; dòng
+      282-297 render banner lỗi + nút "Quay lại". Không còn treo trắng.
     - `share/[token]/page.tsx` — clone-khi-đăng-nhập-xong không có
       idempotency/guard chống double-submit, và backend `cloneForOwner`
       không chặn trùng — bấm 2 lần (hoặc double-fire effect) ra 2 khóa học
-      giống hệt nhau trong tài khoản user.
+      giống hệt nhau trong tài khoản user. **[Đã đóng]** Frontend:
+      `isCopyingRef` (dòng 58) chặn double-click/double-fire đồng bộ (state
+      React không đủ nhanh nên dùng ref); reset về `false` chỉ ở nhánh lỗi
+      để cho retry. Backend: `CourseRepository.cloneForOwner` (dòng
+      294-304) có fast-path check `(owner_id, cloned_from_course_id)` trả
+      lại clone cũ nếu đã có, cộng bắt lỗi `P2002` (unique constraint) cho
+      race thật ở DB layer.
     - `courses/[id]/learn/page.tsx` — % tiến độ trên thanh sub-header không
       cập nhật lại sau khi hoàn thành bài trong chính phiên đang học (chỉ
       đúng sau khi tải lại trang); ghi nhận tiến độ có thể mất im lặng khi
-      API lỗi (không rollback, không retry).
+      API lỗi (không rollback, không retry). **[Đã đóng]** `markLessonCompleted`
+      (dòng 118-120) patch trực tiếp state `lessons` local, `calculateCourseProgress()`
+      (dòng 518-522) tính % ngay trên state đó → cập nhật realtime không cần F5.
+      Lỗi API không còn im lặng: `progressSyncError` set `true` trong catch
+      (dòng 147, 366), hiện banner "Chưa lưu được tiến độ, đang thử lại..."
+      (dòng 671-678), có rollback `lastSentTimeRef` để tick kế tiếp tự retry.
     - `profile/page.tsx` — 2 nguồn dữ liệu user khác nhau hiển thị cùng lúc
       (avatar từ `localStorage` cache, form từ API fetch mới) có thể lệch
       nhau; lỗi hệ thống khi lưu profile không hiện thông báo gì cho user
-      (nuốt lỗi im lặng).
+      (nuốt lỗi im lặng). **[Đã đóng — 2026-08-12]** Phần "nuốt lỗi im
+      lặng" đã đóng trước: `handleSubmit` catch (dòng 177-189) set
+      `appState('system_error')` + thông báo lỗi, hiện ở dòng 306-308. Phần
+      "2 nguồn dữ liệu lệch nhau" vừa vá: `getProfile()`
+      (`src/lib/auth.ts:130`, `AuthService.getProfile`) thật ra đã trả sẵn
+      `avatarUrl` từ trước — chỉ là `loadProfile()` trong `profile/page.tsx`
+      chưa dùng tới, chỉ set `email`/`fullName`/`age` từ response rồi bỏ
+      qua avatar, để `user` state (nguồn hiển thị avatar) đứng yên ở snapshot
+      `localStorage` lúc mount. Thêm 1 dòng gọi `mergeIntoCurrentUser({
+      avatarUrl: profile.avatarUrl, fullName: profile.fullName })` ngay sau
+      khi fetch xong để đồng bộ lại avatar/tên từ API mới nhất — không cần
+      đổi backend/type vì field đã sẵn có, chỉ là chưa được đọc ra.
     - `page.tsx` (trang chủ) — nút "Thử lại" khi tìm kiếm lỗi có thể là
       no-op nếu state tìm kiếm không đổi; không có lối tạo khóa học nào trên
-      mobile.
+      mobile. **[Đã đóng]** `fetchCourses` (dòng 51-68) tách riêng thành hàm
+      gọi trực tiếp ở nút retry (dòng 278-283: `onClick={() =>
+      fetchCourses(debouncedSearchQuery)}`), không còn phụ thuộc
+      state-update bail-out của React. Khối dán-link (dòng 168-199) dùng
+      `flex-col md:flex-row`, không có `hidden`/`md:block` nào ẩn nó — luôn
+      hiển thị được trên mobile.
 
 - **WP1.6 — Dọn nốt tầng "legacy marketplace" (enrollment/role) còn trà trộn
-  với ownership model, phát sinh khi tự dùng thật sau WP1.5.** WP0.2 pivot
+  với ownership model, phát sinh khi tự dùng thật sau WP1.5.** **[Đã đóng —
+  2026-08-10, commit `c072720` + follow-up `c5e9798`]** WP0.2 pivot
   `Course` sang sở hữu cá nhân (`owner_id`), và WP1.5.9–1.5.10 đã sửa vài route
   theo hướng đó, nhưng đó là sửa **điểm**, chưa quét hết — nhánh `enrollments`
   (bảng + domain `Enrollment`/`EnrollmentPolicy`/`EnrollmentFactory` + repo/
   service/controller riêng) từ mô hình marketplace cũ (STUDENT enroll vào
   course của LECTURER) vẫn còn tồn tại **song song** với ownership model mới,
   không đồng bộ với nhau — đây chính là nguồn gốc các log 200-nhưng-rỗng và
-  403-khó-hiểu người dùng gặp phải khi tự test lại toàn luồng.
+  403-khó-hiểu người dùng gặp phải khi tự test lại toàn luồng. Toàn bộ nhánh
+  `Enrollment*` (domain/repo/service/controller) đã bị **xoá hẳn** khỏi
+  codebase, bảng `enrollments` bị drop qua migration
+  `20260810133700_drop_legacy_enrollments`, và mọi route/UI phụ thuộc đã
+  chuyển hẳn sang ownership-based. Audit lại trực tiếp trên code (2026-08-12)
+  xác nhận cả 5 mục con dưới đây đều đã đóng, không còn phần nào treo.
   - **WP1.6.1 — Catalog công khai kiểu marketplace cũ đứng cạnh learn/lessons
     ownership-only mới → tự tạo "bẫy 403".** `GET /api/v1/courses`
     (`CourseController.getCourses` → `findActiveCoursesWithThumbnails`) trả
@@ -258,7 +295,12 @@ cho người ngoài.**
     show course của chính user (nhất quán ownership-based toàn app), hoặc (b)
     giữ browse công khai nhưng nút hành động phải phản ánh đúng quyền thật
     (dùng `isEnrolled`/so khớp `ownerId` đã có sẵn ở `CourseService.getCourseDetail`)
-    trước khi cho bấm — không để user tự nhảy vào bẫy.
+    trước khi cho bấm — không để user tự nhảy vào bẫy. **[Đã đóng —
+    2026-08-10]** Đi theo hướng (b): nút hành động ở `courses/[id]/page.tsx`
+    rẽ theo `course.isOwner` (đổi tên từ `isEnrolled` cho khớp semantics),
+    tính từ `CourseService.getCourseDetail` — `!user` → "Tham gia để học",
+    `isOwner` → "Bắt đầu học"/"Tiếp tục học", không phải owner → "Sao chép".
+    Catalog vẫn browse công khai, gate đúng ở nút hành động.
   - **WP1.6.2 — `/my-learning` luôn rỗng: đọc từ bảng `enrollments` không ai
     còn viết vào.** `GET /api/v1/courses/enrolled` (dùng bởi
     `my-learning/page.tsx` qua `lib/course.ts:getEnrolledCourses`, đúng log
@@ -271,7 +313,12 @@ cho người ngoài.**
     dữ liệu không hề mất, chỉ là route đang đọc nhầm nguồn. Việc cần làm:
     viết lại route/`EnrollmentRepository` để lấy danh sách theo `owner_id`
     (giống cách `ContentManagementService.getLecturerCourses` đã làm), không
-    còn phụ thuộc bảng `enrollments` cho luồng hiển thị chính.
+    còn phụ thuộc bảng `enrollments` cho luồng hiển thị chính. **[Đã đóng —
+    2026-08-10]** Route đổi `GET /api/v1/courses/enrolled` →
+    `GET /api/v1/courses/owned`; `EnrollmentController/Service/Repository`
+    đổi tên hẳn thành `OwnedCoursesController/Service/Repository`, query
+    theo `owner_id` (join `learning_progress` để tính `completionRate`),
+    không còn động tới bảng `enrollments`.
   - **WP1.6.3 — Hai định nghĩa "đã sở hữu/đã học" tồn tại song song, không
     khớp nhau.** `POST/GET /api/v1/courses/[id]/enroll`
     (`EnrollmentController.enrollStudent`/`checkEnrollmentStatus`) và hàm
@@ -280,7 +327,11 @@ cho người ngoài.**
     tách biệt hoàn toàn khỏi `ownerId` là nguồn sự thật thật sự đang dùng ở
     `CourseService.getCourseDetail`. Route này còn sống là rủi ro: ai vô tình
     nối lại UI vào đây (hoặc AI code-gen sau này gợi ý dùng lại) sẽ tạo ra
-    luồng "enrolled nhưng vẫn 403" hoặc ngược lại.
+    luồng "enrolled nhưng vẫn 403" hoặc ngược lại. **[Đã đóng — 2026-08-10]**
+    Route `/courses/[id]/enroll` và `lib/courses.ts:enrollCourse` đã bị xoá
+    hẳn (không chỉ ngừng gọi). Cùng đợt phát hiện + xoá thêm 1 route mồ côi
+    cùng bản chất: `GET /lessons/[id]/play` (`LessonController.getVideoContext`,
+    luôn 403 `NOT_ENROLLED` cho mọi user).
   - **WP1.6.4 — Role-gate legacy còn sót ngoài phạm vi đã quét ở WP1.5.10.**
     `management/lessons/[id]/quiz/upload/route.ts:18` vẫn chặn cứng
     `user.role !== 'LECTURER' && user.role !== 'ADMIN'` → user role
@@ -293,6 +344,14 @@ cho người ngoài.**
     course vào đúng trang quản lý course của mình lại không thấy cách nào để
     tạo course đầu tiên tại đây (phải biết đường vòng qua ô dán link ở trang
     chủ). Sửa cả hai theo cùng nguyên tắc ownership đã áp dụng nơi khác.
+    **[Đã đóng — 2026-08-10]** `quiz/upload/route.ts` không còn chặn theo
+    role — chỉ check `!user` (401), lỗi ownership do controller/service ném
+    `ACCESS_DENIED` → 403 "Bạn không sở hữu bài học này". Trang
+    `lecturer/courses/page.tsx` đổi tên thành `my-courses/page.tsx`, điều
+    kiện `role === 'LECTURER'` ở nút "Tạo khóa học đầu tiên" đã bị bỏ. (Lưu
+    ý: không nhầm với việc khác cùng tên "WP1.6.4 — Hướng B" đang làm dở
+    song song — three-state `not_started`/`lastWatchedPositionSec` cho
+    owned-courses, không liên quan role-gate.)
   - **WP1.6.5 — Quyết định dứt điểm số phận nhánh Enrollment.** Sau khi
     1.6.1–1.6.4 xong, bảng `enrollments` + domain (`Enrollment`,
     `EnrollmentPolicy`, `EnrollmentFactory`) + repo/service/controller riêng
@@ -302,14 +361,24 @@ cho người ngoài.**
     ownership, cần thiết kế lại tên/API rõ ràng, không tái dùng nhánh cũ mập
     mờ như hiện tại). Không để vừa tồn tại vừa sai — đây là mẫu số chung gây
     ra cả 1.6.1–1.6.3, và sẽ tiếp tục gây bug tương tự nếu không chốt.
+    **[Đã đóng — 2026-08-10]** Quyết định = xoá hẳn. Toàn bộ domain
+    `Enrollment`/`EnrollmentPolicy`/`EnrollmentFactory` + repo/service/
+    controller riêng đã xoá khỏi `src`; bảng `enrollments` bị drop qua
+    migration `20260810133700_drop_legacy_enrollments`. Ghi nhận ở commit
+    message `c072720`/`c5e9798`, comment trong code
+    (`OwnedCoursesRepository.ts`, `CourseService.ts`) và migration SQL —
+    không có ADR riêng nhưng không còn treo.
 
 - **WP1.7 — View "cùng học" (shared-course companions).** Trên course có
   share lineage: hiển thị ai khác đang học *cùng* course gốc (owner gốc +
   mọi người đã clone) và % tiến độ của họ — read-only, chỉ thấy trong phạm
   vi lineage đó (không phải leaderboard công khai), mặc định hiển thị (đối
   tượng Checkpoint 1 là nhóm bạn thật, và "thấy nhau" chính là giá trị).
-  Tái dùng `Course.forkedFromCourseId` đã có sẵn trong data model — chỉ
-  thêm một đường đọc mới trên cùng join. **Đây là cơ chế giữ chân chủ lực
+  Tái dùng `Course.cloned_from_course_id` đã có sẵn trong data model (roadmap
+  trước đó ghi sai tên field là `forkedFromCourseId`; xác nhận qua audit
+  2026-08-12 — field thật khai báo ở `prisma/schema.prisma:82`, hiện chỉ dùng
+  ở đường write để dedupe khi clone, chưa có đường đọc ngược nào cho
+  lineage) — chỉ thêm một đường đọc mới trên cùng join. **Đây là cơ chế giữ chân chủ lực
   của sản phẩm** (Vision mục 9, quyết định wayfinder ticket 07/13): sản
   phẩm wrapper thuần đều chững; đối thủ "Notion + Sheet + ý chí" thua ở
   cấu trúc nhưng không thua ở "một mình" — WP này đánh đúng trục đó.
@@ -320,12 +389,48 @@ cho người ngoài.**
   do founder tự gánh (quyết định wayfinder ticket 05/09 — bền vững vô thời
   hạn, không gate trên retention). Kèm **nút donate thụ động** (Ko-fi/
   GitHub Sponsors, khung chữ "ủng hộ" trung tính, không logic
-  subscription) — bật từ ngày đầu theo Vision mục 7.
+  subscription) — bật từ ngày đầu theo Vision mục 7. **[Cập nhật 2026-08-12
+  — ✅ phần code xong, ❌ migrate hosting thật còn cần người vận hành]**
+  Nút donate: `Header.tsx` đọc `NEXT_PUBLIC_DONATE_URL` (mới thêm vào
+  `.env.example`), khung chữ "Ủng hộ" trung tính, không gate feature nào —
+  ẩn hẳn nếu chưa cấu hình (không trỏ link giả). Hosting: `Dockerfile` sẵn
+  production-ready từ trước; thêm `fly.toml` (build trực tiếp từ Dockerfile
+  có sẵn, region Singapore) + `docs/DEPLOY.md` ghi rõ từng lệnh để chuyển
+  sang Fly.io ~$5–7/tháng. Phần còn lại — tạo tài khoản, gắn thẻ thanh
+  toán, `fly launch`/`fly deploy` thật, trỏ DNS — là thao tác vận hành cần
+  người có quyền thanh toán của dự án, nằm ngoài phạm vi agent code (không
+  tự động hoá được từ trong sandbox này). **[Xác nhận 2026-08-12]** Host
+  thật hiện tại là **Vercel free tier** (không phải Oracle Always Free như
+  giả định gốc — sửa lại cho đúng), và **Checkpoint 1 chưa mở cho người
+  ngoài** tại thời điểm này. Theo đúng điều kiện gate của ticket, migrate
+  hosting **chưa cần làm ngay** — chỉ bắt buộc trước/ngay khi mở Checkpoint
+  1 ra ngoài. Domain `tech.com` đã có DNS cấu hình sẵn (chưa trỏ vào host
+  compute nào, vì chưa có host compute thật) — có thể trỏ vào bất kỳ lựa
+  chọn nào ở trên khi tới lúc migrate; `fly.toml`/`docs/DEPLOY.md` là một
+  phương án đã chuẩn bị sẵn, không phải quyết định cuối cùng bắt buộc.
 - **WP1.9 — Seed artifact: 3–5 course công khai dựng sẵn từ các playlist
   YouTube free phổ biến.** Là deliverable của Checkpoint 1, không phải chi
   tiết marketing (quyết định wayfinder ticket 08): đây là thứ làm bài post
   ra mắt ở cộng đồng trở nên cụ thể/chia sẻ được thay vì "tôi làm ra một
   tool" trừu tượng — mọi outreach ở Checkpoint 2 đứng trên artifact này.
+  **[Cập nhật 2026-08-12 — ✅ làm xong theo phạm vi code có thể tự động hoá]**
+  Tách seed artifact công khai ra file riêng `prisma/seed-showcase.ts`
+  (script mới `pnpm seed:showcase`) — không đụng vào `prisma/seed.ts` (vẫn là
+  dev/QA data, vẫn truncate). Thêm cột `courses.is_showcase` (migration
+  `20260812180000_add_courses_is_showcase`) để đánh dấu course nào là
+  showcase, tách khỏi dev/test/user data. 5 course thật, chủ sở hữu là một
+  tài khoản showcase riêng (`showcase@elearning-platform.local`, không phải
+  login test `jack@gmail.com`), nội dung xác minh thật qua YouTube oEmbed
+  trước khi ghi vào seed (không tự bịa video ID): Java/C++ (Bro Code —
+  `xTtL8E4LzTQ`, `-TkoO8Z07hI`), Python/JavaScript/HTML-CSS (freeCodeCamp.org
+  — `rfscVS0vtbw`, `jS4aFq5-91M`, `mU6anWqZJcc`). Script idempotent (upsert
+  theo slug, an toàn chạy nhiều lần lên DB thật đã có data). Đã chạy thật
+  trên DB dev local, smoke-test `/share/<token>` trả 200, `tsc --noEmit` và
+  `pnpm test` (64/64) sạch. **Lệch có chủ đích với chữ "playlist" trong mô
+  tả ticket:** dùng video full-course đơn thay vì playlist nhiều video thật,
+  vì luồng from-link của sản phẩm chưa hỗ trợ URL playlist (WP1.10.2 từ
+  chối playlist ở tầng validate) — seed một "playlist" mà sản phẩm không tự
+  tạo được từ link thật sẽ là artifact giả.
 - **WP1.10 — Khóa học như "không gian học": sửa luồng tạo từ link, ẩn chương
   nhất quán, đổi từ hiển thị.** WP1.1 đã ship luồng "dán URL → course", nhưng
   đổ về trang editor thay vì trang học, chưa xử lý oEmbed fail/playlist, và
@@ -362,6 +467,52 @@ cho người ngoài.**
     Thêm badge "N bài" trên card ở `/my-courses`/`/my-learning` để phân biệt
     hình thái (1 video vs nhiều chương) — không thêm tab/lọc riêng theo
     nguồn.
+
+**[Audit 2026-08-14 — ✅ đã làm]**
+- **WP1.10.1 (schema)**: thêm `courses.source_id` (nullable, FK → `sources`,
+  migration `20260812184000_add_courses_source_id`) + quan hệ 2 chiều trong
+  `schema.prisma`. Chuẩn hóa `sources.type` → `YOUTUBE_VIDEO` (sửa cả
+  `ContentManagementService` đang ghi `'YOUTUBE'` và `prisma/seed.ts`/
+  `seed-showcase.ts` đang ghi `'VIDEO'`).
+- **WP1.10.2 (backend from-link)**: `YouTubeOEmbedAdapter.isPlaylistUrl()`
+  mới — từ chối playlist ở validate layer (`PLAYLIST_URL_NOT_SUPPORTED`,
+  400), không tạo course rỗng. oEmbed fail không còn throw
+  `YOUTUBE_METADATA_FETCH_FAILED`/422 — tạo course với title tạm
+  `"Video YouTube (<id>)"`. Mọi course từ from-link ghi `source_id`.
+  `createCourseFromLink` đổi return type thành `{courseId, title,
+  titleIsPlaceholder}` để UI hiện banner đổi tên khi cần.
+- **WP1.10.3 (luồng tạo /my-courses)**: hero paste-box thay 2 nút cũ; "Tạo
+  Space trống" tụt xuống link phụ (modal cũ giữ nguyên). Sau khi tạo, card
+  lựa chọn "Học ngay" / "Thêm quiz/tóm tắt trước khi học" / "Dán link
+  khác" — không còn redirect thẳng vào editor. Chặn URL playlist ngay ở ô
+  nhập (client-side, khớp luật server) trước khi round-trip. Áp dụng cùng
+  mẫu ở hero paste-box trang chủ (`src/app/page.tsx`, đã có từ WP1.5.5) để
+  hai nơi nhất quán.
+- **WP1.10.4 (trang học)**: thêm nút "Chỉnh sửa" trong sub-header (route
+  này chỉ owner truy cập, không public) → `/my-courses/{id}/edit`. Thẻ
+  sidebar thường trực "+ Thêm quiz/tóm tắt cho bài này" + cue dismissible
+  "Đã xong video. Tạo quiz để ôn lại?" xuất hiện khi `markLessonCompleted`
+  fire (mọi loại player: YouTube/Vimeo/`<video>`).
+- **WP1.10.5 (luật ẩn chương)**: audit thực tế (đọc code, không suy đoán từ
+  spec) cho thấy **editor và sidebar learn page cũng chưa áp dụng luật ẩn**
+  — giả định gốc trong spec ("đã đúng ở editor/sidebar learn page") sai.
+  Đã fix ở `share/[token]/page.tsx` và sidebar `learn/page.tsx` (course có
+  đúng 1 chương → ẩn tầng chương, in phẳng bài). **Editor cố ý giữ nguyên**:
+  header chương ở đó không chỉ là label mà còn là toolbar hành động
+  (move up/down, xóa chương, + Bài học) — ẩn hẳn sẽ mất luôn cách quản lý
+  chương duy nhất còn lại của course, khác hẳn 2 bề mặt kia (thuần đọc cấu
+  trúc, không có control nào phía sau chương).
+- **WP1.10.6 (từ ngữ + badge)**: quét toàn bộ `src/` cho "Khóa học"/"khóa
+  học" hiển thị — đổi hết thành "Space" (trang chủ, `/my-courses`,
+  `/my-learning`, `/share/{token}`, editor, learn page, `Header.tsx`,
+  `SearchBar.tsx`, `CourseList.tsx`, lib error strings). Badge "N bài"
+  thêm ở `CourseSummaryDto`/`OwnedCourseDto` (lessonCount, tính từ mọi
+  lesson kể cả QUIZ) → hiện trên card ở `/my-courses` và `/my-learning`.
+  Không thêm tab/lọc riêng theo nguồn.
+- **Verify**: `npx tsc --noEmit` chỉ còn lỗi `globals.css` có từ trước;
+  `pnpm test` 64/64; `npx prisma migrate deploy` áp thành công vào DB local
+  (2 migration WP1.9+WP1.10.1); `pnpm seed` và `pnpm seed:showcase` chạy lại
+  thành công sau migration (backward-compatible).
 
 **Điều kiện qua checkpoint tiếp theo:** có người ngoài thật sự quay lại học
 tiếp (retention có ý nghĩa) — đúng exit signal Vision giai đoạn 1. **WP1.5 và

@@ -2,6 +2,7 @@ import { CourseRepository } from '../repositories/CourseRepository';
 import { LearnService } from './LearnService';
 import { CourseListDto } from '../dtos/CourseListDto';
 import { CourseDetailDto, ChapterDto, LessonDto } from '../dtos/CourseDetailDto';
+import { CompanionDto } from '../dtos/CompanionDto';
 import { VideoThumbnailUtil } from '../../shared/utils/VideoThumbnailUtil';
 
 export class CourseService {
@@ -81,5 +82,38 @@ export class CourseService {
             completionRate,
             fullCourse.shareToken || fullCourse.share_token || undefined,
         );
+    }
+
+    /**
+     * WP1.7 — everyone sharing this course's clone lineage (owner-authored
+     * root + every clone anyone made of it) with their own completion %.
+     * Read-only, and only visible to a caller who is themself a member of
+     * that lineage — this is not a public leaderboard.
+     */
+    async getCompanions(courseId: bigint, userId: bigint): Promise<CompanionDto[]> {
+        const lineage = await this.courseRepository.findLineageCourses(courseId);
+        const isMember = lineage.some(member => member.ownerId === userId);
+        if (!isMember) {
+            throw new Error('FORBIDDEN');
+        }
+
+        // Solo — no one else has cloned this course (or its root) yet.
+        if (lineage.length <= 1 || !this.learnService) {
+            return [];
+        }
+
+        const companions = await Promise.all(
+            lineage.map(async (member) => {
+                const progress = await this.learnService!.getCourseProgress(member.ownerId, member.id);
+                return new CompanionDto(
+                    Number(member.id),
+                    member.ownerName,
+                    progress.completionRate,
+                    member.ownerId === userId,
+                );
+            })
+        );
+
+        return companions.sort((a, b) => b.completionRate - a.completionRate);
     }
 }

@@ -102,6 +102,12 @@ export default function EditProfilePage() {
                 setEmail(profile.email);
                 setFullName(profile.fullName);
                 setAge(profile.age.toString());
+                // WP1.5.12: `user` state above only comes from the
+                // localStorage snapshot at mount — if avatar/name changed in
+                // another session/device, that snapshot is stale. Re-sync it
+                // from this fresh API response so the avatar shown here
+                // can't drift from the form fields it sits next to.
+                mergeIntoCurrentUser({ avatarUrl: profile.avatarUrl, fullName: profile.fullName });
             } catch (error) {
                 console.error('Failed to load profile:', error);
                 setAppState('system_error');
@@ -343,7 +349,7 @@ export default function EditProfilePage() {
                 <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-6">
                     <h2 className="text-sm font-semibold text-slate-900 mb-1">Xuất dữ liệu của tôi</h2>
                     <p className="text-sm text-slate-500 mb-4">
-                        Tải về một bản sao dữ liệu của bạn (hồ sơ, khóa học đã tạo, tiến độ học, ghi chú) dưới dạng tệp JSON.
+                        Tải về một bản sao dữ liệu của bạn (hồ sơ, Space đã tạo, tiến độ học, ghi chú) dưới dạng tệp JSON.
                     </p>
                     <Button type="button" variant="outline" size="sm" onClick={handleExportData} disabled={exporting}>
                         {exporting && <span className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />}

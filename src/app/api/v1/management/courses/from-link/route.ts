@@ -19,16 +19,23 @@ export async function POST(request: NextRequest) {
         }
 
         const controller = new ManagementController();
-        const courseId = await controller.createCourseFromLink(userId, body.url);
+        const result = await controller.createCourseFromLink(userId, body.url);
 
-        return NextResponse.json({ courseId: courseId.toString(), status: 'ACTIVE' }, { status: 201 });
+        return NextResponse.json({
+            courseId: result.courseId.toString(),
+            title: result.title,
+            titleIsPlaceholder: result.titleIsPlaceholder,
+            status: 'ACTIVE',
+        }, { status: 201 });
     } catch (error) {
         const message = error instanceof Error ? error.message : 'INTERNAL_ERROR';
-        if (message === 'UNSUPPORTED_URL' || message === 'URL_REQUIRED') {
+        // WP1.10.2 — oEmbed failing no longer blocks creation (service falls
+        // back to a placeholder title instead of throwing), so
+        // YOUTUBE_METADATA_FETCH_FAILED/422 no longer happens here. Playlist
+        // URLs get their own distinct, clearly-worded rejection instead of
+        // falling through to the generic UNSUPPORTED_URL message.
+        if (message === 'UNSUPPORTED_URL' || message === 'URL_REQUIRED' || message === 'PLAYLIST_URL_NOT_SUPPORTED') {
             return NextResponse.json({ error: message }, { status: 400 });
-        }
-        if (message === 'YOUTUBE_METADATA_FETCH_FAILED') {
-            return NextResponse.json({ error: message }, { status: 422 });
         }
         console.error('Create course from link error:', error);
         return NextResponse.json({ error: 'INTERNAL_ERROR' }, { status: 500 });
