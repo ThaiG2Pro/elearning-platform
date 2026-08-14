@@ -382,6 +382,18 @@ cho người ngoài.**
   của sản phẩm** (Vision mục 9, quyết định wayfinder ticket 07/13): sản
   phẩm wrapper thuần đều chững; đối thủ "Notion + Sheet + ý chí" thua ở
   cấu trúc nhưng không thua ở "một mình" — WP này đánh đúng trục đó.
+  **[Đã đóng — 2026-08-14]** Backend: `GET /api/v1/courses/[id]/companions`
+  (`CourseController.getCompanions` → `CourseService`) trả 401 nếu chưa đăng
+  nhập, 403 (`FORBIDDEN`) nếu caller không thuộc lineage (không phải owner
+  gốc và không có clone nào của course này), 404 nếu course không tồn tại;
+  ngược lại trả danh sách `CompanionDto` (tên, `completionRate`, `isSelf`)
+  cho owner gốc + mọi clone cùng `cloned_from_course_id`, sắp theo % hoàn
+  thành giảm dần. Frontend: `lib/courses.ts:getCompanions` gọi API, hiển thị
+  ở `courses/[id]/page.tsx` (mục "cùng học", ẩn hẳn nếu lineage chỉ có 1
+  người — không lộ khái niệm cho course chưa ai share/clone). Unit test
+  riêng `CourseService.test.ts` (3 case: chặn người ngoài lineage, lineage
+  chỉ 1 người trả rỗng, nhiều người trả đủ kèm progress) — `pnpm test`
+  64/64 xanh.
 - **WP1.8 — Migrate hosting khỏi free-tier trước khi mở cho người ngoài.**
   $0 tuyệt đối chỉ đúng ở giai đoạn founder-only (Oracle Always Free —
   đã bị thu hẹp một lần trong 2026, rủi ro nền tảng thật). Ngay khi
