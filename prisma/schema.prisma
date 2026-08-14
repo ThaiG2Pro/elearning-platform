@@ -59,6 +59,8 @@ model sources {
   metadata       String?   @db.Text @map("metadata")
   created_at     DateTime? @default(now()) @db.Timestamp(6) @map("created_at")
   lessons        lessons[]
+  // WP1.10.1 — courses created from this source (1 URL → 1 không gian học).
+  courses        courses[]
 
   @@map("sources")
 }
@@ -84,10 +86,22 @@ model courses {
   // owned courses directly instead of the (now-removed) legacy `enrollments`
   // table's own enrolled_at column.
   created_at            DateTime            @default(now()) @map("created_at")
+  // WP1.9 — marks a course as a public showcase artifact (seeded from a real,
+  // popular free YouTube course, owned by a dedicated showcase account, not a
+  // dev/test login) vs. ordinary dev/test seed or user-created data. Purely a
+  // tagging flag for outreach/audit purposes today — no route currently
+  // filters on it; the artifact is shared via the existing share_token link.
+  is_showcase           Boolean             @default(false) @map("is_showcase")
+  // WP1.10.1 — "course này sinh từ nguồn nào" (video lẻ hay playlist), neo ở
+  // tầng course (không phải lesson) khớp mô hình "1 URL → 1 không gian học".
+  // Nullable vì course tạo trống (không qua from-link) không có nguồn.
+  // Clone copy nguyên giá trị này — xuất xứ nội dung không đổi khi đổi chủ.
+  source_id             BigInt?             @map("source_id")
   chapters          chapters[]
   learning_progress learning_progress[]
   notes             notes[]
   owner             users               @relation("CourseOwner", fields: [owner_id], references: [id])
+  source             sources?           @relation(fields: [source_id], references: [id])
 
   // Postgres allows multiple NULLs through a unique index, so this only
   // constrains actual clones (cloned_from_course_id set) — owner-authored

@@ -21,7 +21,7 @@ export class ManagementController {
         return await this.contentService.createCourse(ownerId, dto);
     }
 
-    async createCourseFromLink(ownerId: bigint, url: string): Promise<bigint> {
+    async createCourseFromLink(ownerId: bigint, url: string): Promise<{ courseId: bigint; title: string; titleIsPlaceholder: boolean }> {
         return await this.contentService.createCourseFromLink(ownerId, url);
     }
 

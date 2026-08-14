@@ -49,12 +49,12 @@ export class ContentManagementService {
                 status: true,
                 chapters: {
                     select: {
+                        // WP1.10.6 — needs every lesson (not just video ones)
+                        // to count "N bài" on the card badge; content_url is
+                        // still read to find the first video for the thumbnail.
                         lessons: {
                             select: {
                                 content_url: true,
-                            },
-                            where: {
-                                content_url: { not: null },
                             },
                             orderBy: { order_index: 'asc' },
                         },
@@ -67,22 +67,26 @@ export class ContentManagementService {
 
         return courses.map(course => {
             // Find the first video across all chapters and lessons
-            const firstVideoUrl = VideoThumbnailUtil.findFirstVideoUrl(course.chapters);
+            const firstVideoUrl = VideoThumbnailUtil.findFirstVideoUrl(
+                course.chapters.map(ch => ({ lessons: ch.lessons.filter(l => l.content_url) })),
+            );
             const thumbnailUrl = firstVideoUrl
                 ? VideoThumbnailUtil.deriveThumbnailFromVideoUrl(firstVideoUrl)
                 : '/images/course-placeholder.svg';
+            const lessonCount = course.chapters.reduce((sum, ch) => sum + ch.lessons.length, 0);
 
             return new CourseSummaryDto(
                 course.id,
                 course.title,
                 course.status,
                 thumbnailUrl,
+                lessonCount,
             );
         });
     }
 
     async createCourse(ownerId: bigint, dto: CreateCourseDto): Promise<bigint> {
-        const title = dto?.title?.trim() || 'Khóa học mới';
+        const title = dto?.title?.trim() || 'Space mới';
         const baseSlug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'khoa-hoc-moi';
         const suffix = Math.random().toString(36).slice(2, 7);
         const slug = `${baseSlug}-${suffix}`;
@@ -125,9 +129,15 @@ export class ContentManagementService {
      * `Source` (deduped by normalized URL), then a course with one default
      * chapter and one lesson pointing at it, in a single step.
      */
-    async createCourseFromLink(ownerId: bigint, url: string): Promise<bigint> {
+    async createCourseFromLink(ownerId: bigint, url: string): Promise<{ courseId: bigint; title: string; titleIsPlaceholder: boolean }> {
         const trimmedUrl = url.trim();
         if (!trimmedUrl) throw new Error('URL_REQUIRED');
+        // WP1.10.2 — reject playlist URLs at the validate layer with a clear,
+        // distinct error instead of creating an empty course to wait for an
+        // import that doesn't exist yet (playlist import is out of scope).
+        if (YouTubeOEmbedAdapter.isPlaylistUrl(trimmedUrl)) {
+            throw new Error('PLAYLIST_URL_NOT_SUPPORTED');
+        }
         if (!YouTubeOEmbedAdapter.isYouTubeUrl(trimmedUrl)) {
             throw new Error('UNSUPPORTED_URL');
         }
@@ -136,14 +146,28 @@ export class ContentManagementService {
 
         let source = await this.prisma.sources.findUnique({ where: { normalized_url: normalizedUrl } });
         if (!source) {
-            const meta = await this.oEmbedAdapter.fetchOEmbed(trimmedUrl);
+            const videoId = YouTubeOEmbedAdapter.extractVideoId(trimmedUrl);
+            // WP1.10.2 — oEmbed failing (private/deleted/region-locked video,
+            // transient network error…) used to 422 and block creation
+            // entirely. Now it still creates the space, with a placeholder
+            // title the owner can rename — only an invalid/non-YouTube URL
+            // blocks creation.
+            let title = `Video YouTube (${videoId})`;
+            let thumbnailUrl: string | undefined;
+            try {
+                const meta = await this.oEmbedAdapter.fetchOEmbed(trimmedUrl);
+                title = meta.title;
+                thumbnailUrl = meta.thumbnailUrl;
+            } catch {
+                // fall back to the placeholder title set above
+            }
             source = await this.prisma.sources.create({
                 data: {
                     url: trimmedUrl,
                     normalized_url: normalizedUrl,
-                    title: meta.title,
-                    type: 'YOUTUBE',
-                    metadata: JSON.stringify({ thumbnailUrl: meta.thumbnailUrl }),
+                    title,
+                    type: 'YOUTUBE_VIDEO',
+                    metadata: thumbnailUrl ? JSON.stringify({ thumbnailUrl }) : null,
                 },
             });
         }
@@ -156,9 +180,12 @@ export class ContentManagementService {
             const course = await tx.courses.create({
                 data: {
                     owner_id: ownerId,
-                    title: source!.title || 'Khóa học mới',
+                    title: source!.title || 'Space mới',
                     slug,
                     status: 'ACTIVE',
+                    // WP1.10.1 — "course sinh từ nguồn nào", một ngữ nghĩa duy
+                    // nhất cho cả video lẻ và playlist (tương lai).
+                    source_id: source!.id,
                 },
             });
 
@@ -177,7 +204,15 @@ export class ContentManagementService {
                 },
             });
 
-            return course.id;
+            return {
+                courseId: course.id,
+                title: course.title,
+                // WP1.10.2 — lets the UI show a "đổi tên đi" banner when the
+                // title is the oEmbed-fetch-failed placeholder, whether it was
+                // just set (fresh source) or reused from an earlier failed
+                // fetch (deduped source, never renamed since).
+                titleIsPlaceholder: /^Video YouTube \(/.test(course.title),
+            };
         });
     }
 

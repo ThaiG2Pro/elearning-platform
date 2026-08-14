@@ -2,7 +2,7 @@ import api from './api';
 import { AuthUtils } from './auth';
 import { MyLearningCoursesResponse, Lesson, LessonProgress, QuizSession, QuizResult, LessonNote } from '@/types/course.types';
 
-export const getMyLearningCourses = async (filter?: 'in_progress' | 'completed'): Promise<MyLearningCoursesResponse> => {
+export const getMyLearningCourses = async (filter?: 'not_started' | 'in_progress' | 'completed'): Promise<MyLearningCoursesResponse> => {
     try {
         const params = filter ? { filter } : {};
         const response = await api.get('/courses/owned', { params });
@@ -14,7 +14,7 @@ export const getMyLearningCourses = async (filter?: 'in_progress' | 'completed')
         if (error.response?.status === 403) {
             throw new Error('Tài khoản của bạn không có quyền học viên.');
         }
-        throw new Error('Hệ thống không thể tải danh sách khóa học lúc này.');
+        throw new Error('Hệ thống không thể tải danh sách Space lúc này.');
     }
 };
 
@@ -83,7 +83,7 @@ export const startQuiz = async (lessonId: string): Promise<QuizSession> => {
             throw new Error('Thời gian làm bài đã kết thúc. Hệ thống đang tự động nộp bài.');
         }
         if (error.response?.data?.error === 'NO_QUESTIONS_FOUND') {
-            throw new Error('Bài kiểm tra này chưa có câu hỏi nào. Vui lòng liên hệ người tạo khóa học.');
+            throw new Error('Bài kiểm tra này chưa có câu hỏi nào. Vui lòng liên hệ người tạo Space.');
         }
         throw new Error('Không thể bắt đầu bài kiểm tra.');
     }

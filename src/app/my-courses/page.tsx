@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
 import { getOwnedCourses, createCourse, createCourseFromLink, archiveCourse, unarchiveCourse } from '@/lib/management';
@@ -24,13 +24,20 @@ const MyCoursesPage = () => {
     const [user, setUser] = useState<User | null>(null);
     const [creating, setCreating] = useState(false);
     const [createError, setCreateError] = useState<string | null>(null);
-    const [showLinkModal, setShowLinkModal] = useState(false);
     const [showBlankModal, setShowBlankModal] = useState(false);
     const [newTitle, setNewTitle] = useState('');
     const [newDesc, setNewDesc] = useState('');
-    const [linkUrl, setLinkUrl] = useState('');
     const [archivingId, setArchivingId] = useState<number | null>(null);
     const router = useRouter();
+
+    // WP1.10.3 — hero paste-box thay 2 nút cũ. `pasteUrl` là input chính của
+    // trang; sau khi tạo xong, `createdSpace` giữ kết quả để hiện card lựa
+    // chọn "Học ngay" / "Thêm quiz/tóm tắt trước khi học" thay vì redirect
+    // thẳng vào editor như trước.
+    const [pasteUrl, setPasteUrl] = useState('');
+    const [pasteError, setPasteError] = useState<string | null>(null);
+    const [createdSpace, setCreatedSpace] = useState<{ courseId: string; title: string; titleIsPlaceholder: boolean } | null>(null);
+    const pasteInputRef = useRef<HTMLInputElement>(null);
 
     const fetchCourses = useCallback(async (status?: Status) => {
         setLoading(true);
@@ -89,7 +96,7 @@ const MyCoursesPage = () => {
         setCreating(true);
         try {
             const res = await createCourse({
-                title: newTitle.trim() || 'Khóa học mới',
+                title: newTitle.trim() || 'Space mới',
                 description: newDesc.trim()
             });
             setShowBlankModal(false);
@@ -97,23 +104,33 @@ const MyCoursesPage = () => {
             setNewDesc('');
             router.push(`/my-courses/${res.courseId || res.id}/edit`);
         } catch (err: any) {
-            setCreateError(err.message || 'Lỗi khi tạo khóa học');
+            setCreateError(err.message || 'Lỗi khi tạo Space');
         } finally {
             setCreating(false);
         }
     };
 
+    // WP1.10.2 — chặn URL playlist ngay ở ô nhập, không đợi round-trip server
+    // (dùng lại đúng luật server: có `list=` nhưng không có video id cụ thể).
+    const isPlaylistUrl = (url: string) => /(?:youtube\.com|youtu\.be)/i.test(url)
+        && /[?&]list=/.test(url)
+        && !/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/.test(url);
+
     const handleCreateFromLink = async () => {
-        if (!linkUrl.trim()) return;
-        setCreateError(null);
+        const url = pasteUrl.trim();
+        if (!url) return;
+        if (isPlaylistUrl(url)) {
+            setPasteError('Chưa hỗ trợ playlist — dán link từng video.');
+            return;
+        }
+        setPasteError(null);
         setCreating(true);
         try {
-            const res = await createCourseFromLink(linkUrl.trim());
-            setShowLinkModal(false);
-            setLinkUrl('');
-            router.push(`/my-courses/${res.courseId}/edit`);
+            const res = await createCourseFromLink(url);
+            setPasteUrl('');
+            setCreatedSpace(res);
         } catch (err: any) {
-            setCreateError(err.message || 'Lỗi khi tạo khóa học');
+            setPasteError(err.message || 'Lỗi khi tạo Space');
         } finally {
             setCreating(false);
         }
@@ -152,16 +169,10 @@ const MyCoursesPage = () => {
             case 'UNAUTHORIZED':
                 return 'Phiên đăng nhập đã hết hạn';
             case 'COURSE_NOT_FOUND':
-                return 'Không tìm thấy thông tin khóa học';
+                return 'Không tìm thấy thông tin Space';
             default:
-                return 'Hệ thống không thể tải danh sách khóa học lúc này';
+                return 'Hệ thống không thể tải danh sách Space lúc này';
         }
-    };
-
-    const closeLinkModal = () => {
-        setShowLinkModal(false);
-        setLinkUrl('');
-        setCreateError(null);
     };
 
     const closeBlankModal = () => {
@@ -175,28 +186,75 @@ const MyCoursesPage = () => {
         <div className="min-h-screen bg-slate-50">
             <Header user={user} onLogout={handleLogout} onJoin={handleJoin} />
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                <div className="flex items-center justify-between mb-6">
-                    <div>
-                        <h1 className="text-2xl font-bold text-slate-900">Khóa học của tôi</h1>
-                        <p className="text-sm text-slate-500 mt-0.5">Quản lý và chỉnh sửa khóa học</p>
-                    </div>
-                    <div className="flex items-center gap-3">
-                        <Button
-                            variant="outline"
+                <div className="mb-6">
+                    <h1 className="text-2xl font-bold text-slate-900">Space của tôi</h1>
+                    <p className="text-sm text-slate-500 mt-0.5">Quản lý và chỉnh sửa Space</p>
+                </div>
+
+                {/* WP1.10.3 — hero paste-box thay cặp nút "Tạo khóa học"/"Tạo từ
+                    link YouTube" cũ: nhập tối thiểu 1 URL, không hỏi tên. Sau khi
+                    tạo xong hiện card lựa chọn (bên dưới) thay vì redirect thẳng
+                    vào editor. "Tạo Space trống" tụt xuống thành link phụ. */}
+                {!createdSpace && (
+                    <section className="mb-6 bg-blue-600 rounded-xl p-6 shadow-sm">
+                        <h2 className="text-lg font-bold text-white">Dán link YouTube, tạo Space ngay</h2>
+                        <p className="text-sm text-blue-100 mt-0.5">Hệ thống tự lấy tiêu đề, ảnh và tạo bài học đầu tiên.</p>
+                        <div className="mt-4 flex flex-col sm:flex-row items-stretch gap-2">
+                            <input
+                                ref={pasteInputRef}
+                                type="text"
+                                value={pasteUrl}
+                                onChange={(e) => setPasteUrl(e.target.value)}
+                                onKeyDown={(e) => { if (e.key === 'Enter') handleCreateFromLink(); }}
+                                placeholder="https://www.youtube.com/watch?v=..."
+                                disabled={creating}
+                                className="flex-1 px-3 py-2.5 rounded-lg border-0 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-white disabled:opacity-60"
+                            />
+                            <Button
+                                onClick={handleCreateFromLink}
+                                disabled={creating || !pasteUrl.trim()}
+                                variant="secondary"
+                                className="whitespace-nowrap"
+                            >
+                                {creating ? 'Đang tạo…' : 'Tạo Space'}
+                            </Button>
+                        </div>
+                        {pasteError && (
+                            <p className="mt-2 text-sm text-blue-50 bg-blue-700/50 rounded-lg px-3 py-2">{pasteError}</p>
+                        )}
+                        <button
                             onClick={() => { setCreateError(null); setShowBlankModal(true); }}
                             disabled={creating}
+                            className="mt-3 text-xs text-blue-100 hover:text-white underline underline-offset-2"
                         >
-                            + Tạo khóa học mới
-                        </Button>
-                        <Button
-                            onClick={() => { setCreateError(null); setShowLinkModal(true); }}
-                            disabled={creating}
-                        >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/></svg>
-                            Tạo từ link YouTube
-                        </Button>
-                    </div>
-                </div>
+                            Tạo Space trống
+                        </button>
+                    </section>
+                )}
+
+                {/* WP1.10.3 — card lựa chọn sau khi dán URL thành công. */}
+                {createdSpace && (
+                    <section className="mb-6 bg-white border border-emerald-200 rounded-xl p-6 shadow-sm">
+                        <p className="text-xs font-semibold text-emerald-600 uppercase tracking-wide mb-1">Đã tạo Space</p>
+                        <h2 className="text-lg font-bold text-slate-900">{createdSpace.title}</h2>
+                        {createdSpace.titleIsPlaceholder && (
+                            <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mt-2">
+                                Không đọc được tên video từ YouTube — đã đặt tên tạm, bạn có thể đổi trong phần chỉnh sửa.
+                            </p>
+                        )}
+                        <div className="flex flex-col sm:flex-row gap-3 mt-4">
+                            <Button onClick={() => router.push(`/courses/${createdSpace.courseId}/learn`)}>
+                                Học ngay
+                            </Button>
+                            <Button variant="outline" onClick={() => router.push(`/my-courses/${createdSpace.courseId}/edit`)}>
+                                Thêm quiz/tóm tắt trước khi học
+                            </Button>
+                            <Button variant="ghost" onClick={() => setCreatedSpace(null)}>
+                                Dán link khác
+                            </Button>
+                        </div>
+                    </section>
+                )}
 
                 {/* Section 01: Bộ lọc trạng thái */}
                 <div className="mb-6">
@@ -245,8 +303,8 @@ const MyCoursesPage = () => {
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                             </svg>
                         </div>
-                        <h3 className="text-sm font-semibold text-slate-700 mb-1">Không có khóa học</h3>
-                        <p className="text-sm text-slate-500 mb-5">Bạn chưa có khóa học nào trong mục này.</p>
+                        <h3 className="text-sm font-semibold text-slate-700 mb-1">Không có Space</h3>
+                        <p className="text-sm text-slate-500 mb-5">Bạn chưa có Space nào trong mục này.</p>
                         {/* WP1.6.4 — ownership-based, not role-gated: every user owns their
                             own personal courses now (management/courses route already
                             dropped this same check at WP1.5.10). A STUDENT-role user
@@ -254,8 +312,8 @@ const MyCoursesPage = () => {
                             one, unlike the identical "dán link" box on the homepage which
                             never checked role. */}
                         {user && (
-                            <Button onClick={() => { setCreateError(null); setShowLinkModal(true); }}>
-                                Tạo khóa học đầu tiên
+                            <Button onClick={() => pasteInputRef.current?.focus()}>
+                                Tạo Space đầu tiên
                             </Button>
                         )}
                     </div>
@@ -284,7 +342,12 @@ const MyCoursesPage = () => {
                                 </div>
 
                                 <div className="p-5">
-                                    <h3 className="text-sm font-semibold text-slate-800 mb-2 line-clamp-2">{course.title}</h3>
+                                    <h3 className="text-sm font-semibold text-slate-800 mb-1 line-clamp-2">{course.title}</h3>
+                                    {/* WP1.10.6 — badge "N bài" phân biệt hình thái (1 video vs
+                                        nhiều chương/bài), không thêm tab/lọc riêng theo nguồn. */}
+                                    {typeof course.lessonCount === 'number' && (
+                                        <p className="text-xs text-slate-400 mb-2">{course.lessonCount} bài</p>
+                                    )}
 
                                     <div className="flex items-center justify-between gap-2">
                                         <span
@@ -315,18 +378,19 @@ const MyCoursesPage = () => {
                 )}
             </div>
 
-            {/* Modal tạo khóa học mới */}
+            {/* Modal tạo Space trống — đường phụ, giữ nguyên cho người tự soạn
+                cấu trúc nhiều chương/bài (WP1.10.3 §3.6: không sửa). */}
             <Dialog open={showBlankModal} onOpenChange={(open) => { if (!open) closeBlankModal(); }}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Tạo khóa học mới</DialogTitle>
+                        <DialogTitle>Tạo Space mới</DialogTitle>
                         <DialogDescription>
-                            Nhập tên và mô tả cho khóa học mới của bạn. Sau khi tạo, bạn có thể thêm các chương và bài học.
+                            Nhập tên và mô tả cho Space mới của bạn. Sau khi tạo, bạn có thể thêm các chương và bài học.
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-3 py-2">
                         <div>
-                            <label className="block text-xs font-semibold text-slate-700 mb-1">Tên khóa học</label>
+                            <label className="block text-xs font-semibold text-slate-700 mb-1">Tên Space</label>
                             <input
                                 type="text"
                                 value={newTitle}
@@ -342,7 +406,7 @@ const MyCoursesPage = () => {
                             <textarea
                                 value={newDesc}
                                 onChange={(e) => setNewDesc(e.target.value)}
-                                placeholder="Mô tả ngắn gọn nội dung khóa học…"
+                                placeholder="Mô tả ngắn gọn nội dung Space…"
                                 rows={3}
                                 className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
                             />
@@ -353,36 +417,7 @@ const MyCoursesPage = () => {
                             Hủy
                         </Button>
                         <Button onClick={handleCreateBlank} disabled={creating}>
-                            {creating ? 'Đang tạo…' : 'Tạo khóa học'}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-
-            {/* Modal tạo khóa học từ link */}
-            <Dialog open={showLinkModal} onOpenChange={(open) => { if (!open) closeLinkModal(); }}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Tạo khóa học từ link YouTube</DialogTitle>
-                        <DialogDescription>
-                            Dán link video YouTube — hệ thống sẽ tự lấy tiêu đề, ảnh và tạo khóa học có sẵn bài học đầu tiên.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <input
-                        type="text"
-                        value={linkUrl}
-                        onChange={(e) => setLinkUrl(e.target.value)}
-                        onKeyDown={(e) => { if (e.key === 'Enter') handleCreateFromLink(); }}
-                        placeholder="https://www.youtube.com/watch?v=..."
-                        autoFocus
-                        className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    />
-                    <DialogFooter>
-                        <Button variant="outline" onClick={closeLinkModal} disabled={creating}>
-                            Hủy
-                        </Button>
-                        <Button onClick={handleCreateFromLink} disabled={creating || !linkUrl.trim()}>
-                            {creating ? 'Đang tạo…' : 'Tạo khóa học'}
+                            {creating ? 'Đang tạo…' : 'Tạo Space'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

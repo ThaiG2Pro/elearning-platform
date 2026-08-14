@@ -28,9 +28,20 @@ export interface MyLearningCourse {
     id: string;
     title: string;
     completionRate: number; // 0-100
-    status: 'in_progress' | 'completed';
+    // WP1.6.4 — 'not_started' split out from 'in_progress': a course with
+    // very few lessons can only show completionRate 0 or 100, so "started
+    // watching but haven't finished a lesson yet" needs its own state,
+    // separate from "never opened at all".
+    status: 'not_started' | 'in_progress' | 'completed';
     createdAt: string; // ISO date string
     thumbnailUrl?: string;
+    // Only present when status is 'in_progress' and completionRate is still
+    // 0 — seconds into the current lesson's video, for an honest "đã xem
+    // 3:20" readout instead of a misleading flat 0%.
+    lastWatchedPositionSec?: number;
+    // WP1.10.6 — badge "N bài" trên card, phân biệt hình thái (1 video vs
+    // nhiều chương/bài) không cần tab/lọc riêng theo nguồn.
+    lessonCount: number;
 }
 
 export interface MyLearningCoursesResponse {
@@ -90,6 +101,17 @@ export interface LessonNote {
     videoTimestampSec: number | null;
     createdAt: string;
     updatedAt: string;
+}
+
+/**
+ * WP1.7 — one member of a course's clone lineage (owner-authored root +
+ * everyone who cloned it), with their own progress on their own copy.
+ */
+export interface Companion {
+    courseId: number;
+    name: string;
+    completionRate: number;
+    isSelf: boolean;
 }
 
 /** WP1.4 — anonymous-visitor view of a course reached via /share/[token]. */

@@ -5,6 +5,7 @@ import { CourseRepository } from '../repositories/CourseRepository';
 import { LearningProgressRepository } from '../repositories/LearningProgressRepository';
 import { CourseListDto } from '../dtos/CourseListDto';
 import { CourseDetailDto, PublicCourseDto } from '../dtos/CourseDetailDto';
+import { CompanionDto } from '../dtos/CompanionDto';
 import { prisma } from '../../../shared/config/database';
 
 export class CourseController {
@@ -33,5 +34,9 @@ export class CourseController {
 
     async cloneSharedCourse(token: string, userId: bigint): Promise<bigint> {
         return await this.contentService.cloneSharedCourse(token, userId);
+    }
+
+    async getCompanions(courseId: bigint, userId: bigint): Promise<CompanionDto[]> {
+        return await this.service.getCompanions(courseId, userId);
     }
 }

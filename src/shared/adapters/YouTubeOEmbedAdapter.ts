@@ -12,9 +12,26 @@ export interface OEmbedResult {
  */
 export class YouTubeOEmbedAdapter {
     private static readonly ID_PATTERN = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
+    private static readonly HOST_PATTERN = /(?:youtube\.com|youtu\.be)/i;
+    private static readonly PLAYLIST_PARAM_PATTERN = /[?&]list=/;
+
+    static isYouTubeHost(url: string): boolean {
+        return this.HOST_PATTERN.test(url);
+    }
 
     static isYouTubeUrl(url: string): boolean {
-        return /(?:youtube\.com|youtu\.be)/i.test(url) && this.ID_PATTERN.test(url);
+        return this.HOST_PATTERN.test(url) && this.ID_PATTERN.test(url);
+    }
+
+    /**
+     * WP1.10.2 — true for a *playlist* URL (e.g. `/playlist?list=...`), not
+     * for a single video that merely plays as part of a playlist (`?v=...&list=...`
+     * still resolves to one video id, so it's left alone). Playlist import is
+     * out of scope for the from-link flow — this is what the validate-layer
+     * rejection keys off.
+     */
+    static isPlaylistUrl(url: string): boolean {
+        return this.HOST_PATTERN.test(url) && this.PLAYLIST_PARAM_PATTERN.test(url) && !this.ID_PATTERN.test(url);
     }
 
     static extractVideoId(url: string): string | null {

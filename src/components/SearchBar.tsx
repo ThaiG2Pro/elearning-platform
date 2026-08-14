@@ -6,7 +6,7 @@ interface SearchBarProps {
     placeholder?: string;
 }
 
-export default function SearchBar({ value, onChange, placeholder = "Tìm kiếm khóa học..." }: SearchBarProps) {
+export default function SearchBar({ value, onChange, placeholder = "Tìm kiếm Space..." }: SearchBarProps) {
     return (
         <div className="relative">
             <div className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none">

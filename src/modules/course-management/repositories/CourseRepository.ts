@@ -364,4 +364,59 @@ export class CourseRepository {
             throw error;
         }
     }
+
+    /**
+     * WP1.7 — every course sharing this course's clone lineage: the root
+     * (owner-authored course, possibly itself) plus every clone anyone made
+     * of it, at any generation. Walks up `cloned_from_course_id` to find the
+     * root, then BFS's back down — cloning a clone is possible (share a
+     * clone → someone else clones it), so this isn't just one level deep.
+     */
+    async findLineageCourses(courseId: bigint): Promise<{ id: bigint; ownerId: bigint; ownerName: string }[]> {
+        const start = await this.prisma.courses.findUnique({
+            where: { id: courseId },
+            select: { id: true, cloned_from_course_id: true },
+        });
+        if (!start) return [];
+
+        // Walk up to the root. `visited` guards against a corrupt cycle.
+        const visited = new Set<string>([start.id.toString()]);
+        let rootId = start.id;
+        let parentId = start.cloned_from_course_id;
+        while (parentId && !visited.has(parentId.toString())) {
+            visited.add(parentId.toString());
+            rootId = parentId;
+            const parent = await this.prisma.courses.findUnique({
+                where: { id: parentId },
+                select: { cloned_from_course_id: true },
+            });
+            if (!parent) break;
+            parentId = parent.cloned_from_course_id;
+        }
+
+        const members = new Map<string, { id: bigint; ownerId: bigint; ownerName: string }>();
+        const root = await this.prisma.courses.findUnique({
+            where: { id: rootId },
+            select: { id: true, owner_id: true, owner: { select: { full_name: true } } },
+        });
+        if (!root) return [];
+        members.set(root.id.toString(), { id: root.id, ownerId: root.owner_id, ownerName: root.owner.full_name });
+
+        let frontier = [root.id];
+        while (frontier.length > 0) {
+            const children = await this.prisma.courses.findMany({
+                where: { cloned_from_course_id: { in: frontier } },
+                select: { id: true, owner_id: true, owner: { select: { full_name: true } } },
+            });
+            frontier = [];
+            for (const child of children) {
+                const key = child.id.toString();
+                if (members.has(key)) continue;
+                members.set(key, { id: child.id, ownerId: child.owner_id, ownerName: child.owner.full_name });
+                frontier.push(child.id);
+            }
+        }
+
+        return Array.from(members.values());
+    }
 }

@@ -73,13 +73,22 @@ export class OwnedCoursesRepository {
             lessonIdsByCourse.set(course.id, ids);
         }
 
-        const finishedProgress = allLessonIds.length > 0
+        // WP1.6.4 — used to only fetch is_finished rows, which made
+        // completionRate (finishedLessons/totalLessons) the *only* signal for
+        // status. For a course with few lessons (the extreme case: exactly
+        // one video), that ratio can only ever be 0 or 100 — a user 70%
+        // through the only lesson's video still reads as untouched. Fetching
+        // every progress row (not just finished ones) lets us tell "never
+        // opened" apart from "opened, has a saved position, just hasn't
+        // crossed the 80% finish threshold on any lesson yet" without
+        // needing a lesson/video duration anywhere (none is persisted).
+        const allProgress = allLessonIds.length > 0
             ? await this.prisma.learning_progress.findMany({
-                where: { user_id: userId, lesson_id: { in: allLessonIds }, is_finished: true },
-                select: { lesson_id: true },
+                where: { user_id: userId, lesson_id: { in: allLessonIds } },
+                select: { lesson_id: true, is_finished: true, video_last_position: true },
             })
             : [];
-        const finishedLessonIds = new Set(finishedProgress.map(p => p.lesson_id));
+        const progressByLesson = new Map(allProgress.map(p => [p.lesson_id, p]));
 
         const results: OwnedCourseDto[] = courses.map(course => {
             const firstVideoUrl = VideoThumbnailUtil.findFirstVideoUrl(course.chapters);
@@ -90,11 +99,24 @@ export class OwnedCoursesRepository {
             const lessonIds = lessonIdsByCourse.get(course.id)!;
             const totalLessons = lessonIds.size;
             let finishedLessons = 0;
+            let started = false;
+            // Max saved position among lessons that are started but not yet
+            // finished — surfaced so the UI can say "đã xem 3:20" instead of
+            // a flat, misleading "0%" while completionRate is still 0.
+            let lastWatchedPositionSec = 0;
             for (const id of lessonIds) {
-                if (finishedLessonIds.has(id)) finishedLessons++;
+                const p = progressByLesson.get(id);
+                if (!p) continue;
+                if (p.is_finished) {
+                    finishedLessons++;
+                    started = true;
+                } else if ((p.video_last_position ?? 0) > 0) {
+                    started = true;
+                    lastWatchedPositionSec = Math.max(lastWatchedPositionSec, p.video_last_position!);
+                }
             }
             const completionRate = totalLessons > 0 ? Math.round((finishedLessons / totalLessons) * 100) : 0;
-            const status = completionRate >= 100 ? 'completed' : 'in_progress';
+            const status = completionRate >= 100 ? 'completed' : started ? 'in_progress' : 'not_started';
 
             return {
                 id: Number(course.id),
@@ -103,12 +125,16 @@ export class OwnedCoursesRepository {
                 status,
                 thumbnailUrl,
                 completionRate,
+                lastWatchedPositionSec: status === 'in_progress' && completionRate === 0 ? lastWatchedPositionSec : undefined,
+                // WP1.10.6 — badge "N bài" trên card, phân biệt hình thái.
+                lessonCount: totalLessons,
                 createdAt: course.created_at,
             };
         });
 
-        if (filter === 'in_progress') return results.filter(r => r.status !== 'completed');
+        if (filter === 'in_progress') return results.filter(r => r.status === 'in_progress');
         if (filter === 'completed') return results.filter(r => r.status === 'completed');
+        if (filter === 'not_started') return results.filter(r => r.status === 'not_started');
         return results;
     }
 }

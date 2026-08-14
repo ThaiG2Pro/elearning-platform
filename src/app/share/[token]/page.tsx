@@ -123,7 +123,7 @@ export default function SharedCoursePage() {
                     <>
                         <section className="mb-6">
                             <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 mb-3">
-                                Khóa học được chia sẻ
+                                Space được chia sẻ
                             </span>
                             <h1 className="text-xl font-bold text-slate-900 mb-2 leading-snug">{course.title}</h1>
                             {course.ownerName && (
@@ -138,23 +138,38 @@ export default function SharedCoursePage() {
 
                         <section className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm mb-6">
                             <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">
-                                Nội dung khóa học
+                                Nội dung Space
                             </h2>
-                            <div className="space-y-3">
-                                {course.chapters.map((chapter) => (
-                                    <div key={chapter.id}>
-                                        <p className="text-sm font-semibold text-slate-700 mb-1">{chapter.title}</p>
-                                        <ul className="pl-4 space-y-0.5">
-                                            {chapter.lessons.map((lesson) => (
-                                                <li key={lesson.id} className="text-sm text-slate-600">
-                                                    {lesson.title}
-                                                    <span className="ml-1 text-slate-400 text-xs">({lesson.type})</span>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    </div>
-                                ))}
-                            </div>
+                            {/* WP1.10.5 — luật ẩn chương nhất quán: course có đúng 1 chương
+                                (bất kể tên) in phẳng danh sách bài, không lộ tiêu đề chương
+                                (khớp editor và sidebar trang học, trước đây trang này luôn
+                                in tiêu đề chương cho mọi chương). */}
+                            {course.chapters.length === 1 ? (
+                                <ul className="space-y-0.5">
+                                    {course.chapters[0].lessons.map((lesson) => (
+                                        <li key={lesson.id} className="text-sm text-slate-600">
+                                            {lesson.title}
+                                            <span className="ml-1 text-slate-400 text-xs">({lesson.type})</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            ) : (
+                                <div className="space-y-3">
+                                    {course.chapters.map((chapter) => (
+                                        <div key={chapter.id}>
+                                            <p className="text-sm font-semibold text-slate-700 mb-1">{chapter.title}</p>
+                                            <ul className="pl-4 space-y-0.5">
+                                                {chapter.lessons.map((lesson) => (
+                                                    <li key={lesson.id} className="text-sm text-slate-600">
+                                                        {lesson.title}
+                                                        <span className="ml-1 text-slate-400 text-xs">({lesson.type})</span>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </section>
 
                         {errorMessage && (

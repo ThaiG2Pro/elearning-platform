@@ -102,7 +102,7 @@ export const createCourse = async (data: { title?: string; description?: string;
         if (error.response?.status === 400) {
             throw new Error(error.response.data?.error || 'Dữ liệu không hợp lệ');
         }
-        throw new Error('Có lỗi xảy ra khi tạo khóa học.');
+        throw new Error('Có lỗi xảy ra khi tạo Space.');
     }
 };
 
@@ -341,7 +341,7 @@ export const updateCourseContent = async (courseId: number, payload: any): Promi
 };
 
 // WP1.1 — paste a link, get a fully-formed course in one step
-export const createCourseFromLink = async (url: string): Promise<{ courseId: string }> => {
+export const createCourseFromLink = async (url: string): Promise<{ courseId: string; title: string; titleIsPlaceholder: boolean }> => {
     try {
         const response = await api.post('/management/courses/from-link', { url });
         return response.data;
@@ -351,7 +351,10 @@ export const createCourseFromLink = async (url: string): Promise<{ courseId: str
             if (status === 401) throw new Error('UNAUTHORIZED');
             if (data?.error === 'UNSUPPORTED_URL') throw new Error('Hiện chỉ hỗ trợ link YouTube.');
             if (data?.error === 'URL_REQUIRED') throw new Error('Vui lòng nhập link video.');
-            if (data?.error === 'YOUTUBE_METADATA_FETCH_FAILED') throw new Error('Không đọc được thông tin video, kiểm tra lại link.');
+            // WP1.10.2 — oEmbed thất bại không còn chặn tạo Space (service tự
+            // dùng title tạm), nên YOUTUBE_METADATA_FETCH_FAILED không còn
+            // xảy ra ở đây nữa; PLAYLIST_URL_NOT_SUPPORTED là lỗi mới thay vào.
+            if (data?.error === 'PLAYLIST_URL_NOT_SUPPORTED') throw new Error('Chưa hỗ trợ playlist — dán link từng video.');
             throw new Error('SERVER_ERROR');
         } else throw new Error('NETWORK_ERROR');
     }

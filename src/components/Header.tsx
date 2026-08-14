@@ -10,6 +10,13 @@ interface HeaderProps {
     onJoin?: () => void;
 }
 
+// WP1.8 — passive donate link, bật từ ngày đầu (Vision mục 7 / wayfinder ticket
+// 09): khung chữ "ủng hộ" trung tính, không gate feature nào theo nó, không
+// logic subscription. URL cấu hình qua env để đổi provider (Ko-fi/GitHub
+// Sponsors) mà không cần sửa code; ẩn hẳn nút nếu chưa cấu hình thay vì trỏ
+// tới một link giả.
+const DONATE_URL = process.env.NEXT_PUBLIC_DONATE_URL;
+
 export default function Header({ user, onLogout, onJoin }: HeaderProps) {
     const router = useRouter();
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -72,6 +79,20 @@ export default function Header({ user, onLogout, onJoin }: HeaderProps) {
 
                     {/* Account Area */}
                     <div className="flex items-center gap-3">
+                        {DONATE_URL && (
+                            <a
+                                href={DONATE_URL}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="hidden sm:inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-rose-600 transition-colors"
+                                aria-label="Ủng hộ dự án"
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4.318 6.318a4.5 4.5 0 010-6.364c1.757-1.757 4.607-1.757 6.364 0L12 1.272l1.318-1.318c1.757-1.757 4.607-1.757 6.364 0a4.5 4.5 0 010 6.364L12 15.636 4.318 7.954z" transform="translate(0 4)" />
+                                </svg>
+                                Ủng hộ
+                            </a>
+                        )}
                         {user ? (
                             <div className="relative">
                                 {/* User info chip */}
@@ -119,12 +140,12 @@ export default function Header({ user, onLogout, onJoin }: HeaderProps) {
                                                 <button onClick={handleMyLearningClick} role="menuitem"
                                                     className="flex items-center gap-2.5 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 w-full text-left transition-colors">
                                                     <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
-                                                    Khóa học đang học
+                                                    Space đang học
                                                 </button>
                                                 <button onClick={handleMyCoursesClick} role="menuitem"
                                                     className="flex items-center gap-2.5 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 w-full text-left transition-colors">
                                                     <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
-                                                    Khóa học đã tạo
+                                                    Space đã tạo
                                                 </button>
                                                 <button onClick={handleMySharesClick} role="menuitem"
                                                     className="flex items-center gap-2.5 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 w-full text-left transition-colors">
