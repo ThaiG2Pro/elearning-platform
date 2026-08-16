@@ -6,17 +6,16 @@ import Header from '@/components/Header';
 import SearchBar from '@/components/SearchBar';
 import CourseList from '@/components/CourseList';
 import { Button } from '@/components/ui/button';
+import SalesAgentWidget from '@/components/ai/SalesAgentWidget';
 import { Course, MyLearningCourse } from '@/types/course.types';
 import { User } from '@/types/auth.types';
 import { getCourses } from '@/lib/courses';
 import { getMyLearningCourses } from '@/lib/course';
 import { createCourseFromLink } from '@/lib/management';
 import { logout as apiLogout, AuthUtils } from '@/lib/auth';
+import { formatDuration } from '@/lib/utils';
 
 type AppState = 'idle' | 'loading' | 'error' | 'success';
-// WP1.5.5: "học tiếp" is its own independent fetch (separate endpoint,
-// separate auth requirement) — keeping its loading/empty/error states apart
-// from the public-catalog appState above so one doesn't block the other.
 type ContinueState = 'idle' | 'loading' | 'loaded' | 'error';
 
 export default function Home() {
@@ -28,18 +27,18 @@ export default function Home() {
     const [appState, setAppState] = useState<AppState>('idle');
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-    // WP1.5.5 — "học tiếp" (continue learning) strip for returning users.
+    // "Học tiếp" (Continue learning) for returning users
     const [continueCourses, setContinueCourses] = useState<MyLearningCourse[]>([]);
     const [continueState, setContinueState] = useState<ContinueState>('idle');
 
-    // WP1.5.5 — prominent paste-link box (the core WP1.1 feature), now
-    // reachable straight from the homepage instead of only inside the
-    // /my-courses modal.
+    // Toggles for 2-tier Discovery sections
+    const [showAllShowcase, setShowAllShowcase] = useState(false);
+    const [showAllPopular, setShowAllPopular] = useState(false);
+
+    // Paste-link box
     const [linkUrl, setLinkUrl] = useState('');
     const [creatingFromLink, setCreatingFromLink] = useState(false);
     const [linkError, setLinkError] = useState<string | null>(null);
-    // WP1.10.3 — card lựa chọn "Học ngay"/"Thêm quiz/tóm tắt trước khi học"
-    // sau khi tạo, thay vì redirect thẳng vào editor như trước.
     const [createdSpace, setCreatedSpace] = useState<{ courseId: string; title: string; titleIsPlaceholder: boolean } | null>(null);
 
     // Debounce search query
@@ -51,11 +50,6 @@ export default function Home() {
         return () => clearTimeout(timer);
     }, [searchQuery]);
 
-    // WP1.5.12 — extracted so the "Thử lại" button can call it directly.
-    // Previously retry did `setDebouncedSearchQuery(searchQuery)`, which is a
-    // no-op whenever the two are already equal (the common case right after
-    // an error) — React bails out of the state update and the effect below
-    // never re-runs, so the button did nothing.
     const fetchCourses = useCallback(async (query: string) => {
         try {
             setAppState('loading');
@@ -72,7 +66,7 @@ export default function Home() {
 
     // Effect for search changes
     useEffect(() => {
-        fetchCourses(debouncedSearchQuery); // Always fetch courses, with or without search
+        fetchCourses(debouncedSearchQuery);
     }, [debouncedSearchQuery, fetchCourses]);
 
     // Load user from token on mount
@@ -81,9 +75,7 @@ export default function Home() {
         setUser(currentUser);
     }, []);
 
-    // WP1.5.5 — fetch "học tiếp" once we know a user is logged in. Anonymous
-    // visitors never hit this endpoint (it requires auth), so this only runs
-    // after the user-detection effect above resolves to a real user.
+    // Fetch "học tiếp" once we know user is logged in
     useEffect(() => {
         if (!user) return;
         let cancelled = false;
@@ -96,15 +88,12 @@ export default function Home() {
                 setContinueState('loaded');
             } catch {
                 if (cancelled) return;
-                // Non-critical section — fail quietly, don't block the catalog below.
                 setContinueState('error');
             }
         })();
         return () => { cancelled = true; };
     }, [user]);
 
-    // WP1.10.2 — chặn URL playlist ngay ở ô nhập (khớp luật server: có
-    // `list=` nhưng không có video id cụ thể).
     const isPlaylistUrl = (url: string) => /(?:youtube\.com|youtu\.be)/i.test(url)
         && /[?&]list=/.test(url)
         && !/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/.test(url);
@@ -144,9 +133,8 @@ export default function Home() {
         try {
             await apiLogout();
             setUser(null);
-        } catch (error: any) {
-            // Handle logout error if needed
-            setUser(null); // Still clear user state
+        } catch {
+            setUser(null);
         }
     };
 
@@ -157,6 +145,17 @@ export default function Home() {
     const handleCourseClick = (courseId: number) => {
         router.push(`/courses/${courseId}`);
     };
+
+    // Filter courses for Tầng 1 (Showcase) and Tầng 2 (Lineage Popularity)
+    const showcaseCourses = courses.filter((c) => c.isShowcase);
+    const popularCourses = [...courses]
+        .filter((c) => !c.isShowcase)
+        .sort((a, b) => (b.cloneCount || 0) - (a.cloneCount || 0));
+
+    // Fallback if no non-showcase courses exist yet
+    const displayPopularCourses = popularCourses.length > 0
+        ? popularCourses
+        : [...courses].sort((a, b) => (b.cloneCount || 0) - (a.cloneCount || 0));
 
     return (
         <div className="min-h-screen bg-slate-50">
@@ -176,9 +175,7 @@ export default function Home() {
                     </div>
                 </section>
 
-                {/* WP1.5.5 — ô dán link nổi bật: đưa tính năng lõi (dán link
-                    -> tự tạo khóa học) ra ngay trang chủ thay vì chỉ nằm
-                    trong modal ở /my-courses. */}
+                {/* Paste-link box for logged-in users */}
                 {user && !createdSpace && (
                     <section className="mb-8 bg-blue-600 rounded-xl p-6 shadow-sm">
                         <div className="flex flex-col md:flex-row md:items-center gap-4">
@@ -212,7 +209,7 @@ export default function Home() {
                     </section>
                 )}
 
-                {/* WP1.10.3 — card lựa chọn sau khi dán URL thành công. */}
+                {/* Card choices after pasting URL */}
                 {createdSpace && (
                     <section className="mb-8 bg-white border border-emerald-200 rounded-xl p-6 shadow-sm">
                         <p className="text-xs font-semibold text-emerald-600 uppercase tracking-wide mb-1">Đã tạo Space</p>
@@ -236,11 +233,13 @@ export default function Home() {
                     </section>
                 )}
 
-                {/* WP1.5.5 — "học tiếp": ngữ cảnh khác biệt cho user quay lại
-                    so với khách chưa đăng nhập. */}
+                {/* KHU VỰC 1 (Dành cho User đã Login): "Tiếp tục học" */}
                 {user && continueState !== 'idle' && continueState !== 'error' && (
-                    <section className="mb-8">
-                        <h2 className="text-base font-semibold text-slate-800 mb-4">Học tiếp</h2>
+                    <section className="mb-10">
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="text-lg font-bold text-slate-900">Tiếp tục học</h2>
+                            <span className="text-xs font-medium text-slate-400">Dành riêng cho bạn</span>
+                        </div>
                         {continueState === 'loading' ? (
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                                 {Array.from({ length: 3 }).map((_, i) => (
@@ -253,30 +252,25 @@ export default function Home() {
                                     <button
                                         key={course.id}
                                         onClick={() => router.push(`/courses/${course.id}/learn`)}
-                                        className="text-left bg-white border border-slate-100 rounded-xl shadow-sm p-4 hover:shadow-md hover:-translate-y-0.5 transition-all"
+                                        className="text-left bg-white border border-slate-200 rounded-xl shadow-sm p-4 hover:shadow-md hover:-translate-y-0.5 transition-all"
                                     >
                                         <h3 className="text-sm font-semibold text-slate-800 mb-2 line-clamp-1">{course.title}</h3>
                                         {course.completionRate > 0 ? (
                                             <>
                                                 <div className="w-full bg-slate-100 rounded-full h-1.5 mb-1.5">
-                                                    <div className="bg-blue-600 h-1.5 rounded-full" style={{ width: `${course.completionRate}%` }} />
+                                                    <div className="bg-emerald-500 h-1.5 rounded-full" style={{ width: `${course.completionRate}%` }} />
                                                 </div>
                                                 <span className="text-xs text-slate-400">{course.completionRate}% hoàn thành</span>
                                             </>
                                         ) : (
-                                            // WP1.6.4 — same "few lessons → stuck at 0%" case as
-                                            // /my-learning: no lesson finished yet, but there is a
-                                            // saved video position, so show that instead of a flat 0%.
                                             <span className="text-xs text-blue-600 font-medium">
-                                                Đã xem {Math.floor((course.lastWatchedPositionSec || 0) / 60)}:{Math.floor((course.lastWatchedPositionSec || 0) % 60).toString().padStart(2, '0')}
+                                                Đã xem {formatDuration(course.lastWatchedPositionSec || 0)}
                                             </span>
                                         )}
                                     </button>
                                 ))}
                             </div>
                         ) : (
-                            // WP1.5.5 — empty-state cho user mới đăng nhập: khác
-                            // hẳn khách vãng lai, không phải "0 kết quả tìm kiếm".
                             <div className="bg-white border border-dashed border-slate-200 rounded-xl p-6 text-center">
                                 <p className="text-sm text-slate-500">Bạn chưa có Space nào đang học. Dán link video ở trên hoặc chọn một Space bên dưới để bắt đầu.</p>
                             </div>
@@ -284,45 +278,117 @@ export default function Home() {
                     </section>
                 )}
 
-                {/* Course List Section */}
-                <section>
-                    <div className="mb-4 flex items-center justify-between">
-                        <h2 className="text-base font-semibold text-slate-800">
-                            {searchQuery ? `Kết quả cho "${searchQuery}"` : 'Space nổi bật'}
-                        </h2>
-                        {appState === 'success' && courses.length > 0 && (
-                            <span className="text-xs text-slate-400">{courses.length} Space</span>
+                {/* SEARCH RESULTS MODE vs DISCOVERY MODE */}
+                {searchQuery ? (
+                    /* Search Results */
+                    <section>
+                        <div className="mb-4 flex items-center justify-between">
+                            <h2 className="text-lg font-bold text-slate-900">
+                                Kết quả cho &quot;{searchQuery}&quot;
+                            </h2>
+                            {appState === 'success' && courses.length > 0 && (
+                                <span className="text-xs text-slate-400">{courses.length} Space</span>
+                            )}
+                        </div>
+
+                        <CourseList
+                            courses={courses}
+                            loading={appState === 'loading'}
+                            onCourseClick={handleCourseClick}
+                        />
+                    </section>
+                ) : (
+                    /* KHU VỰC 2: "Khám phá Space nổi bật" (2 Tầng) */
+                    <div className="space-y-10">
+                        {/* TẦNG 1: Space Mẫu (Showcase) — 1 dòng + nút xem tất cả */}
+                        {showcaseCourses.length > 0 && (
+                            <section>
+                                <div className="mb-4 flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <h2 className="text-lg font-bold text-slate-900">Space Tuyển Chọn</h2>
+                                        <span className="text-xs font-semibold px-2.5 py-0.5 bg-blue-50 text-blue-700 rounded-full border border-blue-100">
+                                            Chất lượng cao
+                                        </span>
+                                    </div>
+                                    {showcaseCourses.length > 3 && (
+                                        <button
+                                            onClick={() => setShowAllShowcase(!showAllShowcase)}
+                                            className="text-xs font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1 transition-colors"
+                                        >
+                                            {showAllShowcase ? 'Thu gọn ↑' : `Xem tất cả (${showcaseCourses.length}) →`}
+                                        </button>
+                                    )}
+                                </div>
+
+                                <CourseList
+                                    courses={showAllShowcase ? showcaseCourses : showcaseCourses.slice(0, 3)}
+                                    loading={appState === 'loading'}
+                                    onCourseClick={handleCourseClick}
+                                />
+                            </section>
+                        )}
+
+                        {/* TẦNG 2: Space Phổ biến nhất (Cộng đồng) — nhiều hơn 1 dòng (2 dòng = 6 cards) + nút xem tất cả */}
+                        {displayPopularCourses.length > 0 && (
+                            <section>
+                                <div className="mb-4 flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <h2 className="text-lg font-bold text-slate-900">Space Phổ biến nhất</h2>
+                                        <span className="text-xs font-semibold px-2.5 py-0.5 bg-emerald-50 text-emerald-700 rounded-full border border-emerald-100">
+                                            Nhiều người học
+                                        </span>
+                                    </div>
+                                    {displayPopularCourses.length > 6 && (
+                                        <button
+                                            onClick={() => setShowAllPopular(!showAllPopular)}
+                                            className="text-xs font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1 transition-colors"
+                                        >
+                                            {showAllPopular ? 'Thu gọn ↑' : `Xem tất cả (${displayPopularCourses.length}) →`}
+                                        </button>
+                                    )}
+                                </div>
+
+                                <CourseList
+                                    courses={showAllPopular ? displayPopularCourses : displayPopularCourses.slice(0, 6)}
+                                    loading={appState === 'loading'}
+                                    onCourseClick={handleCourseClick}
+                                />
+                            </section>
                         )}
                     </div>
+                )}
 
-                    <CourseList
-                        courses={courses}
-                        loading={appState === 'loading'}
-                        onCourseClick={handleCourseClick}
-                    />
-
-                    <div className="sr-only" aria-live="polite">
-                        {appState === 'loading' ? 'Đang tải Space...' : ''}
-                    </div>
-
-                    {appState === 'error' && errorMessage && (
-                        <div className="flex flex-col items-center py-12 text-center">
-                            <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mb-3">
-                                <svg className="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                </svg>
-                            </div>
-                            <p className="text-sm text-slate-600 mb-3">{errorMessage}</p>
-                            <Button
-                                variant="link"
-                                onClick={() => fetchCourses(debouncedSearchQuery)}
-                            >
-                                Thử lại
-                            </Button>
+                {appState === 'error' && errorMessage && (
+                    <div className="flex flex-col items-center py-12 text-center">
+                        <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mb-3">
+                            <svg className="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
                         </div>
-                    )}
-                </section>
+                        <p className="text-sm text-slate-600 mb-3">{errorMessage}</p>
+                        <Button
+                            variant="link"
+                            onClick={() => fetchCourses(debouncedSearchQuery)}
+                        >
+                            Thử lại
+                        </Button>
+                    </div>
+                )}
             </main>
+
+            {/* ── Sales Agent Widget ─────────────────────────────────────────────
+                Appears only in high-intent moments:
+                  • Guest viewing homepage → onboarding + intro
+                  • Logged-in user with no courses yet → subscription nudge
+                Not shown during active search (user is task-focused).
+            ──────────────────────────────────────────────────────────────────── */}
+            {!searchQuery && (
+                !user
+                    ? <SalesAgentWidget context="homepage_guest" />
+                    : continueState === 'loaded' && continueCourses.length === 0
+                        ? <SalesAgentWidget context="homepage_no_courses" userName={user.fullName} />
+                        : null
+            )}
         </div>
     );
 }

@@ -43,5 +43,6 @@ export class PublicCourseDto {
         public chapters: ChapterDto[],
         public thumbnailUrl?: string,
         public shareToken?: string,
+        public ownerId?: number,
     ) { }
 }

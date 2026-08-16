@@ -1,0 +1,508 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Sales Agent Widget — Design System
+   Namespace: sag-*  (Sales Agent)
+   Position: fixed bottom-right, above all content
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Root container ─────────────────────────────────────────────────────── */
+.sag-root {
+  /* Not needed — siblings render directly in page */
+}
+
+/* ── Trigger Button ─────────────────────────────────────────────────────── */
+.sag-trigger {
+  position: fixed;
+  bottom: 28px;
+  right: 28px;
+  z-index: 9990;
+
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+
+  background: #1d4ed8;  /* blue-700 */
+  color: #ffffff;
+  box-shadow:
+    0 4px 14px rgba(29, 78, 216, 0.45),
+    0 2px 4px rgba(0, 0, 0, 0.12);
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  transition:
+    transform 200ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 200ms ease,
+    background 150ms ease;
+
+  /* Subtle breathing ring to indicate "online" */
+  animation: sag-pulse-ring 3s ease-out infinite;
+}
+
+.sag-trigger:hover {
+  background: #1e40af;
+  transform: scale(1.08);
+  box-shadow:
+    0 6px 20px rgba(29, 78, 216, 0.55),
+    0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.sag-trigger:active {
+  transform: scale(0.96);
+}
+
+.sag-trigger__icon {
+  flex-shrink: 0;
+}
+
+.sag-trigger__badge {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #ef4444; /* red-500 */
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+  border: 2px solid #fff;
+  animation: sag-badge-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes sag-pulse-ring {
+  0%   { box-shadow: 0 4px 14px rgba(29,78,216,0.45), 0 0 0 0 rgba(29,78,216,0.3); }
+  60%  { box-shadow: 0 4px 14px rgba(29,78,216,0.45), 0 0 0 10px rgba(29,78,216,0); }
+  100% { box-shadow: 0 4px 14px rgba(29,78,216,0.45), 0 0 0 0 rgba(29,78,216,0); }
+}
+
+@keyframes sag-badge-pop {
+  from { transform: scale(0.4); opacity: 0; }
+  to   { transform: scale(1);   opacity: 1; }
+}
+
+/* ── Proactive Bubble ───────────────────────────────────────────────────── */
+.sag-proactive {
+  position: fixed;
+  bottom: 90px;
+  right: 28px;
+  z-index: 9989;
+
+  width: 260px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;  /* slate-200 */
+  border-radius: 16px 16px 4px 16px;
+  padding: 14px 16px;
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.10),
+    0 2px 6px rgba(0, 0, 0, 0.06);
+
+  animation: sag-slide-in-bubble 0.4s cubic-bezier(0.34, 1.4, 0.64, 1) both;
+}
+
+@keyframes sag-slide-in-bubble {
+  from { opacity: 0; transform: translateY(12px) scale(0.92); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.sag-proactive__dismiss {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #94a3b8; /* slate-400 */
+  font-size: 16px;
+  line-height: 1;
+  padding: 2px 4px;
+  border-radius: 4px;
+  transition: color 150ms ease;
+}
+
+.sag-proactive__dismiss:hover {
+  color: #475569;
+}
+
+.sag-proactive__text {
+  margin: 0 0 10px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: #1e293b; /* slate-800 */
+  padding-right: 16px;
+}
+
+.sag-proactive__cta {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #1d4ed8;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 0;
+  transition: color 150ms ease;
+  letter-spacing: 0.01em;
+}
+
+.sag-proactive__cta:hover {
+  color: #1e40af;
+}
+
+/* ── Chat Panel ─────────────────────────────────────────────────────────── */
+.sag-panel {
+  position: fixed;
+  bottom: 90px;
+  right: 28px;
+  z-index: 9991;
+
+  width: 360px;
+  height: 500px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  box-shadow:
+    0 20px 60px rgba(0, 0, 0, 0.14),
+    0 4px 12px rgba(0, 0, 0, 0.08);
+
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+
+  animation: sag-panel-open 0.35s cubic-bezier(0.34, 1.3, 0.64, 1) both;
+}
+
+@keyframes sag-panel-open {
+  from { opacity: 0; transform: translateY(16px) scale(0.94); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Panel Header */
+.sag-panel__header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  background: #1d4ed8;
+  flex-shrink: 0;
+}
+
+.sag-panel__avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  flex-shrink: 0;
+}
+
+.sag-panel__header-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sag-panel__name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sag-panel__status {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.sag-panel__status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #4ade80; /* green-400 */
+  flex-shrink: 0;
+  animation: sag-dot-pulse 2s ease-in-out infinite;
+}
+
+@keyframes sag-dot-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.5; }
+}
+
+.sag-panel__close {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 150ms ease;
+}
+
+.sag-panel__close:hover {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+/* Messages area */
+.sag-panel__messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  scroll-behavior: smooth;
+}
+
+.sag-panel__messages::-webkit-scrollbar {
+  width: 3px;
+}
+.sag-panel__messages::-webkit-scrollbar-track {
+  background: transparent;
+}
+.sag-panel__messages::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 99px;
+}
+
+/* Messages */
+.sag-msg {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+  animation: sag-msg-in 0.25s ease both;
+}
+
+@keyframes sag-msg-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.sag-msg--user {
+  flex-direction: row-reverse;
+}
+
+.sag-msg__avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #eff6ff;  /* blue-50 */
+  color: #1d4ed8;
+  font-size: 9px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  letter-spacing: 0.02em;
+}
+
+.sag-msg__bubble {
+  max-width: 80%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sag-msg--agent .sag-msg__bubble {
+  align-items: flex-start;
+}
+
+.sag-msg--user .sag-msg__bubble {
+  align-items: flex-end;
+}
+
+.sag-msg__content {
+  padding: 10px 13px;
+  border-radius: 16px;
+  font-size: 13px;
+  line-height: 1.6;
+  word-break: break-word;
+}
+
+.sag-msg--agent .sag-msg__content {
+  background: #f1f5f9; /* slate-100 */
+  color: #1e293b;
+  border-bottom-left-radius: 4px;
+}
+
+.sag-msg--user .sag-msg__content {
+  background: #1d4ed8;
+  color: #ffffff;
+  border-bottom-right-radius: 4px;
+}
+
+/* Quick replies */
+.sag-msg__quick-replies {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  padding-left: 2px;
+}
+
+.sag-msg__quick-reply {
+  padding: 5px 11px;
+  border-radius: 20px;
+  border: 1.5px solid #bfdbfe; /* blue-200 */
+  background: #ffffff;
+  color: #1d4ed8;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease,
+    transform 120ms ease;
+  white-space: nowrap;
+}
+
+.sag-msg__quick-reply:hover:not(:disabled) {
+  background: #eff6ff;
+  border-color: #1d4ed8;
+  transform: translateY(-1px);
+}
+
+.sag-msg__quick-reply:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Typing indicator */
+.sag-typing {
+  display: flex;
+  gap: 4px;
+  padding: 12px 16px;
+  align-items: center;
+}
+
+.sag-typing span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #94a3b8; /* slate-400 */
+  animation: sag-bounce 1.2s ease-in-out infinite;
+}
+
+.sag-typing span:nth-child(1) { animation-delay: 0ms; }
+.sag-typing span:nth-child(2) { animation-delay: 160ms; }
+.sag-typing span:nth-child(3) { animation-delay: 320ms; }
+
+@keyframes sag-bounce {
+  0%, 60%, 100% { transform: translateY(0); }
+  30%           { transform: translateY(-5px); }
+}
+
+/* Footer / Input */
+.sag-panel__footer {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 10px 14px;
+  border-top: 1px solid #f1f5f9;
+  background: #ffffff;
+  flex-shrink: 0;
+}
+
+.sag-input {
+  flex: 1;
+  resize: none;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 9px 12px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #1e293b;
+  background: #f8fafc;
+  outline: none;
+  font-family: inherit;
+  transition: border-color 150ms ease, background 150ms ease;
+  max-height: 100px;
+  overflow-y: auto;
+}
+
+.sag-input:focus {
+  border-color: #93c5fd; /* blue-300 */
+  background: #ffffff;
+}
+
+.sag-input::placeholder {
+  color: #94a3b8;
+}
+
+.sag-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.sag-send {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: #1d4ed8;
+  color: #ffffff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition:
+    background 150ms ease,
+    transform 120ms ease,
+    opacity 150ms ease;
+}
+
+.sag-send:hover:not(:disabled) {
+  background: #1e40af;
+  transform: scale(1.08);
+}
+
+.sag-send:active:not(:disabled) {
+  transform: scale(0.94);
+}
+
+.sag-send:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* ── Responsive (mobile) ─────────────────────────────────────────────────── */
+@media (max-width: 480px) {
+  .sag-trigger {
+    bottom: 20px;
+    right: 20px;
+  }
+
+  .sag-panel {
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    height: 85dvh;
+    border-radius: 20px 20px 0 0;
+  }
+
+  .sag-proactive {
+    right: 16px;
+    bottom: 80px;
+    width: calc(100vw - 80px);
+    max-width: 260px;
+  }
+}

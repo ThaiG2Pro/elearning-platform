@@ -517,9 +517,15 @@ export default function LearningPage() {
     }, [quizSession, appState, startTimer, stopTimer]);
 
     const formatTime = (seconds: number) => {
-        const mins = Math.floor(seconds / 60);
-        const secs = seconds % 60;
-        return `${mins}:${secs.toString().padStart(2, '0')}`;
+        const s = Math.max(0, Math.floor(seconds || 0));
+        const hours = Math.floor(s / 3600);
+        const minutes = Math.floor((s % 3600) / 60);
+        const secs = s % 60;
+        const pad = (n: number) => n.toString().padStart(2, '0');
+        if (hours > 0) {
+            return `${hours}:${pad(minutes)}:${pad(secs)}`;
+        }
+        return `${minutes}:${pad(secs)}`;
     };
 
     const calculateCourseProgress = () => {

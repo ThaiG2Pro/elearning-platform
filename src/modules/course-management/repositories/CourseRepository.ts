@@ -87,12 +87,13 @@ export class CourseRepository {
             course.description,
             course.status as CourseStatus,
             chapters,
+            course.share_token,
         );
         (domainCourse as any).ownerName = course.owner.full_name;
         return domainCourse;
     }
 
-    async findActiveCoursesWithThumbnails(search?: string): Promise<{ id: bigint; title: string; slug: string; description: string | null; thumbnailUrl: string }[]> {
+    async findActiveCoursesWithThumbnails(search?: string): Promise<{ id: bigint; title: string; slug: string; description: string | null; thumbnailUrl: string; isShowcase: boolean; cloneCount: number }[]> {
         const where: any = {
             status: 'ACTIVE',
         };
@@ -111,16 +112,29 @@ export class CourseRepository {
                 title: true,
                 slug: true,
                 description: true,
+                is_showcase: true,
             },
             orderBy: { id: 'desc' },
         });
 
-        // Get thumbnail URLs for each course
+        const cloneCounts = await this.prisma.courses.groupBy({
+            by: ['cloned_from_course_id'],
+            _count: { id: true },
+        });
+        const cloneCountMap = new Map<string, number>();
+        for (const item of cloneCounts) {
+            if (item.cloned_from_course_id) {
+                cloneCountMap.set(item.cloned_from_course_id.toString(), item._count.id);
+            }
+        }
+
         const coursesWithThumbnails = await Promise.all(
             courses.map(async (course) => {
                 const thumbnailUrl = await this.getCourseThumbnailUrl(course.id);
                 return {
                     ...course,
+                    isShowcase: course.is_showcase,
+                    cloneCount: cloneCountMap.get(course.id.toString()) || 0,
                     thumbnailUrl,
                 };
             })
@@ -292,21 +306,28 @@ export class CourseRepository {
      * so editing/archiving it never touches the original owner's course.
      */
     async cloneForOwner(courseId: bigint, newOwnerId: bigint): Promise<bigint> {
-        // WP1.5.12 — idempotency: if this owner already cloned this exact
-        // source course, return the existing clone instead of making another.
-        // Checked up front (fast path for the common case) and re-checked via
-        // the DB unique constraint below (race-safe for concurrent double-submits).
+        const source = await this.prisma.courses.findUnique({
+            where: { id: courseId },
+            include: { chapters: { include: { lessons: true }, orderBy: { order_index: 'asc' } } },
+        });
+        if (!source) throw new Error('COURSE_NOT_FOUND');
+
+        // Fast path 1: owner cannot clone their own course — return source.id
+        if (source.owner_id === newOwnerId) {
+            return source.id;
+        }
+
+        // Fast path 2: direct clone check (idempotency)
         const existingClone = await this.prisma.courses.findFirst({
             where: { owner_id: newOwnerId, cloned_from_course_id: courseId },
             select: { id: true },
         });
         if (existingClone) return existingClone.id;
 
-        const source = await this.prisma.courses.findUnique({
-            where: { id: courseId },
-            include: { chapters: { include: { lessons: true }, orderBy: { order_index: 'asc' } } },
-        });
-        if (!source) throw new Error('COURSE_NOT_FOUND');
+        // Fast path 3: lineage check — if newOwnerId already owns a course in this lineage, reuse it
+        const lineage = await this.findLineageCourses(courseId);
+        const existingInLineage = lineage.find(m => m.ownerId === newOwnerId);
+        if (existingInLineage) return existingInLineage.id;
 
         const baseSlug = source.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
         const suffix = randomBytes(4).toString('hex');
@@ -322,6 +343,7 @@ export class CourseRepository {
                         description: source.description,
                         status: 'ACTIVE',
                         cloned_from_course_id: courseId,
+                        source_id: source.source_id,
                     },
                 });
 

@@ -4,6 +4,8 @@ export interface Course {
     slug: string;
     description?: string;
     thumbnailUrl?: string;
+    isShowcase?: boolean;
+    cloneCount?: number;
 }
 
 export type CourseListResponse = Course[];
@@ -120,6 +122,7 @@ export interface PublicCourse {
     title: string;
     description?: string | null;
     ownerName?: string | null;
+    ownerId?: number;
     thumbnailUrl?: string;
     shareToken?: string;
     chapters: {

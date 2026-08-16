@@ -39,6 +39,18 @@ export default function CourseCard({ course, onClick }: CourseCardProps) {
 
             {/* Content */}
             <div className="p-4">
+                <div className="flex flex-wrap items-center gap-1.5 mb-2">
+                    {course.isShowcase && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-blue-50 text-blue-700 border border-blue-100">
+                            Tuyển chọn
+                        </span>
+                    )}
+                    {typeof course.cloneCount === 'number' && course.cloneCount > 0 && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-100">
+                            {course.cloneCount} người cùng học
+                        </span>
+                    )}
+                </div>
                 <div className="flex items-start justify-between gap-2 mb-2">
                     <h3 className="text-sm font-semibold text-slate-900 leading-snug line-clamp-2 flex-1">{course.title}</h3>
                 </div>

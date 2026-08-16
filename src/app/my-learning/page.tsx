@@ -92,9 +92,15 @@ export default function MyLearningPage() {
     // but still 0% (no lesson duration is persisted anywhere, so this only
     // works with the raw saved position, not a percentage).
     const formatWatchedTime = (seconds: number) => {
-        const mins = Math.floor(seconds / 60);
-        const secs = Math.floor(seconds % 60);
-        return `${mins}:${secs.toString().padStart(2, '0')}`;
+        const s = Math.max(0, Math.floor(seconds || 0));
+        const hours = Math.floor(s / 3600);
+        const minutes = Math.floor((s % 3600) / 60);
+        const secs = s % 60;
+        const pad = (n: number) => n.toString().padStart(2, '0');
+        if (hours > 0) {
+            return `${hours}:${pad(minutes)}:${pad(secs)}`;
+        }
+        return `${minutes}:${pad(secs)}`;
     };
 
     const STATUS_LABEL: Record<MyLearningCourse['status'], string> = {

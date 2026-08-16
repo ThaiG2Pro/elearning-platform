@@ -2,7 +2,8 @@
 
 import Image from 'next/image';
 import { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { useRef, useCallback } from 'react';
 import Header from '@/components/Header';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CourseDetail, Companion } from '@/types/course.types';
@@ -15,6 +16,7 @@ type AppState = 'idle' | 'loading' | 'processing' | 'error' | 'success';
 export default function CourseDetailPage() {
     const params = useParams();
     const router = useRouter();
+    const searchParams = useSearchParams();
     const courseId = parseInt(params.id as string);
 
     const [course, setCourse] = useState<CourseDetail | null>(null);
@@ -23,6 +25,8 @@ export default function CourseDetailPage() {
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [copying, setCopying] = useState(false);
     const [companions, setCompanions] = useState<Companion[]>([]);
+
+    const isCopyingRef = useRef(false);
 
     // Fetch course detail on mount
     useEffect(() => {
@@ -75,8 +79,8 @@ export default function CourseDetailPage() {
     };
 
     const handleJoin = () => {
-        const currentUrl = window.location.pathname;
-        router.push(`/join?continueUrl=${encodeURIComponent(currentUrl)}`);
+        const continueUrl = `/courses/${courseId}?copy=1`;
+        router.push(`/join?continueUrl=${encodeURIComponent(continueUrl)}`);
     };
 
     const handleBack = () => {
@@ -91,8 +95,15 @@ export default function CourseDetailPage() {
         router.push(`/my-courses/${courseId}/edit`);
     };
 
-    const handleCopy = async () => {
-        if (!course?.shareToken) return;
+    const handleCopy = useCallback(async () => {
+        if (!user) {
+            const continueUrl = `/courses/${courseId}?copy=1`;
+            router.push(`/join?continueUrl=${encodeURIComponent(continueUrl)}`);
+            return;
+        }
+        if (!course?.shareToken || course.isOwner) return;
+        if (isCopyingRef.current) return;
+        isCopyingRef.current = true;
         try {
             setCopying(true);
             setErrorMessage(null);
@@ -101,8 +112,17 @@ export default function CourseDetailPage() {
         } catch (error: any) {
             setErrorMessage(error.message);
             setCopying(false);
+            isCopyingRef.current = false;
         }
-    };
+    }, [user, courseId, course?.shareToken, course?.isOwner, router]);
+
+    // Auto-copy once the visitor returns from login with ?copy=1 (only if caller is not the owner)
+    useEffect(() => {
+        if (user && searchParams.get('copy') === '1' && appState === 'success' && !isCopyingRef.current && course && !course.isOwner) {
+            handleCopy();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [user, appState, course]);
 
     return (
         <div className="min-h-screen bg-slate-50">
@@ -157,11 +177,14 @@ export default function CourseDetailPage() {
 
                         {/* Information Section */}
                         <section className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm mb-6">
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium mb-3 ${course.isOwner ? 'bg-emerald-50 text-emerald-700' : 'bg-blue-50 text-blue-700'}`}>
+                                {course.isOwner ? 'Space của bạn' : 'Space của người dùng khác'}
+                            </span>
                             <h1 className="text-xl font-bold text-slate-900 mb-3 leading-snug">{course.title}</h1>
                             <div className="flex flex-wrap items-center gap-4 mb-4">
                                 {course.ownerName && (
                                     <p className="text-sm text-slate-500">
-                                        Tác giả: <span className="font-medium text-slate-800">{course.ownerName}</span>
+                                        Tác giả: <span className="font-medium text-slate-800">{course.isOwner ? 'Bạn' : course.ownerName}</span>
                                     </p>
                                 )}
                             </div>
@@ -183,6 +206,41 @@ export default function CourseDetailPage() {
                                 </div>
                             )}
                         </section>
+
+                        {/* Content Structure Section */}
+                        {course.chapters && course.chapters.length > 0 && (
+                            <section className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm mb-6">
+                                <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">
+                                    Nội dung Space
+                                </h2>
+                                {course.chapters.length === 1 ? (
+                                    <ul className="space-y-1">
+                                        {course.chapters[0].lessons.map((lesson: any) => (
+                                            <li key={lesson.id} className="text-sm text-slate-700 flex items-center justify-between py-1 border-b border-slate-50 last:border-0">
+                                                <span>{lesson.title}</span>
+                                                <span className="text-slate-400 text-xs font-mono uppercase bg-slate-100 px-2 py-0.5 rounded">{lesson.type}</span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                ) : (
+                                    <div className="space-y-4">
+                                        {course.chapters.map((chapter: any) => (
+                                            <div key={chapter.id}>
+                                                <p className="text-sm font-semibold text-slate-800 mb-1.5">{chapter.title}</p>
+                                                <ul className="pl-4 space-y-1">
+                                                    {chapter.lessons.map((lesson: any) => (
+                                                        <li key={lesson.id} className="text-sm text-slate-600 flex items-center justify-between py-0.5">
+                                                            <span>{lesson.title}</span>
+                                                            <span className="text-slate-400 text-xs font-mono uppercase bg-slate-100 px-2 py-0.5 rounded">{lesson.type}</span>
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </section>
+                        )}
 
                         {/* WP1.7 — Companions Section: who else is learning this
                             course's clone lineage, read-only, lineage-scoped. */}

@@ -457,6 +457,136 @@ async function main() {
         },
     });
 
+    // Create a shared course by Jack Smith: "Lập trình React & Next.js"
+    const reactCourse = await prisma.courses.create({
+        data: {
+            owner_id: jack.id,
+            title: 'Lập trình React & Next.js cơ bản',
+            slug: 'lap-trinh-react-nextjs-co-ban',
+            description: 'Không gian học React & Next.js được tạo và chia sẻ bởi Jack Smith',
+            status: 'ACTIVE',
+            share_token: generateShareToken(),
+        },
+    });
+
+    const reactChapter = await prisma.chapters.create({
+        data: {
+            course_id: reactCourse.id,
+            title: 'Chương 1: Tổng quan về React Component',
+            order_index: 1,
+        },
+    });
+
+    const reactVideoUrl = 'https://www.youtube.com/watch?v=w7ejDZ8SWv8';
+    const reactSource = await upsertVideoSource(reactVideoUrl, 'React JS Crash Course');
+
+    await prisma.lessons.create({
+        data: {
+            chapter_id: reactChapter.id,
+            source_id: reactSource.id,
+            title: 'Khái niệm React JS & Virtual DOM',
+            type: 'VIDEO',
+            content_url: reactVideoUrl,
+            order_index: 1,
+        },
+    });
+
+    const reactQuizLesson = await prisma.lessons.create({
+        data: {
+            chapter_id: reactChapter.id,
+            title: 'Trắc nghiệm React Component & Props',
+            type: 'QUIZ',
+            order_index: 2,
+        },
+    });
+
+    await prisma.questions.createMany({
+        data: [
+            {
+                lesson_id: reactQuizLesson.id,
+                content: 'JSX trong React là viết tắt của từ gì?',
+                answer_key: 'A',
+                option_a: 'JavaScript XML',
+                option_b: 'Java System Extension',
+                option_c: 'JavaScript Syntax Extension',
+                option_d: 'JSON Serialized XML',
+            },
+            {
+                lesson_id: reactQuizLesson.id,
+                content: 'Hook nào dùng để quản lý state trong Functional Component?',
+                answer_key: 'B',
+                option_a: 'useEffect',
+                option_b: 'useState',
+                option_c: 'useContext',
+                option_d: 'useReducer',
+            },
+        ],
+    });
+
+    // John clones Jack's React course to learn in his own Space
+    const johnReactCourse = await prisma.courses.create({
+        data: {
+            owner_id: john.id,
+            title: 'Lập trình React & Next.js cơ bản',
+            slug: `lap-trinh-react-nextjs-co-ban-john-${randomBytes(2).toString('hex')}`,
+            description: 'Không gian học React & Next.js (Sao chép về từ Jack Smith)',
+            status: 'ACTIVE',
+            cloned_from_course_id: reactCourse.id,
+            share_token: generateShareToken(),
+        },
+    });
+
+    const johnReactChapter = await prisma.chapters.create({
+        data: {
+            course_id: johnReactCourse.id,
+            title: 'Chương 1: Tổng quan về React Component',
+            order_index: 1,
+        },
+    });
+
+    const johnReactVideoLesson = await prisma.lessons.create({
+        data: {
+            chapter_id: johnReactChapter.id,
+            source_id: reactSource.id,
+            title: 'Khái niệm React JS & Virtual DOM',
+            type: 'VIDEO',
+            content_url: reactVideoUrl,
+            order_index: 1,
+        },
+    });
+
+    const johnReactQuizLesson = await prisma.lessons.create({
+        data: {
+            chapter_id: johnReactChapter.id,
+            title: 'Trắc nghiệm React Component & Props',
+            type: 'QUIZ',
+            order_index: 2,
+        },
+    });
+
+    await prisma.questions.createMany({
+        data: [
+            {
+                lesson_id: johnReactQuizLesson.id,
+                content: 'JSX trong React là viết tắt của từ gì?',
+                answer_key: 'A',
+                option_a: 'JavaScript XML',
+                option_b: 'Java System Extension',
+                option_c: 'JavaScript Syntax Extension',
+                option_d: 'JSON Serialized XML',
+            },
+            {
+                lesson_id: johnReactQuizLesson.id,
+                content: 'Hook nào dùng để quản lý state trong Functional Component?',
+                answer_key: 'B',
+                option_a: 'useEffect',
+                option_b: 'useState',
+                option_c: 'useContext',
+                option_d: 'useReducer',
+            },
+        ],
+    });
+
     console.log('✅ Chapters, lessons, sources and questions created');
 
     // WP1.5.1 — seed learning_progress so a fresh clone has real data to
@@ -483,6 +613,17 @@ async function main() {
         },
     });
 
+    // John's progress on his cloned React space from Jack Smith
+    await prisma.learning_progress.create({
+        data: {
+            user_id: john.id,
+            course_id: johnReactCourse.id,
+            lesson_id: johnReactVideoLesson.id,
+            is_finished: false,
+            video_last_position: 185,
+        },
+    });
+
     console.log('✅ Learning progress created');
 
     // WP1.5.1 — seed the `notes` table too (added under WP1.5.4, after this
@@ -498,6 +639,16 @@ async function main() {
         },
     });
 
+    await prisma.notes.create({
+        data: {
+            user_id: john.id,
+            course_id: johnReactCourse.id,
+            lesson_id: johnReactVideoLesson.id,
+            content: 'Ghi chú học tập từ Space của Jack Smith: Virtual DOM giúp tối ưu re-render.',
+            video_timestamp_sec: 140,
+        },
+    });
+
     console.log('✅ Notes created');
 
     console.log('🎉 Database seeded successfully!');
@@ -507,9 +658,11 @@ async function main() {
     console.log('   - Jack Smith: jack@gmail.com / password123');
     console.log('   - Trọng Tín: admin1@gmail.com / password123');
     console.log('📚 Courses:');
-    console.log(`   - Java Course: ACTIVE — share: /share/${javaCourse.share_token}`);
-    console.log(`   - C++ Course: ACTIVE — share: /share/${cppCourse.share_token}`);
-    console.log(`   - Python Course: ACTIVE — share: /share/${pythonCourse.share_token}`);
+    console.log(`   - Java Course (Jack): ACTIVE — share: /share/${javaCourse.share_token}`);
+    console.log(`   - C++ Course (Jack): ACTIVE — share: /share/${cppCourse.share_token}`);
+    console.log(`   - Python Course (Jack): ACTIVE — share: /share/${pythonCourse.share_token}`);
+    console.log(`   - React & Next.js Course (Jack): ACTIVE — share: /share/${reactCourse.share_token}`);
+    console.log(`   - React & Next.js Course (John cloned from Jack): ACTIVE — share: /share/${johnReactCourse.share_token}`);
 }
 
 main()
@@ -520,3 +673,4 @@ main()
     .finally(async () => {
         await prisma.$disconnect();
     });
+

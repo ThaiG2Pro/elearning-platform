@@ -6,6 +6,7 @@ import { identifyUser } from '@/lib/auth';
 import { IdentifyRequest } from '@/types/auth.types';
 import Header from '@/components/Header';
 import Toast from '@/components/Toast';
+import SalesAgentWidget from '@/components/ai/SalesAgentWidget';
 
 type AppState = 'idle' | 'submitting' | 'redirecting' | 'error';
 
@@ -115,6 +116,9 @@ export default function JoinPage() {
                     <Toast message={errorMessage} type="error" onClose={() => setAppState('idle')} />
                 )}
             </main>
+
+            {/* Sales Agent — appears after 4s on join page (user is deciding whether to sign up) */}
+            <SalesAgentWidget context="join" />
         </div>
     );
 }

@@ -23,7 +23,9 @@ export class CourseService {
             course.title,
             course.slug,
             course.description || '',
-            course.thumbnailUrl
+            course.thumbnailUrl,
+            course.isShowcase,
+            course.cloneCount,
         ));
     }
 

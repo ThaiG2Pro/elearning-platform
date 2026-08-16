@@ -22,6 +22,106 @@
     min-height: 200px;
 }
 
+/* ─────────────────────────────────────────────────────────────────────────
+   CRAFT STUDIO — Design Tokens (scoped: does not affect main app theme)
+   Spec: docs/design/vibe-craft-studio-spec.md
+   Inspired by: Linear.app · Obsidian · Raycast · VS Code Dark · Vercel
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* Import JetBrains Mono for timestamps, code blocks, and metric labels */
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+.craft-studio {
+  /* ── Backgrounds ── */
+  --cs-bg-main:        #0B0F17;    /* Onyx deep — main canvas */
+  --cs-bg-surface:     #161B26;    /* Elevated surface / card */
+  --cs-bg-surface-alt: rgba(22, 27, 38, 0.75); /* Glassmorphism layer */
+  --cs-bg-overlay:     rgba(11, 15, 23, 0.80); /* Modal backdrop */
+
+  /* ── Borders (sub-pixel precision) ── */
+  --cs-border-subtle:  rgba(255, 255, 255, 0.08);
+  --cs-border-medium:  rgba(255, 255, 255, 0.12);
+  --cs-border-strong:  rgba(255, 255, 255, 0.18);
+
+  /* ── Text ── */
+  --cs-text-primary:   #F9FAFB;    /* slate-50  — high contrast body */
+  --cs-text-secondary: #CBD5E1;    /* slate-300 — secondary labels */
+  --cs-text-muted:     #9CA3AF;    /* slate-400 — timestamps, captions */
+  --cs-text-disabled:  #4B5563;    /* slate-600 — inactive states */
+
+  /* ── Accent: Emerald (Completion / Progress) ── */
+  --cs-emerald:        #10B981;
+  --cs-emerald-glow:   rgba(16, 185, 129, 0.15);
+  --cs-emerald-border: rgba(16, 185, 129, 0.30);
+
+  /* ── Accent: Amber (Group Streak 🔥) ── */
+  --cs-amber:          #F59E0B;
+  --cs-amber-glow:     rgba(245, 158, 11, 0.15);
+  --cs-amber-border:   rgba(245, 158, 11, 0.35);
+
+  /* ── Accent: Indigo (AI / Quiz signals) ── */
+  --cs-indigo:         #6366F1;
+  --cs-indigo-glow:    rgba(99, 102, 241, 0.15);
+  --cs-indigo-border:  rgba(99, 102, 241, 0.30);
+
+  /* ── Typography ── */
+  --cs-font-sans: 'Inter', 'Geist', system-ui, sans-serif;
+  --cs-font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+
+  /* ── Motion ── */
+  --cs-transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Glassmorphism surface utility */
+.cs-glass {
+  background: var(--cs-bg-surface-alt);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  border: 1px solid var(--cs-border-subtle);
+}
+
+/* Custom scrollbar — Craft Studio style */
+.cs-scrollbar::-webkit-scrollbar { width: 4px; }
+.cs-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.cs-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.1);
+  border-radius: 99px;
+}
+.cs-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255,255,255,0.2);
+}
+
+/* Emerald progress bar shimmer */
+@keyframes cs-shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position:  200% center; }
+}
+.cs-progress-bar {
+  background: linear-gradient(
+    90deg,
+    var(--cs-emerald) 0%,
+    #34D399 40%,
+    var(--cs-emerald) 100%
+  );
+  background-size: 200% auto;
+  animation: cs-shimmer 2.5s linear infinite;
+}
+
+/* Indigo AI pulse ring */
+@keyframes cs-pulse-ring {
+  0%   { box-shadow: 0 0 0 0   rgba(99,102,241,0.4); }
+  70%  { box-shadow: 0 0 0 6px rgba(99,102,241,0.0); }
+  100% { box-shadow: 0 0 0 0   rgba(99,102,241,0.0); }
+}
+.cs-ai-pulse { animation: cs-pulse-ring 2s ease-out infinite; }
+
+/* Lesson row active left accent */
+.cs-lesson-active {
+  border-left: 2px solid var(--cs-emerald);
+  background: var(--cs-emerald-glow);
+}
+
+
 @layer base {
   :root {
     /* Corporate Professional — Blue base */

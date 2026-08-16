@@ -267,6 +267,7 @@ export class ContentManagementService {
                 ? VideoThumbnailUtil.deriveThumbnailFromVideoUrl(firstVideoUrl)
                 : '/images/course-placeholder.svg',
             course.shareToken || token,
+            Number(course.ownerId),
         );
     }
 

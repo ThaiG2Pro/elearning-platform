@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { User } from '@/types/auth.types';
 
 interface HeaderProps {
@@ -19,6 +19,7 @@ const DONATE_URL = process.env.NEXT_PUBLIC_DONATE_URL;
 
 export default function Header({ user, onLogout, onJoin }: HeaderProps) {
     const router = useRouter();
+    const pathname = usePathname();
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
     const getInitial = (fullName: string) => fullName.charAt(0).toUpperCase();
@@ -27,6 +28,11 @@ export default function Header({ user, onLogout, onJoin }: HeaderProps) {
     const handleHomeClick = () => {
         setIsDropdownOpen(false);
         router.push('/');
+    };
+
+    const handleAboutClick = () => {
+        setIsDropdownOpen(false);
+        router.push('/about');
     };
 
     const handleProfileClick = () => {
@@ -65,17 +71,42 @@ export default function Header({ user, onLogout, onJoin }: HeaderProps) {
         <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex justify-between items-center h-16">
-                    {/* Logo */}
-                    <button
-                        onClick={() => router.push('/')}
-                        className="flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded-md"
-                        aria-label="Trang chủ"
-                    >
-                        <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center">
-                            <span className="text-white font-bold text-sm">E</span>
-                        </div>
-                        <span className="font-semibold text-slate-900 text-base hidden sm:block">E-Learning</span>
-                    </button>
+                    {/* Logo & Main Nav */}
+                    <div className="flex items-center gap-6 sm:gap-8">
+                        <button
+                            onClick={() => router.push('/')}
+                            className="flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded-md"
+                            aria-label="Trang chủ"
+                        >
+                            <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center">
+                                <span className="text-white font-bold text-sm">E</span>
+                            </div>
+                            <span className="font-semibold text-slate-900 text-base hidden sm:block">E-Learning</span>
+                        </button>
+
+                        <nav className="flex items-center gap-1 sm:gap-2" aria-label="Main Navigation">
+                            <button
+                                onClick={handleHomeClick}
+                                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                                    pathname === '/'
+                                        ? 'bg-blue-50 text-blue-600 font-semibold'
+                                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                                }`}
+                            >
+                                Trang chủ
+                            </button>
+                            <button
+                                onClick={handleAboutClick}
+                                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                                    pathname === '/about'
+                                        ? 'bg-blue-50 text-blue-600 font-semibold'
+                                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                                }`}
+                            >
+                                Về chúng tôi
+                            </button>
+                        </nav>
+                    </div>
 
                     {/* Account Area */}
                     <div className="flex items-center gap-3">
@@ -136,6 +167,11 @@ export default function Header({ user, onLogout, onJoin }: HeaderProps) {
                                                     className="flex items-center gap-2.5 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 w-full text-left transition-colors">
                                                     <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
                                                     Trang chủ
+                                                </button>
+                                                <button onClick={handleAboutClick} role="menuitem"
+                                                    className="flex items-center gap-2.5 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 w-full text-left transition-colors">
+                                                    <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                                    Về chúng tôi
                                                 </button>
                                                 <button onClick={handleMyLearningClick} role="menuitem"
                                                     className="flex items-center gap-2.5 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 w-full text-left transition-colors">
