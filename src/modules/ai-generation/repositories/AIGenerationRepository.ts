@@ -120,4 +120,9 @@ export class AIGenerationRepository {
             where: { generated_by_user_id: userId, created_at: { gte: startOfDay } },
         });
     }
+
+    // Mục 6.7/WP2.4 (alerting theo ngày/tuần): truy vấn tương ứng sống trong
+    // scripts/aiUsageReport.ts, không lặp lại ở đây — script đó không thể
+    // import từ src/ (ràng buộc ts-node ESM, xem comment trong file đó), nên
+    // để 1 nơi giữ query thay vì 2 bản dễ lệch nhau.
 }

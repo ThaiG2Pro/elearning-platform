@@ -126,3 +126,17 @@ describe('AIGenerationPolicy.enforceSharedFreeTokenBudget — quota theo chi ph�
         );
     });
 });
+
+describe('AIGenerationPolicy.exceedsAlertThreshold — cảnh báo tăng trưởng đột biến (mục 6.7)', () => {
+    it('does not alert when today\'s request count is under the threshold', () => {
+        expect(AIGenerationPolicy.exceedsAlertThreshold(100, 250)).toBe(false);
+    });
+
+    it('alerts once the request count reaches the threshold', () => {
+        expect(AIGenerationPolicy.exceedsAlertThreshold(250, 250)).toBe(true);
+    });
+
+    it('alerts when the request count exceeds the threshold', () => {
+        expect(AIGenerationPolicy.exceedsAlertThreshold(500, 250)).toBe(true);
+    });
+});

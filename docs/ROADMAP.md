@@ -639,6 +639,22 @@ Kênh global chờ cổng retention bên dưới.
   mở rộng thêm cộng đồng, để phát hiện sớm tăng trưởng đột biến ngoài dự tính.
   **Đo cả số request/ngày, không chỉ $** (ticket 06) — với free tier, cạn
   quota xảy ra trước khi phát sinh chi phí, nên $ một mình là chỉ số mù.
+  **[Bắt đầu — 2026-08-14]** `scripts/aiUsageReport.ts` (`pnpm ai:usage-report`)
+  — in bảng số request/ngày theo `key_source` cho 7 ngày gần nhất, cộng dồn
+  hôm nay, so với ngưỡng `AI_ALERT_DAILY_REQUESTS` (mặc định 250, khớp con
+  số ước lượng ở ticket gốc) và in cảnh báo rõ ràng khi chạm/vượt ngưỡng.
+  `AIGenerationPolicy.exceedsAlertThreshold` (pure, 3 test riêng) giữ logic
+  so ngưỡng; truy vấn thật nằm thẳng trong script (không qua
+  `AIGenerationRepository`) vì `ts-node` chạy script ở chế độ ESM không
+  resolve được import extension-less từ `src/` — cùng ràng buộc đã có sẵn ở
+  `prisma/seed-showcase.ts`, giữ 1 nơi có query thay vì 2 bản dễ lệch nhau.
+  Verify thật: chạy `pnpm ai:usage-report` trên DB local (0 request, in
+  đúng "✅ Trong ngưỡng an toàn"). `pnpm test` 100/100, `tsc --noEmit` sạch.
+  **Chưa làm**: kênh báo thật (email/Slack/push) — hiện chỉ in ra stdout,
+  cần chạy thủ công hoặc cron thật trên host production; quyết định kênh cụ
+  thể là việc vận hành khi triển khai thật (giống WP1.8), ngoài phạm vi
+  code-only của phiên này. Dashboard/route admin xem số liệu qua UI cũng
+  chưa làm — script CLI là đủ cho quy mô "cộng đồng hẹp" của Checkpoint 2.
 
 **Điều kiện qua checkpoint tiếp theo:** retention tốt ở cộng đồng hẹp **và**
 chi phí AI mặc định nằm trong ngân sách quan sát được, ổn định (không phải chờ

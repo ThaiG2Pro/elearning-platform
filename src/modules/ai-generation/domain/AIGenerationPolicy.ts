@@ -107,6 +107,18 @@ export class AIGenerationPolicy {
             throw new Error('SOURCE_TOO_LONG_FOR_SHARED_FREE');
         }
     }
+
+    /**
+     * Mục 6.7/WP2.4 — lớp phòng thủ kỹ thuật thứ 2: phát hiện sớm tăng
+     * trưởng đột biến ngoài dự tính. Đo theo SỐ REQUEST/ngày (ticket 06),
+     * không chỉ theo $ — với free tier, cạn quota xảy ra trước khi phát
+     * sinh chi phí, nên $ một mình là chỉ số mù. Pure threshold check —
+     * tầng gọi (script/route) chịu trách nhiệm đếm request thật và quyết
+     * định kênh báo (log/email/Slack...).
+     */
+    static exceedsAlertThreshold(requestsToday: number, dailyAlertThreshold: number): boolean {
+        return requestsToday >= dailyAlertThreshold;
+    }
 }
 
 function sortKeys(value: unknown): unknown {
