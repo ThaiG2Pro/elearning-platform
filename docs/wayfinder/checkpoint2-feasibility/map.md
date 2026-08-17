@@ -65,3 +65,17 @@ out of scope, not to be relitigated.**
 - WP0 (auth/data-model pivot), WP1/WP1.5 (core product), WP1.6 (legacy
   enrollment cleanup) — already decided/shipped; kept as-is by founder
   directive. No ticket to close — they were never part of this map.
+
+## Implementation status (post-close addendum, 2026-08-17)
+
+This map's job was to de-risk Checkpoint 2 *before* writing code — it does
+not itself contain code tasks, and stays closed. Recording here, for
+traceability, that its conclusions have since been consumed: WP2.1–WP2.4
+(data model, generation pipeline, learn-page UI panel, usage-alert script)
+are implemented per `docs/ROADMAP.md`, following exactly the decisions
+above (BYOK→SHARED_FREE→paid routing from ticket 06, from-scratch build
+per ticket 14, integration-only AI scope per ticket 13, request-count
+alerting per ticket 16/06). No new fog surfaced during implementation that
+would warrant reopening a ticket here. Checkpoint 2 itself remains
+un-opened to real users — that gate (ticket 08's named retention number)
+is unrelated to this map's now-fully-spent feasibility work.
