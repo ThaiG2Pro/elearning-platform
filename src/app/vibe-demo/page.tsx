@@ -236,7 +236,7 @@ export default function VibeDemoPage() {
             <div style={{ flex: 1, overflowY: 'auto', paddingBottom: 40 }} className="cs-scrollbar">
               {notes.length === 0 && (
                 <div style={{ padding: '24px 0', fontFamily: T.mono, fontSize: 11, color: T.dim }}>
-                  // chưa có ghi chú nào
+                  {'// chưa có ghi chú nào'}
                 </div>
               )}
               {notes.map(n => (
