@@ -6,6 +6,7 @@ import Header from '@/components/Header';
 import YoutubePlayer, { VideoPlayerHandle } from '@/components/YoutubePlayer';
 import VimeoPlayer from '@/components/VimeoPlayer';
 import { Skeleton } from '@/components/ui/skeleton';
+import AIGenerationPanel from '@/components/AIGenerationPanel';
 import { getLessons, getLessonProgress, updateLessonProgress, flushLessonProgress, startQuiz, submitQuiz, addLessonNote, getLessonNotes, deleteLessonNote } from '@/lib/course';
 import { Lesson, LessonProgress, QuizSession, QuizResult, LessonNote } from '@/types/course.types';
 import { User } from '@/types/auth.types';
@@ -934,6 +935,13 @@ export default function LearningPage() {
                                     </button>
                                 </div>
                             </div>
+                        )}
+
+                        {/* WP2.3 — chỉ hiện khi lesson có Source (từ from-link);
+                            lesson thêm thủ công không có gì để AI tóm tắt. Card
+                            tách biệt, lỗi ở đây không ảnh hưởng video/note phía trên. */}
+                        {currentLesson?.sourceId && (
+                            <AIGenerationPanel sourceId={Number(currentLesson.sourceId)} />
                         )}
                     </div>
 

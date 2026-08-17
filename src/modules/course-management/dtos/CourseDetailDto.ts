@@ -30,6 +30,9 @@ export class LessonDto {
         public type: string,
         public orderIndex: number,
         public contentUrl?: string,
+        // WP2.3 — Source id để UI trigger AI generation (tóm tắt/quiz).
+        // Nullable: lesson tạo thủ công không có Source, không hiện nút AI.
+        public sourceId?: number | null,
     ) { }
 }
 

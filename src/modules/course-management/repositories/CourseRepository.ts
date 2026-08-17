@@ -67,7 +67,8 @@ export class CourseRepository {
                     lesson.title,
                     lesson.type as any,
                     lesson.content_url || '',
-                    lesson.order_index
+                    lesson.order_index,
+                    lesson.source_id
                 )
             );
             return new Chapter(

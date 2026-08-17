@@ -57,7 +57,8 @@ export class CourseService {
                 lesson.title,
                 lesson.type,
                 lesson.orderIndex,
-                lesson.contentUrl
+                lesson.contentUrl,
+                lesson.sourceId ? Number(lesson.sourceId) : null
             ));
             return new ChapterDto(
                 Number(chapter.id),

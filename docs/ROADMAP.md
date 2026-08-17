@@ -607,7 +607,8 @@ Kênh global chờ cổng retention bên dưới.
   `@google/genai`/`youtube-transcript-plus` hoạt động đúng với API thật);
   (b) đọc Notex/PageLM tham khảo (bước chuẩn bị ticket 14, WP2.1) — bỏ qua vì
   đã tự thiết kế xong prompt/pipeline, không còn chặn đường; (c) UI gắn
-  `CourseItem.aiGenerationId`/nút bấm dùng AI (thuộc WP2.3, chưa bắt đầu).
+  `CourseItem.aiGenerationId`/nút bấm dùng AI — đã làm tiếp ngay dưới đây ở
+  WP2.3.
   **Chưa mở Checkpoint 2 ra ngoài** — code này là chuẩn bị kỹ thuật trước,
   không đồng nghĩa gate retention ở cuối Checkpoint 1 đã đạt.
 - **WP2.3 — UI hiển thị AI mặc định gắn vào course-item.** Luôn optional —
@@ -615,6 +616,25 @@ Kênh global chờ cổng retention bên dưới.
   (ticket 06):** khi quota SHARED_FREE toàn nền tảng (~250 req/ngày) cạn,
   hiển thị rõ "thêm key miễn phí của bạn hoặc chờ ngày mai" — không âm thầm
   chặn, không tự fallback.
+  **[Bắt đầu — 2026-08-14]** `AIGenerationPanel` (`src/components/`) — card
+  riêng biệt trên trang học (`courses/[id]/learn/page.tsx`), chỉ render khi
+  lesson có `sourceId` (lesson thêm thủ công không có gì để tóm tắt). 2 nút
+  "Tóm tắt bài này"/"Tạo quiz 10 câu" gọi
+  `POST /api/v1/sources/[sourceId]/ai-generations`, hiện kết quả inline.
+  Luôn optional đúng nghĩa: card này độc lập hoàn toàn với video/note/tiến
+  độ phía trên — lỗi API chỉ hiện banner amber trong chính card, không ảnh
+  hưởng phần còn lại của trang. Nhánh UX quota-cạn (ticket 06): lỗi
+  `AI_DAILY_RATE_LIMIT_EXCEEDED` hiện message rõ "Đã dùng hết lượt tạo AI
+  miễn phí hôm nay — thử lại vào ngày mai" thay vì âm thầm chặn/tự fallback.
+  Để đưa `sourceId` tới UI phải thêm `Lesson.sourceId`/`LessonDto.sourceId`
+  xuyên suốt domain → DTO → route `/courses/[id]/lessons` → type
+  `Lesson.sourceId` ở frontend (field mới, optional, không phá vỡ chỗ nào
+  đang dùng `Lesson`/`LessonDto` cũ). Verify: `pnpm test` 97/97,
+  `tsc --noEmit` sạch, `next build` qua (route mới hiện đúng trong build
+  output). **Chưa làm**: test tương tác thật trên trình duyệt (cần
+  `GEMINI_API_KEY` thật để thấy nội dung AI thật thay vì lỗi
+  `SHARED_FREE_NOT_CONFIGURED`); UI cho nhánh BYOK (nhập key riêng) — hiện
+  panel chỉ gọi SHARED_FREE mặc định, chưa có ô nhập key.
 - **WP2.4 — Alerting chi phí AI theo ngày/tuần** (mục 6.7). Bắt buộc trước khi
   mở rộng thêm cộng đồng, để phát hiện sớm tăng trưởng đột biến ngoài dự tính.
   **Đo cả số request/ngày, không chỉ $** (ticket 06) — với free tier, cạn

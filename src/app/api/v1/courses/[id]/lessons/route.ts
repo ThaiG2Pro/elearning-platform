@@ -66,6 +66,8 @@ export async function GET(
                     chapterId: chapter.id.toString(),
                     chapterTitle: chapter.title,
                     chapterOrder: chapter.orderIndex,
+                    // WP2.3 — Source id để UI trigger AI generation.
+                    sourceId: lesson.sourceId ? lesson.sourceId.toString() : null,
                 });
             }
         }

@@ -61,6 +61,10 @@ export interface Lesson {
     chapterId?: string;
     chapterTitle?: string;
     chapterOrder?: number;
+    // WP2.3 — present only for lessons created from a Source (from-link
+    // video lẻ); null for manually-added lessons, which have nothing an AI
+    // trigger could summarize.
+    sourceId?: string | null;
 }
 
 export interface LessonProgress {
