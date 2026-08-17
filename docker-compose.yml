@@ -19,6 +19,26 @@ services:
       timeout: 5s
       retries: 5
 
+  # ── LiteLLM proxy (WP2.2 revised) — 1 endpoint OpenAI-compatible cho nhiều
+  # provider (Groq/OpenAI/Anthropic/OpenRouter/tự host). Đổi provider chỉ sửa
+  # litellm/config.yaml + env key, không đụng code app.
+  litellm:
+    image: ghcr.io/berriai/litellm:main-latest
+    restart: unless-stopped
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./litellm/config.yaml:/app/config.yaml:ro
+    command: ["--config", "/app/config.yaml", "--port", "4000"]
+    environment:
+      GROQ_API_KEY: ${GROQ_API_KEY}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
+      SELFHOST_LLM_BASE_URL: ${SELFHOST_LLM_BASE_URL}
+      SELFHOST_LLM_API_KEY: ${SELFHOST_LLM_API_KEY}
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY}
+
   # ── Next.js Application ──────────────────────────────────────────────────────
   app:
     build:
@@ -38,9 +58,14 @@ services:
       MAILTRAP_USER: ${MAILTRAP_USER}
       MAILTRAP_PASS: ${MAILTRAP_PASS}
       MAIL_FROM: ${MAIL_FROM:-noreply@elearning.com}
+      LITELLM_BASE_URL: http://litellm:4000
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY}
+      AI_DEFAULT_MODEL: ${AI_DEFAULT_MODEL:-default}
     depends_on:
       db:
         condition: service_healthy
+      litellm:
+        condition: service_started
 
   # ── DB migration runner (one-shot) ──────────────────────────────────────────
   migrate:

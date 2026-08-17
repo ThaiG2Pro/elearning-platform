@@ -1,7 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { AIGenerationPolicy } from '../domain/AIGenerationPolicy';
 import { RecipeHash } from '../domain/RecipeHash';
-import { RecipeType, defaultParamsFor, MODEL_VERSION } from '../domain/Recipes';
+import { RecipeType, defaultParamsFor, defaultModel } from '../domain/Recipes';
 import { AIGenerationRecord, AIGenerationRepository } from '../repositories/AIGenerationRepository';
 import { TranscriptProvider } from './TranscriptProvider';
 import { LLMProvider } from './LLMProvider';
@@ -67,7 +67,7 @@ export class AIGenerationService {
             type: req.recipeType,
             params,
             segmentRange: null,
-            modelVersion: MODEL_VERSION,
+            modelVersion: defaultModel(),
         });
 
         const hasByokKey = Boolean(req.byokApiKey?.trim());
@@ -117,7 +117,7 @@ export class AIGenerationService {
             keySource: decision.keySource,
             generatedByUserId: req.userId,
             visibility,
-            modelVersion: MODEL_VERSION,
+            modelVersion: defaultModel(),
         });
 
         // Enqueue nhẹ: record đã lưu ở trạng thái PENDING (giá trị mặc định
@@ -162,8 +162,14 @@ export class AIGenerationService {
         return transcript;
     }
 
+    /**
+     * WP2.2 (revised) — nhánh SHARED_FREE gọi qua LiteLLM proxy bằng
+     * `LITELLM_MASTER_KEY` (key của nền tảng gọi tới chính proxy, không
+     * phải key riêng của 1 provider cụ thể — provider nào thật sự được gọi
+     * do `litellm/config.yaml` + `AI_DEFAULT_MODEL` quyết định).
+     */
     private sharedFreeApiKey(): string {
-        const key = process.env.GEMINI_API_KEY;
+        const key = process.env.LITELLM_MASTER_KEY;
         if (!key) {
             throw new Error('SHARED_FREE_NOT_CONFIGURED');
         }

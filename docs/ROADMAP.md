@@ -579,36 +579,50 @@ Kênh global chờ cổng retention bên dưới.
   (chỉ chạy khi user thật sự bấm dùng, không tự động khi thêm Source), cache
   theo `(sourceId, recipeHash mặc định)`, rate-limit Source mới/user/ngày (mục
   6.1), quota tính theo token thực chứ không theo lượt (mục 6.3).
-  **[Cập nhật 2026-08-14 — ✅ pipeline code xong, ❌ chưa test end-to-end với
-  key Gemini thật]** Domain thuần: `RecipeHash.ts` (hash ổn định bất kể thứ tự
-  key) + `AIGenerationPolicy.ts` — 4 nhánh routing chi phí (mục 4), fix
-  free-rider ép `PAID_TIER` luôn `PRIVATE` (mục 5), ranh giới default/custom
-  theo segment (mục 2), chặn kế thừa `PAID_TIER` khi fork/clone, ngưỡng
-  rate-limit/ngày (mục 6.1) và token budget theo ký tự transcript ước lượng
-  (mục 6.3). Providers: `TranscriptProvider` interface +
-  `YoutubeTranscriptPlusProvider` (`youtube-transcript-plus`); `LLMProvider`
-  interface + `GeminiProvider` (`@google/genai`, model `gemini-2.5-flash`) —
-  lỗi Gemini bọc riêng thành `LLMGenerationError`, không tự fallback ngầm
-  sang nguồn khác (mục 6.2). `AIGenerationRepository` (cache lookup theo
+  **[Cập nhật 2026-08-17 — ✅ pipeline code xong, ✅ verify thật end-to-end
+  (không mock), ✅ đổi sang LiteLLM đa provider]** Domain thuần: `RecipeHash.ts`
+  (hash ổn định bất kể thứ tự key) + `AIGenerationPolicy.ts` — 4 nhánh
+  routing chi phí (mục 4), fix free-rider ép `PAID_TIER` luôn `PRIVATE`
+  (mục 5), ranh giới default/custom theo segment (mục 2), chặn kế thừa
+  `PAID_TIER` khi fork/clone, ngưỡng rate-limit/ngày (mục 6.1) và token
+  budget theo ký tự transcript ước lượng (mục 6.3). Providers:
+  `TranscriptProvider` interface + `YoutubeTranscriptPlusProvider`
+  (`youtube-transcript-plus`); `LLMProvider` interface + **`LiteLLMProvider`**
+  — gọi qua LiteLLM proxy self-host (`ghcr.io/berriai/litellm`, service mới
+  trong `docker-compose.yml`, cấu hình đa provider ở `litellm/config.yaml`:
+  Groq/OpenAI/Anthropic/OpenRouter/tự host qua 1 endpoint OpenAI-compatible
+  duy nhất) thay vì khoá cứng vào 1 SDK provider — đổi provider mặc định chỉ
+  sửa `AI_DEFAULT_MODEL` + 1 entry config, không đụng code TS. Lỗi provider
+  bọc riêng thành `LLMGenerationError`, không tự fallback ngầm sang nguồn
+  khác (mục 6.2). `AIGenerationRepository` (cache lookup theo
   `(sourceId, recipeHash)`, đếm activation/ngày) + `AIGenerationService` nối
   domain → transcript (lazy-fetch, lưu 1 lần ở `sources.transcript` — mục
   6.5) → LLM → lưu `ai_generations` (enqueue nhẹ PENDING→READY/FAILED, đúng
   ai-integration-plan.md mục 4). Route `POST/GET
   /api/v1/sources/[sourceId]/ai-generations`. 10 unit test service-level
-  (mock transcript/LLM provider, không cần key thật) + 23 test domain, tổng
-  `pnpm test` 97/97 xanh, `tsc --noEmit` sạch. Env mới trong `.env.example`:
-  `GEMINI_API_KEY` (không set = tắt hẳn AI, không chặn phần còn lại — lỗi rõ
-  `SHARED_FREE_NOT_CONFIGURED`), `AI_DAILY_ACTIVATION_LIMIT`,
-  `AI_SHARED_FREE_MAX_TRANSCRIPT_CHARS`. Migration đi kèm:
-  `20260814190000_add_sources_transcript` (transcript lưu ở Source, không
-  lặp lại ở AIGeneration).
-  **Chưa làm**: (a) test thật với `GEMINI_API_KEY` sống (chưa có key trong
-  phiên này — mọi test hiện tại mock LLM/transcript, chưa xác nhận
-  `@google/genai`/`youtube-transcript-plus` hoạt động đúng với API thật);
-  (b) đọc Notex/PageLM tham khảo (bước chuẩn bị ticket 14, WP2.1) — bỏ qua vì
-  đã tự thiết kế xong prompt/pipeline, không còn chặn đường; (c) UI gắn
-  `CourseItem.aiGenerationId`/nút bấm dùng AI — đã làm tiếp ngay dưới đây ở
-  WP2.3.
+  (mock transcript/LLM provider) + 23 test domain, tổng `pnpm test` 100/100
+  xanh, `tsc --noEmit` sạch. **Verify thật (không mock) 2026-08-17**: chạy
+  LiteLLM proxy local qua Docker với key Groq thật, gọi trực tiếp
+  `LiteLLMProvider` → nhận output LLM thật; chạy toàn bộ
+  `AIGenerationService.generate` với 1 Source thật (video "Me at the zoo") —
+  transcript fetch thật từ YouTube → lưu vào `sources.transcript` → gọi
+  Groq qua proxy → `ai_generations` status `READY` với nội dung tóm tắt
+  tiếng Việt hợp lý; gọi lại lần 2 xác nhận `servedFromCache: true` (không
+  gọi LLM lại). Env mới trong `.env.example`: `LITELLM_BASE_URL`,
+  `LITELLM_MASTER_KEY`, `AI_DEFAULT_MODEL`, cùng key riêng từng provider
+  (`GROQ_API_KEY`/`OPENAI_API_KEY`/`ANTHROPIC_API_KEY`/`OPENROUTER_API_KEY`/
+  `SELFHOST_LLM_*`) — chỉ cần set key của provider thực sự dùng. Migration
+  đi kèm: `20260814190000_add_sources_transcript` (transcript lưu ở Source,
+  không lặp lại ở AIGeneration).
+  **Chưa làm**: (a) đọc Notex/PageLM tham khảo (bước chuẩn bị ticket 14,
+  WP2.1) — bỏ qua vì đã tự thiết kế xong prompt/pipeline, không còn chặn
+  đường; (b) UI gắn `CourseItem.aiGenerationId`/nút bấm dùng AI — đã làm
+  tiếp ngay dưới đây ở WP2.3; (c) test thật các provider khác ngoài Groq
+  (OpenAI/Anthropic/OpenRouter/tự host) — config đã sẵn sàng nhưng chưa có
+  key để verify, chỉ Groq đã xác nhận chạy thật; (d) auth DB-backed cho
+  proxy (`general_settings.master_key` của LiteLLM cần Postgres riêng) —
+  đang dùng bearer-token đơn giản qua env, đủ cho Checkpoint 2 nhưng cần
+  xem lại nếu mở proxy ra ngoài mạng nội bộ Docker.
   **Chưa mở Checkpoint 2 ra ngoài** — code này là chuẩn bị kỹ thuật trước,
   không đồng nghĩa gate retention ở cuối Checkpoint 1 đã đạt.
 - **WP2.3 — UI hiển thị AI mặc định gắn vào course-item.** Luôn optional —
@@ -629,12 +643,13 @@ Kênh global chờ cổng retention bên dưới.
   Để đưa `sourceId` tới UI phải thêm `Lesson.sourceId`/`LessonDto.sourceId`
   xuyên suốt domain → DTO → route `/courses/[id]/lessons` → type
   `Lesson.sourceId` ở frontend (field mới, optional, không phá vỡ chỗ nào
-  đang dùng `Lesson`/`LessonDto` cũ). Verify: `pnpm test` 97/97,
+  đang dùng `Lesson`/`LessonDto` cũ). Verify: `pnpm test` 100/100,
   `tsc --noEmit` sạch, `next build` qua (route mới hiện đúng trong build
-  output). **Chưa làm**: test tương tác thật trên trình duyệt (cần
-  `GEMINI_API_KEY` thật để thấy nội dung AI thật thay vì lỗi
-  `SHARED_FREE_NOT_CONFIGURED`); UI cho nhánh BYOK (nhập key riêng) — hiện
-  panel chỉ gọi SHARED_FREE mặc định, chưa có ô nhập key.
+  output). Backend phía sau panel này đã verify thật (không mock) qua
+  LiteLLM/Groq — xem chi tiết ở WP2.2. **Chưa làm**: click thật qua browser
+  (test ở WP2.2 gọi thẳng `AIGenerationService`, chưa qua UI/route HTTP);
+  UI cho nhánh BYOK (nhập key riêng) — hiện panel chỉ gọi SHARED_FREE mặc
+  định, chưa có ô nhập key.
 - **WP2.4 — Alerting chi phí AI theo ngày/tuần** (mục 6.7). Bắt buộc trước khi
   mở rộng thêm cộng đồng, để phát hiện sớm tăng trưởng đột biến ngoài dự tính.
   **Đo cả số request/ngày, không chỉ $** (ticket 06) — với free tier, cạn

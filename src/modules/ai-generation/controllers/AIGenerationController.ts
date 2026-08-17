@@ -2,7 +2,7 @@ import { prisma } from '../../../shared/config/database';
 import { AIGenerationService, GenerateRequest, GenerateResult } from '../services/AIGenerationService';
 import { AIGenerationRepository } from '../repositories/AIGenerationRepository';
 import { YoutubeTranscriptPlusProvider } from '../services/YoutubeTranscriptPlusProvider';
-import { GeminiProvider } from '../services/GeminiProvider';
+import { LiteLLMProvider } from '../services/LiteLLMProvider';
 
 export class AIGenerationController {
     private service: AIGenerationService;
@@ -13,7 +13,7 @@ export class AIGenerationController {
             prisma,
             repo,
             new YoutubeTranscriptPlusProvider(),
-            new GeminiProvider(),
+            new LiteLLMProvider(),
         );
     }
 

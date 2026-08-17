@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { AIGenerationController } from '@/modules/ai-generation/controllers/AIGenerationController';
 import { getUserIdFromRequest } from '@/shared/middleware/auth';
-import { RecipeType, defaultParamsFor, MODEL_VERSION } from '@/modules/ai-generation/domain/Recipes';
+import { RecipeType, defaultParamsFor, defaultModel } from '@/modules/ai-generation/domain/Recipes';
 import { RecipeHash } from '@/modules/ai-generation/domain/RecipeHash';
 import { prisma } from '@/shared/config/database';
 
@@ -36,7 +36,7 @@ export async function GET(
             type,
             params: params_,
             segmentRange: null,
-            modelVersion: MODEL_VERSION,
+            modelVersion: defaultModel(),
         });
 
         const generation = await prisma.ai_generations.findFirst({

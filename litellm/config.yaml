@@ -1,0 +1,54 @@
+# WP2.2 (revised) — LiteLLM proxy config: 1 endpoint, nhiều provider.
+# Đổi provider chỉ cần thêm 1 entry ở đây + set env key tương ứng — không
+# đụng code TS (LiteLLMProvider chỉ nói chuyện với endpoint OpenAI-compatible
+# này). Model không cấu hình key thật vẫn liệt kê được, chỉ lỗi khi thực sự
+# gọi tới (không chặn khởi động proxy).
+model_list:
+  # Groq — key thật đang có sẵn, dùng làm mặc định cho SHARED_FREE.
+  - model_name: default
+    litellm_params:
+      model: groq/llama-3.3-70b-versatile
+      api_key: os.environ/GROQ_API_KEY
+  - model_name: groq-llama-70b
+    litellm_params:
+      model: groq/llama-3.3-70b-versatile
+      api_key: os.environ/GROQ_API_KEY
+  - model_name: groq-llama-8b
+    litellm_params:
+      model: groq/llama-3.1-8b-instant
+      api_key: os.environ/GROQ_API_KEY
+
+  # OpenAI — bật khi có OPENAI_API_KEY.
+  - model_name: openai-gpt4o-mini
+    litellm_params:
+      model: openai/gpt-4o-mini
+      api_key: os.environ/OPENAI_API_KEY
+
+  # Anthropic — bật khi có ANTHROPIC_API_KEY.
+  - model_name: anthropic-haiku
+    litellm_params:
+      model: anthropic/claude-3-5-haiku-20241022
+      api_key: os.environ/ANTHROPIC_API_KEY
+
+  # OpenRouter — 1 key, truy cập hàng trăm model; bật khi có OPENROUTER_API_KEY.
+  - model_name: openrouter-llama
+    litellm_params:
+      model: openrouter/meta-llama/llama-3.3-70b-instruct
+      api_key: os.environ/OPENROUTER_API_KEY
+
+  # Tự host (Ollama/vLLM/...) — trỏ base_url về endpoint OpenAI-compatible
+  # của server tự host, không cần key thật (đa số self-host không yêu cầu).
+  - model_name: selfhost
+    litellm_params:
+      model: openai/local-model
+      api_base: os.environ/SELFHOST_LLM_BASE_URL
+      api_key: os.environ/SELFHOST_LLM_API_KEY
+
+litellm_settings:
+  drop_params: true
+
+# Không khai báo `general_settings.master_key` ở đây — làm vậy bật chế độ
+# "virtual key" cần Postgres riêng cho proxy (lỗi "No connected db" nếu
+# thiếu). Bearer-token check đơn giản đã đủ dùng qua biến môi trường
+# LITELLM_MASTER_KEY (container nhận qua docker-compose.yml), không cần DB
+# riêng cho proxy ở quy mô Checkpoint 2.

@@ -9,7 +9,22 @@
 
 export type RecipeType = 'summary' | 'quiz';
 
-export const MODEL_VERSION = 'gemini-2.5-flash';
+/**
+ * WP2.2 (revised) — model alias gọi qua LiteLLM proxy (xem
+ * `litellm/config.yaml`), đọc từ env thay vì hard-code 1 provider cụ thể —
+ * đổi provider (Groq/OpenAI/Anthropic/OpenRouter/tự host) chỉ cần đổi
+ * `AI_DEFAULT_MODEL` + entry tương ứng trong config.yaml, không sửa code.
+ * Đọc lại mỗi lần gọi (không cache module-scope) để test chỉnh động được,
+ * cùng lý do với `dailyActivationLimit()`/`sharedFreeMaxTranscriptChars()`
+ * ở AIGenerationService.
+ *
+ * Vẫn bắt buộc nằm trong `recipeHash` (ghi chú 1, mục 3 economics doc):
+ * đổi provider/model qua env này tự động tạo cache-miss có kiểm soát cho
+ * SHARED_FREE, không phục vụ mãi output từ model cũ.
+ */
+export function defaultModel(): string {
+    return process.env.AI_DEFAULT_MODEL ?? 'default';
+}
 
 export const DEFAULT_RECIPE_PARAMS: Record<RecipeType, Record<string, unknown>> = {
     summary: {

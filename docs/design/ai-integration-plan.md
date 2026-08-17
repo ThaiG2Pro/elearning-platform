@@ -32,16 +32,31 @@ nguyên tắc BYOK-first).
 
 ## 2. LLM cho recipe mặc định (SHARED_FREE)
 
-**Gemini API qua `@google/genai`** (SDK hiện hành, thay `@google/generative-ai`
-đã deprecated), model `gemini-2.5-flash`/`gemini-2.0-flash`. Free tier tồn
-tại nhưng **số liệu quota dao động theo thời điểm/khu vực** — không hard-code
-con số cụ thể, đọc lỗi 429/response header thực tế lúc runtime và tự đặt quota
-nội bộ **thấp hơn** một khoảng an toàn so với giới hạn Google công bố.
+**[Cập nhật 2026-08-17 — đổi sang LiteLLM proxy, không khoá cứng 1 provider]**
+Ban đầu chọn Gemini (`@google/genai`) trực tiếp; quyết định lại: dùng
+**LiteLLM proxy** (self-host, `ghcr.io/berriai/litellm`) làm 1 endpoint
+OpenAI-compatible duy nhất đứng trước nhiều provider (Groq, OpenAI,
+Anthropic, OpenRouter, tự host qua Ollama/vLLM...) — cấu hình ở
+`litellm/config.yaml`, chạy như 1 service riêng trong `docker-compose.yml`.
+Lợi ích: đổi provider mặc định (vd Groq → OpenAI) chỉ sửa 1 dòng env
+(`AI_DEFAULT_MODEL`) + 1 entry config, không đụng code TS; không phụ thuộc
+duy nhất vào 1 nhà cung cấp (rủi ro nền tảng như đã gặp với Oracle Always
+Free ở WP1.8). Model mặc định hiện tại: `groq/llama-3.3-70b-versatile`
+(key Groq miễn phí, tốc độ cao, đủ context cho transcript dài) — đã verify
+thật (không mock) qua LiteLLM proxy chạy local: transcript → prompt → LLM
+→ output tiếng Việt hợp lý.
 
 BYOK không cần đổi kiến trúc: 1 interface `LLMProvider.generate(prompt, opts)`
-duy nhất, `GeminiProvider` là implementation đầu tiên; BYOK chỉ khác ở API key
-truyền vào — routing/cache/quota (đã thiết kế ở economics doc) chỉ quan tâm
-`keySource`, không quan tâm provider cụ thể.
+duy nhất, `LiteLLMProvider` là implementation đầu tiên (gọi qua SDK `openai`
+trỏ `baseURL` về LiteLLM proxy); BYOK chỉ khác ở key truyền vào — routing/
+cache/quota (đã thiết kế ở economics doc) chỉ quan tâm `keySource`, không
+quan tâm provider cụ thể đứng sau proxy.
+
+**Lưu ý vận hành proxy**: không khai báo `general_settings.master_key`
+trong `config.yaml` — làm vậy bật chế độ "virtual key" của LiteLLM, yêu cầu
+Postgres riêng cho proxy (lỗi `no_db_connection` nếu thiếu). Bearer-token
+đơn giản qua biến môi trường `LITELLM_MASTER_KEY` (không qua config) là đủ
+ở quy mô Checkpoint 2, không cần DB riêng cho proxy.
 
 ## 3. Kiến trúc trong codebase (theo pattern module hiện có)
 
@@ -54,11 +69,15 @@ src/modules/ai-generation/
     SourceRepository.ts
     AIGenerationRepository.ts   — unique(sourceId, recipeHash) khi SHARED_FREE
   services/
-    TranscriptService.ts        — interface TranscriptProvider
-    LLMProvider.ts (interface) + GeminiProvider.ts
+    TranscriptProvider.ts        — interface + YoutubeTranscriptPlusProvider.ts
+    LLMProvider.ts (interface) + LiteLLMProvider.ts (gọi qua proxy, đa provider)
     AIGenerationService.ts      — cache check → quota check → gọi LLM → lưu
   controllers/
     AIGenerationController.ts
+
+litellm/config.yaml            — model_list đa provider (Groq/OpenAI/
+                                  Anthropic/OpenRouter/tự host), docker-
+                                  compose.yml chạy proxy như 1 service riêng
 ```
 
 **Route API tối thiểu:**

@@ -64,11 +64,11 @@ describe('AIGenerationService.generate', () => {
             generatedByUserId: 5n,
             visibility: 'SHARED',
             status: 'PENDING',
-            modelVersion: 'gemini-2.5-flash',
+            modelVersion: 'default',
             content: null,
             error: null,
         });
-        process.env.GEMINI_API_KEY = 'test-shared-key';
+        process.env.LITELLM_MASTER_KEY = 'test-shared-key';
         service = new AIGenerationService(prisma as any, repo as any, transcriptProvider as any, llmProvider as any);
     });
 
@@ -83,7 +83,7 @@ describe('AIGenerationService.generate', () => {
         const cached = {
             id: 42n, sourceId: 1n, recipeHash: 'h', recipeType: 'summary', isDefaultRecipe: true,
             keySource: 'SHARED_FREE' as const, generatedByUserId: null, visibility: 'SHARED' as const,
-            status: 'READY' as const, modelVersion: 'gemini-2.5-flash', content: 'bản tóm tắt đã cache', error: null,
+            status: 'READY' as const, modelVersion: 'default', content: 'bản tóm tắt đã cache', error: null,
         };
         repo.findDefaultCache.mockResolvedValue(cached);
 
@@ -157,16 +157,16 @@ describe('AIGenerationService.generate', () => {
     });
 
     it('marks the generation FAILED and rethrows when the LLM call errors', async () => {
-        llmProvider.generate.mockRejectedValue(new Error('GEMINI_GENERATION_FAILED'));
+        llmProvider.generate.mockRejectedValue(new Error('LITELLM_GENERATION_FAILED'));
 
         await expect(
             service.generate({ sourceId: 1n, recipeType: 'summary', userId: 5n }),
-        ).rejects.toThrow('GEMINI_GENERATION_FAILED');
-        expect(repo.markFailed).toHaveBeenCalledWith(100n, 'GEMINI_GENERATION_FAILED');
+        ).rejects.toThrow('LITELLM_GENERATION_FAILED');
+        expect(repo.markFailed).toHaveBeenCalledWith(100n, 'LITELLM_GENERATION_FAILED');
     });
 
-    it('throws SHARED_FREE_NOT_CONFIGURED when no GEMINI_API_KEY is set and no BYOK key given', async () => {
-        delete process.env.GEMINI_API_KEY;
+    it('throws SHARED_FREE_NOT_CONFIGURED when no LITELLM_MASTER_KEY is set and no BYOK key given', async () => {
+        delete process.env.LITELLM_MASTER_KEY;
 
         await expect(
             service.generate({ sourceId: 1n, recipeType: 'summary', userId: 5n }),
