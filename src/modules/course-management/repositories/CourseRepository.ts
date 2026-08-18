@@ -4,6 +4,7 @@ import { Course, CourseStatus } from '../domain/Course';
 import { Chapter } from '../domain/Chapter';
 import { Lesson } from '../domain/Lesson';
 import { VideoThumbnailUtil } from '../../shared/utils/VideoThumbnailUtil';
+import { AIGenerationPolicy, KeySource } from '../../ai-generation/domain/AIGenerationPolicy';
 
 export class CourseRepository {
     constructor(private prisma: PrismaClient) { }
@@ -309,7 +310,17 @@ export class CourseRepository {
     async cloneForOwner(courseId: bigint, newOwnerId: bigint): Promise<bigint> {
         const source = await this.prisma.courses.findUnique({
             where: { id: courseId },
-            include: { chapters: { include: { lessons: true }, orderBy: { order_index: 'asc' } } },
+            include: {
+                chapters: {
+                    include: {
+                        // WP3.2 — cần key_source của bản AIGeneration đã gán để
+                        // quyết định có kế thừa qua clone hay không (mục 5 fix
+                        // free-rider: PAID_TIER không bao giờ được kế thừa).
+                        lessons: { include: { ai_generation: { select: { key_source: true } } } },
+                    },
+                    orderBy: { order_index: 'asc' },
+                },
+            },
         });
         if (!source) throw new Error('COURSE_NOT_FOUND');
 
@@ -358,6 +369,17 @@ export class CourseRepository {
                     });
 
                     for (const lesson of chapter.lessons) {
+                        // WP3.2/mục 5 economics doc — kế thừa AIGeneration đã
+                        // gán qua clone, TRỪ bản PAID_TIER (free-rider fix:
+                        // người fork phải tự tạo lại nếu muốn bản tương
+                        // đương, không được "thừa hưởng" bản người khác đã
+                        // trả tiền).
+                        const inheritedAiGenerationId =
+                            lesson.ai_generation_id !== null &&
+                            AIGenerationPolicy.inheritOnClone((lesson.ai_generation?.key_source as KeySource) ?? null)
+                                ? lesson.ai_generation_id
+                                : null;
+
                         await tx.lessons.create({
                             data: {
                                 chapter_id: newChapter.id,
@@ -366,6 +388,7 @@ export class CourseRepository {
                                 type: lesson.type,
                                 content_url: lesson.content_url,
                                 order_index: lesson.order_index,
+                                ai_generation_id: inheritedAiGenerationId,
                             },
                         });
                     }

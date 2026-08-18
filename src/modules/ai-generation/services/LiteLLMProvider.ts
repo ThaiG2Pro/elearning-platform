@@ -18,15 +18,19 @@ import { defaultModel } from '../domain/Recipes';
  */
 export class LiteLLMProvider implements LLMProvider {
     async generate(options: GenerateOptions): Promise<string> {
-        const baseURL = process.env.LITELLM_BASE_URL;
+        // WP3.1 — BYOK truyền baseUrl/model riêng (endpoint của chính user);
+        // không truyền = nhánh SHARED_FREE, dùng proxy + model mặc định của
+        // nền tảng như trước.
+        const baseURL = options.baseUrl ?? process.env.LITELLM_BASE_URL;
         if (!baseURL) {
             throw new LLMGenerationError('LITELLM_NOT_CONFIGURED');
         }
+        const model = options.model ?? defaultModel();
 
         const client = new OpenAI({ apiKey: options.apiKey, baseURL });
         try {
             const response = await client.chat.completions.create({
-                model: defaultModel(),
+                model,
                 messages: [{ role: 'user', content: options.prompt }],
             });
             const text = response.choices[0]?.message?.content;

@@ -7,6 +7,14 @@
 export interface GenerateOptions {
     apiKey: string;
     prompt: string;
+    /**
+     * WP3.1 — BYOK: khi có, gọi thẳng endpoint OpenAI-compatible này (provider
+     * thật của user hoặc proxy LiteLLM riêng của họ) thay vì proxy dùng chung
+     * của nền tảng. Không set = nhánh SHARED_FREE, dùng `LITELLM_BASE_URL` +
+     * `defaultModel()` mặc định.
+     */
+    baseUrl?: string;
+    model?: string;
 }
 
 export interface LLMProvider {

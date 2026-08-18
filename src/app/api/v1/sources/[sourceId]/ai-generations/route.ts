@@ -84,9 +84,25 @@ export async function POST(
             return NextResponse.json({ error: 'SOURCE_NOT_FOUND' }, { status: 404 });
         }
 
-        const body: { type?: string; byokApiKey?: string } = await request.json();
+        const body: {
+            type?: string;
+            params?: Record<string, unknown>;
+            segmentRange?: { startSec: number; endSec: number };
+            byokApiKey?: string;
+            byokBaseUrl?: string;
+            byokModel?: string;
+            requestedVisibility?: 'PRIVATE' | 'SHARED';
+        } = await request.json();
         if (!body.type || !VALID_RECIPE_TYPES.includes(body.type as RecipeType)) {
             return NextResponse.json({ error: 'INVALID_RECIPE_TYPE' }, { status: 400 });
+        }
+        if (
+            body.segmentRange &&
+            (typeof body.segmentRange.startSec !== 'number' ||
+                typeof body.segmentRange.endSec !== 'number' ||
+                body.segmentRange.startSec >= body.segmentRange.endSec)
+        ) {
+            return NextResponse.json({ error: 'INVALID_SEGMENT_RANGE' }, { status: 400 });
         }
 
         const controller = new AIGenerationController();
@@ -94,7 +110,12 @@ export async function POST(
             sourceId: BigInt(params.sourceId),
             recipeType: body.type as RecipeType,
             userId,
+            params: body.params,
+            segmentRange: body.segmentRange ?? null,
             byokApiKey: body.byokApiKey,
+            byokBaseUrl: body.byokBaseUrl,
+            byokModel: body.byokModel,
+            requestedVisibility: body.requestedVisibility,
         });
 
         return NextResponse.json({
@@ -114,7 +135,8 @@ export async function POST(
             message === 'AI_DAILY_RATE_LIMIT_EXCEEDED' ||
             message === 'SOURCE_TOO_LONG_FOR_SHARED_FREE' ||
             message === 'TRANSCRIPT_UNSUPPORTED_SOURCE' ||
-            message === 'SHARED_FREE_NOT_CONFIGURED'
+            message === 'SHARED_FREE_NOT_CONFIGURED' ||
+            message === 'BYOK_CONFIG_INCOMPLETE'
         ) {
             return NextResponse.json({ error: message }, { status: 422 });
         }

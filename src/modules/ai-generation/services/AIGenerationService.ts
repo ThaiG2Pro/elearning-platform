@@ -1,10 +1,11 @@
 import { PrismaClient } from '@prisma/client';
 import { AIGenerationPolicy } from '../domain/AIGenerationPolicy';
-import { RecipeHash } from '../domain/RecipeHash';
+import { RecipeHash, SegmentRange } from '../domain/RecipeHash';
 import { RecipeType, defaultParamsFor, defaultModel } from '../domain/Recipes';
 import { AIGenerationRecord, AIGenerationRepository } from '../repositories/AIGenerationRepository';
 import { TranscriptProvider } from './TranscriptProvider';
 import { LLMProvider } from './LLMProvider';
+import { WebContentProvider } from './WebContentProvider';
 import { YouTubeOEmbedAdapter } from '../../../shared/adapters/YouTubeOEmbedAdapter';
 
 /**
@@ -34,8 +35,28 @@ export interface GenerateRequest {
     sourceId: bigint;
     recipeType: RecipeType;
     userId: bigint;
-    /** BYOK key của chính user, nếu có. Không có nghĩa là dùng SHARED_FREE. */
+    /**
+     * WP3.1 — tuỳ biến tham số recipe (độ dài/độ khó/giọng văn...). Không
+     * truyền = dùng cấu hình mặc định hệ thống (`defaultParamsFor`). Truyền
+     * BẤT KỲ giá trị nào (kể cả trùng y hệt mặc định) vẫn được coi là tuỳ
+     * biến ở tầng gọi — ranh giới default/custom thật sự do `params` có mặt
+     * hay không quyết định ở route (mục 2 economics doc).
+     */
+    params?: Record<string, unknown>;
+    /** Tuỳ biến đoạn thời gian — có giá trị cũng rời khỏi "mặc định" (mục 2). */
+    segmentRange?: SegmentRange | null;
+    /**
+     * BYOK — endpoint OpenAI-compatible của chính user (provider thật hoặc
+     * proxy LiteLLM riêng họ tự chạy) + key + model. Bắt buộc đủ cả 3 khi
+     * dùng BYOK (`AIGenerationPolicy.byokConfigStatus`) — không đoán giúp
+     * provider/model nào.
+     */
     byokApiKey?: string;
+    byokBaseUrl?: string;
+    byokModel?: string;
+    /** Chỉ có ý nghĩa khi routing cuối cùng ra keySource = BYOK (mục 5) — user
+     * tự chọn chia sẻ bản tuỳ biến của họ cho người khác tái dùng free. */
+    requestedVisibility?: 'PRIVATE' | 'SHARED';
 }
 
 export interface GenerateResult {
@@ -50,6 +71,9 @@ export class AIGenerationService {
         private repo: AIGenerationRepository,
         private transcriptProvider: TranscriptProvider,
         private llmProvider: LLMProvider,
+        // WP3.3 — optional để không phá test/caller hiện có chỉ dùng YouTube;
+        // undefined + Source kiểu WEB_ARTICLE => TRANSCRIPT_UNSUPPORTED_SOURCE.
+        private webContentProvider?: WebContentProvider,
     ) { }
 
     async generate(req: GenerateRequest): Promise<GenerateResult> {
@@ -58,19 +82,25 @@ export class AIGenerationService {
             throw new Error('SOURCE_NOT_FOUND');
         }
 
-        // Slice tối thiểu Checkpoint 2 chỉ dùng recipe mặc định — chưa có UI
-        // tuỳ biến tham số/segment (đó là phạm vi WP2.3/Checkpoint 3 BYOK
-        // custom). Vì vậy mọi request ở đây đều isDefaultRecipe = true.
-        const params = defaultParamsFor(req.recipeType);
-        const isDefaultRecipe = AIGenerationPolicy.isDefaultRecipe(params, null, params);
+        // WP3.1 — `req.params` có mặt (kể cả trùng y hệt mặc định) hoặc có
+        // segmentRange là rời khỏi "mặc định" (mục 2 economics doc); không
+        // truyền gì = dùng đúng cấu hình mặc định hệ thống như Checkpoint 2.
+        const defaultParams = defaultParamsFor(req.recipeType);
+        const params = req.params ?? defaultParams;
+        const segmentRange = req.segmentRange ?? null;
+        const isDefaultRecipe = AIGenerationPolicy.isDefaultRecipe(params, segmentRange, defaultParams);
         const recipeHash = RecipeHash.compute({
             type: req.recipeType,
             params,
-            segmentRange: null,
+            segmentRange,
             modelVersion: defaultModel(),
         });
 
-        const hasByokKey = Boolean(req.byokApiKey?.trim());
+        const byokStatus = AIGenerationPolicy.byokConfigStatus(req.byokApiKey, req.byokBaseUrl, req.byokModel);
+        if (byokStatus === 'INCOMPLETE') {
+            throw new Error('BYOK_CONFIG_INCOMPLETE');
+        }
+        const hasByokKey = byokStatus === 'COMPLETE';
         const defaultCache = isDefaultRecipe ? await this.repo.findDefaultCache(req.sourceId, recipeHash) : null;
         const sharedByokMatch = !isDefaultRecipe
             ? await this.repo.findSharedByokMatch(req.sourceId, recipeHash)
@@ -102,13 +132,20 @@ export class AIGenerationService {
             AIGenerationPolicy.enforceDailyActivationLimit(activationsToday, dailyActivationLimit());
         }
 
-        const transcript = await this.ensureTranscript(source.id, source.url);
+        const transcript = await this.ensureTranscript(source.id, source.url, source.type);
 
         if (decision.keySource === 'SHARED_FREE') {
             AIGenerationPolicy.enforceSharedFreeTokenBudget(transcript.length, sharedFreeMaxTranscriptChars());
         }
 
-        const visibility = AIGenerationPolicy.resolveVisibility(decision.keySource, false);
+        // WP3.1/mục 5 — user chỉ được tự chọn SHARED khi bản cuối cùng là
+        // BYOK; SHARED_FREE/PAID_TIER do policy tự quyết (không đọc
+        // requestedVisibility ở 2 nhánh đó, tránh user "xin" SHARED cho 1
+        // bản PAID_TIER thông qua route).
+        const visibility = AIGenerationPolicy.resolveVisibility(
+            decision.keySource,
+            decision.keySource === 'BYOK' && req.requestedVisibility === 'SHARED',
+        );
         const record = await this.repo.create({
             sourceId: req.sourceId,
             recipeHash,
@@ -133,7 +170,12 @@ export class AIGenerationService {
             const apiKey = decision.keySource === 'BYOK' ? req.byokApiKey! : this.sharedFreeApiKey();
             const content = await this.llmProvider.generate({
                 apiKey,
-                prompt: this.buildPrompt(req.recipeType, transcript),
+                // WP3.1 — BYOK gọi thẳng endpoint/model của chính user;
+                // SHARED_FREE để undefined, LiteLLMProvider tự dùng proxy +
+                // model mặc định của nền tảng.
+                baseUrl: decision.keySource === 'BYOK' ? req.byokBaseUrl : undefined,
+                model: decision.keySource === 'BYOK' ? req.byokModel : undefined,
+                prompt: this.buildPrompt(req.recipeType, transcript, params, segmentRange),
             });
             await this.repo.markReady(record.id, content);
             return { generation: { ...record, status: 'READY', content }, servedFromCache: false };
@@ -144,17 +186,37 @@ export class AIGenerationService {
         }
     }
 
-    /** Mục 6.5 — transcript lưu 1 lần duy nhất ở Source, tái dùng cho mọi generation sau. */
-    private async ensureTranscript(sourceId: bigint, sourceUrl: string): Promise<string> {
+    /**
+     * Mục 6.5 — transcript/nội dung trích xuất lưu 1 lần duy nhất ở Source,
+     * tái dùng cho mọi generation sau.
+     *
+     * WP3.3 — mở rộng ngoài YouTube: `sources.type === 'WEB_ARTICLE'` dùng
+     * `webContentProvider` (readability extraction) thay vì
+     * `transcriptProvider` (YouTube captions). Cùng 1 cột `transcript` chứa
+     * nội dung đã trích xuất bất kể nguồn — tên cột giữ nguyên từ WP2.2 để
+     * không phải migrate lại, ý nghĩa đã mở rộng thành "nội dung văn bản để
+     * đưa vào prompt LLM", không riêng caption video.
+     */
+    private async ensureTranscript(sourceId: bigint, sourceUrl: string, sourceType: string): Promise<string> {
         const source = await this.prisma.sources.findUnique({ where: { id: sourceId } });
         if (source?.transcript) {
             return source.transcript;
         }
-        const videoId = YouTubeOEmbedAdapter.extractVideoId(sourceUrl);
-        if (!videoId) {
-            throw new Error('TRANSCRIPT_UNSUPPORTED_SOURCE');
+
+        let transcript: string;
+        if (sourceType === 'WEB_ARTICLE') {
+            if (!this.webContentProvider) {
+                throw new Error('TRANSCRIPT_UNSUPPORTED_SOURCE');
+            }
+            transcript = await this.webContentProvider.fetchContent(sourceUrl);
+        } else {
+            const videoId = YouTubeOEmbedAdapter.extractVideoId(sourceUrl);
+            if (!videoId) {
+                throw new Error('TRANSCRIPT_UNSUPPORTED_SOURCE');
+            }
+            transcript = await this.transcriptProvider.fetchTranscript(videoId);
         }
-        const transcript = await this.transcriptProvider.fetchTranscript(videoId);
+
         await this.prisma.sources.update({
             where: { id: sourceId },
             data: { transcript, transcript_fetched_at: new Date() },
@@ -176,10 +238,40 @@ export class AIGenerationService {
         return key;
     }
 
-    private buildPrompt(recipeType: RecipeType, transcript: string): string {
+    /**
+     * WP3.1 — đọc `params`/`segmentRange` tuỳ biến thay vì hard-code chuẩn/10
+     * câu/tiếng Việt như Checkpoint 2. `defaultParamsFor` vẫn là fallback khi
+     * field cụ thể không có trong `params` (params tuỳ biến có thể chỉ đổi 1
+     * trong nhiều field).
+     *
+     * Ghi chú giới hạn: `transcript`/nội dung web không kèm mốc thời gian
+     * (TranscriptProvider trả text thuần đã ghép — xem docstring interface),
+     * nên segmentRange chỉ truyền xuống LLM như 1 chỉ dẫn ("chỉ tập trung
+     * đoạn X-Y giây"), không cắt transcript chính xác theo giây — đủ dùng cho
+     * MVP Checkpoint 3, không phải cắt transcript có timestamp thật.
+     */
+    private buildPrompt(
+        recipeType: RecipeType,
+        transcript: string,
+        params: Record<string, unknown>,
+        segmentRange: SegmentRange | null,
+    ): string {
+        const language = (params.language as string) ?? 'vi';
+        const languageInstruction = language === 'en' ? 'in English' : 'bằng tiếng Việt';
+        const segmentInstruction = segmentRange
+            ? language === 'en'
+                ? ` Focus only on the part of the content between ${segmentRange.startSec}s and ${segmentRange.endSec}s (best-effort, no exact timestamps available).`
+                : ` Chỉ tập trung vào phần nội dung từ khoảng giây ${segmentRange.startSec} đến ${segmentRange.endSec} (chỉ mang tính tương đối, nội dung không kèm mốc thời gian chính xác).`
+            : '';
+
         if (recipeType === 'summary') {
-            return `Tóm tắt nội dung video sau bằng tiếng Việt, độ dài chuẩn (5-8 đoạn), rõ ràng, dễ hiểu:\n\n${transcript}`;
+            const length = (params.length as string) ?? 'standard';
+            const lengthInstruction = { short: '2-3 đoạn', standard: '5-8 đoạn', long: '10-15 đoạn' }[length] ?? '5-8 đoạn';
+            return `Tóm tắt nội dung sau ${languageInstruction}, độ dài ${lengthInstruction}, rõ ràng, dễ hiểu.${segmentInstruction}\n\n${transcript}`;
         }
-        return `Tạo đúng 10 câu hỏi trắc nghiệm (4 đáp án, 1 đáp án đúng) độ khó trung bình bằng tiếng Việt dựa trên nội dung video sau, trả về dạng JSON array:\n\n${transcript}`;
+
+        const questionCount = Number(params.questionCount) || 10;
+        const difficulty = (params.difficulty as string) ?? 'medium';
+        return `Tạo đúng ${questionCount} câu hỏi trắc nghiệm (4 đáp án, 1 đáp án đúng) độ khó ${difficulty} ${languageInstruction} dựa trên nội dung sau, trả về dạng JSON array.${segmentInstruction}\n\n${transcript}`;
     }
 }

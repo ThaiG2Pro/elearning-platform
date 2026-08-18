@@ -103,6 +103,22 @@ describe('AIGenerationPolicy.inheritOnClone — hệ quả mục 5', () => {
     });
 });
 
+describe('AIGenerationPolicy.byokConfigStatus — WP3.1, không đoán giúp provider/model', () => {
+    it('NONE khi không truyền field nào', () => {
+        expect(AIGenerationPolicy.byokConfigStatus(undefined, undefined, undefined)).toBe('NONE');
+        expect(AIGenerationPolicy.byokConfigStatus('', '', '')).toBe('NONE');
+    });
+
+    it('COMPLETE khi đủ cả 3 field', () => {
+        expect(AIGenerationPolicy.byokConfigStatus('key', 'https://api.example.com/v1', 'model-x')).toBe('COMPLETE');
+    });
+
+    it('INCOMPLETE khi chỉ có 1 hoặc 2 trong 3 field', () => {
+        expect(AIGenerationPolicy.byokConfigStatus('key', undefined, undefined)).toBe('INCOMPLETE');
+        expect(AIGenerationPolicy.byokConfigStatus('key', 'https://api.example.com/v1', undefined)).toBe('INCOMPLETE');
+    });
+});
+
 describe('AIGenerationPolicy.enforceDailyActivationLimit — cost-DoS guard (mục 6.1)', () => {
     it('allows activation under the daily limit', () => {
         expect(() => AIGenerationPolicy.enforceDailyActivationLimit(4, 5)).not.toThrow();

@@ -690,16 +690,44 @@ segment) → nhập API key miễn phí của riêng họ (BYOK), dùng không g
 Thêm hỗ trợ nguồn web/blog (không chỉ YouTube).
 
 **WP:**
-- **WP3.1 — Luồng BYOK.** UI nhập/validate key, generate qua key riêng của
-  user, tuyệt đối không đụng cache/quota chung. Đúng 4 nhánh UX ở
+- **WP3.1 — Luồng BYOK. ✅ Đã làm.** UI nhập/validate key, generate qua key
+  riêng của user, tuyệt đối không đụng cache/quota chung. Đúng 4 nhánh UX ở
   `ai-personalization-economics.md` mục 4. Lỗi BYOK luôn hiện rõ, không tự
   fallback âm thầm sang ngân sách chung (mục 6.2).
-- **WP3.2 — Cơ chế chia sẻ bản AI tuỳ biến + fix free-rider.** Cho phép user
-  chọn `SHARED` cho bản BYOK của họ để người khác tái dùng free; xây sẵn ràng
-  buộc `PAID_TIER` luôn `PRIVATE` (mục 5) **ngay cả khi chưa bán thật** — để
-  không phải sửa lại data model khi tới Checkpoint 4.
-- **WP3.3 — Hỗ trợ nguồn web/blog** (mục 6.8): fetch/parse trang, kèm
-  `fetchedAt` để đánh dấu cache có thể cũ, rate-limit riêng theo domain nguồn.
+  BYOK bắt buộc đủ cả 3 field (`apiKey` + `baseUrl` + `model`) — không đoán
+  giúp provider/model nào, thiếu 1 trong 3 báo lỗi `BYOK_CONFIG_INCOMPLETE`
+  rõ ràng thay vì âm thầm rơi về nhánh khác (`AIGenerationPolicy.byokConfigStatus`).
+  Tuỳ biến tham số (độ dài/độ khó/ngôn ngữ) + `segmentRange` giờ chảy thật từ
+  UI (`AIGenerationPanel` — toggle "Tuỳ biến") → route → `AIGenerationService`
+  → `RecipeHash`/`isDefaultRecipe`, làm 2 nhánh trước đây chết
+  (`CHOICE_REQUIRED`, `findSharedByokMatch`) lần đầu tiên có thể chạm tới được.
+  `LiteLLMProvider` route tới đúng `baseUrl`/`model` của user khi BYOK, không
+  chỉ đổi bearer token trên cùng proxy nền tảng.
+- **WP3.2 — Cơ chế chia sẻ bản AI tuỳ biến + fix free-rider. ✅ Đã làm.** Cho
+  phép user chọn `SHARED` cho bản BYOK của họ để người khác tái dùng free; xây
+  sẵn ràng buộc `PAID_TIER` luôn `PRIVATE` (mục 5) **ngay cả khi chưa bán
+  thật** — để không phải sửa lại data model khi tới Checkpoint 4.
+  `AIGenerationPolicy.inheritOnClone` (viết sẵn từ trước nhưng chưa gọi ở đâu)
+  giờ được gọi thật trong `CourseRepository.cloneForOwner`: clone 1 course chỉ
+  kế thừa `ai_generation_id` của lesson nếu bản gốc là `SHARED_FREE`/`BYOK`,
+  không bao giờ kế thừa bản `PAID_TIER` — đúng tinh thần fix free-rider thay
+  vì chỉ nằm trên giấy. `generated_by_user_id → NULL` khi xoá tài khoản: đã
+  đúng sẵn từ WP2.1 qua `ON DELETE SET NULL` trong migration, không cần sửa.
+- **WP3.3 — Hỗ trợ nguồn web/blog. ✅ Đã làm** (mục 6.8): `WebPageAdapter`
+  nhận diện URL không phải YouTube, fetch title tại thời điểm tạo course/nguồn
+  (nhánh mới trong `ContentManagementService.createCourseFromLink`, không chặn
+  tạo course nếu fetch metadata lỗi — cùng pattern với nhánh YouTube).
+  `ReadabilityWebContentProvider` (mới, dùng `@mozilla/readability` + `jsdom`)
+  trích xuất nội dung chính của trang, wired vào `AIGenerationService` qua
+  interface `WebContentProvider` — cùng pattern cô lập thư viện dễ vỡ như
+  `TranscriptProvider` cho YouTube. Tái dùng nguyên `transcript`/
+  `transcript_fetched_at` sẵn có làm tín hiệu cache/staleness — không thêm
+  cột mới.
+  **Chưa làm:** rate-limit riêng theo domain nguồn (chỉ có rate-limit theo
+  user/ngày, dùng chung với YouTube) — quy mô cộng đồng hẹp hiện tại chưa cần
+  tách riêng; UI đọc bài viết web dạng "article reader" chuyên biệt (hiện
+  lesson `type: 'ARTICLE'` dùng chung layout ẩn nội dung phía trên
+  `AIGenerationPanel`, panel tóm tắt/quiz vẫn hoạt động qua `sourceId`).
 - ~~WP3.4 — Nút donate/ủng hộ~~ **Đã chuyển lên WP1.8** (quyết định
   wayfinder ticket 09: link donate thụ động bật từ ngày đầu là vô hại;
   chỉ khung chữ "cầu cứu" mới gây hại — xem Vision mục 7).

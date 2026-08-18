@@ -3,6 +3,7 @@ import { AIGenerationService, GenerateRequest, GenerateResult } from '../service
 import { AIGenerationRepository } from '../repositories/AIGenerationRepository';
 import { YoutubeTranscriptPlusProvider } from '../services/YoutubeTranscriptPlusProvider';
 import { LiteLLMProvider } from '../services/LiteLLMProvider';
+import { ReadabilityWebContentProvider } from '../services/ReadabilityWebContentProvider';
 
 export class AIGenerationController {
     private service: AIGenerationService;
@@ -14,6 +15,7 @@ export class AIGenerationController {
             repo,
             new YoutubeTranscriptPlusProvider(),
             new LiteLLMProvider(),
+            new ReadabilityWebContentProvider(),
         );
     }
 

@@ -109,6 +109,20 @@ export class AIGenerationPolicy {
     }
 
     /**
+     * WP3.1 — BYOK cần đủ 3 field (key + baseUrl + model) mới gọi được: không
+     * đoán giúp user provider/model nào (tránh biến routing thành 1 nhánh mơ
+     * hồ, đúng tinh thần mục 4 "không nhánh nào mơ hồ"). Cho phép thiếu CẢ 3
+     * (không dùng BYOK) nhưng thiếu MỘT vài field là lỗi cấu hình rõ ràng,
+     * không tự đoán/bỏ qua field còn thiếu.
+     */
+    static byokConfigStatus(apiKey?: string, baseUrl?: string, model?: string): 'NONE' | 'COMPLETE' | 'INCOMPLETE' {
+        const provided = [apiKey, baseUrl, model].filter((v) => Boolean(v?.trim())).length;
+        if (provided === 0) return 'NONE';
+        if (provided === 3) return 'COMPLETE';
+        return 'INCOMPLETE';
+    }
+
+    /**
      * Mục 6.7/WP2.4 — lớp phòng thủ kỹ thuật thứ 2: phát hiện sớm tăng
      * trưởng đột biến ngoài dự tính. Đo theo SỐ REQUEST/ngày (ticket 06),
      * không chỉ theo $ — với free tier, cạn quota xảy ra trước khi phát

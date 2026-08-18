@@ -13,17 +13,42 @@ interface AIGenerationPanelProps {
  * học (video/tiến độ/note phía trên hoạt động độc lập, không phụ thuộc
  * component này). Chỉ render khi lesson có `sourceId` — lesson thêm thủ
  * công không có Source để tóm tắt.
+ *
+ * WP3.1 — thêm chế độ "tuỳ biến": nhập API key/endpoint/model riêng (BYOK) +
+ * đổi độ dài/độ khó/ngôn ngữ, tuỳ chọn chia sẻ bản tuỳ biến cho người khác
+ * dùng free (mục 4/5 economics doc). Ẩn mặc định — không đánh đổi độ đơn
+ * giản của luồng miễn phí Checkpoint 2 cho phần lớn user không cần tuỳ biến.
  */
 export default function AIGenerationPanel({ sourceId }: AIGenerationPanelProps) {
     const [loading, setLoading] = useState<AIRecipeType | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [results, setResults] = useState<Partial<Record<AIRecipeType, string>>>({});
 
+    const [customMode, setCustomMode] = useState(false);
+    const [byokApiKey, setByokApiKey] = useState('');
+    const [byokBaseUrl, setByokBaseUrl] = useState('');
+    const [byokModel, setByokModel] = useState('');
+    const [length, setLength] = useState('standard');
+    const [difficulty, setDifficulty] = useState('medium');
+    const [shareWithOthers, setShareWithOthers] = useState(false);
+
     const handleGenerate = async (type: AIRecipeType) => {
         setLoading(type);
         setError(null);
         try {
-            const result = await generateAIContent(sourceId, type);
+            const options = customMode
+                ? {
+                    params: type === 'summary'
+                        ? { length, language: 'vi' }
+                        : { questionCount: 10, difficulty, language: 'vi' },
+                    byokApiKey: byokApiKey.trim() || undefined,
+                    byokBaseUrl: byokBaseUrl.trim() || undefined,
+                    byokModel: byokModel.trim() || undefined,
+                    requestedVisibility: (shareWithOthers ? 'SHARED' : 'PRIVATE') as 'SHARED' | 'PRIVATE',
+                }
+                : undefined;
+
+            const result = await generateAIContent(sourceId, type, options);
             if (result.status === 'FAILED') {
                 setError('Tạo nội dung AI thất bại, thử lại sau.');
             } else if (result.content) {
@@ -45,8 +70,78 @@ export default function AIGenerationPanel({ sourceId }: AIGenerationPanelProps) 
                     </svg>
                     Tóm tắt &amp; quiz bằng AI
                 </h3>
-                <span className="text-[10px] text-slate-400">Miễn phí, tự động</span>
+                <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-slate-400">{customMode ? 'Dùng key riêng' : 'Miễn phí, tự động'}</span>
+                    <button
+                        onClick={() => setCustomMode((v) => !v)}
+                        className="text-[10px] font-medium text-indigo-500 hover:text-indigo-700 underline underline-offset-2"
+                    >
+                        {customMode ? 'Dùng bản mặc định' : 'Tuỳ biến'}
+                    </button>
+                </div>
             </div>
+
+            {customMode && (
+                <div className="mb-3 p-3 rounded-lg bg-indigo-50/50 border border-indigo-100 space-y-2.5">
+                    <p className="text-[11px] text-slate-500">
+                        Nhập API key của riêng bạn (Groq/OpenAI/Anthropic/OpenRouter/tự host — bất kỳ
+                        endpoint OpenAI-compatible nào) để tuỳ biến không giới hạn. Đủ cả 3 ô mới dùng được.
+                    </p>
+                    <input
+                        type="password"
+                        value={byokApiKey}
+                        onChange={(e) => setByokApiKey(e.target.value)}
+                        placeholder="API key"
+                        className="w-full px-2.5 py-1.5 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                    <input
+                        type="text"
+                        value={byokBaseUrl}
+                        onChange={(e) => setByokBaseUrl(e.target.value)}
+                        placeholder="Endpoint (vd: https://api.groq.com/openai/v1)"
+                        className="w-full px-2.5 py-1.5 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                    <input
+                        type="text"
+                        value={byokModel}
+                        onChange={(e) => setByokModel(e.target.value)}
+                        placeholder="Tên model (vd: llama-3.3-70b-versatile)"
+                        className="w-full px-2.5 py-1.5 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+
+                    <div className="flex gap-2 pt-1">
+                        <select
+                            value={length}
+                            onChange={(e) => setLength(e.target.value)}
+                            className="flex-1 px-2 py-1.5 text-xs border border-slate-300 rounded-lg bg-white"
+                        >
+                            <option value="short">Tóm tắt ngắn</option>
+                            <option value="standard">Tóm tắt chuẩn</option>
+                            <option value="long">Tóm tắt dài</option>
+                        </select>
+                        <select
+                            value={difficulty}
+                            onChange={(e) => setDifficulty(e.target.value)}
+                            className="flex-1 px-2 py-1.5 text-xs border border-slate-300 rounded-lg bg-white"
+                        >
+                            <option value="easy">Quiz dễ</option>
+                            <option value="medium">Quiz trung bình</option>
+                            <option value="hard">Quiz khó</option>
+                        </select>
+                    </div>
+
+                    <label className="flex items-center gap-1.5 text-[11px] text-slate-600">
+                        <input
+                            type="checkbox"
+                            checked={shareWithOthers}
+                            onChange={(e) => setShareWithOthers(e.target.checked)}
+                            className="rounded text-indigo-600 focus:ring-indigo-500"
+                        />
+                        Chia sẻ bản này cho người khác dùng miễn phí (chỉ áp dụng vì bạn dùng key riêng —
+                        không tốn thêm chi phí của ai khác)
+                    </label>
+                </div>
+            )}
 
             <div className="flex gap-2">
                 <button

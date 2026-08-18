@@ -120,12 +120,30 @@ describe('AIGenerationService.generate', () => {
         expect(prisma.sources.update).not.toHaveBeenCalled();
     });
 
-    it('always routes through BYOK when a key is provided, even if a SHARED_FREE cache exists', async () => {
+    it('always routes through BYOK when a full key config is provided, even if a SHARED_FREE cache exists', async () => {
         repo.findDefaultCache.mockResolvedValue({ id: 1n, content: 'cached but must be ignored' } as any);
 
-        await service.generate({ sourceId: 1n, recipeType: 'summary', userId: 5n, byokApiKey: 'user-own-key' });
+        await service.generate({
+            sourceId: 1n,
+            recipeType: 'summary',
+            userId: 5n,
+            byokApiKey: 'user-own-key',
+            byokBaseUrl: 'https://api.groq.com/openai/v1',
+            byokModel: 'llama-3.3-70b-versatile',
+        });
 
-        expect(llmProvider.generate).toHaveBeenCalledWith(expect.objectContaining({ apiKey: 'user-own-key' }));
+        expect(llmProvider.generate).toHaveBeenCalledWith(expect.objectContaining({
+            apiKey: 'user-own-key',
+            baseUrl: 'https://api.groq.com/openai/v1',
+            model: 'llama-3.3-70b-versatile',
+        }));
+    });
+
+    it('rejects an incomplete BYOK config (some but not all of key/baseUrl/model)', async () => {
+        await expect(
+            service.generate({ sourceId: 1n, recipeType: 'summary', userId: 5n, byokApiKey: 'user-own-key' }),
+        ).rejects.toThrow('BYOK_CONFIG_INCOMPLETE');
+        expect(llmProvider.generate).not.toHaveBeenCalled();
     });
 
     it('blocks custom recipes with no BYOK key and no SHARED-BYOK match already', async () => {
@@ -171,5 +189,74 @@ describe('AIGenerationService.generate', () => {
         await expect(
             service.generate({ sourceId: 1n, recipeType: 'summary', userId: 5n }),
         ).rejects.toThrow('SHARED_FREE_NOT_CONFIGURED');
+    });
+
+    // WP3.1 — tuỳ biến tham số/segment.
+    it('blocks a custom recipe (custom params) with no BYOK key and no SHARED-BYOK match', async () => {
+        await expect(
+            service.generate({
+                sourceId: 1n,
+                recipeType: 'summary',
+                userId: 5n,
+                params: { length: 'long', language: 'vi' },
+            }),
+        ).rejects.toThrow('AI_CUSTOM_RECIPE_REQUIRES_BYOK_OR_PAID');
+        expect(llmProvider.generate).not.toHaveBeenCalled();
+    });
+
+    it('generates a custom recipe via BYOK and only shares it when the user opts in (mục 5)', async () => {
+        const result = await service.generate({
+            sourceId: 1n,
+            recipeType: 'summary',
+            userId: 5n,
+            params: { length: 'short', language: 'vi' },
+            byokApiKey: 'user-own-key',
+            byokBaseUrl: 'https://api.groq.com/openai/v1',
+            byokModel: 'llama-3.3-70b-versatile',
+            requestedVisibility: 'SHARED',
+        });
+
+        expect(result.servedFromCache).toBe(false);
+        expect(repo.create).toHaveBeenCalledWith(expect.objectContaining({
+            isDefaultRecipe: false,
+            keySource: 'BYOK',
+            visibility: 'SHARED',
+        }));
+    });
+
+    it('never shares a SHARED_FREE generation choice — visibility is policy-decided, not user-requested', async () => {
+        await service.generate({
+            sourceId: 1n,
+            recipeType: 'summary',
+            userId: 5n,
+            requestedVisibility: 'SHARED', // no-op outside BYOK
+        });
+
+        expect(repo.create).toHaveBeenCalledWith(expect.objectContaining({ keySource: 'SHARED_FREE', visibility: 'SHARED' }));
+    });
+
+    // WP3.3 — nguồn web/blog.
+    it('fetches web content via webContentProvider for a WEB_ARTICLE source instead of YouTube transcript', async () => {
+        prisma = makePrisma({ ...SOURCE, type: 'WEB_ARTICLE', url: 'https://blog.example.com/post', transcript: null });
+        const webContentProvider = { fetchContent: vi.fn().mockResolvedValue('nội dung bài viết đã trích xuất') };
+        service = new AIGenerationService(prisma as any, repo as any, transcriptProvider as any, llmProvider as any, webContentProvider as any);
+
+        await service.generate({ sourceId: 1n, recipeType: 'summary', userId: 5n });
+
+        expect(webContentProvider.fetchContent).toHaveBeenCalledWith('https://blog.example.com/post');
+        expect(transcriptProvider.fetchTranscript).not.toHaveBeenCalled();
+        expect(prisma.sources.update).toHaveBeenCalledWith({
+            where: { id: 1n },
+            data: { transcript: 'nội dung bài viết đã trích xuất', transcript_fetched_at: expect.any(Date) },
+        });
+    });
+
+    it('throws TRANSCRIPT_UNSUPPORTED_SOURCE for a WEB_ARTICLE source when no webContentProvider is wired', async () => {
+        prisma = makePrisma({ ...SOURCE, type: 'WEB_ARTICLE', url: 'https://blog.example.com/post', transcript: null });
+        service = new AIGenerationService(prisma as any, repo as any, transcriptProvider as any, llmProvider as any);
+
+        await expect(
+            service.generate({ sourceId: 1n, recipeType: 'summary', userId: 5n }),
+        ).rejects.toThrow('TRANSCRIPT_UNSUPPORTED_SOURCE');
     });
 });

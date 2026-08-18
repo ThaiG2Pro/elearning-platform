@@ -6,6 +6,7 @@ import { PublicCourseDto, ChapterDto as PublicChapterDto, LessonDto as PublicLes
 import { PrismaClient } from '@prisma/client';
 import { VideoThumbnailUtil } from '../../shared/utils/VideoThumbnailUtil';
 import { YouTubeOEmbedAdapter } from '../../../shared/adapters/YouTubeOEmbedAdapter';
+import { WebPageAdapter } from '../../../shared/adapters/WebPageAdapter';
 
 export interface QuizQuestionPreviewDto {
     id: bigint;
@@ -27,6 +28,7 @@ export interface LessonPreviewDto {
 
 export class ContentManagementService {
     private oEmbedAdapter = new YouTubeOEmbedAdapter();
+    private webPageAdapter = new WebPageAdapter();
 
     constructor(
         private courseRepository: CourseRepository,
@@ -128,6 +130,13 @@ export class ContentManagementService {
      * WP1.1 — "dán link → tự parse metadata → tự tạo course". Creates a
      * `Source` (deduped by normalized URL), then a course with one default
      * chapter and one lesson pointing at it, in a single step.
+     *
+     * WP3.3 — mở rộng ngoài YouTube: URL không phải YouTube (và không phải
+     * playlist YouTube) được coi là web/blog (mục 6.8 economics doc) thay vì
+     * bị chặn `UNSUPPORTED_URL` như Checkpoint 2. Nội dung trang chỉ thật sự
+     * được fetch/parse lazy khi user bấm dùng AI (`ReadabilityWebContentProvider`
+     * qua `AIGenerationService`) — ở đây chỉ lấy `<title>` để đặt tên course/
+     * lesson, đối xứng oEmbed bên YouTube, không tốn thêm request nào khác.
      */
     async createCourseFromLink(ownerId: bigint, url: string): Promise<{ courseId: bigint; title: string; titleIsPlaceholder: boolean }> {
         const trimmedUrl = url.trim();
@@ -138,35 +147,56 @@ export class ContentManagementService {
         if (YouTubeOEmbedAdapter.isPlaylistUrl(trimmedUrl)) {
             throw new Error('PLAYLIST_URL_NOT_SUPPORTED');
         }
-        if (!YouTubeOEmbedAdapter.isYouTubeUrl(trimmedUrl)) {
+
+        const isYouTube = YouTubeOEmbedAdapter.isYouTubeUrl(trimmedUrl);
+        if (!isYouTube && !WebPageAdapter.isWebUrl(trimmedUrl)) {
             throw new Error('UNSUPPORTED_URL');
         }
 
-        const normalizedUrl = YouTubeOEmbedAdapter.normalize(trimmedUrl);
+        const normalizedUrl = isYouTube
+            ? YouTubeOEmbedAdapter.normalize(trimmedUrl)
+            : WebPageAdapter.normalize(trimmedUrl);
 
         let source = await this.prisma.sources.findUnique({ where: { normalized_url: normalizedUrl } });
         if (!source) {
-            const videoId = YouTubeOEmbedAdapter.extractVideoId(trimmedUrl);
-            // WP1.10.2 — oEmbed failing (private/deleted/region-locked video,
-            // transient network error…) used to 422 and block creation
-            // entirely. Now it still creates the space, with a placeholder
-            // title the owner can rename — only an invalid/non-YouTube URL
-            // blocks creation.
-            let title = `Video YouTube (${videoId})`;
+            let title: string;
             let thumbnailUrl: string | undefined;
-            try {
-                const meta = await this.oEmbedAdapter.fetchOEmbed(trimmedUrl);
-                title = meta.title;
-                thumbnailUrl = meta.thumbnailUrl;
-            } catch {
-                // fall back to the placeholder title set above
+            let sourceType: string;
+
+            if (isYouTube) {
+                const videoId = YouTubeOEmbedAdapter.extractVideoId(trimmedUrl);
+                // WP1.10.2 — oEmbed failing (private/deleted/region-locked video,
+                // transient network error…) used to 422 and block creation
+                // entirely. Now it still creates the space, with a placeholder
+                // title the owner can rename — only an invalid/non-YouTube URL
+                // blocks creation.
+                title = `Video YouTube (${videoId})`;
+                sourceType = 'YOUTUBE_VIDEO';
+                try {
+                    const meta = await this.oEmbedAdapter.fetchOEmbed(trimmedUrl);
+                    title = meta.title;
+                    thumbnailUrl = meta.thumbnailUrl;
+                } catch {
+                    // fall back to the placeholder title set above
+                }
+            } else {
+                // Cùng nguyên tắc "lỗi metadata không chặn tạo" như YouTube ở trên.
+                title = 'Bài viết web';
+                sourceType = 'WEB_ARTICLE';
+                try {
+                    const meta = await this.webPageAdapter.fetchMeta(trimmedUrl);
+                    title = meta.title;
+                } catch {
+                    // fall back to the placeholder title set above
+                }
             }
+
             source = await this.prisma.sources.create({
                 data: {
                     url: trimmedUrl,
                     normalized_url: normalizedUrl,
                     title,
-                    type: 'YOUTUBE_VIDEO',
+                    type: sourceType,
                     metadata: thumbnailUrl ? JSON.stringify({ thumbnailUrl }) : null,
                 },
             });
@@ -198,7 +228,13 @@ export class ContentManagementService {
                     chapter_id: chapter.id,
                     source_id: source!.id,
                     title: source!.title || 'Bài học 1',
-                    type: 'VIDEO',
+                    // WP3.3 — 'ARTICLE' cho web/blog, song song 'VIDEO' cho
+                    // YouTube. Player video chỉ render khi type === 'video'
+                    // (learn/page.tsx); lesson ARTICLE rơi vào nhánh "idle"
+                    // trung tính có sẵn — chưa có UI đọc bài viết riêng, nhưng
+                    // panel tóm tắt/quiz AI vẫn hoạt động đầy đủ vì chỉ phụ
+                    // thuộc `sourceId`, không phụ thuộc `type`.
+                    type: isYouTube ? 'VIDEO' : 'ARTICLE',
                     content_url: trimmedUrl,
                     order_index: 1,
                 },
