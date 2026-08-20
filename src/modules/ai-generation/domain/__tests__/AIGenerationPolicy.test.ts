@@ -51,6 +51,39 @@ describe('AIGenerationPolicy.decideRouting — 4 nhánh cố định (economics 
         });
         expect(decision).toEqual({ action: 'CHOICE_REQUIRED' });
     });
+
+    it('WP4.1 — same CHOICE_REQUIRED situation, but user chose "trả phí" and service confirmed credits → generates via PAID_TIER', () => {
+        const decision = AIGenerationPolicy.decideRouting({
+            hasByokKey: false,
+            isDefaultRecipe: false,
+            hasDefaultCache: false,
+            hasSharedByokMatch: false,
+            creditsAuthorized: true,
+        });
+        expect(decision).toEqual({ action: 'GENERATE', keySource: 'PAID_TIER' });
+    });
+
+    it('WP4.1 — creditsAuthorized never overrides a cheaper/free branch (BYOK still wins)', () => {
+        const decision = AIGenerationPolicy.decideRouting({
+            hasByokKey: true,
+            isDefaultRecipe: false,
+            hasDefaultCache: false,
+            hasSharedByokMatch: false,
+            creditsAuthorized: true,
+        });
+        expect(decision).toEqual({ action: 'GENERATE', keySource: 'BYOK' });
+    });
+
+    it('WP4.1 — creditsAuthorized never overrides SHARED_FREE cache hit', () => {
+        const decision = AIGenerationPolicy.decideRouting({
+            hasByokKey: false,
+            isDefaultRecipe: true,
+            hasDefaultCache: true,
+            hasSharedByokMatch: false,
+            creditsAuthorized: true,
+        });
+        expect(decision).toEqual({ action: 'USE_CACHE', keySource: 'SHARED_FREE' });
+    });
 });
 
 describe('AIGenerationPolicy.resolveVisibility — free-rider fix (mục 5)', () => {

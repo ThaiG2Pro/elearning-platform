@@ -259,4 +259,127 @@ describe('AIGenerationService.generate', () => {
             service.generate({ sourceId: 1n, recipeType: 'summary', userId: 5n }),
         ).rejects.toThrow('TRANSCRIPT_UNSUPPORTED_SOURCE');
     });
+
+    // WP4.1 — nửa thứ 2 của nhánh UX #4: "Trả phí để nền tảng tạo giúp".
+    describe('WP4.1 — PAID_TIER via credits', () => {
+        const makeCreditSpender = () => ({
+            spendCredits: vi.fn().mockResolvedValue(90),
+            refundCredits: vi.fn().mockResolvedValue(100),
+        });
+
+        it('throws BILLING_NOT_CONFIGURED when paymentMethod CREDITS is requested but no CreditSpender is wired', async () => {
+            await expect(
+                service.generate({
+                    sourceId: 1n,
+                    recipeType: 'summary',
+                    userId: 5n,
+                    params: { length: 'long', language: 'vi' },
+                    paymentMethod: 'CREDITS',
+                }),
+            ).rejects.toThrow('BILLING_NOT_CONFIGURED');
+        });
+
+        it('spends credits and generates via PAID_TIER for a custom recipe with no BYOK/SHARED-BYOK match', async () => {
+            const creditSpender = makeCreditSpender();
+            service = new AIGenerationService(
+                prisma as any, repo as any, transcriptProvider as any, llmProvider as any,
+                undefined, creditSpender as any,
+            );
+
+            const result = await service.generate({
+                sourceId: 1n,
+                recipeType: 'summary',
+                userId: 5n,
+                params: { length: 'long', language: 'vi' },
+                paymentMethod: 'CREDITS',
+            });
+
+            expect(creditSpender.spendCredits).toHaveBeenCalledWith(5n, expect.any(Number));
+            expect(result.servedFromCache).toBe(false);
+            expect(repo.create).toHaveBeenCalledWith(expect.objectContaining({ keySource: 'PAID_TIER', visibility: 'PRIVATE' }));
+            expect(llmProvider.generate).toHaveBeenCalledWith(expect.objectContaining({ apiKey: 'test-shared-key' }));
+        });
+
+        it('propagates AI_INSUFFICIENT_CREDITS without calling the LLM', async () => {
+            const creditSpender = makeCreditSpender();
+            creditSpender.spendCredits.mockRejectedValue(new Error('AI_INSUFFICIENT_CREDITS'));
+            service = new AIGenerationService(
+                prisma as any, repo as any, transcriptProvider as any, llmProvider as any,
+                undefined, creditSpender as any,
+            );
+
+            await expect(
+                service.generate({
+                    sourceId: 1n,
+                    recipeType: 'summary',
+                    userId: 5n,
+                    params: { length: 'long', language: 'vi' },
+                    paymentMethod: 'CREDITS',
+                }),
+            ).rejects.toThrow('AI_INSUFFICIENT_CREDITS');
+            expect(llmProvider.generate).not.toHaveBeenCalled();
+        });
+
+        it('refunds credits when the LLM call fails after spending', async () => {
+            const creditSpender = makeCreditSpender();
+            llmProvider.generate.mockRejectedValue(new Error('LITELLM_GENERATION_FAILED'));
+            service = new AIGenerationService(
+                prisma as any, repo as any, transcriptProvider as any, llmProvider as any,
+                undefined, creditSpender as any,
+            );
+
+            await expect(
+                service.generate({
+                    sourceId: 1n,
+                    recipeType: 'summary',
+                    userId: 5n,
+                    params: { length: 'long', language: 'vi' },
+                    paymentMethod: 'CREDITS',
+                }),
+            ).rejects.toThrow('LITELLM_GENERATION_FAILED');
+            expect(creditSpender.spendCredits).toHaveBeenCalled();
+            expect(creditSpender.refundCredits).toHaveBeenCalledWith(5n, expect.any(Number));
+        });
+
+        it('creditsAuthorized never overrides a cheaper existing default cache (SHARED_FREE wins)', async () => {
+            repo.findDefaultCache.mockResolvedValue({
+                id: 42n, sourceId: 1n, recipeHash: 'h', recipeType: 'summary', isDefaultRecipe: true,
+                keySource: 'SHARED_FREE' as const, generatedByUserId: null, visibility: 'SHARED' as const,
+                status: 'READY' as const, modelVersion: 'default', content: 'cached', error: null,
+            });
+            const creditSpender = makeCreditSpender();
+            service = new AIGenerationService(
+                prisma as any, repo as any, transcriptProvider as any, llmProvider as any,
+                undefined, creditSpender as any,
+            );
+
+            const result = await service.generate({
+                sourceId: 1n, recipeType: 'summary', userId: 5n, paymentMethod: 'CREDITS',
+            });
+
+            expect(result.servedFromCache).toBe(true);
+            expect(creditSpender.spendCredits).not.toHaveBeenCalled();
+        });
+    });
+
+    // WP4.2 — theo dõi "lần cuối thật sự được dùng".
+    describe('WP4.2 — access tracking', () => {
+        it('touches last-accessed when an AccessTracker is wired, on both cache hit and miss', async () => {
+            const accessTracker = { touchLastAccessed: vi.fn().mockResolvedValue(undefined) };
+            service = new AIGenerationService(
+                prisma as any, repo as any, transcriptProvider as any, llmProvider as any,
+                undefined, undefined, accessTracker as any,
+            );
+
+            await service.generate({ sourceId: 1n, recipeType: 'summary', userId: 5n });
+
+            expect(accessTracker.touchLastAccessed).toHaveBeenCalledWith(1n);
+        });
+
+        it('does not throw when no AccessTracker is wired (optional dependency)', async () => {
+            await expect(
+                service.generate({ sourceId: 1n, recipeType: 'summary', userId: 5n }),
+            ).resolves.toBeDefined();
+        });
+    });
 });

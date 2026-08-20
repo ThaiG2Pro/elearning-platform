@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { generateAIContent, AIRecipeType } from '@/lib/aiGeneration';
+import Link from 'next/link';
+import { generateAIContent, AIRecipeType, AIGenerationError } from '@/lib/aiGeneration';
 
 interface AIGenerationPanelProps {
     sourceId: number;
@@ -22,6 +23,7 @@ interface AIGenerationPanelProps {
 export default function AIGenerationPanel({ sourceId }: AIGenerationPanelProps) {
     const [loading, setLoading] = useState<AIRecipeType | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [errorCode, setErrorCode] = useState<string | null>(null);
     const [results, setResults] = useState<Partial<Record<AIRecipeType, string>>>({});
 
     const [customMode, setCustomMode] = useState(false);
@@ -32,9 +34,15 @@ export default function AIGenerationPanel({ sourceId }: AIGenerationPanelProps) 
     const [difficulty, setDifficulty] = useState('medium');
     const [shareWithOthers, setShareWithOthers] = useState(false);
 
-    const handleGenerate = async (type: AIRecipeType) => {
+    // WP4.1 — cần nhớ lại type (summary/quiz) để nút "Trả phí" bấm lại đúng
+    // recipe vừa bị chặn, không bắt user chọn lại từ đầu.
+    const [lastGeneratedType, setLastGeneratedType] = useState<AIRecipeType>('summary');
+
+    const handleGenerate = async (type: AIRecipeType, paymentMethod?: 'CREDITS') => {
+        setLastGeneratedType(type);
         setLoading(type);
         setError(null);
+        setErrorCode(null);
         try {
             const options = customMode
                 ? {
@@ -45,6 +53,7 @@ export default function AIGenerationPanel({ sourceId }: AIGenerationPanelProps) 
                     byokBaseUrl: byokBaseUrl.trim() || undefined,
                     byokModel: byokModel.trim() || undefined,
                     requestedVisibility: (shareWithOthers ? 'SHARED' : 'PRIVATE') as 'SHARED' | 'PRIVATE',
+                    paymentMethod,
                 }
                 : undefined;
 
@@ -56,6 +65,9 @@ export default function AIGenerationPanel({ sourceId }: AIGenerationPanelProps) 
             }
         } catch (err: any) {
             setError(err.message || 'Có lỗi xảy ra khi tạo nội dung bằng AI.');
+            if (err instanceof AIGenerationError) {
+                setErrorCode(err.code);
+            }
         } finally {
             setLoading(null);
         }
@@ -167,11 +179,33 @@ export default function AIGenerationPanel({ sourceId }: AIGenerationPanelProps) 
             </div>
 
             {error && (
-                <div className="mt-3 flex items-start gap-1.5 text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg p-2.5">
-                    <svg className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                    </svg>
-                    {error}
+                <div className="mt-3 text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg p-2.5">
+                    <div className="flex items-start gap-1.5">
+                        <svg className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                        </svg>
+                        {error}
+                    </div>
+                    {/* WP4.1 — nửa thứ 2 của nhánh UX #4: không có BYOK, không
+                        có bản SHARED-BYOK trùng → cho phép trả phí thay vì chỉ
+                        chặn lại chờ user tự thêm key riêng. */}
+                    {errorCode === 'AI_CUSTOM_RECIPE_REQUIRES_BYOK_OR_PAID' && (
+                        <button
+                            onClick={() => handleGenerate(lastGeneratedType, 'CREDITS')}
+                            disabled={loading !== null}
+                            className="mt-2 inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-medium bg-amber-600 text-white hover:bg-amber-700 disabled:opacity-50"
+                        >
+                            Trả phí để nền tảng tạo giúp
+                        </button>
+                    )}
+                    {errorCode === 'AI_INSUFFICIENT_CREDITS' && (
+                        <Link
+                            href="/billing"
+                            className="mt-2 inline-block px-2.5 py-1.5 rounded-lg text-[11px] font-medium bg-amber-600 text-white hover:bg-amber-700"
+                        >
+                            Mua thêm credit
+                        </Link>
+                    )}
                 </div>
             )}
 

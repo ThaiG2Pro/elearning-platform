@@ -17,6 +17,14 @@ export interface RoutingRequest {
     hasDefaultCache: boolean;
     /** Đã có ai SHARED bản BYOK trùng recipeHash tuỳ biến này chưa? */
     hasSharedByokMatch: boolean;
+    /**
+     * WP4.1 — user đã chủ động chọn "Trả phí để nền tảng tạo giúp" (nửa thứ 2
+     * của nhánh UX #4) VÀ đã xác nhận đủ credit ở tầng service. Chỉ có ý
+     * nghĩa khi 3 field trên đều rơi vào tình huống lẽ ra CHOICE_REQUIRED —
+     * không override BYOK/SHARED_FREE/SHARED-BYOK-match (những nhánh đó luôn
+     * rẻ hơn/miễn phí hơn PAID_TIER, không có lý do bỏ qua để tốn credit).
+     */
+    creditsAuthorized?: boolean;
 }
 
 export type RoutingDecision =
@@ -24,6 +32,7 @@ export type RoutingDecision =
     | { action: 'USE_CACHE'; keySource: 'SHARED_FREE' }
     | { action: 'GENERATE'; keySource: 'SHARED_FREE' }
     | { action: 'USE_CACHE'; keySource: 'BYOK' }
+    | { action: 'GENERATE'; keySource: 'PAID_TIER' }
     | { action: 'CHOICE_REQUIRED' };
 
 export class AIGenerationPolicy {
@@ -43,6 +52,13 @@ export class AIGenerationPolicy {
         }
         if (req.hasSharedByokMatch) {
             return { action: 'USE_CACHE', keySource: 'BYOK' };
+        }
+        // WP4.1 — nửa thứ 2 của nhánh UX #4: đến đây nghĩa là không BYOK,
+        // không default recipe, không bản SHARED-BYOK trùng — lẽ ra
+        // CHOICE_REQUIRED, trừ khi user đã chọn trả phí và service đã xác
+        // nhận đủ credit.
+        if (req.creditsAuthorized) {
+            return { action: 'GENERATE', keySource: 'PAID_TIER' };
         }
         return { action: 'CHOICE_REQUIRED' };
     }

@@ -745,15 +745,64 @@ nhánh UX đã có sẵn từ Checkpoint 3 (không phải xây lại). Sau khi �
 đăng ký công khai cho bất kỳ ai.
 
 **WP:**
-- **WP4.1 — Tích hợp thanh toán thật.** Bán theo gói credit/subscription,
+- **WP4.1 — Tích hợp thanh toán thật. ✅ Đã làm.** Bán theo gói credit cố định
+  (`starter`/`standard`/`bulk` — 20/120/300 credit, `$1.99`/`$9.99`/`$19.99`),
   **không** pay-per-generation lẻ tẻ (phí xử lý thanh toán ăn mòn doanh thu
-  nhỏ lẻ — đã ghi chú ở `ai-personalization-economics.md` mục 7). Chỉ cắm vào
-  nhánh UX #4 có sẵn, data model không đổi.
-- **WP4.2 — Policy dọn dữ liệu** (mục 6.4): archive `Source`/`AIGeneration`
-  không truy cập lâu ngày và không còn course công khai nào tham chiếu —
-  cần thiết khi quy mô đủ lớn để chi phí lưu trữ đáng kể.
+  nhỏ lẻ — đúng mục 7 economics doc). Cắm thẳng vào nhánh UX #4 đã có sẵn từ
+  Checkpoint 3 — data model không đổi, chỉ additive.
+  Data model: `users.credit_balance`/`stripe_customer_id` (additive, default
+  0/null) + bảng `credit_transactions` (ledger đầy đủ, `unique(stripe_reference)`
+  chống Stripe webhook gửi trùng cộng credit 2 lần) — migration
+  `20260818140000_add_billing_credits`. `CreditLedger.ts` (pure domain: tính
+  số dư sau mua/tiêu/hoàn, `AI_INSUFFICIENT_CREDITS` nếu tiêu vượt số dư) →
+  `CreditRepository` (mọi thay đổi `credit_balance` đi qua `$transaction`
+  đọc-rồi-ghi, chống race 2 request đồng thời) → `BillingService` (nối
+  `PaymentProvider` với ledger) → `StripePaymentProvider` (Stripe Checkout
+  hosted page, verify chữ ký `Stripe-Signature` bằng raw body trước khi xử lý
+  webhook — không tin payload chưa xác thực). Routes
+  `GET/POST /api/v1/billing/{balance,checkout}` +
+  `POST /api/v1/billing/webhook`, trang `/billing` (mua credit, xem số dư).
+  Routing PAID_TIER nối vào `AIGenerationPolicy`/`AIGenerationService` có sẵn:
+  chỉ kích hoạt khi 3 nhánh rẻ hơn (BYOK/SHARED_FREE/SHARED-BYOK-match) đều
+  không khớp (lẽ ra `CHOICE_REQUIRED`) và user chủ động chọn "Trả phí để nền
+  tảng tạo giúp" — trừ credit trước khi gọi LLM, hoàn lại nếu LLM lỗi sau khi
+  đã trừ. `AIGenerationPanel` hiện nút "Trả phí" khi gặp
+  `AI_CUSTOM_RECIPE_REQUIRES_BYOK_OR_PAID`, dẫn sang `/billing` khi
+  `AI_INSUFFICIENT_CREDITS` (HTTP 402). **Verify (2026-08-20)**:
+  `npx prisma migrate deploy` áp sạch vào DB local, `pnpm test` 136/136 xanh
+  (11 test `CreditLedger` mới), `tsc --noEmit` sạch. **Chưa làm**: tạo tài
+  khoản Stripe thật/lấy key production — thao tác vận hành ngoài phạm vi
+  agent code (giống WP1.8); để trống `STRIPE_SECRET_KEY` chỉ tắt route billing
+  (503 `STRIPE_NOT_CONFIGURED`), không chặn phần còn lại của app; subscription
+  (thay vì gói credit 1 lần) nếu sau này cần mô hình định kỳ.
+- **WP4.2 — Policy dọn dữ liệu. ✅ Đã làm** (mục 6.4): archive
+  `Source`/`AIGeneration` không truy cập lâu ngày và không còn course công
+  khai nào tham chiếu. `sources.last_accessed_at`/`archived_at` +
+  `ai_generations.archived_at` (additive, migration
+  `20260818141000_add_data_retention_columns`).
+  `DataRetentionPolicy.isEligibleForArchive` (pure domain: không bao giờ
+  archive nếu còn course công khai — showcase hoặc có `share_token` — tham
+  chiếu, dù đã lâu không dùng) + `DataRetentionRepository`
+  (`touchLastAccessed` gọi mỗi lần `AIGenerationService.generate()` chạm tới
+  1 Source — best-effort, lỗi không chặn generate chính).
+  `scripts/archiveStaleData.ts` (`pnpm data:archive-stale`, mặc định dry-run,
+  `-- --apply` để archive thật) — archive KHÔNG xoá row, chỉ đánh dấu
+  `archived_at` + null hoá `transcript`/`content` (field nặng nhất), giữ
+  nguyên `recipe_hash`/audit trail. Ngưỡng `DATA_RETENTION_ARCHIVE_DAYS`
+  (mặc định 180 ngày) đọc từ env. **Verify (2026-08-20)**: migration áp sạch,
+  `pnpm test` xanh (6 test `DataRetentionPolicy`), `tsc --noEmit` sạch.
+  **Chưa làm**: chạy `pnpm data:archive-stale` định kỳ thật (cron) trên host
+  production — thao tác vận hành khi triển khai thật, ngoài phạm vi code-only
+  của phiên này (giống WP2.4).
 - **WP4.3 — Mở đăng ký công khai.** Gỡ giới hạn invite-only, chuyển từ cộng
-  đồng hẹp sang public free (Vision giai đoạn 4).
+  đồng hẹp sang public free (Vision giai đoạn 4). **Audit code
+  (2026-08-20): không có cơ chế invite-only nào trong code hiện tại** (đăng
+  ký `/auth/register` mở sẵn, không gate theo mã mời/whitelist) — nghĩa là
+  không có gì để "gỡ" ở tầng code. Đây là **quyết định mở kênh** (dừng coi
+  cộng đồng là "hẹp" trong outreach/marketing, không phải thay đổi kỹ thuật),
+  đúng nghĩa gate ở điều kiện chuyển checkpoint bên dưới — chưa bấm vì tín
+  hiệu retention/lan truyền ổn định ở quy mô nhỏ (Checkpoint 2/3) chưa được
+  founder xác nhận đạt.
 
 **Điều kiện:** có bằng chứng retention + lan truyền ổn định ở quy mô nhỏ trước
 khi mở public — không mở rộng khi tín hiệu ở checkpoint trước còn mơ hồ.
