@@ -52,7 +52,7 @@ model credit_transactions {
   // PURCHASE | AI_GENERATION_SPEND | REFUND
   reason            String   @map("reason") @db.VarChar(30)
   // Stripe session/payment_intent id — null cho SPEND/REFUND nội bộ.
-  stripe_reference  String?  @map("stripe_reference") @db.VarChar(255)
+  stripe_reference  String?  @unique @map("stripe_reference") @db.VarChar(255)
   balance_after     Int      @map("balance_after")
   created_at        DateTime @default(now()) @map("created_at")
   user              users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
@@ -152,7 +152,7 @@ model ai_generations {
   archived_at          DateTime? @map("archived_at")
 
   source            sources   @relation(fields: [source_id], references: [id])
-  generated_by_user users?    @relation(fields: [generated_by_user_id], references: [id])
+  generated_by_user users?    @relation(fields: [generated_by_user_id], references: [id], onDelete: SetNull)
   lessons           lessons[]
 
   // Non-unique here on purpose: Prisma schema syntax can't express a partial
@@ -199,14 +199,16 @@ model courses {
   chapters              chapters[]
   learning_progress     learning_progress[]
   notes                 notes[]
-  owner                 users               @relation("CourseOwner", fields: [owner_id], references: [id])
-  source                sources?            @relation(fields: [source_id], references: [id])
+  owner                 users               @relation("CourseOwner", fields: [owner_id], references: [id], onDelete: Cascade)
+  source                sources?            @relation(fields: [source_id], references: [id], onDelete: SetNull)
 
   // Postgres allows multiple NULLs through a unique index, so this only
   // constrains actual clones (cloned_from_course_id set) — owner-authored
   // courses are unaffected. This is what makes cloneForOwner's
   // check-then-create race-safe under concurrent double-submits.
   @@unique([owner_id, cloned_from_course_id])
+  @@index([owner_id])
+  @@index([source_id])
   @@map("courses")
 }
 
@@ -215,9 +217,10 @@ model chapters {
   course_id   BigInt    @map("course_id")
   title       String    @map("title") @db.VarChar(255)
   order_index Int       @map("order_index")
-  course      courses   @relation(fields: [course_id], references: [id])
+  course      courses   @relation(fields: [course_id], references: [id], onDelete: Cascade)
   lessons     lessons[]
 
+  @@index([course_id])
   @@map("chapters")
 }
 
@@ -233,13 +236,16 @@ model lessons {
   // (mục 8 economics doc, "core free mãi mãi"). Gán bản AIGeneration cụ thể
   // là bước UI riêng, generate không tự gán.
   ai_generation_id  BigInt?             @map("ai_generation_id")
-  chapter           chapters            @relation(fields: [chapter_id], references: [id])
-  source            sources?            @relation(fields: [source_id], references: [id])
-  ai_generation     ai_generations?     @relation(fields: [ai_generation_id], references: [id])
+  chapter           chapters            @relation(fields: [chapter_id], references: [id], onDelete: Cascade)
+  source            sources?            @relation(fields: [source_id], references: [id], onDelete: SetNull)
+  ai_generation     ai_generations?     @relation(fields: [ai_generation_id], references: [id], onDelete: SetNull)
   learning_progress learning_progress[]
   questions         questions[]
   notes             notes[]
 
+  @@index([chapter_id])
+  @@index([source_id])
+  @@index([ai_generation_id])
   @@map("lessons")
 }
 
@@ -256,11 +262,12 @@ model notes {
   video_timestamp_sec Int?     @map("video_timestamp_sec")
   created_at          DateTime @default(now()) @map("created_at")
   updated_at          DateTime @default(now()) @updatedAt @map("updated_at")
-  user                users    @relation(fields: [user_id], references: [id])
-  lesson              lessons  @relation(fields: [lesson_id], references: [id])
-  course              courses  @relation(fields: [course_id], references: [id])
+  user                users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  lesson              lessons  @relation(fields: [lesson_id], references: [id], onDelete: Cascade)
+  course              courses  @relation(fields: [course_id], references: [id], onDelete: Cascade)
 
   @@index([user_id, lesson_id])
+  @@index([course_id])
   @@map("notes")
 }
 
@@ -275,9 +282,9 @@ model learning_progress {
   quiz_start_time     DateTime? @map("quiz_start_time")
   personal_note       String?   @map("personal_note") @db.Text
   quiz_question_ids   String?   @map("quiz_question_ids") @db.Text
-  lesson              lessons   @relation(fields: [lesson_id], references: [id])
-  user                users?    @relation(fields: [user_id], references: [id])
-  course              courses?  @relation(fields: [course_id], references: [id])
+  lesson              lessons   @relation(fields: [lesson_id], references: [id], onDelete: Cascade)
+  user                users?    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  course              courses?  @relation(fields: [course_id], references: [id], onDelete: Cascade)
 
   // WP1.3: progress is keyed by ownership (user_id + lesson_id), not by the
   // marketplace enrollment row — this is the identity going forward. The
@@ -285,6 +292,8 @@ model learning_progress {
   // up cleanup) were dropped entirely: both were confirmed empty/unread in
   // production and nothing in the codebase writes to `enrollments` anymore.
   @@unique([user_id, lesson_id])
+  @@index([user_id, course_id])
+  @@index([course_id])
   @@map("learning_progress")
 }
 
@@ -297,7 +306,8 @@ model questions {
   option_b   String  @map("option_b") @db.VarChar(255)
   option_c   String  @map("option_c") @db.VarChar(255)
   option_d   String  @map("option_d") @db.VarChar(255)
-  lesson     lessons @relation(fields: [lesson_id], references: [id])
+  lesson     lessons @relation(fields: [lesson_id], references: [id], onDelete: Cascade)
 
+  @@index([lesson_id])
   @@map("questions")
 }

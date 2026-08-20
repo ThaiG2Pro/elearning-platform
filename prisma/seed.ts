@@ -1,6 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
-import { randomBytes } from 'crypto';
+import crypto, { randomBytes } from 'crypto';
 
 const prisma = new PrismaClient();
 
@@ -10,9 +10,7 @@ function generateShareToken(): string {
 }
 
 /**
- * Mirrors YouTubeOEmbedAdapter.normalize — kept as a plain copy here (not an
- * import) because prisma's ts-node/ESM seed runner can't resolve extension-less
- * TS imports from src/. Canonical form used for `sources.normalized_url` dedup.
+ * Mirrors YouTubeOEmbedAdapter.normalize — canonical form used for `sources.normalized_url` dedup.
  */
 const YOUTUBE_ID_PATTERN = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
 function normalizeYouTubeUrl(url: string): string {
@@ -21,648 +19,662 @@ function normalizeYouTubeUrl(url: string): string {
     return `https://www.youtube.com/watch?v=${match[1]}`;
 }
 
+/** Compute recipeHash deterministically for seeding AI generations. */
+function computeRecipeHash(type: string, params: Record<string, unknown>, modelVersion: string, segmentRange: { startSec: number; endSec: number } | null = null): string {
+    function sortDeep(val: unknown): unknown {
+        if (Array.isArray(val)) return val.map(sortDeep);
+        if (val !== null && typeof val === 'object') {
+            const sorted: Record<string, unknown> = {};
+            for (const k of Object.keys(val as Record<string, unknown>).sort()) {
+                sorted[k] = sortDeep((val as Record<string, unknown>)[k]);
+            }
+            return sorted;
+        }
+        return val;
+    }
+    const canonical = JSON.stringify(sortDeep({
+        type,
+        params,
+        segmentRange,
+        modelVersion,
+    }));
+    return crypto.createHash('sha256').update(canonical).digest('hex');
+}
+
 /**
- * Creates (or reuses, by normalized_url) a `sources` row for a video lesson
- * and returns its id — WP1.5.1: seed must populate `sources` the same way
- * ContentManagementService.createCourseFromLink does, so a fresh clone has
- * real dedup-by-source data to exercise, not just orphan lessons.
+ * Creates (or reuses, by normalized_url) a `sources` row for a video lesson.
  */
-async function upsertVideoSource(url: string, title: string) {
+async function upsertVideoSource(
+    url: string,
+    title: string,
+    options: {
+        transcript?: string;
+        lastAccessedAt?: Date;
+        archivedAt?: Date;
+    } = {}
+) {
     const normalizedUrl = normalizeYouTubeUrl(url);
     return prisma.sources.upsert({
         where: { normalized_url: normalizedUrl },
-        update: {},
+        update: {
+            transcript: options.transcript,
+            last_accessed_at: options.lastAccessedAt,
+            archived_at: options.archivedAt,
+        },
         create: {
             url,
             normalized_url: normalizedUrl,
             title,
-            // WP1.10.1 — standardized to YOUTUBE_VIDEO/YOUTUBE_PLAYLIST; this
-            // used to write 'VIDEO', mismatched with the service's 'YOUTUBE'.
             type: 'YOUTUBE_VIDEO',
+            transcript: options.transcript,
+            transcript_fetched_at: options.transcript ? new Date() : null,
+            last_accessed_at: options.lastAccessedAt || new Date(),
+            archived_at: options.archivedAt,
         },
     });
 }
 
 async function main() {
-    console.log('🌱 Seeding database...');
+    console.log('🌱 Seeding database with comprehensive test scenarios...');
 
     // Clear existing data — use TRUNCATE to ensure tables are fully cleared and sequences reset
     console.log('🧹 Truncating tables and resetting sequences...');
-    await prisma.$executeRaw`TRUNCATE TABLE "questions","learning_progress","notes","lessons","sources","chapters","courses","tokens","users","roles" RESTART IDENTITY CASCADE;`;
+    await prisma.$executeRaw`TRUNCATE TABLE "credit_transactions","ai_generations","questions","learning_progress","notes","lessons","sources","chapters","courses","tokens","users","roles" RESTART IDENTITY CASCADE;`;
     console.log('✅ Tables truncated and sequences reset');
 
-    // Create roles
-    let studentRole = await prisma.roles.findFirst({
-        where: { name: 'STUDENT' },
+    // 1. ROLES
+    const studentRole = await prisma.roles.upsert({
+        where: { id: 1 },
+        update: {},
+        create: { id: 1, name: 'STUDENT' },
     });
-    if (!studentRole) {
-        studentRole = await prisma.roles.create({
-            data: { name: 'STUDENT' },
-        });
-    }
-
-    let lecturerRole = await prisma.roles.findFirst({
-        where: { name: 'LECTURER' },
+    const lecturerRole = await prisma.roles.upsert({
+        where: { id: 2 },
+        update: {},
+        create: { id: 2, name: 'LECTURER' },
     });
-    if (!lecturerRole) {
-        lecturerRole = await prisma.roles.create({
-            data: { name: 'LECTURER' },
-        });
-    }
-
-    let adminRole = await prisma.roles.findFirst({
-        where: { name: 'ADMIN' },
+    const adminRole = await prisma.roles.upsert({
+        where: { id: 3 },
+        update: {},
+        create: { id: 3, name: 'ADMIN' },
     });
-    if (!adminRole) {
-        adminRole = await prisma.roles.create({
-            data: { name: 'ADMIN' },
-        });
-    }
+    console.log('✅ Roles created (STUDENT, LECTURER, ADMIN)');
 
-    console.log('✅ Roles created');
-
-    // Hash password
+    // 2. USERS (Various profiles & states)
     const hashedPassword = await bcrypt.hash('password123', 10);
+    const now = new Date();
 
-    // Create users — in the personal organizer model, all users are standard personal accounts
-    let john = await prisma.users.findFirst({
-        where: { email: 'john@gmail.com' },
+    // User 1: John Doe — Active Learner with Credit Balance & Stripe Customer ID
+    const john = await prisma.users.create({
+        data: {
+            email: 'john@gmail.com',
+            password_hash: hashedPassword,
+            full_name: 'John Doe',
+            age: 25,
+            role_id: studentRole.id,
+            status: 'ACTIVE',
+            created_at: new Date(now.getTime() - 30 * 24 * 3600 * 1000),
+            credit_balance: 50,
+            stripe_customer_id: 'cus_seed_john_doe_123',
+            avatar_url: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect width="64" height="64" fill="%232563eb"/><text x="50%" y="55%" font-size="24" fill="white" text-anchor="middle" dominant-baseline="middle">JD</text></svg>',
+        },
     });
-    if (!john) {
-        john = await prisma.users.create({
-            data: {
-                email: 'john@gmail.com',
-                password_hash: hashedPassword,
-                full_name: 'John Doe',
-                age: 25,
-                role_id: studentRole.id,
-                status: 'ACTIVE',
-                created_at: new Date(),
-            },
-        });
-    }
 
-    let jack = await prisma.users.findFirst({
-        where: { email: 'jack@gmail.com' },
+    // User 2: Jack Smith — Space Creator / Author
+    const jack = await prisma.users.create({
+        data: {
+            email: 'jack@gmail.com',
+            password_hash: hashedPassword,
+            full_name: 'Jack Smith',
+            age: 38,
+            role_id: studentRole.id,
+            status: 'ACTIVE',
+            created_at: new Date(now.getTime() - 60 * 24 * 3600 * 1000),
+            credit_balance: 10,
+        },
     });
-    if (!jack) {
-        jack = await prisma.users.create({
-            data: {
-                email: 'jack@gmail.com',
-                password_hash: hashedPassword,
-                full_name: 'Jack Smith',
-                age: 38,
-                role_id: studentRole.id,
-                status: 'ACTIVE',
-                created_at: new Date(),
-            },
-        });
-    }
 
-    let admin = await prisma.users.findFirst({
-        where: { email: 'admin1@gmail.com' },
+    // User 3: Alice Johnson — Advanced BYOK user
+    const alice = await prisma.users.create({
+        data: {
+            email: 'alice@gmail.com',
+            password_hash: hashedPassword,
+            full_name: 'Alice Johnson',
+            age: 29,
+            role_id: studentRole.id,
+            status: 'ACTIVE',
+            created_at: new Date(now.getTime() - 15 * 24 * 3600 * 1000),
+            credit_balance: 0,
+        },
     });
-    if (!admin) {
-        admin = await prisma.users.create({
-            data: {
-                email: 'admin1@gmail.com',
-                password_hash: hashedPassword,
-                full_name: 'Trọng Tín',
-                age: 31,
-                role_id: studentRole.id,
-                status: 'ACTIVE',
-                created_at: new Date(),
-            },
-        });
-    }
 
-    console.log('✅ Users created (standardized personal accounts)');
+    // User 4: Bob Newbie — Pending Account (with activation token)
+    const bob = await prisma.users.create({
+        data: {
+            email: 'bob@gmail.com',
+            password_hash: hashedPassword,
+            full_name: 'Bob Newbie',
+            age: 20,
+            role_id: studentRole.id,
+            status: 'PENDING',
+            created_at: now,
+            credit_balance: 0,
+        },
+    });
 
-    // Create courses
-    // Personal-organizer model: every course is active for its owner
-    // immediately — no approval workflow, no reject notes.
+    // User 5: Trọng Tín — Admin
+    const admin = await prisma.users.create({
+        data: {
+            email: 'admin1@gmail.com',
+            password_hash: hashedPassword,
+            full_name: 'Trọng Tín',
+            age: 31,
+            role_id: adminRole.id,
+            status: 'ACTIVE',
+            created_at: new Date(now.getTime() - 90 * 24 * 3600 * 1000),
+            credit_balance: 100,
+        },
+    });
+
+    console.log('✅ Users created (John, Jack, Alice, Bob [Pending], Admin)');
+
+    // 3. TOKENS (Activation & Password Recovery)
+    // Activation token for Bob
+    await prisma.tokens.create({
+        data: {
+            user_id: bob.id,
+            code: crypto.randomUUID(),
+            type: 'ACTIVATION',
+            expires_at: new Date(now.getTime() + 24 * 3600 * 1000), // +24h
+            is_used: false,
+        },
+    });
+
+    // Expired Password Recovery token for John (to test expiry checks)
+    await prisma.tokens.create({
+        data: {
+            user_id: john.id,
+            code: crypto.randomUUID(),
+            type: 'RECOVERY',
+            expires_at: new Date(now.getTime() - 2 * 3600 * 1000), // expired 2h ago
+            is_used: false,
+        },
+    });
+
+    console.log('✅ Auth tokens created (Activation for Bob, Expired Recovery for John)');
+
+    // 4. BILLING & CREDIT TRANSACTIONS (WP4.1 Ledger)
+    // John bought 50 credits via Stripe Checkout
+    await prisma.credit_transactions.create({
+        data: {
+            user_id: john.id,
+            amount: 50,
+            reason: 'PURCHASE',
+            stripe_reference: 'cs_test_seed_checkout_session_001',
+            balance_after: 50,
+            created_at: new Date(now.getTime() - 5 * 24 * 3600 * 1000),
+        },
+    });
+
+    // Jack bought 20 credits, spent 10 credits on PAID_TIER generation
+    await prisma.credit_transactions.create({
+        data: {
+            user_id: jack.id,
+            amount: 20,
+            reason: 'PURCHASE',
+            stripe_reference: 'cs_test_seed_checkout_session_002',
+            balance_after: 20,
+            created_at: new Date(now.getTime() - 10 * 24 * 3600 * 1000),
+        },
+    });
+
+    await prisma.credit_transactions.create({
+        data: {
+            user_id: jack.id,
+            amount: -10,
+            reason: 'AI_GENERATION_SPEND',
+            stripe_reference: null,
+            balance_after: 10,
+            created_at: new Date(now.getTime() - 2 * 24 * 3600 * 1000),
+        },
+    });
+
+    console.log('✅ Credit ledger transactions created');
+
+    // 5. SOURCES & TRANSCRIPTS (With Active & Archived cases)
+    const javaUrl = 'https://youtu.be/9tQ-GGE010s?si=IRbSd51Vl6NL32Ge';
+    const javaTranscript = `00:00 Chào mừng các bạn đến với khóa học Lập trình Java cơ bản.
+00:15 Trong bài học này, chúng ta sẽ tìm hiểu về Java Virtual Machine (JVM), JDK và JRE.
+01:30 Java là ngôn ngữ lập trình hướng đối tượng, đa nền tảng nhờ cơ chế Bytecode.
+03:00 Viết một chương trình Hello World đầu tiên và giải thích cấu trúc method main.`;
+    const javaSource = await upsertVideoSource(javaUrl, 'Giới thiệu về Java & Cài đặt môi trường', {
+        transcript: javaTranscript,
+        lastAccessedAt: new Date(),
+    });
+
+    const tsUrl = 'https://www.youtube.com/watch?v=BwuLxPH8IDs';
+    const tsTranscript = `00:00 Welcome to TypeScript full course.
+00:30 TypeScript adds static type definitions to JavaScript.
+02:00 Types, Interfaces, Generics and Type inference explained.
+05:00 Advanced Clean Architecture patterns with TypeScript and Prisma.`;
+    const tsSource = await upsertVideoSource(tsUrl, 'Mastering TypeScript & Clean Architecture', {
+        transcript: tsTranscript,
+        lastAccessedAt: new Date(),
+    });
+
+    const reactUrl = 'https://www.youtube.com/watch?v=w7ejDZ8SWv8';
+    const reactSource = await upsertVideoSource(reactUrl, 'React JS & Next.js Crash Course', {
+        transcript: '00:00 React basics and Virtual DOM.\n02:15 Component Lifecycle & Hooks.',
+        lastAccessedAt: new Date(),
+    });
+
+    // Stale / Archived source (for Data Retention / Archiving testing WP4.2)
+    const staleUrl = 'https://www.youtube.com/watch?v=stale_video_sample_123';
+    const staleSource = await upsertVideoSource(staleUrl, 'Khóa học Cũ đã lưu trữ (Archived Source)', {
+        transcript: null, // nullified by archiveStaleData
+        lastAccessedAt: new Date(now.getTime() - 45 * 24 * 3600 * 1000), // 45 days ago
+        archivedAt: new Date(now.getTime() - 15 * 24 * 3600 * 1000), // archived 15 days ago
+    });
+
+    console.log('✅ Sources & Transcripts created (including active & archived sources)');
+
+    // 6. AI GENERATIONS (SHARED_FREE, BYOK, PAID_TIER, PENDING, FAILED)
+    const modelVer = 'groq/qwen/qwen3.6-27b';
+
+    // Case A: SHARED_FREE Default Summary Cache (READY)
+    const javaSummaryHash = computeRecipeHash('summary', { detailLevel: 'standard' }, modelVer);
+    const javaSummaryAi = await prisma.ai_generations.create({
+        data: {
+            source_id: javaSource.id,
+            recipe_hash: javaSummaryHash,
+            recipe_type: 'summary',
+            is_default_recipe: true,
+            key_source: 'SHARED_FREE',
+            generated_by_user_id: jack.id,
+            visibility: 'PRIVATE',
+            status: 'READY',
+            model_version: modelVer,
+            content: '### 📌 Tóm tắt bài học Java:\n1. **Khái niệm JVM/JDK/JRE:** Nền tảng thực thi bytecode giúp Java độc lập nền tảng.\n2. **Cú pháp cơ bản:** Cấu trúc lớp `public class` và phương thức khởi chạy `public static void main(String[] args)`.\n3. **Thực hành:** Biên dịch bằng `javac` và chạy qua `java`.',
+        },
+    });
+
+    // Case B: SHARED_FREE Default Quiz Cache (READY)
+    const javaQuizHash = computeRecipeHash('quiz', { questionCount: 3 }, modelVer);
+    const javaQuizAi = await prisma.ai_generations.create({
+        data: {
+            source_id: javaSource.id,
+            recipe_hash: javaQuizHash,
+            recipe_type: 'quiz',
+            is_default_recipe: true,
+            key_source: 'SHARED_FREE',
+            generated_by_user_id: jack.id,
+            visibility: 'PRIVATE',
+            status: 'READY',
+            model_version: modelVer,
+            content: JSON.stringify([
+                { question: 'JVM là viết tắt của gì?', options: ['Java Virtual Machine', 'Java Visual Mode', 'Java Variable Manager', 'Java Vector Model'], answer: 'Java Virtual Machine' },
+                { question: 'Bytecode của Java chạy trên đâu?', options: ['Trực tiếp trên CPU', 'Trên JVM', 'Trên trình duyệt', 'Trên NodeJS'], answer: 'Trên JVM' }
+            ]),
+        },
+    });
+
+    // Case C: BYOK Custom Recipe (SHARED visibility)
+    const tsCustomHash = computeRecipeHash('summary', { focus: 'clean_architecture', detailLevel: 'deep' }, modelVer);
+    await prisma.ai_generations.create({
+        data: {
+            source_id: tsSource.id,
+            recipe_hash: tsCustomHash,
+            recipe_type: 'summary',
+            is_default_recipe: false,
+            key_source: 'BYOK',
+            generated_by_user_id: alice.id,
+            visibility: 'SHARED', // Shared with community
+            status: 'READY',
+            model_version: modelVer,
+            content: '### 🏗️ TypeScript Clean Architecture Summary:\n- Decouple Domain Entities from ORM Models.\n- Dependency Inversion via Interfaces & Repositories.\n- Error handling with functional Results.',
+        },
+    });
+
+    // Case D: PAID_TIER Generation (PRIVATE)
+    const reactPaidHash = computeRecipeHash('quiz', { difficulty: 'hard', count: 10 }, modelVer);
+    await prisma.ai_generations.create({
+        data: {
+            source_id: reactSource.id,
+            recipe_hash: reactPaidHash,
+            recipe_type: 'quiz',
+            is_default_recipe: false,
+            key_source: 'PAID_TIER',
+            generated_by_user_id: john.id,
+            visibility: 'PRIVATE',
+            status: 'READY',
+            model_version: modelVer,
+            content: '### ⚡ Next.js Advanced Quiz generated via Paid Tier.',
+        },
+    });
+
+    // Case E: FAILED Generation (Rate Limit Error — for error testing)
+    const failHash = computeRecipeHash('summary', { test: 'rate_limit_case' }, modelVer);
+    await prisma.ai_generations.create({
+        data: {
+            source_id: javaSource.id,
+            recipe_hash: failHash,
+            recipe_type: 'summary',
+            is_default_recipe: false,
+            key_source: 'SHARED_FREE',
+            generated_by_user_id: john.id,
+            visibility: 'PRIVATE',
+            status: 'FAILED',
+            model_version: modelVer,
+            error: '429 Rate limit exceeded: Groq requests per minute limit reached.',
+        },
+    });
+
+    // Case F: PENDING Generation (In-flight processing)
+    const pendingHash = computeRecipeHash('summary', { test: 'pending_case' }, modelVer);
+    await prisma.ai_generations.create({
+        data: {
+            source_id: tsSource.id,
+            recipe_hash: pendingHash,
+            recipe_type: 'summary',
+            is_default_recipe: false,
+            key_source: 'SHARED_FREE',
+            generated_by_user_id: bob.id,
+            visibility: 'PRIVATE',
+            status: 'PENDING',
+            model_version: modelVer,
+        },
+    });
+
+    console.log('✅ AI generations created (SHARED_FREE, BYOK SHARED, PAID_TIER, FAILED, PENDING)');
+
+    // 7. COURSES, CHAPTERS & LESSONS (With Multi-Chapter & Lineage Cases)
+
+    // Course 1: Java (Jack Smith) — Has AI summary and AI quiz attached to lessons
     const javaCourse = await prisma.courses.create({
         data: {
             owner_id: jack.id,
-            title: 'Nhập môn Java',
-            slug: 'nhap-mon-java',
-            description: 'Khóa học Java cơ bản dành cho người mới bắt đầu',
+            title: 'Nhập môn Lập trình Java Cơ bản',
+            slug: 'nhap-mon-lap-trinh-java-co-ban',
+            description: 'Khóa học Java hoàn chỉnh với tóm tắt AI và bài tập thực hành',
             status: 'ACTIVE',
-            share_token: generateShareToken(),
-        },
-    });
-
-    const cppCourse = await prisma.courses.create({
-        data: {
-            owner_id: jack.id,
-            title: 'Nhập môn C++',
-            slug: 'nhap-mon-cpp',
-            description: 'Khóa học C++ cơ bản dành cho người mới bắt đầu',
-            status: 'ACTIVE',
-            share_token: generateShareToken(),
-        },
-    });
-
-    const pythonCourse = await prisma.courses.create({
-        data: {
-            owner_id: jack.id,
-            title: 'Nhập môn Python',
-            slug: 'nhap-mon-python',
-            description: 'Khóa học Python cơ bản dành cho người mới bắt đầu',
-            status: 'ACTIVE',
-            share_token: generateShareToken(),
-        },
-    });
-
-    // Create chapters and lessons for Java course
-    const javaChapter = await prisma.chapters.create({
-        data: {
-            course_id: javaCourse.id,
-            title: 'Làm quen với Java',
-            order_index: 1,
-        },
-    });
-
-    const javaVideoUrl = 'https://youtu.be/9tQ-GGE010s?si=IRbSd51Vl6NL32Ge';
-    const javaSource = await upsertVideoSource(javaVideoUrl, 'Giới thiệu về Java');
-
-    const javaVideoLesson = await prisma.lessons.create({
-        data: {
-            chapter_id: javaChapter.id,
             source_id: javaSource.id,
-            title: 'Giới thiệu về Java',
-            type: 'VIDEO',
-            content_url: javaVideoUrl,
-            order_index: 1,
-        },
-    });
-
-    const javaQuizLesson = await prisma.lessons.create({
-        data: {
-            chapter_id: javaChapter.id,
-            title: 'Bài tập Java cơ bản',
-            type: 'QUIZ',
-            order_index: 2,
-        },
-    });
-
-    // Create Java quiz questions
-    const javaQuestions = [
-        {
-            content: 'Java là ngôn ngữ lập trình gì?',
-            answer_key: 'A',
-            option_a: 'Hướng đối tượng',
-            option_b: 'Hướng thủ tục',
-            option_c: 'Hướng hàm',
-            option_d: 'Hướng logic',
-        },
-        {
-            content: 'Cú pháp khai báo biến trong Java?',
-            answer_key: 'B',
-            option_a: 'var name;',
-            option_b: 'String name;',
-            option_c: 'name: String;',
-            option_d: 'String: name;',
-        },
-        {
-            content: 'Method main trong Java có dạng nào?',
-            answer_key: 'A',
-            option_a: 'public static void main(String[] args)',
-            option_b: 'public void main(String args)',
-            option_c: 'static void main()',
-            option_d: 'void main(String[] args)',
-        },
-        {
-            content: 'Để in ra màn hình trong Java?',
-            answer_key: 'C',
-            option_a: 'print("Hello");',
-            option_b: 'echo "Hello";',
-            option_c: 'System.out.println("Hello");',
-            option_d: 'console.log("Hello");',
-        },
-        {
-            content: 'Class trong Java bắt đầu bằng?',
-            answer_key: 'B',
-            option_a: 'class MyClass',
-            option_b: 'public class MyClass',
-            option_c: 'Class MyClass',
-            option_d: 'def class MyClass',
-        },
-        {
-            content: 'Kiểu dữ liệu nguyên thủy trong Java?',
-            answer_key: 'A',
-            option_a: 'int, double, boolean',
-            option_b: 'Integer, Double, Boolean',
-            option_c: 'string, number, bool',
-            option_d: 'str, int, float',
-        },
-        {
-            content: 'Comment một dòng trong Java?',
-            answer_key: 'C',
-            option_a: '# comment',
-            option_b: '/* comment */',
-            option_c: '// comment',
-            option_d: '-- comment',
-        },
-        {
-            content: 'Array trong Java khai báo như thế nào?',
-            answer_key: 'B',
-            option_a: 'int[] arr = new int[5];',
-            option_b: 'int[] arr = new int[5];',
-            option_c: 'int arr[] = new int[5];',
-            option_d: 'Cả A và C đều đúng',
-        },
-        {
-            content: 'Exception handling trong Java dùng?',
-            answer_key: 'A',
-            option_a: 'try-catch',
-            option_b: 'try-except',
-            option_c: 'catch-throw',
-            option_d: 'handle-catch',
-        },
-        {
-            content: 'Package trong Java dùng để?',
-            answer_key: 'D',
-            option_a: 'Đóng gói code',
-            option_b: 'Tổ chức code',
-            option_c: 'Import thư viện',
-            option_d: 'Cả A, B, C đều đúng',
-        },
-    ];
-
-    for (const q of javaQuestions) {
-        await prisma.questions.create({
-            data: {
-                lesson_id: javaQuizLesson.id,
-                content: q.content,
-                answer_key: q.answer_key,
-                option_a: q.option_a,
-                option_b: q.option_b,
-                option_c: q.option_c,
-                option_d: q.option_d,
-            },
-        });
-    }
-
-    // Create chapters and lessons for C++ course
-    const cppChapter = await prisma.chapters.create({
-        data: {
-            course_id: cppCourse.id,
-            title: 'Làm quen với C++',
-            order_index: 1,
-        },
-    });
-
-    const cppVideoUrl = 'https://youtu.be/5vLkWRF-dpE?si=Rso9nHCiT76jh4kJ';
-    const cppSource = await upsertVideoSource(cppVideoUrl, 'Giới thiệu về C++');
-
-    await prisma.lessons.create({
-        data: {
-            chapter_id: cppChapter.id,
-            source_id: cppSource.id,
-            title: 'Giới thiệu về C++',
-            type: 'VIDEO',
-            content_url: cppVideoUrl,
-            order_index: 1,
-        },
-    });
-
-    const cppQuizLesson = await prisma.lessons.create({
-        data: {
-            chapter_id: cppChapter.id,
-            title: 'Bài tập C++ cơ bản',
-            type: 'QUIZ',
-            order_index: 2,
-        },
-    });
-
-    // Create C++ quiz questions
-    const cppQuestions = [
-        {
-            content: 'C++ là ngôn ngữ lập trình gì?',
-            answer_key: 'A',
-            option_a: 'Hướng đối tượng',
-            option_b: 'Hướng thủ tục',
-            option_c: 'Hướng hàm',
-            option_d: 'Hướng logic',
-        },
-        {
-            content: 'Header file trong C++?',
-            answer_key: 'B',
-            option_a: '#include <iostream.h>',
-            option_b: '#include <iostream>',
-            option_c: 'import iostream',
-            option_d: 'using iostream',
-        },
-        {
-            content: 'Namespace std dùng để?',
-            answer_key: 'C',
-            option_a: 'Định nghĩa hàm',
-            option_b: 'Khai báo biến',
-            option_c: 'Sử dụng thư viện chuẩn',
-            option_d: 'Tạo class',
-        },
-        {
-            content: 'Để in ra màn hình trong C++?',
-            answer_key: 'A',
-            option_a: 'cout << "Hello";',
-            option_b: 'print("Hello");',
-            option_c: 'System.out.println("Hello");',
-            option_d: 'console.log("Hello");',
-        },
-        {
-            content: 'Class trong C++ khai báo như thế nào?',
-            answer_key: 'B',
-            option_a: 'class MyClass {}',
-            option_b: 'class MyClass {};',
-            option_c: 'Class MyClass {}',
-            option_d: 'def class MyClass:',
-        },
-        {
-            content: 'Con trỏ trong C++ dùng ký hiệu?',
-            answer_key: 'A',
-            option_a: '*',
-            option_b: '&',
-            option_c: '#',
-            option_d: '@',
-        },
-        {
-            content: 'Comment một dòng trong C++?',
-            answer_key: 'C',
-            option_a: '# comment',
-            option_b: '/* comment */',
-            option_c: '// comment',
-            option_d: '-- comment',
-        },
-        {
-            content: 'Vector trong C++ tương tự?',
-            answer_key: 'B',
-            option_a: 'Array tĩnh',
-            option_b: 'Array động',
-            option_c: 'Linked list',
-            option_d: 'Stack',
-        },
-        {
-            content: 'Memory management trong C++?',
-            answer_key: 'A',
-            option_a: 'new và delete',
-            option_b: 'malloc và free',
-            option_c: 'alloc và dealloc',
-            option_d: 'create và destroy',
-        },
-        {
-            content: 'Template trong C++ dùng để?',
-            answer_key: 'D',
-            option_a: 'Tạo class',
-            option_b: 'Định nghĩa hàm',
-            option_c: 'Generic programming',
-            option_d: 'Cả A, B, C đều đúng',
-        },
-    ];
-
-    for (const q of cppQuestions) {
-        await prisma.questions.create({
-            data: {
-                lesson_id: cppQuizLesson.id,
-                content: q.content,
-                answer_key: q.answer_key,
-                option_a: q.option_a,
-                option_b: q.option_b,
-                option_c: q.option_c,
-                option_d: q.option_d,
-            },
-        });
-    }
-
-    // Create chapters and lessons for Python course
-    const pythonChapter = await prisma.chapters.create({
-        data: {
-            course_id: pythonCourse.id,
-            title: 'Làm quen với Python',
-            order_index: 1,
-        },
-    });
-
-    const pythonVideoUrl = 'https://youtu.be/NZj6LI5a9vc?si=3s0sCa3Z68qu9qBq';
-    const pythonSource = await upsertVideoSource(pythonVideoUrl, 'Giới thiệu về Python');
-
-    const pythonVideoLesson = await prisma.lessons.create({
-        data: {
-            chapter_id: pythonChapter.id,
-            source_id: pythonSource.id,
-            title: 'Giới thiệu về Python',
-            type: 'VIDEO',
-            content_url: pythonVideoUrl,
-            order_index: 1,
-        },
-    });
-
-    // Create a shared course by Jack Smith: "Lập trình React & Next.js"
-    const reactCourse = await prisma.courses.create({
-        data: {
-            owner_id: jack.id,
-            title: 'Lập trình React & Next.js cơ bản',
-            slug: 'lap-trinh-react-nextjs-co-ban',
-            description: 'Không gian học React & Next.js được tạo và chia sẻ bởi Jack Smith',
-            status: 'ACTIVE',
             share_token: generateShareToken(),
         },
     });
 
-    const reactChapter = await prisma.chapters.create({
-        data: {
-            course_id: reactCourse.id,
-            title: 'Chương 1: Tổng quan về React Component',
-            order_index: 1,
-        },
+    const javaChapter1 = await prisma.chapters.create({
+        data: { course_id: javaCourse.id, title: 'Chương 1: Môi trường & Cú pháp cơ bản', order_index: 1 },
     });
 
-    const reactVideoUrl = 'https://www.youtube.com/watch?v=w7ejDZ8SWv8';
-    const reactSource = await upsertVideoSource(reactVideoUrl, 'React JS Crash Course');
-
-    await prisma.lessons.create({
+    const javaLesson1 = await prisma.lessons.create({
         data: {
-            chapter_id: reactChapter.id,
-            source_id: reactSource.id,
-            title: 'Khái niệm React JS & Virtual DOM',
+            chapter_id: javaChapter1.id,
+            source_id: javaSource.id,
+            title: 'Bài 1: Giới thiệu JVM, JRE và Cài đặt',
             type: 'VIDEO',
-            content_url: reactVideoUrl,
+            content_url: javaUrl,
             order_index: 1,
+            ai_generation_id: javaSummaryAi.id,
         },
     });
 
-    const reactQuizLesson = await prisma.lessons.create({
+    const javaLesson2 = await prisma.lessons.create({
         data: {
-            chapter_id: reactChapter.id,
-            title: 'Trắc nghiệm React Component & Props',
+            chapter_id: javaChapter1.id,
+            source_id: javaSource.id,
+            title: 'Bài 2: Trắc nghiệm củng cố kiến thức Java',
             type: 'QUIZ',
             order_index: 2,
+            ai_generation_id: javaQuizAi.id,
         },
     });
 
     await prisma.questions.createMany({
         data: [
             {
-                lesson_id: reactQuizLesson.id,
-                content: 'JSX trong React là viết tắt của từ gì?',
+                lesson_id: javaLesson2.id,
+                content: 'Java là ngôn ngữ lập trình theo mô hình nào?',
                 answer_key: 'A',
-                option_a: 'JavaScript XML',
-                option_b: 'Java System Extension',
-                option_c: 'JavaScript Syntax Extension',
-                option_d: 'JSON Serialized XML',
+                option_a: 'Hướng đối tượng (OOP)',
+                option_b: 'Hướng thủ tục thuần túy',
+                option_c: 'Hàm thuần túy',
+                option_d: 'Logic thuần túy',
             },
             {
-                lesson_id: reactQuizLesson.id,
-                content: 'Hook nào dùng để quản lý state trong Functional Component?',
-                answer_key: 'B',
-                option_a: 'useEffect',
-                option_b: 'useState',
-                option_c: 'useContext',
-                option_d: 'useReducer',
+                lesson_id: javaLesson2.id,
+                content: 'Tệp chứa mã nguồn Java sau khi biên dịch có đuôi mở rộng là gì?',
+                answer_key: 'C',
+                option_a: '.java',
+                option_b: '.exe',
+                option_c: '.class',
+                option_d: '.jar',
             },
         ],
     });
 
-    // John clones Jack's React course to learn in his own Space
-    const johnReactCourse = await prisma.courses.create({
+    // Course 2: TypeScript Multi-Chapter Space (Alice)
+    const tsCourse = await prisma.courses.create({
+        data: {
+            owner_id: alice.id,
+            title: 'Mastering TypeScript & Clean Architecture',
+            slug: 'mastering-typescript-clean-architecture',
+            description: 'Khóa học nhiều chương phân cấp: Generics, Decorators, Clean Architecture',
+            status: 'ACTIVE',
+            source_id: tsSource.id,
+            share_token: generateShareToken(),
+        },
+    });
+
+    const tsChapter1 = await prisma.chapters.create({
+        data: { course_id: tsCourse.id, title: 'Phần 1: Nền tảng Type System & Interfaces', order_index: 1 },
+    });
+    const tsChapter2 = await prisma.chapters.create({
+        data: { course_id: tsCourse.id, title: 'Phần 2: Design Patterns & Dependency Injection', order_index: 2 },
+    });
+
+    const tsLesson1 = await prisma.lessons.create({
+        data: { chapter_id: tsChapter1.id, source_id: tsSource.id, title: '1.1 Deep dive vào Type vs Interface', type: 'VIDEO', content_url: tsUrl, order_index: 1 },
+    });
+    const tsLesson2 = await prisma.lessons.create({
+        data: { chapter_id: tsChapter1.id, title: '1.2 Quiz kiểm tra TypeScript Types', type: 'QUIZ', order_index: 2 },
+    });
+    const tsLesson3 = await prisma.lessons.create({
+        data: { chapter_id: tsChapter2.id, source_id: tsSource.id, title: '2.1 Repository Pattern với Prisma ORM', type: 'VIDEO', content_url: tsUrl, order_index: 1 },
+    });
+
+    await prisma.questions.createMany({
+        data: [
+            {
+                lesson_id: tsLesson2.id,
+                content: 'Khác biệt chính giữa `type` và `interface` trong TypeScript?',
+                answer_key: 'B',
+                option_a: 'Type chạy chậm hơn Interface',
+                option_b: 'Interface hỗ trợ declaration merging, type thì không',
+                option_c: 'Type không dùng được với Object',
+                option_d: 'Không có điểm khác biệt',
+            },
+        ],
+    });
+
+    // Course 3: Multi-tier Lineage Testing (Fork Tree)
+    // Level 1: Jack creates Course A (React Space)
+    const reactCourseA = await prisma.courses.create({
+        data: {
+            owner_id: jack.id,
+            title: 'Lập trình React 19 & Next.js App Router',
+            slug: 'react-19-nextjs-app-router',
+            description: 'Không gian học gốc do Jack Smith chia sẻ',
+            status: 'ACTIVE',
+            source_id: reactSource.id,
+            share_token: generateShareToken(),
+        },
+    });
+    const rChapterA = await prisma.chapters.create({
+        data: { course_id: reactCourseA.id, title: 'Chương 1: Server Components & Actions', order_index: 1 },
+    });
+    const rLessonA = await prisma.lessons.create({
+        data: { chapter_id: rChapterA.id, source_id: reactSource.id, title: 'React Server Components căn bản', type: 'VIDEO', content_url: reactUrl, order_index: 1 },
+    });
+
+    // Level 2: John clones Course A -> Course B
+    const reactCourseB = await prisma.courses.create({
         data: {
             owner_id: john.id,
-            title: 'Lập trình React & Next.js cơ bản',
-            slug: `lap-trinh-react-nextjs-co-ban-john-${randomBytes(2).toString('hex')}`,
-            description: 'Không gian học React & Next.js (Sao chép về từ Jack Smith)',
+            title: 'Lập trình React 19 & Next.js App Router (John Space)',
+            slug: `react-19-john-${randomBytes(2).toString('hex')}`,
+            description: 'Không gian học của John (Sao chép từ Jack Smith)',
             status: 'ACTIVE',
-            cloned_from_course_id: reactCourse.id,
+            cloned_from_course_id: reactCourseA.id,
+            source_id: reactSource.id,
             share_token: generateShareToken(),
         },
     });
-
-    const johnReactChapter = await prisma.chapters.create({
-        data: {
-            course_id: johnReactCourse.id,
-            title: 'Chương 1: Tổng quan về React Component',
-            order_index: 1,
-        },
+    const rChapterB = await prisma.chapters.create({
+        data: { course_id: reactCourseB.id, title: 'Chương 1: Server Components & Actions', order_index: 1 },
+    });
+    const rLessonB = await prisma.lessons.create({
+        data: { chapter_id: rChapterB.id, source_id: reactSource.id, title: 'React Server Components căn bản', type: 'VIDEO', content_url: reactUrl, order_index: 1 },
     });
 
-    const johnReactVideoLesson = await prisma.lessons.create({
+    // Level 3: Alice clones Course B -> Course C (Cloning a Clone)
+    const reactCourseC = await prisma.courses.create({
         data: {
-            chapter_id: johnReactChapter.id,
+            owner_id: alice.id,
+            title: 'Lập trình React 19 & Next.js App Router (Alice Space)',
+            slug: `react-19-alice-${randomBytes(2).toString('hex')}`,
+            description: 'Không gian học của Alice (Sao chép từ John Doe)',
+            status: 'ACTIVE',
+            cloned_from_course_id: reactCourseB.id,
             source_id: reactSource.id,
-            title: 'Khái niệm React JS & Virtual DOM',
-            type: 'VIDEO',
-            content_url: reactVideoUrl,
-            order_index: 1,
+            share_token: generateShareToken(),
         },
     });
+    const rChapterC = await prisma.chapters.create({
+        data: { course_id: reactCourseC.id, title: 'Chương 1: Server Components & Actions', order_index: 1 },
+    });
+    const rLessonC = await prisma.lessons.create({
+        data: { chapter_id: rChapterC.id, source_id: reactSource.id, title: 'React Server Components căn bản', type: 'VIDEO', content_url: reactUrl, order_index: 1 },
+    });
 
-    const johnReactQuizLesson = await prisma.lessons.create({
+    // Course 4: Empty Draft Course (For testing empty state & draft status)
+    await prisma.courses.create({
         data: {
-            chapter_id: johnReactChapter.id,
-            title: 'Trắc nghiệm React Component & Props',
-            type: 'QUIZ',
-            order_index: 2,
+            owner_id: jack.id,
+            title: 'Khóa học Bản thảo Chưa xuất bản',
+            slug: 'khoa-hoc-ban-thao-chua-xuat-ban',
+            description: 'Khóa học rỗng dùng để test giao diện soạn thảo (0 chapters)',
+            status: 'DRAFT',
         },
     });
 
-    await prisma.questions.createMany({
+    console.log('✅ Courses & Multi-tier Lineage created (Jack -> John -> Alice)');
+
+    // 8. NOTES WITH TIMESTAMPS (Video seeking testing)
+    await prisma.notes.createMany({
         data: [
             {
-                lesson_id: johnReactQuizLesson.id,
-                content: 'JSX trong React là viết tắt của từ gì?',
-                answer_key: 'A',
-                option_a: 'JavaScript XML',
-                option_b: 'Java System Extension',
-                option_c: 'JavaScript Syntax Extension',
-                option_d: 'JSON Serialized XML',
+                user_id: john.id,
+                course_id: javaCourse.id,
+                lesson_id: javaLesson1.id,
+                content: '📌 Đoạn này giải thích rất rõ về cách JVM biên dịch bytecode sang machine code.',
+                video_timestamp_sec: 15,
             },
             {
-                lesson_id: johnReactQuizLesson.id,
-                content: 'Hook nào dùng để quản lý state trong Functional Component?',
-                answer_key: 'B',
-                option_a: 'useEffect',
-                option_b: 'useState',
-                option_c: 'useContext',
-                option_d: 'useReducer',
+                user_id: john.id,
+                course_id: javaCourse.id,
+                lesson_id: javaLesson1.id,
+                content: '⚠️ Lưu ý: `javac` là compiler, `java` là runtime launcher.',
+                video_timestamp_sec: 90,
+            },
+            {
+                user_id: john.id,
+                course_id: reactCourseB.id,
+                lesson_id: rLessonB.id,
+                content: '💡 Server Actions không cần tạo API route trung gian, gọi trực tiếp từ client form.',
+                video_timestamp_sec: 180,
+            },
+            {
+                user_id: alice.id,
+                course_id: tsCourse.id,
+                lesson_id: tsLesson1.id,
+                content: '🚀 Dùng `as const` để bảo toàn literal types.',
+                video_timestamp_sec: 45,
             },
         ],
     });
+    console.log('✅ Notes with video seek timestamps created');
 
-    console.log('✅ Chapters, lessons, sources and questions created');
-
-    // WP1.5.1 — seed learning_progress so a fresh clone has real data to
-    // exercise WP1.3 (progress tracking) without manually clicking through
-    // lessons first. Keyed by (user_id, lesson_id) per the ownership-based
-    // model in learning_progress (see schema comment).
+    // 9. LEARNING PROGRESS (Completed, In-progress, Quiz scores)
+    // John completed Java Lesson 1
     await prisma.learning_progress.create({
         data: {
             user_id: john.id,
             course_id: javaCourse.id,
-            lesson_id: javaVideoLesson.id,
+            lesson_id: javaLesson1.id,
             is_finished: true,
-            video_last_position: 0,
+            video_last_position: 180,
+            personal_note: 'Đã nắm chắc phần JVM và biến môi trường JAVA_HOME.',
         },
     });
 
+    // John scored 100% on Java Quiz Lesson 2
     await prisma.learning_progress.create({
-        data: {
-            user_id: john.id,
-            course_id: pythonCourse.id,
-            lesson_id: pythonVideoLesson.id,
-            is_finished: false,
-            video_last_position: 42,
-        },
-    });
-
-    // John's progress on his cloned React space from Jack Smith
-    await prisma.learning_progress.create({
-        data: {
-            user_id: john.id,
-            course_id: johnReactCourse.id,
-            lesson_id: johnReactVideoLesson.id,
-            is_finished: false,
-            video_last_position: 185,
-        },
-    });
-
-    console.log('✅ Learning progress created');
-
-    // WP1.5.1 — seed the `notes` table too (added under WP1.5.4, after this
-    // file's original data set): a fresh clone should have a real timestamped
-    // note to exercise "click note → seek video" without adding one by hand.
-    await prisma.notes.create({
         data: {
             user_id: john.id,
             course_id: javaCourse.id,
-            lesson_id: javaVideoLesson.id,
-            content: 'Nhớ ôn lại phần JVM và bytecode ở đoạn này.',
-            video_timestamp_sec: 95,
+            lesson_id: javaLesson2.id,
+            is_finished: true,
+            quiz_max_score: 100,
+            quiz_start_time: new Date(now.getTime() - 3600 * 1000),
         },
     });
 
-    await prisma.notes.create({
+    // John is currently watching React Lesson (In-progress at 145s)
+    await prisma.learning_progress.create({
         data: {
             user_id: john.id,
-            course_id: johnReactCourse.id,
-            lesson_id: johnReactVideoLesson.id,
-            content: 'Ghi chú học tập từ Space của Jack Smith: Virtual DOM giúp tối ưu re-render.',
-            video_timestamp_sec: 140,
+            course_id: reactCourseB.id,
+            lesson_id: rLessonB.id,
+            is_finished: false,
+            video_last_position: 145,
         },
     });
 
-    console.log('✅ Notes created');
+    // Alice is in progress on TypeScript
+    await prisma.learning_progress.create({
+        data: {
+            user_id: alice.id,
+            course_id: tsCourse.id,
+            lesson_id: tsLesson1.id,
+            is_finished: false,
+            video_last_position: 78,
+        },
+    });
 
-    console.log('🎉 Database seeded successfully!');
-    console.log('\n📊 Test Data Summary:');
-    console.log('👤 Standardized Personal Accounts:');
-    console.log('   - John Doe: john@gmail.com / password123');
-    console.log('   - Jack Smith: jack@gmail.com / password123');
-    console.log('   - Trọng Tín: admin1@gmail.com / password123');
-    console.log('📚 Courses:');
-    console.log(`   - Java Course (Jack): ACTIVE — share: /share/${javaCourse.share_token}`);
-    console.log(`   - C++ Course (Jack): ACTIVE — share: /share/${cppCourse.share_token}`);
-    console.log(`   - Python Course (Jack): ACTIVE — share: /share/${pythonCourse.share_token}`);
-    console.log(`   - React & Next.js Course (Jack): ACTIVE — share: /share/${reactCourse.share_token}`);
-    console.log(`   - React & Next.js Course (John cloned from Jack): ACTIVE — share: /share/${johnReactCourse.share_token}`);
+    console.log('✅ Learning progress created (completed, in-progress, quiz scores)');
+
+    console.log('\n🎉 Comprehensive database seeding completed successfully!');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('📊 TEST DATA OVERVIEW:');
+    console.log('👤 Users:');
+    console.log('   - John Doe: john@gmail.com / password123 (50 Credits, Stripe ID, Active progress)');
+    console.log('   - Jack Smith: jack@gmail.com / password123 (Creator, 10 Credits, Course Author)');
+    console.log('   - Alice Johnson: alice@gmail.com / password123 (BYOK User, TypeScript Creator)');
+    console.log('   - Bob Newbie: bob@gmail.com / password123 (Status: PENDING, Valid Activation Token)');
+    console.log('   - Trọng Tín (Admin): admin1@gmail.com / password123');
+    console.log('\n🤖 AI Generations & Economics (ai_generations):');
+    console.log('   - SHARED_FREE Cache Hit (Summary & Quiz): Ready on Java Source');
+    console.log('   - BYOK Shared Summary: Ready on TypeScript Source');
+    console.log('   - PAID_TIER Private Generation: Ready on React Source');
+    console.log('   - FAILED Generation: 429 Rate Limit error sample');
+    console.log('   - PENDING Generation: Async in-progress sample');
+    console.log('\n🔗 Multi-tier Clone Lineage (Fork Tree):');
+    console.log(`   - Root: Jack's React Space (ID: ${reactCourseA.id})`);
+    console.log(`   - Fork Level 1: John's Clone (ID: ${reactCourseB.id})`);
+    console.log(`   - Fork Level 2: Alice's Clone of John's Clone (ID: ${reactCourseC.id})`);
+    console.log('\n📝 Rich Notes with Video Timestamps:');
+    console.log('   - Java lesson (15s, 90s), React lesson (180s), TypeScript lesson (45s)');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 }
 
 main()
