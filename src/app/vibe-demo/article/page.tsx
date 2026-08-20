@@ -2,13 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { CheckCircle2, Circle, ChevronRight, X, Maximize2, Minimize2, ListVideo, StickyNote, Plus } from 'lucide-react';
-import { Be_Vietnam_Pro } from 'next/font/google';
-
-const beVietnam = Be_Vietnam_Pro({
-  subsets: ['vietnamese', 'latin'],
-  weight: ['300', '400', '500', '600', '700'],
-  display: 'swap',
-});
+import { beVietnam, R, TOP_BAR_H, MARGIN_W, useIsCompact, VIBE_GLOBAL_CSS } from '@/lib/vibe/theme';
 
 /* ─── Data ──────────────────────────────────────────────────────────────── */
 type Status = 'completed' | 'in_progress' | 'not_started';
@@ -41,51 +35,7 @@ const INITIAL_NOTES: Note[] = [
   { id: 'n2', anchor: '§3', text: 'Effect chạy SAU paint, không chặn hiển thị' },
 ];
 
-/* ─── Tokens ─────────────────────────────────────────────────────────────── */
-// "Mực xanh trên giấy trắng" — cùng hệ token với /vibe-demo (bản video).
-// Stage của bản article là TRANG SÁCH: một cột chữ dài trên giấy trắng,
-// mục (§) đánh số trong lề, code và trích dẫn cũng nằm theo ngữ pháp lề vở.
-// Chữ ký riêng của trang: VỆT MỰC ĐỌC — thanh mực mảnh ngay dưới top bar
-// chảy dài theo tiến độ cuộn, như bút chì kẻ đến đâu đọc đến đó.
-const T = {
-  page:    '#FAFAF7',
-  room:    '#1A1C22', // phòng tắt đèn — nền focus mode
-  panel:   '#FFFFFF',
-  ink:     '#212633',
-  inkMid:  'rgba(33,38,51,0.72)',
-  inkMuted:'rgba(33,38,51,0.50)',
-  inkDim:  'rgba(33,38,51,0.28)',
-  border:  'rgba(33,38,51,0.10)',
-  borderHi:'rgba(33,38,51,0.20)',
-  accent:  '#2E4A9E',
-  accentA: 'rgba(46,74,158,0.08)',
-  marginLn:'rgba(46,74,158,0.30)',
-  onAccent:'#FFFFFF',
-  accentScreen: '#8FA6EE', // bản sáng của accent — chỉ dùng trên nền tối (top bar focus)
-  codeBg:  'rgba(33,38,51,0.045)',
-  shadowSm:'0 1px 2px rgba(33,38,51,0.04), 0 4px 12px -6px rgba(33,38,51,0.08)',
-  shadowMd:'0 2px 4px rgba(33,38,51,0.04), 0 16px 40px -16px rgba(33,38,51,0.20)',
-  sans:    `${beVietnam.style.fontFamily}, -apple-system, 'Segoe UI', Roboto, sans-serif`,
-  mono:    "'JetBrains Mono','Fira Code',monospace",
-} as const;
-
 type PanelTab = 'playlist' | 'notes';
-
-const TOP_BAR_H = 52;
-const R = { sm: 6, md: 12, lg: 16 };
-const MARGIN_W = 56;
-
-function useIsCompact(breakpointPx: number): boolean {
-  const [isCompact, setIsCompact] = useState(false);
-  useEffect(() => {
-    const mq = window.matchMedia(`(max-width: ${breakpointPx}px)`);
-    const update = () => setIsCompact(mq.matches);
-    update();
-    mq.addEventListener('change', update);
-    return () => mq.removeEventListener('change', update);
-  }, [breakpointPx]);
-  return isCompact;
-}
 
 /* ─── Page ───────────────────────────────────────────────────────────────── */
 export default function VibeArticleDemoPage() {
@@ -151,7 +101,7 @@ export default function VibeArticleDemoPage() {
 
   /* ── Rail: tab Bài học / Ghi chú (cùng cấu trúc với bản video) ── */
   const renderTabs = () => (
-    <div style={{ flexShrink: 0, display: 'flex', borderBottom: `1px solid ${T.border}` }}>
+    <div className="shrink-0 flex border-b border-ink-border">
       {([
         { key: 'playlist' as const, label: 'Bài học', count: `${done}/${lessons.length}` },
         { key: 'notes'    as const, label: 'Ghi chú', count: String(notes.length) },
@@ -161,17 +111,12 @@ export default function VibeArticleDemoPage() {
           <button
             key={tab.key}
             onClick={() => setPanelTab(tab.key)}
-            style={{
-              flex: 1, display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 6,
-              padding: '12px 8px', background: 'none', cursor: 'pointer',
-              border: 'none', borderBottom: `2px solid ${isActive ? T.accent : 'transparent'}`,
-              fontFamily: T.sans, fontSize: 14, fontWeight: isActive ? 600 : 400,
-              color: isActive ? T.ink : T.inkMuted,
-              transition: 'color 120ms, border-color 120ms',
-            }}
+            className={`flex-1 flex items-baseline justify-center gap-1.5 py-3 px-2 bg-none cursor-pointer border-0 border-b-2 text-sm transition-colors duration-[120ms] ${
+              isActive ? 'border-ink-accent font-semibold text-ink-text' : 'border-transparent font-normal text-ink-textMuted'
+            }`}
           >
             <span>{tab.label}</span>
-            <span style={{ fontFamily: T.mono, fontSize: 11, color: isActive ? T.accent : T.inkDim }}>{tab.count}</span>
+            <span className={`font-mono text-[11px] ${isActive ? 'text-ink-accent' : 'text-ink-textDim'}`}>{tab.count}</span>
           </button>
         );
       })}
@@ -179,7 +124,7 @@ export default function VibeArticleDemoPage() {
   );
 
   const renderPlaylist = () => (
-    <div style={{ flex: 1, overflowY: 'auto', padding: '6px 0' }} className="cs-scrollbar">
+    <div className="flex-1 overflow-y-auto py-1.5 cs-scrollbar">
       {lessons.map((l, i) => {
         const isActive = l.id === activeId;
         const isDone   = l.status === 'completed';
@@ -193,57 +138,41 @@ export default function VibeArticleDemoPage() {
             tabIndex={0}
             onClick={() => setActiveId(l.id)}
             onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActiveId(l.id); } }}
-            className="vd-focusable"
-            style={{
-              display: 'flex', alignItems: 'stretch',
-              cursor: 'pointer',
-              background: isActive ? T.accentA : 'transparent',
-              transition: 'background 120ms',
-            }}
+            className="vd-focusable flex items-stretch cursor-pointer transition-colors duration-[120ms]"
+            style={{ background: isActive ? 'rgba(46,74,158,0.08)' : 'transparent' }}
             onMouseEnter={e => { if (!isActive) (e.currentTarget as HTMLElement).style.background = 'rgba(33,38,51,0.03)'; }}
-            onMouseLeave={e => { if (!isActive) (e.currentTarget as HTMLElement).style.background = isActive ? T.accentA : 'transparent'; }}
+            onMouseLeave={e => { if (!isActive) (e.currentTarget as HTMLElement).style.background = isActive ? 'rgba(46,74,158,0.08)' : 'transparent'; }}
           >
-            <span style={{
-              width: MARGIN_W, flexShrink: 0,
-              display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
-              paddingTop: 13,
-              fontFamily: T.mono, fontSize: 11,
-              color: isActive ? T.accent : T.inkDim,
-              fontWeight: isActive ? 600 : 400,
-            }}>
+            <span
+              style={{ width: MARGIN_W }}
+              className={`shrink-0 flex items-start justify-center pt-[13px] font-mono text-[11px] ${
+                isActive ? 'text-ink-accent font-semibold' : 'text-ink-textDim font-normal'
+              }`}
+            >
               {String(i + 1).padStart(2, '0')}
             </span>
 
-            <div style={{
-              flex: 1, minWidth: 0,
-              borderLeft: `1px solid ${T.marginLn}`,
-              padding: '11px 12px 11px 14px',
-              display: 'flex', alignItems: 'flex-start', gap: 10,
-            }}>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{
-                  fontFamily: T.sans, fontSize: 14, lineHeight: 1.4,
-                  color: isActive ? T.ink : isDone ? T.inkMuted : T.inkMid,
-                  fontWeight: isActive ? 600 : 450,
-                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                }}>
+            <div className="flex-1 min-w-0 border-l border-ink-marginLn py-[11px] pr-3 pl-[14px] flex items-start gap-2.5">
+              <div className="flex-1 min-w-0">
+                <div className={`text-sm leading-[1.4] overflow-hidden text-ellipsis whitespace-nowrap ${
+                  isActive ? 'text-ink-text font-semibold' : `font-[450] ${isDone ? 'text-ink-textMuted' : 'text-ink-textMid'}`
+                }`}>
                   {l.title}
                 </div>
-                <div style={{ fontFamily: T.mono, fontSize: 11, color: T.inkDim, marginTop: 4, display: 'flex', gap: 8 }}>
+                <div className="font-mono text-[11px] text-ink-textDim mt-1 flex gap-2">
                   <span>{l.duration}</span>
-                  {isNext && <span style={{ color: T.accent, fontFamily: T.sans, fontWeight: 500 }}>tiếp theo →</span>}
+                  {isNext && <span className="text-ink-accent font-medium">tiếp theo →</span>}
                 </div>
               </div>
 
               <button
                 onClick={e => markDone(l.id, e)}
                 aria-label={isDone ? 'Bỏ đánh dấu hoàn thành' : 'Đánh dấu hoàn thành'}
-                className="vd-focusable"
-                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 0 0', flexShrink: 0 }}
+                className="vd-focusable bg-none border-0 cursor-pointer pt-0.5 pb-0 px-0 shrink-0"
               >
                 {isDone
-                  ? <CheckCircle2 size={15} style={{ color: T.accent }} />
-                  : <Circle       size={15} style={{ color: T.inkDim }} />
+                  ? <CheckCircle2 size={15} className="text-ink-accent" />
+                  : <Circle       size={15} className="text-ink-textDim" />
                 }
               </button>
             </div>
@@ -255,73 +184,52 @@ export default function VibeArticleDemoPage() {
 
   const renderNotes = () => (
     <>
-      <form onSubmit={addNote} style={{ flexShrink: 0, display: 'flex', alignItems: 'stretch', borderBottom: `1px solid ${T.border}` }}>
-        <span style={{
-          width: MARGIN_W, flexShrink: 0,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontFamily: T.mono, fontSize: 11, color: T.inkMuted,
-          userSelect: 'none',
-        }}>
+      <form onSubmit={addNote} className="shrink-0 flex items-stretch border-b border-ink-border">
+        <span
+          style={{ width: MARGIN_W }}
+          className="shrink-0 flex items-center justify-center font-mono text-[11px] text-ink-textMuted select-none"
+        >
           §{activeSection + 1}
         </span>
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', borderLeft: `1px solid ${T.marginLn}` }}>
+        <div className="flex-1 flex items-center border-l border-ink-marginLn">
           <input
             ref={inputRef}
             value={draft}
             onChange={e => setDraft(e.target.value)}
             placeholder="Ghi chú cho mục đang đọc…"
-            style={{
-              flex: 1, background: 'transparent', border: 'none', outline: 'none',
-              fontFamily: T.sans, fontSize: 15, color: T.ink,
-              padding: '12px 12px 12px 14px', caretColor: T.accent,
-            }}
+            className="flex-1 bg-transparent border-0 outline-none text-[15px] text-ink-text py-3 pr-3 pl-[14px]"
+            style={{ caretColor: '#2E4A9E' }}
           />
           <button
             type="submit"
             aria-label="Thêm ghi chú"
-            className="vd-focusable"
-            style={{
-              padding: '10px 14px', background: 'none', border: 'none',
-              cursor: 'pointer', color: T.inkDim,
-              display: 'flex', alignItems: 'center',
-              transition: 'color 150ms',
-            }}
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = T.accent; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = T.inkDim; }}
+            className="vd-focusable py-2.5 px-3.5 bg-none border-0 cursor-pointer text-ink-textDim flex items-center transition-colors duration-150"
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#2E4A9E'; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'rgba(33,38,51,0.28)'; }}
           >
             <Plus size={15} />
           </button>
         </div>
       </form>
 
-      <div style={{ flex: 1, overflowY: 'auto', paddingBottom: 6 }} className="cs-scrollbar">
+      <div className="flex-1 overflow-y-auto pb-1.5 cs-scrollbar">
         {notes.length === 0 && (
-          <div style={{ display: 'flex', alignItems: 'stretch' }}>
-            <span style={{ width: MARGIN_W, flexShrink: 0 }} />
-            <div style={{
-              flex: 1, borderLeft: `1px solid ${T.marginLn}`,
-              padding: '14px 12px 14px 14px',
-              fontFamily: T.sans, fontSize: 14, color: T.inkDim,
-            }}>
+          <div className="flex items-stretch">
+            <span style={{ width: MARGIN_W }} className="shrink-0" />
+            <div className="flex-1 border-l border-ink-marginLn pt-3.5 pr-3 pb-3.5 pl-[14px] text-sm text-ink-textDim">
               Chưa có ghi chú nào. Nét mực đầu tiên của bạn sẽ nằm ở đây.
             </div>
           </div>
         )}
         {notes.map(n => (
-          <div key={n.id} className="vd-ink-in" style={{ display: 'flex', alignItems: 'stretch' }}>
-            <span style={{
-              width: MARGIN_W, flexShrink: 0,
-              display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
-              paddingTop: 13,
-              fontFamily: T.mono, fontSize: 11, color: T.inkMuted,
-            }}>
+          <div key={n.id} className="vd-ink-in flex items-stretch">
+            <span
+              style={{ width: MARGIN_W }}
+              className="shrink-0 flex items-start justify-center pt-[13px] font-mono text-[11px] text-ink-textMuted"
+            >
               {n.anchor}
             </span>
-            <span style={{
-              flex: 1, borderLeft: `1px solid ${T.marginLn}`,
-              fontFamily: T.sans, fontSize: 15, color: T.inkMid,
-              padding: '11px 12px 11px 14px', lineHeight: 1.6,
-            }}>
+            <span className="flex-1 border-l border-ink-marginLn text-[15px] text-ink-textMid py-[11px] pr-3 pl-[14px] leading-[1.6]">
               {n.text}
             </span>
           </div>
@@ -333,23 +241,16 @@ export default function VibeArticleDemoPage() {
   /* ── Các khối văn bản theo ngữ pháp lề vở ── */
   const Section = ({ n, title, children }: { n: number; title: string; children: React.ReactNode }) => (
     <div ref={el => { sectionRefs.current[n - 1] = el; }}>
-      <div style={{ display: 'flex', alignItems: 'stretch', paddingTop: 30 }}>
-        <span style={{
-          width: MARGIN_W, flexShrink: 0,
-          display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
-          paddingTop: 4,
-          fontFamily: T.mono, fontSize: 12, fontWeight: 600,
-          color: activeSection === n - 1 ? T.accent : T.inkDim,
-          transition: 'color 200ms',
-        }}>
+      <div className="flex items-stretch pt-[30px]">
+        <span
+          style={{ width: MARGIN_W }}
+          className={`shrink-0 flex items-start justify-center pt-1 font-mono text-xs font-semibold transition-colors duration-200 ${
+            activeSection === n - 1 ? 'text-ink-accent' : 'text-ink-textDim'
+          }`}
+        >
           §{n}
         </span>
-        <h2 style={{
-          flex: 1, borderLeft: `1px solid ${T.marginLn}`,
-          padding: '0 32px 0 22px', margin: 0,
-          fontFamily: T.sans, fontSize: 19, fontWeight: 700,
-          letterSpacing: '-0.01em', color: T.ink, lineHeight: 1.4,
-        }}>
+        <h2 className="flex-1 border-l border-ink-marginLn pt-0 pr-8 pb-0 pl-[22px] m-0 text-[19px] font-bold tracking-[-0.01em] text-ink-text leading-[1.4]">
           {title}
         </h2>
       </div>
@@ -358,37 +259,27 @@ export default function VibeArticleDemoPage() {
   );
 
   const P = ({ children }: { children: React.ReactNode }) => (
-    <div style={{ display: 'flex', alignItems: 'stretch' }}>
-      <span style={{ width: MARGIN_W, flexShrink: 0 }} />
-      <p style={{
-        flex: 1, borderLeft: `1px solid ${T.marginLn}`,
-        padding: '12px 32px 4px 22px', margin: 0,
-        fontFamily: T.sans, fontSize: 16, fontWeight: 400,
-        color: T.inkMid, lineHeight: 1.75,
-      }}>
+    <div className="flex items-stretch">
+      <span style={{ width: MARGIN_W }} className="shrink-0" />
+      <p className="flex-1 border-l border-ink-marginLn pt-3 pr-8 pb-1 pl-[22px] m-0 text-base font-normal text-ink-textMid leading-[1.75]">
         {children}
       </p>
     </div>
   );
 
   const Code = ({ code }: { code: string }) => (
-    <div style={{ display: 'flex', alignItems: 'stretch' }}>
-      <span style={{
-        width: MARGIN_W, flexShrink: 0,
-        display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
-        paddingTop: 22,
-        fontFamily: T.mono, fontSize: 11, color: T.inkDim,
-      }}>
+    <div className="flex items-stretch">
+      <span
+        style={{ width: MARGIN_W }}
+        className="shrink-0 flex items-start justify-center pt-[22px] font-mono text-[11px] text-ink-textDim"
+      >
         {'</>'}
       </span>
-      <div style={{ flex: 1, borderLeft: `1px solid ${T.marginLn}`, padding: '14px 32px 4px 22px' }}>
-        <pre style={{
-          margin: 0, padding: '16px 18px',
-          background: T.codeBg, borderRadius: R.sm,
-          border: `1px solid ${T.border}`,
-          fontFamily: T.mono, fontSize: 13, lineHeight: 1.65,
-          color: T.ink, overflowX: 'auto',
-        }}>
+      <div className="flex-1 border-l border-ink-marginLn pt-3.5 pr-8 pb-1 pl-[22px]">
+        <pre
+          style={{ borderRadius: R.sm }}
+          className="m-0 py-4 px-[18px] bg-ink-codeBg border border-ink-border font-mono text-[13px] leading-[1.65] text-ink-text overflow-x-auto"
+        >
           {code}
         </pre>
       </div>
@@ -396,22 +287,14 @@ export default function VibeArticleDemoPage() {
   );
 
   const Quote = ({ children }: { children: React.ReactNode }) => (
-    <div style={{ display: 'flex', alignItems: 'stretch' }}>
-      <span style={{
-        width: MARGIN_W, flexShrink: 0,
-        display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
-        paddingTop: 16,
-        fontFamily: T.sans, fontSize: 22, fontWeight: 700, color: T.accent,
-        lineHeight: 1,
-      }}>
+    <div className="flex items-stretch">
+      <span
+        style={{ width: MARGIN_W }}
+        className="shrink-0 flex items-start justify-center pt-4 font-bold text-[22px] text-ink-accent leading-none"
+      >
         “
       </span>
-      <div style={{
-        flex: 1, borderLeft: `2px solid ${T.accent}`,
-        padding: '14px 32px 6px 22px',
-        fontFamily: T.sans, fontSize: 16.5, fontStyle: 'italic', fontWeight: 500,
-        color: T.ink, lineHeight: 1.7,
-      }}>
+      <div className="flex-1 border-l-2 border-ink-accent pt-3.5 pr-8 pb-1.5 pl-[22px] text-[16.5px] italic font-medium text-ink-text leading-[1.7]">
         {children}
       </div>
     </div>
@@ -419,36 +302,25 @@ export default function VibeArticleDemoPage() {
 
   /* ── Trang sách — stage của bản article ── */
   const renderArticle = () => (
-    <div style={{
-      width: 'min(100%, 720px)',
-      margin: '0 auto',
-      background: T.panel,
-      border: `1px solid ${T.border}`,
-      borderRadius: R.lg,
-      boxShadow: T.shadowMd,
-      overflow: 'hidden',
-    }}>
+    <div
+      style={{ borderRadius: R.lg, boxShadow: '0 2px 4px rgba(33,38,51,0.04), 0 16px 40px -16px rgba(33,38,51,0.20)' }}
+      className="w-[min(100%,720px)] mx-auto bg-ink-panel border border-ink-border overflow-hidden"
+    >
       {/* Đầu trang */}
-      <div style={{ display: 'flex', alignItems: 'stretch', paddingTop: 34 }}>
-        <span style={{ width: MARGIN_W, flexShrink: 0 }} />
-        <div style={{ flex: 1, borderLeft: `1px solid ${T.marginLn}`, padding: '0 32px 22px 22px' }}>
-          <div style={{
-            display: 'flex', alignItems: 'baseline', gap: 10,
-            fontFamily: T.sans, fontSize: 13, fontWeight: 500, color: T.inkMuted, marginBottom: 8,
-          }}>
+      <div className="flex items-stretch pt-[34px]">
+        <span style={{ width: MARGIN_W }} className="shrink-0" />
+        <div className="flex-1 border-l border-ink-marginLn pt-0 pr-8 pb-[22px] pl-[22px]">
+          <div className="flex items-baseline gap-2.5 text-[13px] font-medium text-ink-textMuted mb-2">
             <span>Bài đọc</span>
-            <span style={{ fontFamily: T.mono, fontSize: 11, color: T.inkDim }}>{active.duration}</span>
-            <span style={{ marginLeft: 'auto', fontFamily: T.mono, fontSize: 11, color: readPct >= 100 ? T.accent : T.inkDim }}>
+            <span className="font-mono text-[11px] text-ink-textDim">{active.duration}</span>
+            <span className={`ml-auto font-mono text-[11px] ${readPct >= 100 ? 'text-ink-accent' : 'text-ink-textDim'}`}>
               đã đọc {readPct}%
             </span>
           </div>
-          <div style={{
-            fontFamily: T.sans, fontSize: 26, fontWeight: 700,
-            letterSpacing: '-0.015em', color: T.ink, lineHeight: 1.3,
-          }}>
+          <div className="text-[26px] font-bold tracking-[-0.015em] text-ink-text leading-[1.3]">
             Hooks: tư duy đúng về state và effect
           </div>
-          <div style={{ fontFamily: T.sans, fontSize: 15.5, color: T.inkMuted, marginTop: 10, lineHeight: 1.65 }}>
+          <div className="text-[15.5px] text-ink-textMuted mt-2.5 leading-[1.65]">
             Bốn hiểu lầm phổ biến nhất khi mới học useState và useEffect — và mô hình
             tư duy thay thế cho từng cái.
           </div>
@@ -459,7 +331,7 @@ export default function VibeArticleDemoPage() {
         <P>
           Mỗi lần render, component của bạn nhận một <em>ảnh chụp</em> state tại thời điểm đó.
           Mọi biến, mọi hàm, mọi closure trong lần render ấy đều nhìn thấy đúng bản chụp này —
-          không phải &quot;giá trị mới nhất&quot;. Đây là lý do một <code style={{ fontFamily: T.mono, fontSize: 14 }}>setTimeout</code> đặt
+          không phải &quot;giá trị mới nhất&quot;. Đây là lý do một <code className="font-mono text-sm">setTimeout</code> đặt
           trong render cũ vẫn in ra giá trị cũ: nó đóng gói theo ảnh chụp của lần render đã tạo ra nó.
         </P>
         <P>
@@ -470,7 +342,7 @@ export default function VibeArticleDemoPage() {
 
       <Section n={2} title="setState là lời hẹn, không phải lệnh gán">
         <P>
-          Gọi <code style={{ fontFamily: T.mono, fontSize: 14 }}>setCount(count + 1)</code> không đổi
+          Gọi <code className="font-mono text-sm">setCount(count + 1)</code> không đổi
           giá trị ngay — nó <em>đặt lịch</em> một lần render mới. Trong cùng một event handler,
           gọi ba lần vẫn chỉ +1, vì cả ba lần đều đọc chung một ảnh chụp:
         </P>
@@ -516,20 +388,15 @@ setCount(c => c + 1); // 2 → 3`} />
           ['b', 'Request bất đồng bộ — đánh dấu &quot;đã hủy&quot; để response về muộn không setState lên component đã unmount.'],
           ['c', 'Timer — clearInterval/clearTimeout, nếu không đồng hồ cũ vẫn chạy song song đồng hồ mới.'],
         ].map(([m, text]) => (
-          <div key={m} style={{ display: 'flex', alignItems: 'stretch' }}>
-            <span style={{
-              width: MARGIN_W, flexShrink: 0,
-              display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
-              paddingTop: 14,
-              fontFamily: T.mono, fontSize: 11, color: T.inkDim,
-            }}>
+          <div key={m} className="flex items-stretch">
+            <span
+              style={{ width: MARGIN_W }}
+              className="shrink-0 flex items-start justify-center pt-3.5 font-mono text-[11px] text-ink-textDim"
+            >
               {m}
             </span>
-            <div style={{
-              flex: 1, borderLeft: `1px solid ${T.marginLn}`,
-              padding: '12px 32px 0 22px',
-              fontFamily: T.sans, fontSize: 15.5, color: T.inkMid, lineHeight: 1.7,
-            }}
+            <div
+              className="flex-1 border-l border-ink-marginLn pt-3 pr-8 pb-0 pl-[22px] text-[15.5px] text-ink-textMid leading-[1.7]"
               dangerouslySetInnerHTML={{ __html: text }}
             />
           </div>
@@ -540,37 +407,26 @@ setCount(c => c + 1); // 2 → 3`} />
       </Section>
 
       {/* Cuối trang: đánh dấu đã đọc + bài tiếp theo */}
-      <div style={{ display: 'flex', alignItems: 'stretch', marginTop: 30, borderTop: `1px solid ${T.border}` }}>
-        <span style={{
-          width: MARGIN_W, flexShrink: 0,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontFamily: T.mono, fontSize: 11, color: T.inkDim,
-        }}>
+      <div className="flex items-stretch mt-[30px] border-t border-ink-border">
+        <span
+          style={{ width: MARGIN_W }}
+          className="shrink-0 flex items-center justify-center font-mono text-[11px] text-ink-textDim"
+        >
           hết
         </span>
-        <div style={{
-          flex: 1, borderLeft: `1px solid ${T.marginLn}`,
-          padding: '18px 32px 18px 22px',
-          display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
-        }}>
+        <div className="flex-1 border-l border-ink-marginLn py-[18px] pr-8 pl-[22px] flex items-center gap-3 flex-wrap">
           <button
             onClick={() => markDone(active.id)}
-            className="vd-focusable"
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: 8,
-              padding: '10px 18px',
-              background: isRead ? 'none' : T.accent,
-              color: isRead ? T.accent : T.onAccent,
-              border: isRead ? `1px solid ${T.accent}` : 'none',
-              borderRadius: R.sm, cursor: 'pointer',
-              fontFamily: T.sans, fontSize: 14, fontWeight: 600,
-            }}
+            className={`vd-focusable inline-flex items-center gap-2 px-[18px] py-2.5 cursor-pointer text-sm font-semibold ${
+              isRead ? 'bg-none text-ink-accent border border-ink-accent' : 'text-ink-onAccent border-0 bg-ink-accent'
+            }`}
+            style={{ borderRadius: R.sm }}
           >
             <CheckCircle2 size={15} />
             {isRead ? 'Đã đọc xong' : 'Đánh dấu đã đọc xong'}
           </button>
-          <span style={{ marginLeft: 'auto', fontFamily: T.sans, fontSize: 13.5, color: T.inkMuted }}>
-            Tiếp theo: <span style={{ color: T.accent, fontWeight: 500 }}>useMemo, useCallback &amp; Performance →</span>
+          <span className="ml-auto text-[13.5px] text-ink-textMuted">
+            Tiếp theo: <span className="text-ink-accent font-medium">useMemo, useCallback &amp; Performance →</span>
           </span>
         </div>
       </div>
@@ -579,163 +435,111 @@ setCount(c => c + 1); // 2 → 3`} />
 
   /* ─────────────────────────────────────────────────────────────────────── */
   return (
-    <>
-      <style>{`
-        .vd-focusable:focus-visible {
-          outline: 2px solid ${T.accent};
-          outline-offset: 2px;
-          border-radius: 4px;
-        }
-        @keyframes vd-ink-in {
-          from { opacity: 0; transform: translateY(-3px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-        .vd-ink-in { animation: vd-ink-in 400ms ease both; }
-        @media (prefers-reduced-motion: reduce) {
-          .vd-ink-in { animation: none; }
-        }
-      `}</style>
+    <div className={beVietnam.className}>
+      <style>{VIBE_GLOBAL_CSS}</style>
 
       {/* ══ TITLE BAR — tắt đèn cùng căn phòng khi vào focus mode ══ */}
-      <div style={{
-        position: 'fixed',
-        top: 0, left: 0, right: 0,
-        height: TOP_BAR_H,
-        zIndex: 50,
-        background: focusMode ? T.room : T.panel,
-        borderBottom: `1px solid ${focusMode ? 'rgba(244,246,252,0.10)' : T.border}`,
-        display: 'flex', alignItems: 'center',
-        padding: '0 28px', gap: 8,
-        fontFamily: T.sans, fontSize: 12.5,
-        color: focusMode ? 'rgba(244,246,252,0.45)' : T.inkMuted,
-        transition: 'background 600ms ease, border-color 600ms ease, color 600ms ease',
-      }}>
+      <div
+        style={{ height: TOP_BAR_H }}
+        className={`fixed top-0 left-0 right-0 z-50 flex items-center gap-2 px-7 text-[12.5px] transition-[background,border-color,color] duration-[600ms] ease-in-out ${
+          focusMode
+            ? 'bg-ink-room border-b border-b-[rgba(244,246,252,0.10)] text-[rgba(244,246,252,0.45)]'
+            : 'bg-ink-panel border-b border-ink-border text-ink-textMuted'
+        }`}
+      >
         <span>Spaces</span>
-        <ChevronRight size={11} style={{ color: focusMode ? 'rgba(244,246,252,0.25)' : T.inkDim }} />
+        <ChevronRight size={11} className={focusMode ? 'text-[rgba(244,246,252,0.25)]' : 'text-ink-textDim'} />
         <span>Lập trình web</span>
-        <ChevronRight size={11} style={{ color: focusMode ? 'rgba(244,246,252,0.25)' : T.inkDim }} />
-        <span style={{ color: focusMode ? 'rgba(244,246,252,0.85)' : T.ink, fontWeight: 500 }}>{active.chapter}</span>
+        <ChevronRight size={11} className={focusMode ? 'text-[rgba(244,246,252,0.25)]' : 'text-ink-textDim'} />
+        <span className={`font-medium ${focusMode ? 'text-[rgba(244,246,252,0.85)]' : 'text-ink-text'}`}>{active.chapter}</span>
 
-        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{
-              width: 80, height: 2, overflow: 'hidden', borderRadius: 1,
-              background: focusMode ? 'rgba(244,246,252,0.16)' : 'rgba(33,38,51,0.14)',
-            }}>
-              <div style={{
-                width: `${pct}%`, height: '100%',
-                background: focusMode ? T.accentScreen : T.accent,
-                transition: 'width 400ms ease',
-              }} />
+        <div className="ml-auto flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <div className={`w-20 h-0.5 overflow-hidden rounded-[1px] ${focusMode ? 'bg-[rgba(244,246,252,0.16)]' : 'bg-[rgba(33,38,51,0.14)]'}`}>
+              <div
+                style={{ width: `${pct}%` }}
+                className={`h-full transition-[width] duration-[400ms] ease-in-out ${focusMode ? 'bg-ink-accentScreen' : 'bg-ink-accent'}`}
+              />
             </div>
-            <span style={{ fontFamily: T.mono, fontSize: 11, color: focusMode ? T.accentScreen : T.accent }}>{pct}%</span>
+            <span className={`font-mono text-[11px] ${focusMode ? 'text-ink-accentScreen' : 'text-ink-accent'}`}>{pct}%</span>
           </div>
 
           <button
             onClick={toggleFocus}
             aria-label={focusMode ? 'Thoát focus mode' : 'Vào focus mode'}
             title={focusMode ? 'Thoát focus mode' : 'Focus mode — tắt đèn phòng, chỉ còn trang đọc'}
-            className="vd-focusable"
-            style={{
-              background: focusMode ? 'rgba(143,166,238,0.14)' : 'none',
-              border: `1px solid ${focusMode ? T.accentScreen : T.border}`, borderRadius: R.sm,
-              width: 26, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center',
-              cursor: 'pointer', color: focusMode ? T.accentScreen : T.inkMid, flexShrink: 0,
-            }}
+            className={`vd-focusable w-[26px] h-[26px] flex items-center justify-center cursor-pointer shrink-0 border ${
+              focusMode ? 'bg-[rgba(143,166,238,0.14)] border-ink-accentScreen text-ink-accentScreen' : 'bg-none border-ink-border text-ink-textMid'
+            }`}
+            style={{ borderRadius: R.sm }}
           >
             {focusMode ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
           </button>
         </div>
 
         {/* VỆT MỰC ĐỌC — chữ ký của trang: tiến độ cuộn chảy dưới top bar */}
-        <div style={{
-          position: 'absolute', left: 0, bottom: -1, height: 2,
-          width: `${readPct}%`,
-          background: focusMode ? T.accentScreen : T.accent,
-          transition: 'width 150ms linear',
-        }} />
+        <div
+          style={{ width: `${readPct}%` }}
+          className={`absolute left-0 -bottom-px h-0.5 transition-[width] duration-150 ease-linear ${focusMode ? 'bg-ink-accentScreen' : 'bg-ink-accent'}`}
+        />
       </div>
 
       {/* ══ WORKSPACE ══ */}
-      <div style={{
-        position: 'fixed',
-        top: TOP_BAR_H, left: 0, right: 0, bottom: 0,
-        zIndex: 1,
-        display: 'flex', justifyContent: 'center',
-        background: focusMode ? T.room : T.page,
-        transition: 'background 600ms ease',
-      }}>
-        <div style={{
-          width: '100%',
-          padding: isCompact ? '0 16px' : '0 32px',
-          display: 'grid',
-          gridTemplateColumns: (focusMode || isCompact) ? '1fr' : '1fr 340px',
-          gap: isCompact ? 16 : 36,
-          height: '100%',
-        }}>
+      <div
+        style={{ top: TOP_BAR_H }}
+        className={`fixed left-0 right-0 bottom-0 z-[1] flex justify-center transition-[background] duration-[600ms] ease-in-out ${focusMode ? 'bg-ink-room' : 'bg-ink-page'}`}
+      >
+        <div
+          className="w-full h-full grid"
+          style={{
+            padding: isCompact ? '0 16px' : '0 32px',
+            gridTemplateColumns: (focusMode || isCompact) ? '1fr' : '1fr 340px',
+            gap: isCompact ? 16 : 36,
+          }}
+        >
 
           {/* ══ LEFT COLUMN — trang đọc. Cột LUÔN cuộn vì bài đọc dài theo nội dung. ══ */}
           <div
             ref={scrollRef}
             onScroll={onScroll}
-            style={{
-              position: 'relative', display: 'flex', flexDirection: 'column',
-              height: '100%',
-              overflowY: 'auto',
-              paddingBottom: 48,
-              justifyContent: 'flex-start',
-            }}
-            className="cs-scrollbar"
+            className="relative flex flex-col h-full overflow-y-auto pb-12 justify-start cs-scrollbar"
           >
             {!focusMode && (
-              <div style={{ flexShrink: 0, paddingTop: 18, paddingBottom: 14 }}>
-                <h1 style={{
-                  fontFamily: T.sans, fontSize: 'clamp(19px, 2.1vw, 26px)', fontWeight: 700,
-                  letterSpacing: '-0.015em', lineHeight: 1.25,
-                  margin: 0, color: T.ink,
-                }}>
+              <div className="shrink-0 pt-[18px] pb-3.5">
+                <h1 className="text-[clamp(19px,2.1vw,26px)] font-bold tracking-[-0.015em] leading-[1.25] m-0 text-ink-text">
                   {active.title}
                 </h1>
               </div>
             )}
 
-            <div style={{ flexShrink: 0, position: 'relative', paddingTop: focusMode ? 40 : 0 }}>
+            <div className="shrink-0 relative" style={{ paddingTop: focusMode ? 40 : 0 }}>
               {renderArticle()}
 
               {/* ── FOCUS MODE: overlay panel + trigger (như bản video) ── */}
               {focusMode && (
                 <>
-                  <div style={{
-                    position: 'fixed',
-                    top: TOP_BAR_H, right: 24, bottom: 24, zIndex: 30,
-                    marginTop: 24,
-                    width: 'min(400px, 86vw)',
-                    display: 'flex', flexDirection: 'column',
-                    background: T.panel,
-                    border: `1px solid ${T.border}`,
-                    borderRadius: R.lg, overflow: 'hidden',
-                    boxShadow: T.shadowMd,
-                    opacity: overlayOpen ? 1 : 0,
-                    transform: overlayOpen ? 'translateX(0)' : 'translateX(12px)',
-                    pointerEvents: overlayOpen ? 'auto' : 'none',
-                    transition: 'opacity 200ms ease, transform 200ms ease',
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center' }}>
-                      <div style={{ flex: 1 }}>{renderTabs()}</div>
+                  <div
+                    style={{
+                      top: TOP_BAR_H,
+                      borderRadius: R.lg,
+                      boxShadow: '0 2px 4px rgba(33,38,51,0.04), 0 16px 40px -16px rgba(33,38,51,0.20)',
+                      opacity: overlayOpen ? 1 : 0,
+                      transform: overlayOpen ? 'translateX(0)' : 'translateX(12px)',
+                      pointerEvents: overlayOpen ? 'auto' : 'none',
+                    }}
+                    className="fixed right-6 bottom-6 z-30 mt-6 w-[min(400px,86vw)] flex flex-col bg-ink-panel border border-ink-border overflow-hidden transition-[opacity,transform] duration-200 ease-in-out"
+                  >
+                    <div className="flex items-center">
+                      <div className="flex-1">{renderTabs()}</div>
                       <button
                         onClick={() => setOverlayOpen(false)}
                         aria-label="Ẩn overlay"
-                        className="vd-focusable"
-                        style={{
-                          flexShrink: 0, background: 'none', border: 'none', cursor: 'pointer',
-                          color: T.inkDim, padding: '0 14px', display: 'flex', alignItems: 'center',
-                          borderBottom: `1px solid ${T.border}`, height: '100%',
-                        }}
+                        className="vd-focusable shrink-0 bg-none border-0 cursor-pointer text-ink-textDim px-3.5 flex items-center border-b border-ink-border h-full"
                       >
                         <X size={13} />
                       </button>
                     </div>
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                    <div className="flex-1 flex flex-col overflow-hidden">
                       {panelTab === 'playlist' ? renderPlaylist() : renderNotes()}
                     </div>
                   </div>
@@ -745,18 +549,12 @@ setCount(c => c + 1); // 2 → 3`} />
                       setOverlayOpen(v => !v);
                       requestAnimationFrame(() => { if (panelTab === 'notes') inputRef.current?.focus(); });
                     }}
-                    className="vd-focusable"
+                    className="vd-focusable fixed right-6 bottom-6 z-20 flex items-center gap-2 py-[9px] px-4 bg-ink-panel border-0 text-[12.5px] font-medium text-ink-textMid transition-opacity duration-150 ease-in-out"
                     style={{
-                      position: 'fixed', right: 24, bottom: 24, zIndex: 20,
-                      display: 'flex', alignItems: 'center', gap: 8,
-                      padding: '9px 16px',
-                      background: T.panel, border: 'none',
-                      borderRadius: R.sm, cursor: 'pointer',
-                      boxShadow: T.shadowMd,
-                      fontFamily: T.sans, fontSize: 12.5, fontWeight: 500, color: T.inkMid,
+                      borderRadius: R.sm,
+                      boxShadow: '0 1px 2px rgba(33,38,51,0.04), 0 4px 12px -6px rgba(33,38,51,0.08)',
                       opacity: overlayOpen ? 0 : 1,
                       pointerEvents: overlayOpen ? 'none' : 'auto',
-                      transition: 'opacity 150ms ease',
                     }}
                   >
                     <ListVideo size={13} />
@@ -769,15 +567,12 @@ setCount(c => c + 1); // 2 → 3`} />
 
             {/* Compact & không focus: tab xếp dưới trang đọc */}
             {isCompact && !focusMode && (
-              <div style={{
-                flexShrink: 0, marginTop: 16, minHeight: 360,
-                display: 'flex', flexDirection: 'column',
-                background: T.panel, border: `1px solid ${T.border}`,
-                borderRadius: R.md, overflow: 'hidden',
-                boxShadow: T.shadowSm,
-              }}>
+              <div
+                style={{ borderRadius: R.md, boxShadow: '0 1px 2px rgba(33,38,51,0.04), 0 4px 12px -6px rgba(33,38,51,0.08)' }}
+                className="shrink-0 mt-4 min-h-[360px] flex flex-col bg-ink-panel border border-ink-border overflow-hidden"
+              >
                 {renderTabs()}
-                <div style={{ display: 'flex', flexDirection: 'column', minHeight: 320 }}>
+                <div className="flex flex-col min-h-[320px]">
                   {panelTab === 'playlist' ? renderPlaylist() : renderNotes()}
                 </div>
               </div>
@@ -786,15 +581,12 @@ setCount(c => c + 1); // 2 → 3`} />
 
           {/* ══ RIGHT — rail cố định ══ */}
           {!focusMode && !isCompact && (
-            <div style={{
-              display: 'flex', flexDirection: 'column',
-              height: 'calc(100% - 30px)', marginTop: 30,
-              overflow: 'hidden',
-              background: T.panel, border: `1px solid ${T.border}`,
-              borderRadius: R.md, boxShadow: T.shadowSm,
-            }}>
+            <div
+              style={{ borderRadius: R.md, boxShadow: '0 1px 2px rgba(33,38,51,0.04), 0 4px 12px -6px rgba(33,38,51,0.08)' }}
+              className="flex flex-col h-[calc(100%-30px)] mt-[30px] overflow-hidden bg-ink-panel border border-ink-border"
+            >
               {renderTabs()}
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+              <div className="flex-1 flex flex-col overflow-hidden">
                 {panelTab === 'playlist' ? renderPlaylist() : renderNotes()}
               </div>
             </div>
@@ -802,6 +594,6 @@ setCount(c => c + 1); // 2 → 3`} />
 
         </div>
       </div>
-    </>
+    </div>
   );
 }

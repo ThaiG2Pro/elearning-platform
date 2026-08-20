@@ -324,6 +324,13 @@ export class AIGenerationService {
 
         const questionCount = Number(params.questionCount) || 10;
         const difficulty = (params.difficulty as string) ?? 'medium';
-        return `Tạo đúng ${questionCount} câu hỏi trắc nghiệm (4 đáp án, 1 đáp án đúng) độ khó ${difficulty} ${languageInstruction} dựa trên nội dung sau, trả về dạng JSON array.${segmentInstruction}\n\n${transcript}`;
+        // Schema field names cố định (content/options/correctAnswer) khớp
+        // đúng `ParsedQuestionDto` phía backend (xem QuizService — cùng
+        // shape với luồng Excel upload) — để client (parseAIQuizContent,
+        // src/lib/aiGeneration.ts) có thể parse ra quiz thật và cho phép
+        // "AI tạo quiz" trong editor lưu thẳng thành 1 bài quiz mới, thay vì
+        // chỉ hiển thị văn bản thô như trước. Không có schema field cố định
+        // trước đây — model tự chọn shape tuỳ ý, không parse được.
+        return `Tạo đúng ${questionCount} câu hỏi trắc nghiệm (2-4 đáp án, 1 đáp án đúng) độ khó ${difficulty} ${languageInstruction} dựa trên nội dung sau. Trả về DUY NHẤT 1 JSON array hợp lệ, không kèm giải thích hay markdown, đúng schema: [{"content": string, "options": string[], "correctAnswer": string (phải là text của 1 phần tử trong options)}].${segmentInstruction}\n\n${transcript}`;
     }
 }

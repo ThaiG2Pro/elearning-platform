@@ -29,6 +29,12 @@ export interface Lesson {
     orderIndex: number;
     content?: string;
     videoUrl?: string;
+    // Đã có sẵn trong response thật của GET /courses/[id] (LessonDto.sourceId,
+    // WP2.3) nhưng chưa từng được khai báo ở type FE này — chỉ dùng ở
+    // courses/[id]/lessons cho AIGenerationPanel trên trang học. Bổ sung để
+    // editor (`/my-courses/[id]/edit`) cũng đọc được, cho phép nút "AI tạo
+    // quiz" hiện đúng chỗ khi lesson VIDEO có nguồn để tóm tắt/tạo quiz.
+    sourceId?: number | null;
 }
 
 export interface Chapter {
@@ -79,6 +85,7 @@ export interface LessonEdit {
     videoUrl?: string;
     orderIndex: number;
     type: 'VIDEO' | 'QUIZ';
+    sourceId?: number | null;
 }
 
 export interface ChapterEdit {

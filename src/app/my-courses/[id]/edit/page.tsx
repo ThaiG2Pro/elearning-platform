@@ -16,7 +16,14 @@ import {
     downloadQuizTemplate,
     updateCourseMetadata,
     getOrCreateShareLink,
+    saveGeneratedQuizQuestions,
 } from '@/lib/management';
+import {
+    generateAIContent,
+    parseAIQuizContent,
+    AIGenerationError,
+    AIQuizQuestionDraft,
+} from '@/lib/aiGeneration';
 import {
     CourseStructure,
     Chapter,
@@ -132,6 +139,27 @@ export default function CourseEditPage() {
     const [quizFile, setQuizFile] = useState<File | null>(null);
     const [quizUploadedCount, setQuizUploadedCount] = useState<number | null>(null);
 
+    // AI trong editor — bổ sung gap: dán link → vào editor → AI tự sinh
+    // quiz ngay tại đó, thay vì chỉ có đường Excel thủ công. Luôn do user
+    // chủ động bấm nút, không có gì tự chạy khi mở editor/thêm lesson mới.
+    const [aiLoading, setAiLoading] = useState<'summary' | 'quiz' | null>(null);
+    const [aiError, setAiError] = useState<string | null>(null);
+    const [aiErrorCode, setAiErrorCode] = useState<string | null>(null);
+    const [aiSummary, setAiSummary] = useState<string | null>(null);
+    const [aiQuizDraft, setAiQuizDraft] = useState<AIQuizQuestionDraft[] | null>(null);
+    // Nếu 2 lesson QUIZ khác nhau cùng chọn 1 video nguồn, kết quả AI sẽ
+    // GIỐNG HỆT NHAU — cache theo (source, recipe) dùng chung, đúng thiết
+    // kế tiết kiệm token (không gọi LLM 2 lần cho cùng 1 video), nhưng nhìn
+    // như "tự dưng trùng quiz của bài khác" nếu không nói rõ. Hiện dấu hiệu
+    // này ra UI thay vì để user tự đoán.
+    const [aiQuizServedFromCache, setAiQuizServedFromCache] = useState(false);
+    const [creatingAIQuizLesson, setCreatingAIQuizLesson] = useState(false);
+    // Đang mở 1 lesson QUIZ có sẵn (không tự có sourceId) — cho chọn 1 lesson
+    // VIDEO khác trong cùng chương để AI sinh quiz từ đó, rồi lưu thẳng vào
+    // đúng lesson QUIZ đang mở (không tạo lesson mới).
+    const [aiQuizSourceLessonId, setAiQuizSourceLessonId] = useState<number | null>(null);
+    const [savingAIQuizIntoCurrentLesson, setSavingAIQuizIntoCurrentLesson] = useState(false);
+
     const isProcessing = quizFlowStatus === 'processing';
     const isReviewing = quizFlowStatus === 'reviewing';
 
@@ -225,8 +253,17 @@ export default function CourseEditPage() {
             title: lesson.title,
             videoUrl: lesson.videoUrl || (lesson as any).contentUrl || '',
             orderIndex: lesson.orderIndex ?? 0,
-            type: lesson.type
+            type: lesson.type,
+            sourceId: lesson.sourceId ?? null,
         });
+        // Kết quả AI thuộc về lesson vừa chọn — đổi lesson phải xoá sạch, để
+        // không lỡ hiện tóm tắt/quiz của bài trước lẫn vào bài đang mở.
+        setAiError(null);
+        setAiErrorCode(null);
+        setAiSummary(null);
+        setAiQuizDraft(null);
+        setAiQuizServedFromCache(false);
+        setAiQuizSourceLessonId(null);
 
         setLoadingLessonDetail(true);
         try {
@@ -564,6 +601,129 @@ export default function CourseEditPage() {
             await downloadQuizTemplate();
         } catch (err: any) {
             setToast({ message: 'Không thể tải file mẫu: ' + getErrorMessage(err.message), type: 'error' });
+        }
+    };
+
+    // AI trong editor — luôn do user chủ động bấm (không có gì tự chạy).
+    // Dùng chung generateAIContent với AIGenerationPanel ở trang học: cùng 1
+    // Source có thể đã có bản SHARED_FREE cache sẵn từ lần ai đó generate ở
+    // trang học, nên bấm ở đây có thể trả về ngay (servedFromCache), không
+    // tốn thêm 1 lần gọi LLM.
+    const handleGenerateAISummary = async () => {
+        if (!lessonForm.sourceId) return;
+        setAiLoading('summary');
+        setAiError(null);
+        setAiErrorCode(null);
+        try {
+            const result = await generateAIContent(lessonForm.sourceId, 'summary');
+            // Bỏ sót ban đầu: 1 kết quả FAILED (LLM/proxy lỗi tạm thời) trả
+            // về HTTP 200 kèm content=null, không throw — thiếu check này
+            // khiến người dùng bấm nút mà không thấy gì xảy ra, không thấy
+            // lỗi, không hiểu vì sao (đúng như phản ánh thật). Cùng nhánh xử
+            // lý `status === 'FAILED'` mà AIGenerationPanel ở trang học đã có.
+            if (result.status === 'FAILED') {
+                setAiError('Tạo tóm tắt AI thất bại, thử lại sau.');
+            } else if (result.content) {
+                setAiSummary(result.content);
+            }
+        } catch (err: any) {
+            setAiError(err.message || 'Có lỗi xảy ra khi tạo tóm tắt bằng AI.');
+            if (err instanceof AIGenerationError) setAiErrorCode(err.code);
+        } finally {
+            setAiLoading(null);
+        }
+    };
+
+    // `sourceId` truyền rõ (không đọc thẳng lessonForm.sourceId) — dùng
+    // chung được cho 2 tình huống: (a) đang mở lesson VIDEO, tạo quiz từ
+    // chính source của nó; (b) đang mở 1 lesson QUIZ có sẵn (rỗng hoặc đã
+    // có câu hỏi cũ), muốn tạo quiz từ 1 video khác trong cùng chương — bản
+    // thân lesson QUIZ không có source riêng.
+    const handleGenerateAIQuiz = async (sourceId: number, paymentMethod?: 'CREDITS') => {
+        setAiLoading('quiz');
+        setAiError(null);
+        setAiErrorCode(null);
+        setAiQuizDraft(null);
+        setAiQuizServedFromCache(false);
+        try {
+            const result = await generateAIContent(sourceId, 'quiz', paymentMethod ? { paymentMethod } : undefined);
+            if (result.status === 'FAILED') {
+                setAiError('Tạo quiz AI thất bại, thử lại sau.');
+            } else if (result.content) {
+                setAiQuizDraft(parseAIQuizContent(result.content));
+                setAiQuizServedFromCache(result.servedFromCache);
+            }
+        } catch (err: any) {
+            setAiError(err.message || 'Có lỗi xảy ra khi tạo quiz bằng AI.');
+            if (err instanceof AIGenerationError) setAiErrorCode(err.code);
+        } finally {
+            setAiLoading(null);
+        }
+    };
+
+    // "Tạo bài quiz mới": biến bản nháp AI đã xem trước thành 1 lesson QUIZ
+    // thật trong cùng chương — đúng hình dung ban đầu (dán link → vào editor
+    // → AI sinh quiz ngay → thêm video khác → vào học 1 space chỉnh chu),
+    // trước đây phải quay lại trang học rồi không có cách nào gắn kết quả
+    // vào cấu trúc course.
+    const handleCreateQuizLessonFromAIDraft = async () => {
+        // Chương chứa lesson video vừa generate — tính lại tại chỗ (không
+        // dựa vào `parentChapterOfSelected`, biến chỉ được khai báo bên dưới
+        // trong phần render) để bài quiz mới luôn nằm cùng chương với video
+        // sinh ra nó.
+        const targetChapter = course?.chapters.find(ch => ch.lessons.some(l => l.id === lessonForm.id));
+        if (!aiQuizDraft || !targetChapter) return;
+        setCreatingAIQuizLesson(true);
+        try {
+            const chapterId = targetChapter.id;
+            const nextIndex = targetChapter.lessons.length + 1;
+            const title = `Quiz (AI) — ${lessonForm.title || 'bài học'}`;
+            const res = await createLesson(chapterId, { title, videoUrl: '', orderIndex: nextIndex, type: 'QUIZ' });
+            const newLessonId = Number((res as any).lessonId ?? (res as any).id);
+
+            await saveGeneratedQuizQuestions(newLessonId, aiQuizDraft);
+
+            const newLesson: Lesson = { id: newLessonId, title, type: 'QUIZ', orderIndex: nextIndex };
+            setCourse(prev => prev ? {
+                ...prev,
+                chapters: prev.chapters.map(ch => ch.id === chapterId ? { ...ch, lessons: [...ch.lessons, newLesson] } : ch)
+            } : null);
+            setAiQuizDraft(null);
+            setToast({ message: `Đã tạo bài quiz mới với ${aiQuizDraft.length} câu hỏi!`, type: 'success' });
+            selectLesson(newLesson);
+        } catch (err: any) {
+            setToast({ message: 'Không thể tạo bài quiz từ AI: ' + getErrorMessage(err.message), type: 'error' });
+        } finally {
+            setCreatingAIQuizLesson(false);
+        }
+    };
+
+    // Bổ sung sau feedback thật: mở 1 lesson QUIZ có sẵn (vd tạo tay qua
+    // "Thêm bài học" chọn loại Quiz, hoặc bài quiz cũ muốn làm lại) vốn
+    // không có nút AI nào — chỉ có upload Excel. Cho phép chọn 1 video khác
+    // trong cùng chương làm nguồn, AI sinh quiz, rồi LƯU THẲNG vào đúng
+    // lesson đang mở (thay thế toàn bộ câu hỏi cũ — cùng BR-UPLOAD-01 với
+    // Excel) thay vì tạo thêm 1 lesson mới.
+    const handleSaveAIQuizDraftIntoCurrentLesson = async () => {
+        if (!aiQuizDraft || !lessonForm.id) return;
+        setSavingAIQuizIntoCurrentLesson(true);
+        try {
+            const result = await saveGeneratedQuizQuestions(lessonForm.id, aiQuizDraft);
+            setQuizUploadedCount(result.savedCount);
+            setAiQuizDraft(null);
+            setToast({ message: `Đã lưu ${result.savedCount} câu hỏi (AI) vào bài quiz này!`, type: 'success' });
+            // Cùng pattern refresh với handleUploadQuiz — thay thế toàn bộ nên
+            // phải tải lại để "Câu hỏi hiện có" khớp đúng dữ liệu mới.
+            try {
+                const preview = await getLessonPreview(courseId, lessonForm.id);
+                setExistingQuizQuestions(preview.quizQuestions ?? []);
+            } catch {
+                // non-fatal — đã lưu thành công, chỉ là chưa refresh được preview
+            }
+        } catch (err: any) {
+            setToast({ message: 'Không thể lưu quiz từ AI: ' + getErrorMessage(err.message), type: 'error' });
+        } finally {
+            setSavingAIQuizIntoCurrentLesson(false);
         }
     };
 
@@ -1181,6 +1341,117 @@ export default function CourseEditPage() {
                                                 )}
                                             </div>
                                         </div>
+
+                                        {/* AI trong editor — bổ sung gap: chỉ hiện khi bài học có sourceId
+                                            (tạo từ link, có transcript để AI đọc). Luôn optional, luôn do user
+                                            chủ động bấm — không có gì tự chạy khi mở editor/thêm lesson mới. */}
+                                        {lessonForm.sourceId && (
+                                            <div className="border-t border-slate-100 pt-6">
+                                                <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                                                    <svg className="w-3.5 h-3.5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                                                    </svg>
+                                                    Dùng AI cho bài này
+                                                </h4>
+                                                <p className="text-[11px] text-slate-400 mb-3">
+                                                    AI đọc nội dung video này để tóm tắt hoặc tạo sẵn 1 bài quiz — chỉ chạy khi bạn bấm,
+                                                    kết quả quiz có thể lưu ngay thành 1 bài học mới trong chương này.
+                                                </p>
+
+                                                <div className="flex gap-2">
+                                                    <Button
+                                                        variant="outline"
+                                                        onClick={handleGenerateAISummary}
+                                                        disabled={aiLoading !== null}
+                                                        className="flex-1"
+                                                    >
+                                                        {aiLoading === 'summary' ? 'Đang tóm tắt…' : (aiSummary ? 'Tóm tắt lại' : 'AI tóm tắt bài này')}
+                                                    </Button>
+                                                    <Button
+                                                        variant="outline"
+                                                        onClick={() => lessonForm.sourceId && handleGenerateAIQuiz(lessonForm.sourceId)}
+                                                        disabled={aiLoading !== null}
+                                                        className="flex-1"
+                                                    >
+                                                        {aiLoading === 'quiz' ? 'Đang tạo quiz…' : (aiQuizDraft ? 'Tạo quiz lại' : 'AI tạo quiz 10 câu')}
+                                                    </Button>
+                                                </div>
+
+                                                {aiError && (
+                                                    <div className="mt-3 text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg p-2.5">
+                                                        {aiError}
+                                                        {aiErrorCode === 'AI_CUSTOM_RECIPE_REQUIRES_BYOK_OR_PAID' && (
+                                                            <button
+                                                                onClick={() => lessonForm.sourceId && handleGenerateAIQuiz(lessonForm.sourceId, 'CREDITS')}
+                                                                disabled={aiLoading !== null}
+                                                                className="mt-2 block px-2.5 py-1.5 rounded-lg text-[11px] font-medium bg-amber-600 text-white hover:bg-amber-700 disabled:opacity-50"
+                                                            >
+                                                                Trả phí để nền tảng tạo giúp
+                                                            </button>
+                                                        )}
+                                                        {aiErrorCode === 'AI_INSUFFICIENT_CREDITS' && (
+                                                            <a href="/billing" className="mt-2 block px-2.5 py-1.5 rounded-lg text-[11px] font-medium bg-amber-600 text-white hover:bg-amber-700 w-fit">
+                                                                Mua thêm credit
+                                                            </a>
+                                                        )}
+                                                    </div>
+                                                )}
+
+                                                {aiSummary && (
+                                                    <div className="mt-3 p-3 rounded-lg bg-slate-50 border border-slate-100">
+                                                        <p className="text-xs font-semibold text-slate-500 mb-1.5">Tóm tắt</p>
+                                                        <p className="text-sm text-slate-700 whitespace-pre-line">{aiSummary}</p>
+                                                    </div>
+                                                )}
+
+                                                {aiQuizDraft && (
+                                                    <div className="mt-3">
+                                                        {aiQuizServedFromCache && (
+                                                            <p className="text-[11px] text-indigo-500 mb-1.5">
+                                                                ℹ️ Video này đã có bản quiz AI tạo trước đó (dùng lại, không tốn thêm
+                                                                lượt gọi AI) — nếu bài quiz khác trong chương cũng chọn video này làm
+                                                                nguồn, câu hỏi sẽ giống hệt nhau.
+                                                            </p>
+                                                        )}
+                                                        <div className="flex items-center justify-between mb-2">
+                                                            <p className="text-xs font-semibold text-slate-500">
+                                                                Xem trước quiz do AI tạo ({aiQuizDraft.length} câu)
+                                                            </p>
+                                                            <Button
+                                                                onClick={handleCreateQuizLessonFromAIDraft}
+                                                                disabled={creatingAIQuizLesson}
+                                                                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                                                            >
+                                                                {creatingAIQuizLesson ? 'Đang tạo…' : 'Tạo bài quiz mới từ đây'}
+                                                            </Button>
+                                                        </div>
+                                                        <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
+                                                            {aiQuizDraft.map((q, idx) => (
+                                                                <div key={idx} className="border border-slate-200 rounded-xl p-4 bg-slate-50/50">
+                                                                    <p className="text-xs font-bold text-slate-800 mb-2">
+                                                                        Câu {idx + 1}: {q.content}
+                                                                    </p>
+                                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                                                        {q.options.map((opt, optIdx) => (
+                                                                            <div
+                                                                                key={optIdx}
+                                                                                className={`px-3 py-1.5 rounded-lg text-xs flex items-center justify-between ${
+                                                                                    opt.trim().toUpperCase() === q.correctAnswer.trim().toUpperCase()
+                                                                                        ? 'bg-emerald-100/70 text-emerald-800 font-semibold border border-emerald-300'
+                                                                                        : 'bg-white text-slate-600 border border-slate-200'
+                                                                                }`}
+                                                                            >
+                                                                                <span>{opt}</span>
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
                                 ) : editState === 'editingQuiz' ? (
                                     /* Quiz Lesson Form */
@@ -1267,6 +1538,125 @@ export default function CourseEditPage() {
                                             ) : (
                                                 <p className="text-xs text-slate-400">Chưa có câu hỏi nào trong bài học này.</p>
                                             )}
+
+                                            {/* Bổ sung: lesson QUIZ tự nó không có sourceId (tạo tay hoặc rỗng),
+                                                nên cho chọn 1 video làm nguồn để AI sinh quiz — trước đây chỉ có
+                                                mỗi đường upload Excel thủ công ở đây. Nguồn lấy từ TOÀN BỘ course
+                                                (không chỉ chương hiện tại) vì user có thể muốn dùng video ở chương
+                                                khác làm nguồn cho quiz này — luôn hiện dropdown (kể cả khi chỉ có
+                                                1 video) để rõ ràng là chọn được, không phải cố định. */}
+                                            {(() => {
+                                                const videoCandidates = course.chapters
+                                                    .flatMap(ch => ch.lessons.map(l => ({ ...l, chapterTitle: ch.title })))
+                                                    .filter((l): l is Lesson & { sourceId: number; chapterTitle: string } => l.type === 'VIDEO' && !!l.sourceId);
+                                                if (videoCandidates.length === 0) return null;
+                                                const inSameChapter = videoCandidates.filter(l => l.chapterTitle === parentChapterOfSelected?.title);
+                                                const defaultSourceId = inSameChapter[0]?.sourceId ?? videoCandidates[0].sourceId;
+                                                const selectedSourceId = aiQuizSourceLessonId ?? defaultSourceId;
+                                                const selectedVideo = videoCandidates.find(l => l.sourceId === selectedSourceId) ?? videoCandidates[0];
+                                                const multiChapter = new Set(videoCandidates.map(l => l.chapterTitle)).size > 1;
+                                                return (
+                                                    <div className="border-t border-slate-100 pt-4">
+                                                        <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                                                            Dùng AI tạo quiz cho bài “{lessonForm.title || 'chưa đặt tên'}”
+                                                        </h4>
+                                                        <p className="text-[11px] text-slate-400 mb-2">
+                                                            Chọn 1 video làm nguồn để AI đọc và sinh quiz. Kết quả lưu thẳng vào bài
+                                                            học đang mở (“{lessonForm.title || 'chưa đặt tên'}”, thay thế toàn bộ câu
+                                                            hỏi hiện có nếu có) — <strong>không đụng tới video hay bài quiz nào khác</strong>.
+                                                        </p>
+                                                        <select
+                                                            value={selectedSourceId}
+                                                            onChange={(e) => setAiQuizSourceLessonId(Number(e.target.value))}
+                                                            className="w-full mb-2 px-2.5 py-1.5 text-xs border border-slate-300 rounded-lg bg-white"
+                                                        >
+                                                            {videoCandidates.map((l) => (
+                                                                <option key={l.id} value={l.sourceId}>
+                                                                    {multiChapter ? `${l.chapterTitle} › ${l.title}` : l.title}
+                                                                </option>
+                                                            ))}
+                                                        </select>
+                                                        <p className="text-[11px] text-slate-500 mb-2">
+                                                            Nguồn hiện chọn: <span className="font-semibold text-slate-700">{selectedVideo.title}</span>
+                                                        </p>
+                                                        <Button
+                                                            variant="outline"
+                                                            onClick={() => handleGenerateAIQuiz(selectedSourceId)}
+                                                            disabled={aiLoading !== null}
+                                                            className="w-full"
+                                                        >
+                                                            {aiLoading === 'quiz' ? 'Đang tạo quiz…' : (aiQuizDraft ? 'Tạo quiz lại' : 'AI tạo quiz 10 câu')}
+                                                        </Button>
+
+                                                        {aiError && (
+                                                            <div className="mt-2 text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg p-2.5">
+                                                                {aiError}
+                                                                {aiErrorCode === 'AI_CUSTOM_RECIPE_REQUIRES_BYOK_OR_PAID' && (
+                                                                    <button
+                                                                        onClick={() => handleGenerateAIQuiz(selectedSourceId, 'CREDITS')}
+                                                                        disabled={aiLoading !== null}
+                                                                        className="mt-2 block px-2.5 py-1.5 rounded-lg text-[11px] font-medium bg-amber-600 text-white hover:bg-amber-700 disabled:opacity-50"
+                                                                    >
+                                                                        Trả phí để nền tảng tạo giúp
+                                                                    </button>
+                                                                )}
+                                                                {aiErrorCode === 'AI_INSUFFICIENT_CREDITS' && (
+                                                                    <a href="/billing" className="mt-2 block px-2.5 py-1.5 rounded-lg text-[11px] font-medium bg-amber-600 text-white hover:bg-amber-700 w-fit">
+                                                                        Mua thêm credit
+                                                                    </a>
+                                                                )}
+                                                            </div>
+                                                        )}
+
+                                                        {aiQuizDraft && (
+                                                            <div className="mt-3">
+                                                                {aiQuizServedFromCache && (
+                                                                    <p className="text-[11px] text-indigo-500 mb-1.5">
+                                                                        ℹ️ Video “{selectedVideo.title}” đã có bản quiz AI tạo trước đó
+                                                                        (dùng lại, không tốn thêm lượt gọi AI) — nếu bài quiz khác trong
+                                                                        chương cũng chọn video này, câu hỏi sẽ giống hệt nhau.
+                                                                    </p>
+                                                                )}
+                                                                <div className="flex items-center justify-between mb-2">
+                                                                    <p className="text-xs font-semibold text-slate-500">
+                                                                        Xem trước quiz do AI tạo ({aiQuizDraft.length} câu)
+                                                                    </p>
+                                                                    <Button
+                                                                        onClick={handleSaveAIQuizDraftIntoCurrentLesson}
+                                                                        disabled={savingAIQuizIntoCurrentLesson}
+                                                                        className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                                                                    >
+                                                                        {savingAIQuizIntoCurrentLesson ? 'Đang lưu…' : 'Lưu vào bài quiz này'}
+                                                                    </Button>
+                                                                </div>
+                                                                <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
+                                                                    {aiQuizDraft.map((q, idx) => (
+                                                                        <div key={idx} className="border border-slate-200 rounded-xl p-4 bg-slate-50/50">
+                                                                            <p className="text-xs font-bold text-slate-800 mb-2">
+                                                                                Câu {idx + 1}: {q.content}
+                                                                            </p>
+                                                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                                                                {q.options.map((opt, optIdx) => (
+                                                                                    <div
+                                                                                        key={optIdx}
+                                                                                        className={`px-3 py-1.5 rounded-lg text-xs flex items-center justify-between ${
+                                                                                            opt.trim().toUpperCase() === q.correctAnswer.trim().toUpperCase()
+                                                                                                ? 'bg-emerald-100/70 text-emerald-800 font-semibold border border-emerald-300'
+                                                                                                : 'bg-white text-slate-600 border border-slate-200'
+                                                                                        }`}
+                                                                                    >
+                                                                                        <span>{opt}</span>
+                                                                                    </div>
+                                                                                ))}
+                                                                            </div>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })()}
 
                                             <div>
                                                 <div className="flex items-center justify-between mb-1.5 gap-2">

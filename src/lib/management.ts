@@ -325,6 +325,30 @@ export const uploadQuizFile = async (lessonId: number, file: File): Promise<{ up
     }
 };
 
+// JSON counterpart of uploadQuizFile — dùng bởi luồng "AI tạo quiz" trong
+// editor (thay vì bắt user tự xuất ra Excel để tái dùng đường upload sẵn có).
+export const saveGeneratedQuizQuestions = async (
+    lessonId: number,
+    questions: { content: string; options: string[]; correctAnswer: string }[]
+): Promise<{ savedCount: number }> => {
+    try {
+        const response = await api.post<{ savedCount: number }>(
+            `/management/lessons/${lessonId}/quiz/questions`,
+            { questions }
+        );
+        return response.data;
+    } catch (error: any) {
+        if (error.response) {
+            const { status, data } = error.response;
+            if (status === 400) throw new Error(data?.message || data?.error || 'INVALID_QUESTIONS');
+            else if (status === 401) throw new Error('UNAUTHORIZED');
+            else if (status === 403) throw new Error('ACCESS_DENIED');
+            else if (status === 404) throw new Error('LESSON_NOT_FOUND');
+            else throw new Error('SERVER_ERROR');
+        } else throw new Error('NETWORK_ERROR');
+    }
+};
+
 // Update full course content (sections & lessons)
 export const updateCourseContent = async (courseId: number, payload: any): Promise<void> => {
     try {

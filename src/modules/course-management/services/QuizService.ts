@@ -100,6 +100,45 @@ export class QuizService {
         return { uploadedCount: parsedQuestions.length };
     }
 
+    /**
+     * Lưu bộ câu hỏi quiz đã có sẵn dạng JSON (`ParsedQuestionDto[]`) —
+     * dùng bởi luồng "AI tạo quiz" trong editor (bổ sung gap: dán link →
+     * vào editor → AI tự sinh quiz ngay tại đó, thay vì chỉ có đường Excel
+     * thủ công). Cùng validate (`QuizValidationPolicy.validateParsedQuestion`
+     * — 1 bộ luật duy nhất cho "câu hỏi hợp lệ", không phân biệt nguồn) và
+     * cùng ràng buộc replace-all (BR-UPLOAD-01) như `uploadQuizForLesson`,
+     * chỉ khác input đã parse sẵn thay vì buffer Excel.
+     */
+    async saveGeneratedQuestions(userId: bigint, lessonId: bigint, questions: ParsedQuestionDto[]): Promise<{ savedCount: number }> {
+        if (!this.questionRepo) {
+            throw new Error('QuestionRepository not provided');
+        }
+        if (this.prisma) {
+            const lesson = await this.prisma.lessons.findUnique({
+                where: { id: lessonId },
+                include: { chapter: { include: { course: true } } },
+            });
+            if (!lesson) {
+                throw new Error('LESSON_NOT_FOUND');
+            }
+            AccessControlPolicy.validateOwnership(userId, lesson.chapter.course.owner_id);
+        }
+
+        if (!Array.isArray(questions) || questions.length === 0) {
+            throw new Error('EMPTY_QUIZ_FILE');
+        }
+
+        questions.forEach((q, idx) => QuizValidationPolicy.validateParsedQuestion(q, idx + 1));
+
+        const domainQuestions: Omit<Question, 'id'>[] = questions.map(dto =>
+            new Question(BigInt(0), lessonId, dto.content, dto.options, dto.correctAnswer)
+        );
+
+        await this.questionRepo.replaceAllForLesson(lessonId, domainQuestions);
+
+        return { savedCount: questions.length };
+    }
+
     async generateQuiz(lessonId: bigint): Promise<QuizQuestionsDto> {
         if (!this.questionRepo) {
             throw new Error('QuestionRepository not provided');

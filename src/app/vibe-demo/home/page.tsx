@@ -1,14 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import { ChevronRight, Play, ArrowRight, Target } from 'lucide-react';
-import { Be_Vietnam_Pro } from 'next/font/google';
-
-const beVietnam = Be_Vietnam_Pro({
-  subsets: ['vietnamese', 'latin'],
-  weight: ['300', '400', '500', '600', '700'],
-  display: 'swap',
-});
+import { beVietnam, R, APP_TOP_BAR_H, useIsCompact, VIBE_GLOBAL_CSS } from '@/lib/vibe/theme';
+import { TopNav } from '@/components/vibe/TopNav';
 
 /* ─── Data ──────────────────────────────────────────────────────────────── */
 interface SpacePreview {
@@ -26,235 +21,160 @@ const SPACES: SpacePreview[] = [
 const WEEK = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
 const INK_DAYS = [true, true, false, true, true, true, false];
 
-/* ─── Tokens ─────────────────────────────────────────────────────────────── */
-const T = {
-  page:    '#FAFAF7',
-  room:    '#1A1C22',
-  panel:   '#FFFFFF',
-  ink:     '#212633',
-  inkMid:  'rgba(33,38,51,0.72)',
-  inkMuted:'rgba(33,38,51,0.50)',
-  inkDim:  'rgba(33,38,51,0.28)',
-  border:  'rgba(33,38,51,0.10)',
-  borderHi:'rgba(33,38,51,0.20)',
-  accent:  '#2E4A9E',
-  accentA: 'rgba(46,74,158,0.08)',
-  marginLn:'rgba(46,74,158,0.30)',
-  onAccent:'#FFFFFF',
-  accentScreen: '#8FA6EE',
-  shadowSm:'0 1px 2px rgba(33,38,51,0.04), 0 4px 12px -6px rgba(33,38,51,0.08)',
-  shadowMd:'0 2px 4px rgba(33,38,51,0.04), 0 16px 40px -16px rgba(33,38,51,0.20)',
-  sans:    `${beVietnam.style.fontFamily}, -apple-system, 'Segoe UI', Roboto, sans-serif`,
-  mono:    "'JetBrains Mono','Fira Code',monospace",
-} as const;
-
-const TOP_BAR_H = 56;
-const R = { sm: 6, md: 12, lg: 16 };
-
-function useIsCompact(breakpointPx: number): boolean {
-  const [isCompact, setIsCompact] = useState(false);
-  React.useEffect(() => {
-    const mq = window.matchMedia(`(max-width: ${breakpointPx}px)`);
-    const update = () => setIsCompact(mq.matches);
-    update();
-    mq.addEventListener('change', update);
-    return () => mq.removeEventListener('change', update);
-  }, [breakpointPx]);
-  return isCompact;
-}
-
-/* ─── Shared top nav — dùng chung cho các trang cấp ứng dụng
-   (Trang chủ / Giới thiệu / Không gian của tôi), khác với breadcrumb
-   trong các trang học. ─── */
-function TopNav({ active }: { active: 'home' | 'spaces' | 'about' }) {
-  const T_ = T;
-  const items: { key: typeof active; label: string; href: string }[] = [
-    { key: 'home',   label: 'Trang chủ',        href: '/vibe-demo/home' },
-    { key: 'spaces', label: 'Không gian của tôi', href: '/vibe-demo/spaces' },
-    { key: 'about',  label: 'Giới thiệu',        href: '/vibe-demo/about' },
-  ];
-  return (
-    <div style={{
-      position: 'fixed', top: 0, left: 0, right: 0, height: TOP_BAR_H, zIndex: 50,
-      background: T_.panel, borderBottom: `1px solid ${T_.border}`,
-      display: 'flex', alignItems: 'center', padding: '0 28px', gap: 28,
-    }}>
-      <a href="/vibe-demo/home" style={{
-        fontFamily: T_.sans, fontSize: 17, fontWeight: 700, color: T_.ink,
-        letterSpacing: '-0.01em', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 6,
-      }}>
-        <span style={{ color: T_.accent }}>✒</span> Spaces
-      </a>
-      <nav style={{ display: 'flex', gap: 22 }}>
-        {items.map(it => (
-          <a key={it.key} href={it.href} className="vd-focusable" style={{
-            fontFamily: T_.sans, fontSize: 14, fontWeight: it.key === active ? 600 : 450,
-            color: it.key === active ? T_.ink : T_.inkMuted,
-            textDecoration: 'none', padding: '4px 0',
-            borderBottom: `2px solid ${it.key === active ? T_.accent : 'transparent'}`,
-          }}>
-            {it.label}
-          </a>
-        ))}
-      </nav>
-      <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12 }}>
-        <div style={{
-          width: 30, height: 30, borderRadius: '50%',
-          background: T_.accent, color: T_.onAccent,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontFamily: T_.sans, fontSize: 12.5, fontWeight: 700,
-        }}>
-          TH
-        </div>
-      </div>
-    </div>
-  );
-}
-
 /* ─── Page ───────────────────────────────────────────────────────────────── */
 export default function VibeHomeDemoPage() {
   const isCompact = useIsCompact(900);
   const inkCount = INK_DAYS.filter(Boolean).length;
 
   return (
-    <>
-      <style>{`
-        .vd-focusable:focus-visible {
-          outline: 2px solid ${T.accent};
-          outline-offset: 2px;
-          border-radius: 4px;
-        }
-      `}</style>
+    <div className={beVietnam.className}>
+      <style>{VIBE_GLOBAL_CSS}</style>
 
       <TopNav active="home" />
 
-      <div style={{
-        position: 'fixed', top: TOP_BAR_H, left: 0, right: 0, bottom: 0,
-        background: T.page, overflowY: 'auto', display: 'flex', justifyContent: 'center',
-      }} className="cs-scrollbar">
-        <div style={{
-          width: '100%', maxWidth: 1180,
-          padding: isCompact ? '28px 16px 56px' : '40px 32px 64px',
-        }}>
+      <div
+        style={{ top: APP_TOP_BAR_H }}
+        className="fixed left-0 right-0 bottom-0 bg-ink-page overflow-y-auto flex justify-center cs-scrollbar"
+      >
+        <div
+          className="w-full max-w-[1180px]"
+          style={{ padding: isCompact ? '28px 16px 56px' : '40px 32px 64px' }}
+        >
           {/* ── Lời chào ── */}
-          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 28, flexWrap: 'wrap', gap: 8 }}>
-            <h1 style={{
-              fontFamily: T.sans, fontSize: 'clamp(22px, 2.6vw, 30px)', fontWeight: 700,
-              letterSpacing: '-0.015em', color: T.ink, margin: 0,
-            }}>
+          {/* Verified: user display name can be arbitrarily long in real data. This row
+              already wraps (flex-wrap + items-baseline) instead of squishing the date,
+              which is the graceful outcome — no truncate/title added here since cutting
+              off a user's own name reads worse than letting the greeting wrap. */}
+          <div className="flex items-baseline justify-between mb-7 flex-wrap gap-2">
+            <h1 className="text-[clamp(22px,2.6vw,30px)] font-bold tracking-[-0.015em] text-ink-text m-0 min-w-0">
               Chào buổi tối, Thái
             </h1>
-            <span style={{ fontFamily: T.mono, fontSize: 12.5, color: T.inkDim }}>
+            <span className="font-mono text-[12.5px] text-ink-textDim shrink-0">
               Thứ Tư, 19 tháng 8
             </span>
           </div>
 
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: isCompact ? '1fr' : '1fr 320px',
-            gap: isCompact ? 24 : 32,
-          }}>
+          <div
+            className="grid"
+            style={{
+              gridTemplateColumns: isCompact ? '1fr' : '1fr 320px',
+              gap: isCompact ? 24 : 32,
+            }}
+          >
             {/* ══ CỘT TRÁI: trang sổ đang mở ══ */}
             <div>
               {/* Thẻ "Đang học" — dải bookmark ở góc thay cho nhãn "tiếp tục" thường gặp */}
-              <div style={{
-                position: 'relative',
-                display: 'flex', flexDirection: isCompact ? 'column' : 'row',
-                background: T.panel, border: `1px solid ${T.border}`, borderRadius: R.lg,
-                boxShadow: T.shadowMd, overflow: 'hidden',
-              }}>
-                {/* Dải bookmark — nhô ra góc trên phải như dấu trang thật */}
-                <div style={{
-                  position: 'absolute', top: 0, right: 28,
-                  width: 30, height: 44,
-                  background: T.accent,
-                  clipPath: 'polygon(0 0, 100% 0, 100% 100%, 50% 78%, 0 100%)',
-                  display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
-                  paddingTop: 8, zIndex: 2,
-                }}>
-                  <span style={{ fontFamily: T.mono, fontSize: 9.5, fontWeight: 700, color: T.onAccent }}>
+              <div
+                className={`relative flex ${isCompact ? 'flex-col' : 'flex-row'} bg-ink-panel border border-ink-border overflow-hidden`}
+                style={{ borderRadius: R.lg, boxShadow: '0 1px 2px rgba(33,38,51,0.04), 0 4px 12px -6px rgba(33,38,51,0.08)' }}
+              >
+                {/* Dải bookmark — nhô ra góc trên phải như dấu trang thật.
+                    Width left as fixed w-[30px] (not min-w): the clipPath below draws
+                    the ribbon's pointed tip as percentages of this element's own box,
+                    so a variable width would distort the bookmark shape. "100%" (3
+                    digits) still fits at 9.5px font-mono in 30px, so this is fine. */}
+                <div
+                  className="absolute top-0 right-7 w-[30px] h-11 bg-ink-accent flex items-start justify-center pt-2 z-[2]"
+                  style={{ clipPath: 'polygon(0 0, 100% 0, 100% 100%, 50% 78%, 0 100%)' }}
+                >
+                  <span className="font-mono text-[9.5px] font-bold text-ink-onAccent">
                     38%
                   </span>
                 </div>
 
-                <div style={{
-                  flex: isCompact ? undefined : '0 0 42%',
-                  aspectRatio: isCompact ? '16/9' : undefined,
-                  minHeight: isCompact ? undefined : 220,
-                  background: T.room,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  position: 'relative',
-                }}>
-                  <button aria-label="Tiếp tục học" className="vd-focusable" style={{
-                    width: 52, height: 52, borderRadius: '50%',
-                    background: 'rgba(244,246,252,0.12)', border: `1.5px solid ${T.accentScreen}`,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-                  }}>
-                    <Play size={18} style={{ color: T.accentScreen, marginLeft: 2 }} fill={T.accentScreen} />
+                <div
+                  className="flex items-center justify-center relative bg-ink-room"
+                  style={{
+                    flex: isCompact ? undefined : '0 0 42%',
+                    aspectRatio: isCompact ? '16/9' : undefined,
+                    minHeight: isCompact ? undefined : 220,
+                  }}
+                >
+                  <button
+                    aria-label="Tiếp tục học"
+                    className="vd-focusable w-[52px] h-[52px] rounded-full border-[1.5px] border-ink-accentScreen flex items-center justify-center cursor-pointer"
+                    style={{ background: 'rgba(244,246,252,0.12)' }}
+                  >
+                    <Play size={18} className="text-ink-accentScreen ml-0.5" fill="currentColor" />
                   </button>
-                  <span style={{
-                    position: 'absolute', bottom: 12, left: 14,
-                    fontFamily: T.mono, fontSize: 11, color: 'rgba(244,246,252,0.55)',
-                  }}>
+                  <span
+                    className="absolute bottom-3 left-3.5 font-mono text-[11px]"
+                    style={{ color: 'rgba(244,246,252,0.55)' }}
+                  >
                     còn 12 phút
                   </span>
                 </div>
 
-                <div style={{ flex: 1, padding: '22px 26px', display: 'flex', flexDirection: 'column' }}>
-                  <div style={{ fontFamily: T.sans, fontSize: 12.5, fontWeight: 500, color: T.inkMuted, marginBottom: 6 }}>
+                <div className="flex-1 px-[26px] py-[22px] flex flex-col min-w-0">
+                  <div
+                    title="Đang học · Nền tảng React 18"
+                    className="text-[12.5px] font-medium text-ink-textMuted mb-1.5 truncate"
+                  >
                     Đang học · Nền tảng React 18
                   </div>
-                  <div style={{ fontFamily: T.sans, fontSize: 20, fontWeight: 700, color: T.ink, lineHeight: 1.35 }}>
+                  <div
+                    title="App Router, JSX & Component Model"
+                    className="text-xl font-bold text-ink-text leading-[1.35] line-clamp-2"
+                  >
                     App Router, JSX &amp; Component Model
                   </div>
-                  <div style={{ fontFamily: T.sans, fontSize: 13.5, color: T.inkMuted, marginTop: 8, lineHeight: 1.6 }}>
+                  <div
+                    title="Lập trình web hiện đại — chương 1/3, bài 2/8"
+                    className="text-[13.5px] text-ink-textMuted mt-2 leading-[1.6] line-clamp-2"
+                  >
                     Lập trình web hiện đại — chương 1/3, bài 2/8
                   </div>
-                  <a href="/vibe-demo" className="vd-focusable" style={{
-                    marginTop: 'auto', display: 'inline-flex', alignItems: 'center', gap: 8,
-                    fontFamily: T.sans, fontSize: 14, fontWeight: 600, color: T.accent,
-                    textDecoration: 'none', paddingTop: 16,
-                  }}>
+                  <a
+                    href="/vibe-demo"
+                    className="vd-focusable mt-auto inline-flex items-center gap-2 text-sm font-semibold text-ink-accent no-underline pt-4"
+                  >
                     Tiếp tục học <ArrowRight size={15} />
                   </a>
                 </div>
               </div>
 
               {/* ── Không gian của bạn — xem trước 3 dòng, dẫn sang trang danh sách ── */}
-              <div style={{ marginTop: 32 }}>
-                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 12 }}>
-                  <h2 style={{ fontFamily: T.sans, fontSize: 16, fontWeight: 700, color: T.ink, margin: 0 }}>
+              <div className="mt-8">
+                <div className="flex items-baseline justify-between mb-3">
+                  <h2 className="text-base font-bold text-ink-text m-0">
                     Không gian của bạn
                   </h2>
-                  <a href="/vibe-demo/spaces" className="vd-focusable" style={{
-                    fontFamily: T.sans, fontSize: 13, fontWeight: 500, color: T.accent, textDecoration: 'none',
-                    display: 'flex', alignItems: 'center', gap: 4,
-                  }}>
+                  <a
+                    href="/vibe-demo/spaces"
+                    className="vd-focusable text-[13px] font-medium text-ink-accent no-underline flex items-center gap-1"
+                  >
                     Xem tất cả <ChevronRight size={13} />
                   </a>
                 </div>
 
-                <div style={{
-                  background: T.panel, border: `1px solid ${T.border}`, borderRadius: R.md,
-                  boxShadow: T.shadowSm, overflow: 'hidden',
-                }}>
+                <div
+                  className="bg-ink-panel border border-ink-border overflow-hidden"
+                  style={{ borderRadius: R.md, boxShadow: '0 1px 2px rgba(33,38,51,0.04)' }}
+                >
+                  {/* Verified: no fixed height here — with 50+ SPACES this panel just
+                      grows taller and relies on the page's own overflow-y-auto scroll
+                      container (see the fixed-topbar wrapper above), same pattern as
+                      sibling vibe-demo pages. `overflow-hidden` above only clips the
+                      panel's own rounded corners/border, not row content. */}
                   {SPACES.map((s, i) => (
-                    <a key={s.id} href="/vibe-demo/spaces" className="vd-focusable" style={{
-                      display: 'flex', alignItems: 'center', gap: 14,
-                      padding: '14px 18px',
-                      borderBottom: i < SPACES.length - 1 ? `1px solid ${T.border}` : 'none',
-                      textDecoration: 'none', color: 'inherit',
-                    }}>
-                      <span style={{ width: 5, height: 34, borderRadius: 2, background: s.color, flexShrink: 0 }} />
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontFamily: T.sans, fontSize: 14.5, fontWeight: 600, color: T.ink }}>
+                    <a
+                      key={s.id}
+                      href="/vibe-demo/spaces"
+                      className={`vd-focusable flex items-center gap-3.5 px-[18px] py-3.5 no-underline text-inherit ${i < SPACES.length - 1 ? 'border-b border-ink-border' : ''}`}
+                    >
+                      <span
+                        className="w-[5px] h-[34px] rounded-sm shrink-0"
+                        style={{ background: s.color }}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div title={s.title} className="text-[14.5px] font-semibold text-ink-text truncate">
                           {s.title}
                         </div>
-                        <div style={{ fontFamily: T.mono, fontSize: 11, color: T.inkDim, marginTop: 2 }}>
+                        <div className="font-mono text-[11px] text-ink-textDim mt-0.5">
                           {s.chapters} chương
                         </div>
                       </div>
-                      <span style={{ fontFamily: T.mono, fontSize: 12.5, fontWeight: 600, color: T.accent, flexShrink: 0 }}>
+                      <span className="font-mono text-[12.5px] font-semibold text-ink-accent shrink-0 text-right min-w-[34px]">
                         {s.pct}%
                       </span>
                     </a>
@@ -265,50 +185,52 @@ export default function VibeHomeDemoPage() {
 
             {/* ══ CỘT PHẢI: lịch mực + mục tiêu ══ */}
             {!isCompact && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+              <div className="flex flex-col gap-5">
                 {/* Lịch mực 7 ngày — thay cho biểu tượng streak lửa thường gặp */}
-                <div style={{
-                  background: T.panel, border: `1px solid ${T.border}`, borderRadius: R.md,
-                  boxShadow: T.shadowSm, padding: 18,
-                }}>
-                  <div style={{ fontFamily: T.sans, fontSize: 13, fontWeight: 600, color: T.ink, marginBottom: 4 }}>
+                <div
+                  className="bg-ink-panel border border-ink-border p-[18px]"
+                  style={{ borderRadius: R.md, boxShadow: '0 1px 2px rgba(33,38,51,0.04)' }}
+                >
+                  <div className="text-[13px] font-semibold text-ink-text mb-1">
                     Tuần này
                   </div>
-                  <div style={{ fontFamily: T.sans, fontSize: 12.5, color: T.inkMuted, marginBottom: 14 }}>
+                  <div className="text-[12.5px] text-ink-textMuted mb-3.5">
                     {inkCount}/7 ngày có nét mực mới
                   </div>
-                  <div style={{ display: 'flex', gap: 8 }}>
+                  <div className="flex gap-2">
                     {WEEK.map((d, i) => (
-                      <div key={d} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-                        <div style={{
-                          width: '100%', aspectRatio: '1', borderRadius: R.sm,
-                          background: INK_DAYS[i] ? T.accent : T.accentA,
-                          border: `1px solid ${INK_DAYS[i] ? T.accent : T.border}`,
-                        }} />
-                        <span style={{ fontFamily: T.mono, fontSize: 10, color: T.inkDim }}>{d}</span>
+                      <div key={d} className="flex-1 flex flex-col items-center gap-1.5">
+                        <div
+                          className={`w-full aspect-square border ${INK_DAYS[i] ? 'bg-ink-accent border-ink-accent' : 'bg-ink-accentA border-ink-border'}`}
+                          style={{ borderRadius: R.sm }}
+                        />
+                        <span className="font-mono text-[10px] text-ink-textDim">{d}</span>
                       </div>
                     ))}
                   </div>
                 </div>
 
                 {/* Mục tiêu tuần */}
-                <div style={{
-                  background: T.panel, border: `1px solid ${T.border}`, borderRadius: R.md,
-                  boxShadow: T.shadowSm, padding: 18,
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-                    <Target size={14} style={{ color: T.accent }} />
-                    <span style={{ fontFamily: T.sans, fontSize: 13, fontWeight: 600, color: T.ink }}>
+                <div
+                  className="bg-ink-panel border border-ink-border p-[18px]"
+                  style={{ borderRadius: R.md, boxShadow: '0 1px 2px rgba(33,38,51,0.04)' }}
+                >
+                  <div className="flex items-center gap-2 mb-3">
+                    <Target size={14} className="text-ink-accent" />
+                    <span className="text-[13px] font-semibold text-ink-text">
                       Mục tiêu tuần
                     </span>
                   </div>
-                  <div style={{ fontFamily: T.sans, fontSize: 22, fontWeight: 700, color: T.ink, letterSpacing: '-0.01em' }}>
-                    3<span style={{ color: T.inkDim, fontWeight: 400 }}>/5 bài</span>
+                  <div className="text-[22px] font-bold text-ink-text tracking-[-0.01em]">
+                    3<span className="text-ink-textDim font-normal">/5 bài</span>
                   </div>
-                  <div style={{ height: 4, background: 'rgba(33,38,51,0.08)', borderRadius: 2, overflow: 'hidden', marginTop: 10 }}>
-                    <div style={{ width: '60%', height: '100%', background: T.accent }} />
+                  <div
+                    className="h-1 rounded-sm overflow-hidden mt-2.5"
+                    style={{ background: 'rgba(33,38,51,0.08)' }}
+                  >
+                    <div className="w-[60%] h-full bg-ink-accent" />
                   </div>
-                  <div style={{ fontFamily: T.sans, fontSize: 12.5, color: T.inkMuted, marginTop: 10, lineHeight: 1.55 }}>
+                  <div className="text-[12.5px] text-ink-textMuted mt-2.5 leading-[1.55]">
                     Còn 2 bài nữa để hoàn thành mục tiêu tuần này.
                   </div>
                 </div>
@@ -317,6 +239,6 @@ export default function VibeHomeDemoPage() {
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }

@@ -2,13 +2,19 @@
 
 import React, { useState, useEffect } from 'react';
 import { CheckCircle2, Circle, XCircle, ChevronRight, ChevronLeft, X, Maximize2, Minimize2, ListVideo, RotateCcw, Play, Timer } from 'lucide-react';
-import { Be_Vietnam_Pro } from 'next/font/google';
+import { beVietnam, T, R, TOP_BAR_H, MARGIN_W, useIsCompact, VIBE_GLOBAL_CSS } from '@/lib/vibe/theme';
 
-const beVietnam = Be_Vietnam_Pro({
-  subsets: ['vietnamese', 'latin'],
-  weight: ['300', '400', '500', '600', '700'],
-  display: 'swap',
-});
+/*
+ * Chuyển sang Tailwind (namespace `ink-*`) theo đúng pattern đã thiết lập ở
+ * about/page.tsx. Vẫn giữ style={{}} cho: (1) hằng số runtime dùng chung qua
+ * theme.ts (MARGIN_W, TOP_BAR_H, R.sm/md/lg — không có class Tailwind cấu
+ * hình sẵn); (2) giá trị PHỤ THUỘC STATE (timer, đáp án đã chọn, câu đang
+ * xem, phase, focusMode...) — các nhánh màu/opacity/transform đổi theo state
+ * này giữ nguyên dạng style={{}}; (3) T.shadowSm/T.shadowMd — chưa có entry
+ * box-shadow trong tailwind.config.js. `beVietnam.className` áp 1 lần ở gốc
+ * trang thay cho fontFamily lặp lại; T.mono (JetBrains Mono/Fira Code) → lớp
+ * `font-mono` cho các phần tử đếm giờ/mono giữ được tính đọc.
+ */
 
 /* ─── Data ──────────────────────────────────────────────────────────────── */
 type Status = 'completed' | 'in_progress' | 'not_started';
@@ -70,44 +76,6 @@ const QUIZ: Question[] = [
 const QUIZ_SECONDS = 600; // 10 câu × 60s
 const PASS_COUNT   = 7;   // ngưỡng đạt: 7/10 câu đúng
 
-/* ─── Tokens ─────────────────────────────────────────────────────────────── */
-// "Mực xanh trên giấy trắng" — cùng hệ token với /vibe-demo (bản video).
-// Stage của bản quiz không phải MÀN HÌNH mà là TỜ GIẤY KIỂM TRA — sheet trắng
-// dùng đúng motif lề vở: số câu và ký tự A/B/C/D nằm trong lề.
-//
-// Phân vai màu theo đúng nghi thức chấm bài:
-//   - accent (mực xanh)  = nét bút của HỌC VIÊN — đáp án đang chọn khi làm bài.
-//   - correct/wrong      = bút chấm của GIÁO VIÊN (xanh lá / đỏ) — CHỈ xuất
-//     hiện sau khi nộp bài, không bao giờ dùng để trang trí.
-const T = {
-  page:    '#FAFAF7',
-  room:    '#1A1C22', // phòng tắt đèn — nền focus mode
-  panel:   '#FFFFFF',
-  ink:     '#212633',
-  inkMid:  'rgba(33,38,51,0.72)',
-  inkMuted:'rgba(33,38,51,0.50)',
-  inkDim:  'rgba(33,38,51,0.28)',
-  border:  'rgba(33,38,51,0.10)',
-  borderHi:'rgba(33,38,51,0.20)',
-  accent:  '#2E4A9E',
-  accentA: 'rgba(46,74,158,0.08)',
-  marginLn:'rgba(46,74,158,0.30)',
-  onAccent:'#FFFFFF',
-  accentScreen: '#8FA6EE', // bản sáng của accent — chỉ dùng trên nền tối (top bar focus)
-  correct: '#217A4A',      // xanh lá bút chấm — đáp án đúng, sau khi nộp
-  correctA:'rgba(33,122,74,0.08)',
-  wrong:   '#A8362E',      // đỏ bút chấm — đáp án sai đã chọn, sau khi nộp
-  wrongA:  'rgba(168,54,46,0.07)',
-  shadowSm:'0 1px 2px rgba(33,38,51,0.04), 0 4px 12px -6px rgba(33,38,51,0.08)',
-  shadowMd:'0 2px 4px rgba(33,38,51,0.04), 0 16px 40px -16px rgba(33,38,51,0.20)',
-  sans:    `${beVietnam.style.fontFamily}, -apple-system, 'Segoe UI', Roboto, sans-serif`,
-  mono:    "'JetBrains Mono','Fira Code',monospace",
-} as const;
-
-const TOP_BAR_H = 52;
-const R = { sm: 6, md: 12, lg: 16 };
-const MARGIN_W = 56;
-
 // Vòng đời một bài kiểm tra:
 //   intro  — tờ đề úp trên bàn: luật chơi + nút Bắt đầu
 //   taking — phòng tắt đèn (focus mode BẮT BUỘC), đếm ngược, không xao nhãng;
@@ -115,18 +83,6 @@ const MARGIN_W = 56;
 //   result — nộp bài / hết giờ: đèn bật lại, điểm số + bản đồ đúng/sai
 //   review — lật lại từng câu, thấy đáp án đúng (xanh lá) và lỗi sai (đỏ)
 type Phase = 'intro' | 'taking' | 'result' | 'review';
-
-function useIsCompact(breakpointPx: number): boolean {
-  const [isCompact, setIsCompact] = useState(false);
-  useEffect(() => {
-    const mq = window.matchMedia(`(max-width: ${breakpointPx}px)`);
-    const update = () => setIsCompact(mq.matches);
-    update();
-    mq.addEventListener('change', update);
-    return () => mq.removeEventListener('change', update);
-  }, [breakpointPx]);
-  return isCompact;
-}
 
 function fmtTime(s: number): string {
   return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
@@ -218,17 +174,14 @@ export default function VibeQuizDemoPage() {
 
   /* ── Rail: chỉ còn danh sách bài học (bản quiz không có tab ghi chú) ── */
   const renderPanelHeader = () => (
-    <div style={{
-      flexShrink: 0, display: 'flex', alignItems: 'baseline', gap: 8,
-      padding: '13px 16px', borderBottom: `1px solid ${T.border}`,
-    }}>
-      <span style={{ fontFamily: T.sans, fontSize: 14, fontWeight: 600, color: T.ink }}>Bài học</span>
-      <span style={{ fontFamily: T.mono, fontSize: 11, color: T.accent }}>{done}/{lessons.length}</span>
+    <div className="shrink-0 flex items-baseline gap-2 px-4 py-[13px] border-b border-ink-border">
+      <span className="text-sm font-semibold text-ink-text">Bài học</span>
+      <span className="font-mono text-[11px] text-ink-accent">{done}/{lessons.length}</span>
     </div>
   );
 
   const renderPlaylist = () => (
-    <div style={{ flex: 1, overflowY: 'auto', padding: '6px 0' }} className="cs-scrollbar">
+    <div className="flex-1 overflow-y-auto py-1.5 cs-scrollbar">
       {lessons.map((l, i) => {
         const isActive = l.id === activeId;
         const isDone   = l.status === 'completed';
@@ -242,57 +195,37 @@ export default function VibeQuizDemoPage() {
             tabIndex={0}
             onClick={() => setActiveId(l.id)}
             onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActiveId(l.id); } }}
-            className="vd-focusable"
-            style={{
-              display: 'flex', alignItems: 'stretch',
-              cursor: 'pointer',
-              background: isActive ? T.accentA : 'transparent',
-              transition: 'background 120ms',
-            }}
+            className="vd-focusable flex items-stretch cursor-pointer transition-colors duration-[120ms]"
+            style={{ background: isActive ? 'rgba(46,74,158,0.08)' : 'transparent' }}
             onMouseEnter={e => { if (!isActive) (e.currentTarget as HTMLElement).style.background = 'rgba(33,38,51,0.03)'; }}
-            onMouseLeave={e => { if (!isActive) (e.currentTarget as HTMLElement).style.background = isActive ? T.accentA : 'transparent'; }}
+            onMouseLeave={e => { if (!isActive) (e.currentTarget as HTMLElement).style.background = isActive ? 'rgba(46,74,158,0.08)' : 'transparent'; }}
           >
-            <span style={{
-              width: MARGIN_W, flexShrink: 0,
-              display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
-              paddingTop: 13,
-              fontFamily: T.mono, fontSize: 11,
-              color: isActive ? T.accent : T.inkDim,
-              fontWeight: isActive ? 600 : 400,
-            }}>
+            <span
+              style={{ width: MARGIN_W }}
+              className={`shrink-0 flex items-start justify-center pt-[13px] font-mono text-[11px] ${isActive ? 'text-ink-accent font-semibold' : 'text-ink-textDim font-normal'}`}
+            >
               {String(i + 1).padStart(2, '0')}
             </span>
 
-            <div style={{
-              flex: 1, minWidth: 0,
-              borderLeft: `1px solid ${T.marginLn}`,
-              padding: '11px 12px 11px 14px',
-              display: 'flex', alignItems: 'flex-start', gap: 10,
-            }}>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{
-                  fontFamily: T.sans, fontSize: 14, lineHeight: 1.4,
-                  color: isActive ? T.ink : isDone ? T.inkMuted : T.inkMid,
-                  fontWeight: isActive ? 600 : 450,
-                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                }}>
+            <div className="flex-1 min-w-0 border-l border-ink-marginLn pt-[11px] pr-3 pb-[11px] pl-[14px] flex items-start gap-2.5">
+              <div className="flex-1 min-w-0">
+                <div className={`text-sm leading-[1.4] overflow-hidden text-ellipsis whitespace-nowrap ${isActive ? 'text-ink-text font-semibold' : isDone ? 'text-ink-textMuted font-[450]' : 'text-ink-textMid font-[450]'}`}>
                   {l.title}
                 </div>
-                <div style={{ fontFamily: T.mono, fontSize: 11, color: T.inkDim, marginTop: 4, display: 'flex', gap: 8 }}>
+                <div className="font-mono text-[11px] text-ink-textDim mt-1 flex gap-2">
                   <span>{l.duration}</span>
-                  {isNext && <span style={{ color: T.accent, fontFamily: T.sans, fontWeight: 500 }}>tiếp theo →</span>}
+                  {isNext && <span className="text-ink-accent font-medium">tiếp theo →</span>}
                 </div>
               </div>
 
               <button
                 onClick={e => markDone(l.id, e)}
                 aria-label={isDone ? 'Bỏ đánh dấu hoàn thành' : 'Đánh dấu hoàn thành'}
-                className="vd-focusable"
-                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 0 0', flexShrink: 0 }}
+                className="vd-focusable bg-transparent border-none cursor-pointer p-0 pt-0.5 shrink-0"
               >
                 {isDone
-                  ? <CheckCircle2 size={15} style={{ color: T.accent }} />
-                  : <Circle       size={15} style={{ color: T.inkDim }} />
+                  ? <CheckCircle2 size={15} className="text-ink-accent" />
+                  : <Circle       size={15} className="text-ink-textDim" />
                 }
               </button>
             </div>
@@ -303,18 +236,24 @@ export default function VibeQuizDemoPage() {
   );
 
   /* ── Lưới câu hỏi — dùng khi làm bài (đã trả lời?) và khi xem đáp án (đúng/sai) ── */
+  // Đã xác minh cho bộ đề 50+ câu: `flex-wrap` tự xuống dòng thay vì tràn ngang
+  // (không phải flex 1 dòng cố định), và mọi nơi gọi renderQuestionMap đều nằm
+  // trong cột trái vốn đã overflow-y-auto (xem left column ở cuối file) — nên
+  // container không cần thêm max-height/scroll riêng, chỉ cần cuộn tự nhiên
+  // của trang. Kích thước nút 30×30 + padStart(2,'0') vẫn đủ chỗ cho 3 chữ số
+  // (>99 câu) ở font-mono 11px. Giữ nguyên với bộ đề demo nhỏ hiện tại.
   const renderQuestionMap = (graded: boolean) => (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+    <div className="flex flex-wrap gap-1.5">
       {QUIZ.map((q, i) => {
         const isCurrent = i === qIdx && (taking || reviewing);
-        let border: string = T.border, bg: string = 'transparent', color: string = T.inkDim;
+        let border = 'rgba(33,38,51,0.10)', bg = 'transparent', color = 'rgba(33,38,51,0.28)';
         if (graded) {
           const ok = picked[i] === q.answer;
-          border = ok ? T.correct : T.wrong;
-          bg     = ok ? T.correctA : T.wrongA;
-          color  = ok ? T.correct : T.wrong;
+          border = ok ? '#217A4A' : '#A8362E';
+          bg     = ok ? 'rgba(33,122,74,0.08)' : 'rgba(168,54,46,0.07)';
+          color  = ok ? '#217A4A' : '#A8362E';
         } else if (picked[i] !== null) {
-          border = T.accent; bg = T.accentA; color = T.accent;
+          border = '#2E4A9E'; bg = 'rgba(46,74,158,0.08)'; color = '#2E4A9E';
         }
         return (
           <button
@@ -322,14 +261,12 @@ export default function VibeQuizDemoPage() {
             onClick={() => setQIdx(i)}
             aria-label={`Câu ${i + 1}`}
             aria-current={isCurrent ? 'true' : undefined}
-            className="vd-focusable"
+            className="vd-focusable font-mono text-[11px] font-semibold cursor-pointer"
             style={{
               width: 30, height: 30, borderRadius: R.sm,
               border: `1px solid ${border}`,
               background: bg, color,
-              boxShadow: isCurrent ? `0 0 0 2px ${T.borderHi}` : 'none',
-              fontFamily: T.mono, fontSize: 11, fontWeight: 600,
-              cursor: 'pointer',
+              boxShadow: isCurrent ? `0 0 0 2px rgba(33,38,51,0.20)` : 'none',
             }}
           >
             {String(i + 1).padStart(2, '0')}
@@ -343,26 +280,19 @@ export default function VibeQuizDemoPage() {
      học viên). graded=true: xem đáp án (bút chấm xanh lá/đỏ của giáo viên). ── */
   const renderQuestion = (graded: boolean) => (
     <>
-      <div style={{ display: 'flex', alignItems: 'stretch', paddingTop: 22 }}>
-        <span style={{
-          width: MARGIN_W, flexShrink: 0,
-          display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
-          paddingTop: 3,
-          fontFamily: T.mono, fontSize: 11, fontWeight: 600, color: T.accent,
-        }}>
+      <div className="flex items-stretch pt-[22px]">
+        <span
+          style={{ width: MARGIN_W }}
+          className="shrink-0 flex items-start justify-center pt-[3px] font-mono text-[11px] font-semibold text-ink-accent"
+        >
           {String(qIdx + 1).padStart(2, '0')}
         </span>
-        <div style={{
-          flex: 1, borderLeft: `1px solid ${T.marginLn}`,
-          padding: '0 24px 18px 20px',
-          fontFamily: T.sans, fontSize: 17, fontWeight: 600,
-          color: T.ink, lineHeight: 1.45,
-        }}>
+        <div className="flex-1 border-l border-ink-marginLn pt-0 pr-6 pb-[18px] pl-5 text-[17px] font-semibold text-ink-text leading-[1.45]">
           {question.q}
         </div>
       </div>
 
-      <div style={{ paddingBottom: 8 }}>
+      <div className="pb-2">
         {question.choices.map((choice, ci) => {
           const isPicked  = picked[qIdx] === ci;
           const isCorrect = ci === question.answer;
@@ -377,41 +307,31 @@ export default function VibeQuizDemoPage() {
               aria-disabled={graded}
               onClick={() => pick(ci)}
               onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(ci); } }}
-              className="vd-focusable"
+              className={`vd-focusable flex items-stretch transition-colors duration-[120ms] ${graded ? 'cursor-default' : 'cursor-pointer'}`}
               style={{
-                display: 'flex', alignItems: 'stretch',
-                cursor: graded ? 'default' : 'pointer',
-                background: showRight ? T.correctA : showWrong ? T.wrongA : (!graded && isPicked) ? T.accentA : 'transparent',
-                transition: 'background 120ms',
+                background: showRight ? 'rgba(33,122,74,0.08)' : showWrong ? 'rgba(168,54,46,0.07)' : (!graded && isPicked) ? 'rgba(46,74,158,0.08)' : 'transparent',
               }}
               onMouseEnter={e => { if (!graded && !isPicked) (e.currentTarget as HTMLElement).style.background = 'rgba(33,38,51,0.03)'; }}
               onMouseLeave={e => { if (!graded && !isPicked) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
             >
-              <span style={{
-                width: MARGIN_W, flexShrink: 0,
-                display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
-                paddingTop: 12,
-                fontFamily: T.mono, fontSize: 11,
-                fontWeight: (isPicked || showRight) ? 600 : 400,
-                color: showRight ? T.correct : showWrong ? T.wrong : isPicked ? T.accent : T.inkDim,
-              }}>
+              <span
+                style={{ width: MARGIN_W }}
+                className={`shrink-0 flex items-start justify-center pt-3 font-mono text-[11px] ${(isPicked || showRight) ? 'font-semibold' : 'font-normal'} ${
+                  showRight ? 'text-ink-correct' : showWrong ? 'text-ink-wrong' : isPicked ? 'text-ink-accent' : 'text-ink-textDim'
+                }`}
+              >
                 {String.fromCharCode(65 + ci)}
               </span>
-              <div style={{
-                flex: 1, borderLeft: `1px solid ${T.marginLn}`,
-                padding: '10px 24px 10px 20px',
-                display: 'flex', alignItems: 'flex-start', gap: 10,
-              }}>
-                <span style={{
-                  flex: 1,
-                  fontFamily: T.sans, fontSize: 15, lineHeight: 1.5,
-                  fontWeight: (isPicked || showRight) ? 550 : 400,
-                  color: showRight ? T.correct : showWrong ? T.wrong : graded ? T.inkMuted : isPicked ? T.ink : T.inkMid,
-                }}>
+              <div className="flex-1 border-l border-ink-marginLn py-2.5 pr-6 pl-5 flex items-start gap-2.5">
+                <span
+                  className={`flex-1 text-[15px] leading-[1.5] ${(isPicked || showRight) ? 'font-[550]' : 'font-normal'} ${
+                    showRight ? 'text-ink-correct' : showWrong ? 'text-ink-wrong' : graded ? 'text-ink-textMuted' : isPicked ? 'text-ink-text' : 'text-ink-textMid'
+                  }`}
+                >
                   {choice}
                 </span>
-                {showRight && <CheckCircle2 size={16} style={{ color: T.correct, flexShrink: 0, marginTop: 2 }} />}
-                {showWrong && <XCircle      size={16} style={{ color: T.wrong,   flexShrink: 0, marginTop: 2 }} />}
+                {showRight && <CheckCircle2 size={16} className="text-ink-correct shrink-0 mt-0.5" />}
+                {showWrong && <XCircle      size={16} className="text-ink-wrong shrink-0 mt-0.5" />}
               </div>
             </div>
           );
@@ -420,22 +340,16 @@ export default function VibeQuizDemoPage() {
 
       {/* Giải thích — chỉ trong review, như dòng mực chấm bài ghi thêm */}
       {graded && (
-        <div className="vd-ink-in" style={{ display: 'flex', alignItems: 'stretch', paddingBottom: 14 }}>
-          <span style={{
-            width: MARGIN_W, flexShrink: 0,
-            display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
-            paddingTop: 13,
-            fontFamily: T.mono, fontSize: 11, color: T.inkMuted,
-          }}>
+        <div className="vd-ink-in flex items-stretch pb-3.5">
+          <span
+            style={{ width: MARGIN_W }}
+            className="shrink-0 flex items-start justify-center pt-[13px] font-mono text-[11px] text-ink-textMuted"
+          >
             vì
           </span>
-          <div style={{
-            flex: 1, borderLeft: `1px solid ${T.marginLn}`,
-            padding: '10px 24px 0 20px',
-            fontFamily: T.sans, fontSize: 14, color: T.inkMid, lineHeight: 1.6,
-          }}>
+          <div className="flex-1 border-l border-ink-marginLn pt-2.5 pr-6 pb-0 pl-5 text-sm text-ink-textMid leading-[1.6]">
             {picked[qIdx] === null && (
-              <span style={{ color: T.wrong, fontWeight: 550 }}>Chưa trả lời. </span>
+              <span className="text-ink-wrong font-[550]">Chưa trả lời. </span>
             )}
             {question.explain}
           </div>
@@ -446,70 +360,54 @@ export default function VibeQuizDemoPage() {
 
   /* ── Màn 1: tờ đề úp trên bàn — luật chơi + Bắt đầu ── */
   const renderIntro = () => (
-    <div style={{ padding: '34px 0 30px' }}>
-      <div style={{ display: 'flex', alignItems: 'stretch' }}>
-        <span style={{ width: MARGIN_W, flexShrink: 0 }} />
-        <div style={{ flex: 1, borderLeft: `1px solid ${T.marginLn}`, padding: '0 28px 0 20px' }}>
-          <div style={{ fontFamily: T.sans, fontSize: 13, fontWeight: 500, color: T.inkMuted, marginBottom: 6 }}>
+    <div className="pt-[34px] pb-[30px]">
+      <div className="flex items-stretch">
+        <span style={{ width: MARGIN_W }} className="shrink-0" />
+        <div className="flex-1 border-l border-ink-marginLn pt-0 pr-7 pb-0 pl-5">
+          <div className="text-[13px] font-medium text-ink-textMuted mb-1.5">
             Bài kiểm tra
           </div>
-          <div style={{
-            fontFamily: T.sans, fontSize: 24, fontWeight: 700,
-            letterSpacing: '-0.015em', color: T.ink, lineHeight: 1.3,
-          }}>
+          <div className="text-2xl font-bold tracking-[-0.015em] text-ink-text leading-[1.3]">
             {active.title}
           </div>
-          <div style={{ fontFamily: T.sans, fontSize: 15, color: T.inkMid, marginTop: 10, lineHeight: 1.6 }}>
+          <div className="text-[15px] text-ink-textMid mt-2.5 leading-[1.6]">
             Kiểm tra lại hai bài giảng đầu chương — Virtual DOM, JSX, re-render và App Router.
           </div>
         </div>
       </div>
 
       {/* Thông số bài thi — con số nằm trong lề, đúng ngữ pháp trang vở */}
-      <div style={{ marginTop: 24 }}>
+      <div className="mt-6">
         {[
           { n: String(QUIZ.length),        label: 'câu hỏi trắc nghiệm, mỗi câu một đáp án đúng' },
           { n: fmtTime(QUIZ_SECONDS),      label: 'phút làm bài — hết giờ hệ thống tự nộp' },
           { n: `${PASS_COUNT}/${QUIZ.length}`, label: 'câu đúng để đạt bài này' },
         ].map((row, i) => (
-          <div key={i} style={{ display: 'flex', alignItems: 'stretch' }}>
-            <span style={{
-              width: MARGIN_W, flexShrink: 0,
-              display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
-              paddingTop: 11,
-              fontFamily: T.mono, fontSize: 12, fontWeight: 600, color: T.accent,
-            }}>
+          <div key={i} className="flex items-stretch">
+            <span
+              style={{ width: MARGIN_W }}
+              className="shrink-0 flex items-start justify-center pt-[11px] font-mono text-xs font-semibold text-ink-accent"
+            >
               {row.n}
             </span>
-            <div style={{
-              flex: 1, borderLeft: `1px solid ${T.marginLn}`,
-              padding: '9px 28px 9px 20px',
-              fontFamily: T.sans, fontSize: 14.5, color: T.inkMid, lineHeight: 1.55,
-            }}>
+            <div className="flex-1 border-l border-ink-marginLn py-[9px] pr-7 pl-5 text-[14.5px] text-ink-textMid leading-[1.55]">
               {row.label}
             </div>
           </div>
         ))}
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'stretch', marginTop: 20 }}>
-        <span style={{ width: MARGIN_W, flexShrink: 0 }} />
-        <div style={{ flex: 1, borderLeft: `1px solid ${T.marginLn}`, padding: '0 28px 0 20px' }}>
-          <div style={{ fontFamily: T.sans, fontSize: 13.5, color: T.inkMuted, lineHeight: 1.65 }}>
+      <div className="flex items-stretch mt-5">
+        <span style={{ width: MARGIN_W }} className="shrink-0" />
+        <div className="flex-1 border-l border-ink-marginLn pt-0 pr-7 pb-0 pl-5">
+          <div className="text-[13.5px] text-ink-textMuted leading-[1.65]">
             Khi bắt đầu, phòng học sẽ tắt đèn — chỉ còn tờ bài và đồng hồ. Bạn di chuyển
             tự do giữa các câu, sửa đáp án bao nhiêu lần tùy ý; kết quả chỉ chấm khi nộp bài.
           </div>
           <button
             onClick={startQuiz}
-            className="vd-focusable"
-            style={{
-              marginTop: 22,
-              display: 'inline-flex', alignItems: 'center', gap: 9,
-              padding: '12px 24px',
-              background: T.accent, color: T.onAccent,
-              border: 'none', borderRadius: R.sm, cursor: 'pointer',
-              fontFamily: T.sans, fontSize: 15, fontWeight: 600,
-            }}
+            className="vd-focusable mt-[22px] inline-flex items-center gap-[9px] px-6 py-3 bg-ink-accent text-ink-onAccent border-none cursor-pointer text-[15px] font-semibold"
+            style={{ borderRadius: R.sm }}
           >
             <Play size={15} />
             Bắt đầu
@@ -524,31 +422,21 @@ export default function VibeQuizDemoPage() {
     const low = secondsLeft <= 60;
     return (
       <>
-        <div style={{
-          display: 'flex', alignItems: 'center',
-          borderBottom: `1px solid ${T.border}`,
-        }}>
-          <span style={{
-            width: MARGIN_W, flexShrink: 0,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: low ? T.wrong : T.inkMuted,
-          }}>
+        <div className="flex items-center border-b border-ink-border">
+          <span
+            style={{ width: MARGIN_W, color: low ? '#A8362E' : 'rgba(33,38,51,0.50)' }}
+            className="shrink-0 flex items-center justify-center"
+          >
             <Timer size={14} />
           </span>
-          <div style={{
-            flex: 1, borderLeft: `1px solid ${T.marginLn}`,
-            display: 'flex', alignItems: 'center', gap: 12,
-            padding: '12px 24px 12px 20px',
-          }}>
-            <span style={{ fontFamily: T.sans, fontSize: 13.5, fontWeight: 500, color: T.inkMuted }}>
+          <div className="flex-1 border-l border-ink-marginLn flex items-center gap-3 py-3 pr-6 pl-5">
+            <span className="text-[13.5px] font-medium text-ink-textMuted">
               {active.title}
             </span>
-            <span style={{
-              marginLeft: 'auto',
-              fontFamily: T.mono, fontSize: 16, fontWeight: 600,
-              color: low ? T.wrong : T.ink,
-              fontVariantNumeric: 'tabular-nums',
-            }}>
+            <span
+              style={{ color: low ? '#A8362E' : '#212633' }}
+              className="ml-auto font-mono text-base font-semibold [font-variant-numeric:tabular-nums]"
+            >
               {fmtTime(secondsLeft)}
             </span>
           </div>
@@ -556,40 +444,27 @@ export default function VibeQuizDemoPage() {
 
         {renderQuestion(false)}
 
-        <div style={{ borderTop: `1px solid ${T.border}` }}>
-          <div style={{ display: 'flex', alignItems: 'stretch' }}>
-            <span style={{
-              width: MARGIN_W, flexShrink: 0,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontFamily: T.mono, fontSize: 11, color: T.inkMuted,
-            }}>
+        <div className="border-t border-ink-border">
+          <div className="flex items-stretch">
+            <span
+              style={{ width: MARGIN_W }}
+              className="shrink-0 flex items-center justify-center font-mono text-[11px] text-ink-textMuted"
+            >
               {answeredCount}/{QUIZ.length}
             </span>
-            <div style={{
-              flex: 1, borderLeft: `1px solid ${T.marginLn}`,
-              padding: '14px 24px 12px 20px',
-            }}>
+            <div className="flex-1 border-l border-ink-marginLn pt-3.5 pr-6 pb-3 pl-5">
               {renderQuestionMap(false)}
             </div>
           </div>
 
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 10,
-            padding: '2px 24px 14px 0',
-          }}>
-            <span style={{ width: MARGIN_W, flexShrink: 0 }} />
+          <div className="flex items-center gap-2.5 pt-0.5 pr-6 pb-3.5 pl-0">
+            <span style={{ width: MARGIN_W }} className="shrink-0" />
             <button
               onClick={() => setQIdx(i => Math.max(0, i - 1))}
               disabled={qIdx === 0}
               aria-label="Câu trước"
-              className="vd-focusable"
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: 6,
-                background: 'none', border: `1px solid ${T.border}`, borderRadius: R.sm,
-                padding: '8px 14px', cursor: qIdx === 0 ? 'default' : 'pointer',
-                fontFamily: T.sans, fontSize: 13.5, fontWeight: 500,
-                color: qIdx === 0 ? T.inkDim : T.inkMid,
-              }}
+              className="vd-focusable inline-flex items-center gap-1.5 bg-transparent border border-ink-border px-3.5 py-2 text-[13.5px] font-medium"
+              style={{ borderRadius: R.sm, cursor: qIdx === 0 ? 'default' : 'pointer', color: qIdx === 0 ? 'rgba(33,38,51,0.28)' : 'rgba(33,38,51,0.72)' }}
             >
               <ChevronLeft size={14} /> Trước
             </button>
@@ -597,28 +472,16 @@ export default function VibeQuizDemoPage() {
               onClick={() => setQIdx(i => Math.min(QUIZ.length - 1, i + 1))}
               disabled={qIdx === QUIZ.length - 1}
               aria-label="Câu sau"
-              className="vd-focusable"
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: 6,
-                background: 'none', border: `1px solid ${T.border}`, borderRadius: R.sm,
-                padding: '8px 14px', cursor: qIdx === QUIZ.length - 1 ? 'default' : 'pointer',
-                fontFamily: T.sans, fontSize: 13.5, fontWeight: 500,
-                color: qIdx === QUIZ.length - 1 ? T.inkDim : T.inkMid,
-              }}
+              className="vd-focusable inline-flex items-center gap-1.5 bg-transparent border border-ink-border px-3.5 py-2 text-[13.5px] font-medium"
+              style={{ borderRadius: R.sm, cursor: qIdx === QUIZ.length - 1 ? 'default' : 'pointer', color: qIdx === QUIZ.length - 1 ? 'rgba(33,38,51,0.28)' : 'rgba(33,38,51,0.72)' }}
             >
               Sau <ChevronRight size={14} />
             </button>
 
             <button
               onClick={submitQuiz}
-              className="vd-focusable"
-              style={{
-                marginLeft: 'auto',
-                padding: '9px 20px',
-                background: T.accent, color: T.onAccent,
-                border: 'none', borderRadius: R.sm, cursor: 'pointer',
-                fontFamily: T.sans, fontSize: 14, fontWeight: 600,
-              }}
+              className="vd-focusable ml-auto py-[9px] px-5 bg-ink-accent text-ink-onAccent border-none cursor-pointer text-sm font-semibold"
+              style={{ borderRadius: R.sm }}
             >
               Nộp bài
             </button>
@@ -632,28 +495,30 @@ export default function VibeQuizDemoPage() {
   const renderResult = () => {
     const passed = score >= PASS_COUNT;
     return (
-      <div style={{ padding: '34px 0 30px' }}>
-        <div style={{ display: 'flex', alignItems: 'stretch' }}>
-          <span style={{ width: MARGIN_W, flexShrink: 0 }} />
-          <div style={{ flex: 1, borderLeft: `1px solid ${T.marginLn}`, padding: '0 28px 0 20px' }}>
-            <div style={{ fontFamily: T.sans, fontSize: 13, fontWeight: 500, color: T.inkMuted, marginBottom: 6 }}>
+      <div className="pt-[34px] pb-[30px]">
+        <div className="flex items-stretch">
+          <span style={{ width: MARGIN_W }} className="shrink-0" />
+          <div className="flex-1 border-l border-ink-marginLn pt-0 pr-7 pb-0 pl-5">
+            <div className="text-[13px] font-medium text-ink-textMuted mb-1.5">
               Kết quả · {secondsLeft === 0 ? 'hết giờ, hệ thống tự nộp' : `nộp sau ${fmtTime(timeUsed)}`}
             </div>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 14 }}>
-              <div style={{ fontFamily: T.sans, fontSize: 44, fontWeight: 700, letterSpacing: '-0.02em', color: T.ink, lineHeight: 1 }}>
-                {score}<span style={{ color: T.inkDim, fontWeight: 400 }}>/{QUIZ.length}</span>
+            <div className="flex items-baseline gap-3.5">
+              <div className="text-[44px] font-bold tracking-[-0.02em] text-ink-text leading-none">
+                {score}<span className="text-ink-textDim font-normal">/{QUIZ.length}</span>
               </div>
-              <span style={{
-                fontFamily: T.sans, fontSize: 13, fontWeight: 600,
-                color: passed ? T.correct : T.wrong,
-                background: passed ? T.correctA : T.wrongA,
-                border: `1px solid ${passed ? T.correct : T.wrong}`,
-                borderRadius: R.sm, padding: '4px 10px',
-              }}>
+              <span
+                className="text-[13px] font-semibold px-2.5 py-1"
+                style={{
+                  color: passed ? '#217A4A' : '#A8362E',
+                  background: passed ? 'rgba(33,122,74,0.08)' : 'rgba(168,54,46,0.07)',
+                  border: `1px solid ${passed ? '#217A4A' : '#A8362E'}`,
+                  borderRadius: R.sm,
+                }}
+              >
                 {passed ? 'Đạt' : 'Chưa đạt'}
               </span>
             </div>
-            <div style={{ fontFamily: T.sans, fontSize: 15, color: T.inkMid, marginTop: 12, lineHeight: 1.6 }}>
+            <div className="text-[15px] text-ink-textMid mt-3 leading-[1.6]">
               {score === QUIZ.length
                 ? 'Trọn vẹn. Bài tiếp theo đã sẵn sàng.'
                 : passed
@@ -661,32 +526,20 @@ export default function VibeQuizDemoPage() {
                   : 'Nên xem lại hai bài giảng rồi làm lại — các câu đỏ bên dưới là bản đồ ôn tập.'}
             </div>
 
-            <div style={{ marginTop: 22 }}>{renderQuestionMap(true)}</div>
+            <div className="mt-[22px]">{renderQuestionMap(true)}</div>
 
-            <div style={{ display: 'flex', gap: 10, marginTop: 26 }}>
+            <div className="flex gap-2.5 mt-[26px]">
               <button
                 onClick={() => { setQIdx(0); setPhase('review'); }}
-                className="vd-focusable"
-                style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 8,
-                  padding: '10px 18px',
-                  background: T.accent, color: T.onAccent,
-                  border: 'none', borderRadius: R.sm, cursor: 'pointer',
-                  fontFamily: T.sans, fontSize: 14, fontWeight: 600,
-                }}
+                className="vd-focusable inline-flex items-center gap-2 py-2.5 px-[18px] bg-ink-accent text-ink-onAccent border-none cursor-pointer text-sm font-semibold"
+                style={{ borderRadius: R.sm }}
               >
                 Xem đáp án
               </button>
               <button
                 onClick={backToIntro}
-                className="vd-focusable"
-                style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 8,
-                  padding: '10px 18px',
-                  background: 'none', color: T.inkMid,
-                  border: `1px solid ${T.borderHi}`, borderRadius: R.sm, cursor: 'pointer',
-                  fontFamily: T.sans, fontSize: 14, fontWeight: 500,
-                }}
+                className="vd-focusable inline-flex items-center gap-2 py-2.5 px-[18px] bg-transparent text-ink-textMid border border-ink-borderHi cursor-pointer text-sm font-medium"
+                style={{ borderRadius: R.sm }}
               >
                 <RotateCcw size={14} />
                 Làm lại
@@ -701,63 +554,41 @@ export default function VibeQuizDemoPage() {
   /* ── Màn 4: xem đáp án — lật lại từng câu với bút chấm xanh lá / đỏ ── */
   const renderReview = () => (
     <>
-      <div style={{
-        display: 'flex', alignItems: 'center',
-        borderBottom: `1px solid ${T.border}`,
-      }}>
-        <span style={{
-          width: MARGIN_W, flexShrink: 0,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontFamily: T.mono, fontSize: 11, fontWeight: 600,
-          color: score >= PASS_COUNT ? T.correct : T.wrong,
-        }}>
+      <div className="flex items-center border-b border-ink-border">
+        <span
+          style={{ width: MARGIN_W, color: score >= PASS_COUNT ? '#217A4A' : '#A8362E' }}
+          className="shrink-0 flex items-center justify-center font-mono text-[11px] font-semibold"
+        >
           {score}/{QUIZ.length}
         </span>
-        <div style={{
-          flex: 1, borderLeft: `1px solid ${T.marginLn}`,
-          padding: '12px 24px 12px 20px',
-          fontFamily: T.sans, fontSize: 13.5, fontWeight: 500, color: T.inkMuted,
-        }}>
+        <div className="flex-1 border-l border-ink-marginLn py-3 pr-6 pl-5 text-[13.5px] font-medium text-ink-textMuted">
           Đáp án & giải thích
         </div>
       </div>
 
       {renderQuestion(true)}
 
-      <div style={{ borderTop: `1px solid ${T.border}` }}>
-        <div style={{ display: 'flex', alignItems: 'stretch' }}>
-          <span style={{
-            width: MARGIN_W, flexShrink: 0,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontFamily: T.mono, fontSize: 11, color: T.inkMuted,
-          }}>
+      <div className="border-t border-ink-border">
+        <div className="flex items-stretch">
+          <span
+            style={{ width: MARGIN_W }}
+            className="shrink-0 flex items-center justify-center font-mono text-[11px] text-ink-textMuted"
+          >
             {String(qIdx + 1).padStart(2, '0')}/{QUIZ.length}
           </span>
-          <div style={{
-            flex: 1, borderLeft: `1px solid ${T.marginLn}`,
-            padding: '14px 24px 12px 20px',
-          }}>
+          <div className="flex-1 border-l border-ink-marginLn pt-3.5 pr-6 pb-3 pl-5">
             {renderQuestionMap(true)}
           </div>
         </div>
 
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 10,
-          padding: '2px 24px 14px 0',
-        }}>
-          <span style={{ width: MARGIN_W, flexShrink: 0 }} />
+        <div className="flex items-center gap-2.5 pt-0.5 pr-6 pb-3.5 pl-0">
+          <span style={{ width: MARGIN_W }} className="shrink-0" />
           <button
             onClick={() => setQIdx(i => Math.max(0, i - 1))}
             disabled={qIdx === 0}
             aria-label="Câu trước"
-            className="vd-focusable"
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: 6,
-              background: 'none', border: `1px solid ${T.border}`, borderRadius: R.sm,
-              padding: '8px 14px', cursor: qIdx === 0 ? 'default' : 'pointer',
-              fontFamily: T.sans, fontSize: 13.5, fontWeight: 500,
-              color: qIdx === 0 ? T.inkDim : T.inkMid,
-            }}
+            className="vd-focusable inline-flex items-center gap-1.5 bg-transparent border border-ink-border px-3.5 py-2 text-[13.5px] font-medium"
+            style={{ borderRadius: R.sm, cursor: qIdx === 0 ? 'default' : 'pointer', color: qIdx === 0 ? 'rgba(33,38,51,0.28)' : 'rgba(33,38,51,0.72)' }}
           >
             <ChevronLeft size={14} /> Trước
           </button>
@@ -765,28 +596,16 @@ export default function VibeQuizDemoPage() {
             onClick={() => setQIdx(i => Math.min(QUIZ.length - 1, i + 1))}
             disabled={qIdx === QUIZ.length - 1}
             aria-label="Câu sau"
-            className="vd-focusable"
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: 6,
-              background: 'none', border: `1px solid ${T.border}`, borderRadius: R.sm,
-              padding: '8px 14px', cursor: qIdx === QUIZ.length - 1 ? 'default' : 'pointer',
-              fontFamily: T.sans, fontSize: 13.5, fontWeight: 500,
-              color: qIdx === QUIZ.length - 1 ? T.inkDim : T.inkMid,
-            }}
+            className="vd-focusable inline-flex items-center gap-1.5 bg-transparent border border-ink-border px-3.5 py-2 text-[13.5px] font-medium"
+            style={{ borderRadius: R.sm, cursor: qIdx === QUIZ.length - 1 ? 'default' : 'pointer', color: qIdx === QUIZ.length - 1 ? 'rgba(33,38,51,0.28)' : 'rgba(33,38,51,0.72)' }}
           >
             Sau <ChevronRight size={14} />
           </button>
 
           <button
             onClick={() => setPhase('result')}
-            className="vd-focusable"
-            style={{
-              marginLeft: 'auto',
-              padding: '9px 18px',
-              background: 'none', color: T.inkMid,
-              border: `1px solid ${T.borderHi}`, borderRadius: R.sm, cursor: 'pointer',
-              fontFamily: T.sans, fontSize: 13.5, fontWeight: 500,
-            }}
+            className="vd-focusable ml-auto py-[9px] px-[18px] bg-transparent text-ink-textMid border border-ink-borderHi cursor-pointer text-[13.5px] font-medium"
+            style={{ borderRadius: R.sm }}
           >
             ← Kết quả
           </button>
@@ -797,16 +616,10 @@ export default function VibeQuizDemoPage() {
 
   /* ── Tờ giấy kiểm tra — stage của bản quiz ── */
   const renderSheet = () => (
-    <div style={{
-      width: 'min(100%, 720px)',
-      margin: '0 auto',
-      background: T.panel,
-      border: `1px solid ${T.border}`,
-      borderRadius: R.lg,
-      boxShadow: T.shadowMd,
-      overflow: 'hidden',
-      display: 'flex', flexDirection: 'column',
-    }}>
+    <div
+      className="mx-auto bg-ink-panel border border-ink-border overflow-hidden flex flex-col"
+      style={{ width: 'min(100%, 720px)', borderRadius: R.lg, boxShadow: T.shadowMd }}
+    >
       {phase === 'intro'  && renderIntro()}
       {phase === 'taking' && renderTaking()}
       {phase === 'result' && renderResult()}
@@ -816,75 +629,56 @@ export default function VibeQuizDemoPage() {
 
   /* ─────────────────────────────────────────────────────────────────────── */
   return (
-    <>
-      <style>{`
-        .vd-focusable:focus-visible {
-          outline: 2px solid ${T.accent};
-          outline-offset: 2px;
-          border-radius: 4px;
-        }
-        @keyframes vd-ink-in {
-          from { opacity: 0; transform: translateY(-3px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-        .vd-ink-in { animation: vd-ink-in 400ms ease both; }
-        @media (prefers-reduced-motion: reduce) {
-          .vd-ink-in { animation: none; }
-        }
-      `}</style>
+    <div className={beVietnam.className}>
+      <style>{VIBE_GLOBAL_CSS}</style>
 
       {/* ══ TITLE BAR — tắt đèn cùng căn phòng khi vào focus mode ══ */}
-      <div style={{
-        position: 'fixed',
-        top: 0, left: 0, right: 0,
-        height: TOP_BAR_H,
-        zIndex: 50,
-        background: focusMode ? T.room : T.panel,
-        borderBottom: `1px solid ${focusMode ? 'rgba(244,246,252,0.10)' : T.border}`,
-        display: 'flex', alignItems: 'center',
-        padding: '0 28px', gap: 8,
-        fontFamily: T.sans, fontSize: 12.5,
-        color: focusMode ? 'rgba(244,246,252,0.45)' : T.inkMuted,
-        transition: 'background 600ms ease, border-color 600ms ease, color 600ms ease',
-      }}>
+      <div
+        style={{
+          top: 0, height: TOP_BAR_H,
+          background: focusMode ? '#1A1C22' : '#FFFFFF',
+          borderBottom: `1px solid ${focusMode ? 'rgba(244,246,252,0.10)' : 'rgba(33,38,51,0.10)'}`,
+          color: focusMode ? 'rgba(244,246,252,0.45)' : 'rgba(33,38,51,0.50)',
+        }}
+        className="fixed left-0 right-0 z-50 flex items-center px-7 gap-2 text-[12.5px] transition-[background,border-color,color] duration-[600ms] ease-in-out"
+      >
         <span>Spaces</span>
-        <ChevronRight size={11} style={{ color: focusMode ? 'rgba(244,246,252,0.25)' : T.inkDim }} />
+        <ChevronRight size={11} style={{ color: focusMode ? 'rgba(244,246,252,0.25)' : 'rgba(33,38,51,0.28)' }} />
         <span>Lập trình web</span>
-        <ChevronRight size={11} style={{ color: focusMode ? 'rgba(244,246,252,0.25)' : T.inkDim }} />
-        <span style={{ color: focusMode ? 'rgba(244,246,252,0.85)' : T.ink, fontWeight: 500 }}>{active.chapter}</span>
+        <ChevronRight size={11} style={{ color: focusMode ? 'rgba(244,246,252,0.25)' : 'rgba(33,38,51,0.28)' }} />
+        <span className="font-medium" style={{ color: focusMode ? 'rgba(244,246,252,0.85)' : '#212633' }}>{active.chapter}</span>
 
-        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 16 }}>
+        <div className="ml-auto flex items-center gap-4">
           {taking ? (
             /* Đang thi: không có gì để bấm trên top bar — chỉ nhắc trạng thái */
-            <span style={{ fontFamily: T.sans, fontSize: 12, color: 'rgba(244,246,252,0.45)' }}>
+            <span className="text-xs" style={{ color: 'rgba(244,246,252,0.45)' }}>
               Đang làm bài — nộp bài để rời phòng thi
             </span>
           ) : (
             <>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <div style={{
-                  width: 80, height: 2, overflow: 'hidden', borderRadius: 1,
-                  background: focusMode ? 'rgba(244,246,252,0.16)' : 'rgba(33,38,51,0.14)',
-                }}>
-                  <div style={{
-                    width: `${pct}%`, height: '100%',
-                    background: focusMode ? T.accentScreen : T.accent,
-                    transition: 'width 400ms ease',
-                  }} />
+              <div className="flex items-center gap-2">
+                <div
+                  className="w-20 h-0.5 overflow-hidden rounded-[1px]"
+                  style={{ background: focusMode ? 'rgba(244,246,252,0.16)' : 'rgba(33,38,51,0.14)' }}
+                >
+                  <div
+                    className="h-full transition-[width] duration-[400ms] ease-in-out"
+                    style={{ width: `${pct}%`, background: focusMode ? '#8FA6EE' : '#2E4A9E' }}
+                  />
                 </div>
-                <span style={{ fontFamily: T.mono, fontSize: 11, color: focusMode ? T.accentScreen : T.accent }}>{pct}%</span>
+                <span className="font-mono text-[11px]" style={{ color: focusMode ? '#8FA6EE' : '#2E4A9E' }}>{pct}%</span>
               </div>
 
               <button
                 onClick={() => { setFocusMode(v => !v); setOverlayOpen(false); }}
                 aria-label={focusMode ? 'Thoát focus mode' : 'Vào focus mode'}
                 title={focusMode ? 'Thoát focus mode' : 'Focus mode — tắt đèn phòng, chỉ còn bài làm'}
-                className="vd-focusable"
+                className="vd-focusable w-[26px] h-[26px] flex items-center justify-center cursor-pointer shrink-0"
                 style={{
                   background: focusMode ? 'rgba(143,166,238,0.14)' : 'none',
-                  border: `1px solid ${focusMode ? T.accentScreen : T.border}`, borderRadius: R.sm,
-                  width: 26, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  cursor: 'pointer', color: focusMode ? T.accentScreen : T.inkMid, flexShrink: 0,
+                  border: `1px solid ${focusMode ? '#8FA6EE' : 'rgba(33,38,51,0.10)'}`,
+                  borderRadius: R.sm,
+                  color: focusMode ? '#8FA6EE' : 'rgba(33,38,51,0.72)',
                 }}
               >
                 {focusMode ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
@@ -895,103 +689,71 @@ export default function VibeQuizDemoPage() {
       </div>
 
       {/* ══ WORKSPACE ══ */}
-      <div style={{
-        position: 'fixed',
-        top: TOP_BAR_H, left: 0, right: 0, bottom: 0,
-        zIndex: 1,
-        display: 'flex', justifyContent: 'center',
-        background: focusMode ? T.room : T.page,
-        transition: 'background 600ms ease',
-      }}>
-        <div style={{
-          width: '100%',
-          padding: isCompact ? '0 16px' : '0 32px',
-          display: 'grid',
-          gridTemplateColumns: (focusMode || isCompact) ? '1fr' : '1fr 340px',
-          gap: isCompact ? 16 : 36,
-          height: '100%',
-        }}>
+      <div
+        style={{ top: TOP_BAR_H, background: focusMode ? '#1A1C22' : '#FAFAF7' }}
+        className="fixed left-0 right-0 bottom-0 z-[1] flex justify-center transition-[background] duration-[600ms] ease-in-out"
+      >
+        <div
+          style={{
+            padding: isCompact ? '0 16px' : '0 32px',
+            gridTemplateColumns: (focusMode || isCompact) ? '1fr' : '1fr 340px',
+            gap: isCompact ? 16 : 36,
+          }}
+          className="w-full grid h-full"
+        >
 
           {/* ══ LEFT COLUMN — tờ giấy kiểm tra. Cột LUÔN cuộn được vì chiều
               cao tờ giấy phụ thuộc nội dung câu hỏi, không khóa tỉ lệ như video. ══ */}
-          <div
-            style={{
-              position: 'relative', display: 'flex', flexDirection: 'column',
-              height: '100%',
-              overflowY: 'auto',
-              paddingBottom: 40,
-              justifyContent: 'flex-start',
-            }}
-            className="cs-scrollbar"
-          >
+          <div className="relative flex flex-col h-full overflow-y-auto pb-10 justify-start cs-scrollbar">
             {!focusMode && (
-              <div style={{ flexShrink: 0, paddingTop: 18, paddingBottom: 14 }}>
-                <h1 style={{
-                  fontFamily: T.sans, fontSize: 'clamp(19px, 2.1vw, 26px)', fontWeight: 700,
-                  letterSpacing: '-0.015em', lineHeight: 1.25,
-                  margin: 0, color: T.ink,
-                }}>
+              <div className="shrink-0 pt-[18px] pb-3.5">
+                <h1 className="text-[clamp(19px,2.1vw,26px)] font-bold tracking-[-0.015em] leading-[1.25] m-0 text-ink-text">
                   {active.title}
                 </h1>
               </div>
             )}
 
-            <div style={{ flexShrink: 0, position: 'relative', paddingTop: focusMode ? 40 : 0 }}>
+            <div style={{ paddingTop: focusMode ? 40 : 0 }} className="shrink-0 relative">
               {renderSheet()}
 
               {/* ── FOCUS MODE: overlay bài học. Khi ĐANG THI thì ẩn hẳn —
                   phòng thi không có gì để xao nhãng. ── */}
               {focusMode && !taking && (
                 <>
-                  <div style={{
-                    position: 'fixed',
-                    top: TOP_BAR_H, right: 24, bottom: 24, zIndex: 30,
-                    marginTop: 24,
-                    width: 'min(400px, 86vw)',
-                    display: 'flex', flexDirection: 'column',
-                    background: T.panel,
-                    border: `1px solid ${T.border}`,
-                    borderRadius: R.lg, overflow: 'hidden',
-                    boxShadow: T.shadowMd,
-                    opacity: overlayOpen ? 1 : 0,
-                    transform: overlayOpen ? 'translateX(0)' : 'translateX(12px)',
-                    pointerEvents: overlayOpen ? 'auto' : 'none',
-                    transition: 'opacity 200ms ease, transform 200ms ease',
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center' }}>
-                      <div style={{ flex: 1 }}>{renderPanelHeader()}</div>
+                  <div
+                    style={{
+                      top: TOP_BAR_H,
+                      borderRadius: R.lg,
+                      boxShadow: T.shadowMd,
+                      opacity: overlayOpen ? 1 : 0,
+                      transform: overlayOpen ? 'translateX(0)' : 'translateX(12px)',
+                      pointerEvents: overlayOpen ? 'auto' : 'none',
+                    }}
+                    className="fixed right-6 bottom-6 z-30 mt-6 w-[min(400px,86vw)] flex flex-col bg-ink-panel border border-ink-border overflow-hidden transition-[opacity,transform] duration-200 ease-in-out"
+                  >
+                    <div className="flex items-center">
+                      <div className="flex-1">{renderPanelHeader()}</div>
                       <button
                         onClick={() => setOverlayOpen(false)}
                         aria-label="Ẩn overlay"
-                        className="vd-focusable"
-                        style={{
-                          flexShrink: 0, background: 'none', border: 'none', cursor: 'pointer',
-                          color: T.inkDim, padding: '0 14px', display: 'flex', alignItems: 'center',
-                          borderBottom: `1px solid ${T.border}`, height: '100%',
-                        }}
+                        className="vd-focusable shrink-0 bg-transparent border-none cursor-pointer text-ink-textDim px-3.5 flex items-center border-b border-ink-border h-full"
                       >
                         <X size={13} />
                       </button>
                     </div>
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                    <div className="flex-1 flex flex-col overflow-hidden">
                       {renderPlaylist()}
                     </div>
                   </div>
 
                   <button
                     onClick={() => setOverlayOpen(v => !v)}
-                    className="vd-focusable"
+                    className="vd-focusable fixed right-6 bottom-6 z-20 flex items-center gap-2 py-[9px] px-4 bg-ink-panel border-none cursor-pointer text-[12.5px] font-medium text-ink-textMid transition-opacity duration-150 ease-in-out"
                     style={{
-                      position: 'fixed', right: 24, bottom: 24, zIndex: 20,
-                      display: 'flex', alignItems: 'center', gap: 8,
-                      padding: '9px 16px',
-                      background: T.panel, border: 'none',
-                      borderRadius: R.sm, cursor: 'pointer',
+                      borderRadius: R.sm,
                       boxShadow: T.shadowMd,
-                      fontFamily: T.sans, fontSize: 12.5, fontWeight: 500, color: T.inkMid,
                       opacity: overlayOpen ? 0 : 1,
                       pointerEvents: overlayOpen ? 'none' : 'auto',
-                      transition: 'opacity 150ms ease',
                     }}
                   >
                     <ListVideo size={13} />
@@ -1003,15 +765,12 @@ export default function VibeQuizDemoPage() {
 
             {/* Compact & không focus: danh sách bài học xếp dưới tờ giấy */}
             {isCompact && !focusMode && (
-              <div style={{
-                flexShrink: 0, marginTop: 16, minHeight: 360,
-                display: 'flex', flexDirection: 'column',
-                background: T.panel, border: `1px solid ${T.border}`,
-                borderRadius: R.md, overflow: 'hidden',
-                boxShadow: T.shadowSm,
-              }}>
+              <div
+                className="shrink-0 mt-4 min-h-[360px] flex flex-col bg-ink-panel border border-ink-border overflow-hidden"
+                style={{ borderRadius: R.md, boxShadow: T.shadowSm }}
+              >
                 {renderPanelHeader()}
-                <div style={{ display: 'flex', flexDirection: 'column', minHeight: 320 }}>
+                <div className="flex flex-col min-h-[320px]">
                   {renderPlaylist()}
                 </div>
               </div>
@@ -1020,15 +779,12 @@ export default function VibeQuizDemoPage() {
 
           {/* ══ RIGHT — rail cố định ══ */}
           {!focusMode && !isCompact && (
-            <div style={{
-              display: 'flex', flexDirection: 'column',
-              height: 'calc(100% - 30px)', marginTop: 30,
-              overflow: 'hidden',
-              background: T.panel, border: `1px solid ${T.border}`,
-              borderRadius: R.md, boxShadow: T.shadowSm,
-            }}>
+            <div
+              className="flex flex-col mt-[30px] overflow-hidden bg-ink-panel border border-ink-border"
+              style={{ height: 'calc(100% - 30px)', borderRadius: R.md, boxShadow: T.shadowSm }}
+            >
               {renderPanelHeader()}
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+              <div className="flex-1 flex flex-col overflow-hidden">
                 {renderPlaylist()}
               </div>
             </div>
@@ -1036,6 +792,6 @@ export default function VibeQuizDemoPage() {
 
         </div>
       </div>
-    </>
+    </div>
   );
 }
