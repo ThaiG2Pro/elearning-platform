@@ -36,6 +36,11 @@ export class QuizController {
         return await this.service.uploadQuizForLesson(userId, lessonId, file);
     }
 
+    /** JSON counterpart of `uploadQuizForLesson` — dùng bởi luồng "AI tạo quiz". */
+    async saveGeneratedQuestions(userId: bigint, lessonId: bigint, questions: ParsedQuestionDto[]): Promise<{ savedCount: number }> {
+        return await this.service.saveGeneratedQuestions(userId, lessonId, questions);
+    }
+
     async generateQuiz(lessonId: bigint): Promise<QuizQuestionsDto> {
         return await this.service.generateQuiz(lessonId);
     }

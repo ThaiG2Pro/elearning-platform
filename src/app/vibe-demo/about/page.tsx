@@ -1,107 +1,32 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import { ChevronRight, ArrowRight } from 'lucide-react';
-import { Be_Vietnam_Pro } from 'next/font/google';
+import { beVietnam, R, MARGIN_W, APP_TOP_BAR_H, useIsCompact, VIBE_GLOBAL_CSS } from '@/lib/vibe/theme';
+import { TopNav } from '@/components/vibe/TopNav';
 
-const beVietnam = Be_Vietnam_Pro({
-  subsets: ['vietnamese', 'latin'],
-  weight: ['300', '400', '500', '600', '700'],
-  display: 'swap',
-});
-
-/* ─── Tokens ─────────────────────────────────────────────────────────────── */
-const T = {
-  page:    '#FAFAF7',
-  panel:   '#FFFFFF',
-  ink:     '#212633',
-  inkMid:  'rgba(33,38,51,0.72)',
-  inkMuted:'rgba(33,38,51,0.50)',
-  inkDim:  'rgba(33,38,51,0.28)',
-  border:  'rgba(33,38,51,0.10)',
-  borderHi:'rgba(33,38,51,0.20)',
-  accent:  '#2E4A9E',
-  accentA: 'rgba(46,74,158,0.08)',
-  marginLn:'rgba(46,74,158,0.30)',
-  onAccent:'#FFFFFF',
-  shadowSm:'0 1px 2px rgba(33,38,51,0.04), 0 4px 12px -6px rgba(33,38,51,0.08)',
-  shadowMd:'0 2px 4px rgba(33,38,51,0.04), 0 16px 40px -16px rgba(33,38,51,0.20)',
-  sans:    `${beVietnam.style.fontFamily}, -apple-system, 'Segoe UI', Roboto, sans-serif`,
-  mono:    "'JetBrains Mono','Fira Code',monospace",
-} as const;
-
-const TOP_BAR_H = 56;
-const R = { sm: 6, md: 12, lg: 16 };
-const MARGIN_W = 56;
-
-function useIsCompact(breakpointPx: number): boolean {
-  const [isCompact, setIsCompact] = useState(false);
-  React.useEffect(() => {
-    const mq = window.matchMedia(`(max-width: ${breakpointPx}px)`);
-    const update = () => setIsCompact(mq.matches);
-    update();
-    mq.addEventListener('change', update);
-    return () => mq.removeEventListener('change', update);
-  }, [breakpointPx]);
-  return isCompact;
-}
-
-function TopNav({ active }: { active: 'home' | 'spaces' | 'about' }) {
-  const items: { key: typeof active; label: string; href: string }[] = [
-    { key: 'home',   label: 'Trang chủ',          href: '/vibe-demo/home' },
-    { key: 'spaces', label: 'Không gian của tôi', href: '/vibe-demo/spaces' },
-    { key: 'about',  label: 'Giới thiệu',          href: '/vibe-demo/about' },
-  ];
-  return (
-    <div style={{
-      position: 'fixed', top: 0, left: 0, right: 0, height: TOP_BAR_H, zIndex: 50,
-      background: T.panel, borderBottom: `1px solid ${T.border}`,
-      display: 'flex', alignItems: 'center', padding: '0 28px', gap: 28,
-    }}>
-      <a href="/vibe-demo/home" style={{
-        fontFamily: T.sans, fontSize: 17, fontWeight: 700, color: T.ink,
-        letterSpacing: '-0.01em', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 6,
-      }}>
-        <span style={{ color: T.accent }}>✒</span> Spaces
-      </a>
-      <nav style={{ display: 'flex', gap: 22 }}>
-        {items.map(it => (
-          <a key={it.key} href={it.href} className="vd-focusable" style={{
-            fontFamily: T.sans, fontSize: 14, fontWeight: it.key === active ? 600 : 450,
-            color: it.key === active ? T.ink : T.inkMuted,
-            textDecoration: 'none', padding: '4px 0',
-            borderBottom: `2px solid ${it.key === active ? T.accent : 'transparent'}`,
-          }}>
-            {it.label}
-          </a>
-        ))}
-      </nav>
-      <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12 }}>
-        <div style={{
-          width: 30, height: 30, borderRadius: '50%',
-          background: T.accent, color: T.onAccent,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontFamily: T.sans, fontSize: 12.5, fontWeight: 700,
-        }}>
-          TH
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ─── Page ───────────────────────────────────────────────────────────────── */
+/*
+ * PILOT chuyển sang Tailwind: dùng namespace `ink-*` (tailwind.config.js) thay
+ * cho object `T` + style={{}} — xem docs/DESIGN_ROADMAP.md mục 1 "Inline
+ * style vs Tailwind/Radix". Trang này không dùng Radix primitive nào (không
+ * Dialog/Tabs/Progress) nên là ứng viên pilot rủi ro thấp nhất: chỉ đổi cách
+ * tô màu/khoảng cách, không đổi hành vi tương tác.
+ *
+ * Vẫn giữ style={{}} cho 2 trường hợp Tailwind không xử lý tốt: (1) giá trị
+ * PHỤ THUỘC RUNTIME (APP_TOP_BAR_H, MARGIN_W — hằng số JS dùng chung với các
+ * trang khác qua theme.ts, không nên hardcode lại thành class); (2) font
+ * family của next/font — dùng `beVietnam.className` trên root thay vì
+ * fontFamily lặp lại ở từng element.
+ */
 export default function VibeAboutDemoPage() {
   const isCompact = useIsCompact(760);
 
   const P = ({ children }: { children: React.ReactNode }) => (
-    <div style={{ display: 'flex', alignItems: 'stretch' }}>
-      <span style={{ width: MARGIN_W, flexShrink: 0 }} />
-      <p style={{
-        flex: 1, borderLeft: `1px solid ${T.marginLn}`,
-        padding: '12px 8px 4px 22px', margin: 0,
-        fontFamily: T.sans, fontSize: 16.5, color: T.inkMid, lineHeight: 1.8,
-      }}>
+    <div className="flex items-stretch">
+      <span style={{ width: MARGIN_W }} className="shrink-0" />
+      <p
+        className="flex-1 border-l border-ink-marginLn px-2 pt-3 pb-1 pl-[22px] m-0 text-[16.5px] text-ink-textMid leading-[1.8]"
+      >
         {children}
       </p>
     </div>
@@ -109,21 +34,14 @@ export default function VibeAboutDemoPage() {
 
   const Section = ({ n, title, children }: { n: string; title: string; children: React.ReactNode }) => (
     <div>
-      <div style={{ display: 'flex', alignItems: 'stretch', paddingTop: 40 }}>
-        <span style={{
-          width: MARGIN_W, flexShrink: 0,
-          display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
-          paddingTop: 4,
-          fontFamily: T.mono, fontSize: 12, fontWeight: 600, color: T.accent,
-        }}>
+      <div className="flex items-stretch pt-10">
+        <span
+          style={{ width: MARGIN_W }}
+          className="shrink-0 flex items-start justify-center pt-1 font-mono text-xs font-semibold text-ink-accent"
+        >
           {n}
         </span>
-        <h2 style={{
-          flex: 1, borderLeft: `1px solid ${T.marginLn}`,
-          padding: '0 8px 0 22px', margin: 0,
-          fontFamily: T.sans, fontSize: 22, fontWeight: 700,
-          letterSpacing: '-0.01em', color: T.ink, lineHeight: 1.4,
-        }}>
+        <h2 className="flex-1 border-l border-ink-marginLn px-2 pl-[22px] m-0 text-[22px] font-bold tracking-[-0.01em] text-ink-text leading-[1.4]">
           {title}
         </h2>
       </div>
@@ -147,41 +65,32 @@ export default function VibeAboutDemoPage() {
   ];
 
   return (
-    <>
-      <style>{`
-        .vd-focusable:focus-visible {
-          outline: 2px solid ${T.accent};
-          outline-offset: 2px;
-          border-radius: 4px;
-        }
-      `}</style>
+    <div className={beVietnam.className}>
+      <style>{VIBE_GLOBAL_CSS}</style>
 
       <TopNav active="about" />
 
-      <div style={{
-        position: 'fixed', top: TOP_BAR_H, left: 0, right: 0, bottom: 0,
-        background: T.page, overflowY: 'auto', display: 'flex', justifyContent: 'center',
-      }} className="cs-scrollbar">
-        <div style={{
-          width: '100%', maxWidth: 760,
-          padding: isCompact ? '32px 16px 64px' : '48px 32px 80px',
-        }}>
+      <div
+        style={{ top: APP_TOP_BAR_H }}
+        className="fixed left-0 right-0 bottom-0 bg-ink-page overflow-y-auto flex justify-center cs-scrollbar"
+      >
+        <div
+          className="w-full max-w-[760px]"
+          style={{ padding: isCompact ? '32px 16px 64px' : '48px 32px 80px' }}
+        >
           {/* ── Trang bìa bài luận ── */}
-          <div style={{ display: 'flex', alignItems: 'stretch' }}>
-            <span style={{ width: MARGIN_W, flexShrink: 0 }} />
-            <div style={{ flex: 1, borderLeft: `1px solid ${T.marginLn}`, padding: '0 8px 0 22px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontFamily: T.sans, fontSize: 13, fontWeight: 500, color: T.inkMuted, marginBottom: 12 }}>
+          <div className="flex items-stretch">
+            <span style={{ width: MARGIN_W }} className="shrink-0" />
+            <div className="flex-1 border-l border-ink-marginLn px-2 pl-[22px]">
+              <div className="flex items-center gap-2 text-[13px] font-medium text-ink-textMuted mb-3">
                 <span>Spaces</span>
-                <ChevronRight size={11} style={{ color: T.inkDim }} />
+                <ChevronRight size={11} className="text-ink-textDim" />
                 <span>Giới thiệu</span>
               </div>
-              <h1 style={{
-                fontFamily: T.sans, fontSize: 'clamp(28px, 4vw, 40px)', fontWeight: 700,
-                letterSpacing: '-0.02em', color: T.ink, margin: 0, lineHeight: 1.2,
-              }}>
+              <h1 className="text-[clamp(28px,4vw,40px)] font-bold tracking-[-0.02em] text-ink-text m-0 leading-[1.2]">
                 Một không gian học,<br />không phải một cái bảng tin.
               </h1>
-              <p style={{ fontFamily: T.sans, fontSize: 17, color: T.inkMuted, marginTop: 18, lineHeight: 1.7, maxWidth: 520 }}>
+              <p className="text-[17px] text-ink-textMuted mt-[18px] leading-[1.7] max-w-[520px]">
                 Chúng tôi tin gọn gàng không phải là gu thẩm mỹ — nó là điều kiện để một người
                 còn muốn quay lại học tiếp vào ngày mai.
               </p>
@@ -203,22 +112,20 @@ export default function VibeAboutDemoPage() {
           </Section>
 
           <Section n="§2" title="Ba trụ cột">
-            <div style={{ marginTop: 4 }}>
+            <div className="mt-1">
               {PILLARS.map(p => (
-                <div key={p.n} style={{ display: 'flex', alignItems: 'stretch' }}>
-                  <span style={{
-                    width: MARGIN_W, flexShrink: 0,
-                    display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
-                    paddingTop: 13,
-                    fontFamily: T.mono, fontSize: 12, fontWeight: 600, color: T.inkDim,
-                  }}>
+                <div key={p.n} className="flex items-stretch">
+                  <span
+                    style={{ width: MARGIN_W }}
+                    className="shrink-0 flex items-start justify-center pt-[13px] font-mono text-xs font-semibold text-ink-textDim"
+                  >
                     {p.n}
                   </span>
-                  <div style={{ flex: 1, borderLeft: `1px solid ${T.marginLn}`, padding: '12px 8px 4px 22px' }}>
-                    <div style={{ fontFamily: T.sans, fontSize: 16.5, fontWeight: 700, color: T.ink, marginBottom: 6 }}>
+                  <div className="flex-1 border-l border-ink-marginLn px-2 pt-3 pb-1 pl-[22px]">
+                    <div className="text-[16.5px] font-bold text-ink-text mb-1.5">
                       {p.title}
                     </div>
-                    <div style={{ fontFamily: T.sans, fontSize: 15, color: T.inkMid, lineHeight: 1.75 }}>
+                    <div className="text-[15px] text-ink-textMid leading-[1.75]">
                       {p.body}
                     </div>
                   </div>
@@ -228,22 +135,16 @@ export default function VibeAboutDemoPage() {
           </Section>
 
           <Section n="§3" title="Bằng số, không bằng lời">
-            <div style={{ marginTop: 4 }}>
+            <div className="mt-1">
               {NUMBERS.map((row, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'stretch' }}>
-                  <span style={{
-                    width: MARGIN_W, flexShrink: 0,
-                    display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
-                    paddingTop: 10,
-                    fontFamily: T.mono, fontSize: 18, fontWeight: 700, color: T.accent,
-                  }}>
+                <div key={i} className="flex items-stretch">
+                  <span
+                    style={{ width: MARGIN_W }}
+                    className="shrink-0 flex items-start justify-center pt-2.5 font-mono text-lg font-bold text-ink-accent"
+                  >
                     {row.n}
                   </span>
-                  <div style={{
-                    flex: 1, borderLeft: `1px solid ${T.marginLn}`,
-                    padding: '13px 8px 9px 22px',
-                    fontFamily: T.sans, fontSize: 15, color: T.inkMid, lineHeight: 1.65,
-                  }}>
+                  <div className="flex-1 border-l border-ink-marginLn pl-[22px] pr-2 pt-[13px] pb-[9px] text-[15px] text-ink-textMid leading-[1.65]">
                     {row.label}
                   </div>
                 </div>
@@ -252,34 +153,27 @@ export default function VibeAboutDemoPage() {
           </Section>
 
           {/* ── Lời kết — trích dẫn viền mực dày, đóng vai "hạ mực" của bài luận ── */}
-          <div style={{ display: 'flex', alignItems: 'stretch', marginTop: 44 }}>
-            <span style={{ width: MARGIN_W, flexShrink: 0 }} />
-            <div style={{
-              flex: 1, borderLeft: `2px solid ${T.accent}`,
-              padding: '4px 8px 4px 22px',
-              fontFamily: T.sans, fontSize: 19, fontStyle: 'italic', fontWeight: 600,
-              color: T.ink, lineHeight: 1.6,
-            }}>
+          <div className="flex items-stretch mt-11">
+            <span style={{ width: MARGIN_W }} className="shrink-0" />
+            <div className="flex-1 border-l-2 border-ink-accent pl-[22px] pr-2 py-1 text-[19px] italic font-semibold text-ink-text leading-[1.6]">
               &ldquo;Không gian tốt nhất là không gian bạn quên mất mình đang dùng một sản phẩm.&rdquo;
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'stretch', marginTop: 32 }}>
-            <span style={{ width: MARGIN_W, flexShrink: 0 }} />
-            <div style={{ flex: 1, borderLeft: `1px solid ${T.marginLn}`, padding: '0 8px 0 22px' }}>
-              <a href="/vibe-demo/spaces" className="vd-focusable" style={{
-                display: 'inline-flex', alignItems: 'center', gap: 9,
-                padding: '12px 24px',
-                background: T.accent, color: T.onAccent,
-                borderRadius: R.sm, textDecoration: 'none',
-                fontFamily: T.sans, fontSize: 15, fontWeight: 600,
-              }}>
+          <div className="flex items-stretch mt-8">
+            <span style={{ width: MARGIN_W }} className="shrink-0" />
+            <div className="flex-1 border-l border-ink-marginLn pl-[22px] pr-2">
+              <a
+                href="/vibe-demo/spaces"
+                className="vd-focusable inline-flex items-center gap-[9px] px-6 py-3 bg-ink-accent text-ink-onAccent no-underline text-[15px] font-semibold"
+                style={{ borderRadius: R.sm }}
+              >
                 Tạo không gian đầu tiên của bạn <ArrowRight size={15} />
               </a>
             </div>
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }

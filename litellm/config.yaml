@@ -5,17 +5,24 @@
 # gọi tới (không chặn khởi động proxy).
 model_list:
   # Groq — key thật đang có sẵn, dùng làm mặc định cho SHARED_FREE.
+  # 2026-08-20: `llama-3.3-70b-versatile`/`llama-3.1-8b-instant` đã bị Groq
+  # gỡ khỏi danh sách model (deprecated ngoài tầm kiểm soát của app) — đổi
+  # sang `openai/gpt-oss-*` (model OSS Groq đang host thật, xác nhận qua
+  # GET https://api.groq.com/openai/v1/models). Groq tự đổi danh mục model
+  # theo thời gian — nếu lại gặp lỗi 404 model_not_found, kiểm tra lại danh
+  # sách model đang có bằng chính URL trên rồi cập nhật 2 dòng model bên dưới,
+  # không phải lỗi ở LiteLLMProvider/AIGenerationService.
   - model_name: default
     litellm_params:
-      model: groq/llama-3.3-70b-versatile
+      model: groq/openai/gpt-oss-120b
       api_key: os.environ/GROQ_API_KEY
-  - model_name: groq-llama-70b
+  - model_name: groq-gpt-oss-120b
     litellm_params:
-      model: groq/llama-3.3-70b-versatile
+      model: groq/openai/gpt-oss-120b
       api_key: os.environ/GROQ_API_KEY
-  - model_name: groq-llama-8b
+  - model_name: groq-gpt-oss-20b
     litellm_params:
-      model: groq/llama-3.1-8b-instant
+      model: groq/openai/gpt-oss-20b
       api_key: os.environ/GROQ_API_KEY
 
   # OpenAI — bật khi có OPENAI_API_KEY.

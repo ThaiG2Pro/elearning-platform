@@ -650,6 +650,33 @@ Kênh global chờ cổng retention bên dưới.
   (test ở WP2.2 gọi thẳng `AIGenerationService`, chưa qua UI/route HTTP);
   UI cho nhánh BYOK (nhập key riêng) — hiện panel chỉ gọi SHARED_FREE mặc
   định, chưa có ô nhập key.
+  **[Bổ sung — 2026-08-20, chưa từng có trong ROADMAP/wayfinder trước đó]**
+  Gap phát hiện qua audit thật với founder: luồng "dán link → chọn 'Thêm
+  quiz/tóm tắt trước khi học' → vào editor" (WP1.10.3/1.10.4) đưa user tới
+  `/my-courses/[id]/edit`, nhưng editor trước đó **chỉ hỗ trợ tạo quiz qua
+  upload file Excel thủ công** — không có đường AI nào ở đây, trái với hình
+  dung ban đầu (AI tự sinh quiz ngay tại editor, không phải chỉ ở trang học).
+  Đã nối AI vào editor: lesson VIDEO có `sourceId` hiện thêm khối "Dùng AI
+  cho bài này" (nút "AI tóm tắt bài này"/"AI tạo quiz 10 câu", tái dùng
+  nguyên `generateAIContent`/`AIGenerationError` — cùng key/quota/BYOK/
+  PAID_TIER routing với trang học, không phải luồng thứ 2 tách biệt). Điểm
+  mới thật sự: quiz AI trả về nay **parse được thành câu hỏi có cấu trúc**
+  (`parseAIQuizContent`, `src/lib/aiGeneration.ts` — trước đây
+  `AIGenerationPanel` chỉ hiện `content` như văn bản thô, không parse) và có
+  nút "Tạo bài quiz mới từ đây" tạo thẳng 1 lesson QUIZ mới trong cùng
+  chương + lưu câu hỏi qua endpoint mới
+  `POST /api/v1/management/lessons/[id]/quiz/questions` (JSON, không cần
+  xuất Excel trước) — validate bằng đúng 1 bộ luật với đường Excel
+  (`QuizValidationPolicy.validateParsedQuestion`, tách ra dùng chung, không
+  tạo bộ luật lỏng hơn riêng cho nội dung AI). Prompt quiz ở
+  `AIGenerationService.buildPrompt` đổi sang yêu cầu schema JSON cố định
+  (`content`/`options`/`correctAnswer`) thay vì "trả về JSON array" chung
+  chung — cần thiết để parse được, không phải đổi hành vi generate. Luôn do
+  user chủ động bấm, không có gì tự chạy khi mở editor/thêm lesson mới (đúng
+  nguyên tắc lazy-generate ở WP2.2). Verify: `pnpm test` 151/151 (thêm 15
+  test mới — `QuizValidationPolicy.validateParsedQuestion` + parse quiz),
+  `tsc --noEmit` sạch, `next build` compile qua (bước collect-page-data
+  timeout riêng, môi trường sandbox, không liên quan thay đổi này).
 - **WP2.4 — Alerting chi phí AI theo ngày/tuần** (mục 6.7). Bắt buộc trước khi
   mở rộng thêm cộng đồng, để phát hiện sớm tăng trưởng đột biến ngoài dự tính.
   **Đo cả số request/ngày, không chỉ $** (ticket 06) — với free tier, cạn

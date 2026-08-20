@@ -5,13 +5,7 @@ import {
   ChevronRight, ChevronUp, ChevronDown, Plus, Trash2, Play, HelpCircle, BookOpen,
   Pencil, Check, Eye, EyeOff, GripVertical,
 } from 'lucide-react';
-import { Be_Vietnam_Pro } from 'next/font/google';
-
-const beVietnam = Be_Vietnam_Pro({
-  subsets: ['vietnamese', 'latin'],
-  weight: ['300', '400', '500', '600', '700'],
-  display: 'swap',
-});
+import { beVietnam, R, TOP_BAR_H, MARGIN_W, useIsCompact, VIBE_GLOBAL_CSS } from '@/lib/vibe/theme';
 
 /* ─── Data ──────────────────────────────────────────────────────────────── */
 type LessonType = 'video' | 'quiz' | 'article';
@@ -55,37 +49,6 @@ const INITIAL_CHAPTERS: ChapterDraft[] = [
   },
 ];
 
-/* ─── Tokens ─────────────────────────────────────────────────────────────── */
-// "Mực xanh trên giấy trắng" — cùng hệ token với bản video/quiz/article.
-// Chữ ký của TRANG SOẠN: một không gian không có "phòng tắt đèn" (không có
-// nội dung để tiêu thụ, chỉ có cấu trúc để dựng) — thay vào đó là ẩn dụ
-// BẢN THẢO: mục nháp viền CHÌ đứt nét (inkDim, dashed) như phác trước khi hạ
-// bút, mục đã đăng viền MỰC liền nét (accent, solid) — cùng một hành động
-// "hạ mực" mà học viên đã thấy trong hiệu ứng vd-ink-in ở các trang kia.
-const T = {
-  page:    '#FAFAF7',
-  panel:   '#FFFFFF',
-  ink:     '#212633',
-  inkMid:  'rgba(33,38,51,0.72)',
-  inkMuted:'rgba(33,38,51,0.50)',
-  inkDim:  'rgba(33,38,51,0.28)',
-  border:  'rgba(33,38,51,0.10)',
-  borderHi:'rgba(33,38,51,0.20)',
-  accent:  '#2E4A9E',
-  accentA: 'rgba(46,74,158,0.08)',
-  marginLn:'rgba(46,74,158,0.30)',
-  onAccent:'#FFFFFF',
-  pencilLn:'rgba(33,38,51,0.30)', // viền chì — mục bản thảo, chưa đăng
-  shadowSm:'0 1px 2px rgba(33,38,51,0.04), 0 4px 12px -6px rgba(33,38,51,0.08)',
-  shadowMd:'0 2px 4px rgba(33,38,51,0.04), 0 16px 40px -16px rgba(33,38,51,0.20)',
-  sans:    `${beVietnam.style.fontFamily}, -apple-system, 'Segoe UI', Roboto, sans-serif`,
-  mono:    "'JetBrains Mono','Fira Code',monospace",
-} as const;
-
-const TOP_BAR_H = 52;
-const R = { sm: 6, md: 12, lg: 16 };
-const MARGIN_W = 56;
-
 const TYPE_META: Record<LessonType, { label: string; icon: React.ReactNode }> = {
   video:   { label: 'Video',    icon: <Play size={13} /> },
   quiz:    { label: 'Quiz',     icon: <HelpCircle size={13} /> },
@@ -95,19 +58,19 @@ const TYPE_META: Record<LessonType, { label: string; icon: React.ReactNode }> = 
 let uid = 100;
 const nextId = (prefix: string) => `${prefix}${uid++}`;
 
-function useIsCompact(breakpointPx: number): boolean {
-  const [isCompact, setIsCompact] = useState(false);
-  React.useEffect(() => {
-    const mq = window.matchMedia(`(max-width: ${breakpointPx}px)`);
-    const update = () => setIsCompact(mq.matches);
-    update();
-    mq.addEventListener('change', update);
-    return () => mq.removeEventListener('change', update);
-  }, [breakpointPx]);
-  return isCompact;
-}
-
-/* ─── Page ───────────────────────────────────────────────────────────────── */
+/*
+ * Chuyển sang Tailwind `ink-*` namespace (tailwind.config.js) thay cho object
+ * `T` + style={{}} — cùng pattern đã dùng ở about/page.tsx. Trang này không
+ * có modal/dialog hay tab switcher tự vẽ (chỉ có input/button đổi trạng thái
+ * tại chỗ) nên không có ứng viên Radix an toàn để hoán đổi.
+ *
+ * Vẫn giữ style={{}} cho: hằng số runtime dùng chung (TOP_BAR_H, MARGIN_W,
+ * R.sm/R.md — bán kính bo góc), boxShadow (T.shadowSm — chưa có trong
+ * tailwind.config.js), giá trị phụ thuộc state (isCompact, vị trí sticky),
+ * và chuỗi border-left của nút "Thêm bài học" — chuỗi này ghi đè theo ĐÚNG
+ * THỨ TỰ thuộc tính gốc (borderLeft → border:'none' → borderLeftStyle) nên
+ * giữ nguyên inline để không đổi hiệu ứng cascade thật đang render.
+ */
 export default function VibeEditSpaceDemoPage() {
   const [spaceTitle, setSpaceTitle] = useState('Lập trình web hiện đại');
   const [spaceDesc, setSpaceDesc]   = useState(
@@ -171,36 +134,25 @@ export default function VibeEditSpaceDemoPage() {
 
   /* ── Một dòng bài học trong bản thảo: viền chì đứt / mực liền theo trạng thái ── */
   const renderLessonRow = (chapter: ChapterDraft, lesson: LessonDraft, idx: number, total: number) => (
-    <div key={lesson.id} className="vd-row" style={{ display: 'flex', alignItems: 'stretch' }}>
-      <span style={{
-        width: MARGIN_W, flexShrink: 0,
-        display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
-        paddingTop: 13,
-        fontFamily: T.mono, fontSize: 11,
-        color: lesson.published ? T.accent : T.inkDim,
-      }}>
+    <div key={lesson.id} className="vd-row flex items-stretch">
+      <span
+        style={{ width: MARGIN_W }}
+        className={`shrink-0 flex items-start justify-center pt-[13px] font-mono text-[11px] ${lesson.published ? 'text-ink-accent' : 'text-ink-textDim'}`}
+      >
         {String(idx + 1).padStart(2, '0')}
       </span>
 
-      <div style={{
-        flex: 1, minWidth: 0,
-        borderLeft: `${lesson.published ? '1px solid' : '1.5px dashed'} ${lesson.published ? T.marginLn : T.pencilLn}`,
-        padding: '9px 8px 9px 14px',
-        display: 'flex', alignItems: 'center', gap: 8,
-      }}>
+      <div
+        className={`flex-1 min-w-0 flex items-center gap-2 pt-[9px] pb-[9px] pr-2 pl-3.5 ${lesson.published ? 'border-l border-ink-marginLn' : 'border-l-[1.5px] border-dashed border-ink-pencil'}`}
+      >
         {/* Loại bài — bấm để đổi vòng vòng video → quiz → article */}
         <button
           onClick={() => updateLesson(chapter.id, lesson.id, {
             type: lesson.type === 'video' ? 'quiz' : lesson.type === 'quiz' ? 'article' : 'video',
           })}
           title={`Loại: ${TYPE_META[lesson.type].label} — bấm để đổi`}
-          className="vd-focusable"
-          style={{
-            flexShrink: 0, display: 'flex', alignItems: 'center', gap: 5,
-            background: T.accentA, border: 'none', borderRadius: R.sm,
-            padding: '6px 9px', cursor: 'pointer', color: T.accent,
-            fontFamily: T.sans, fontSize: 11.5, fontWeight: 500,
-          }}
+          className="vd-focusable shrink-0 flex items-center gap-[5px] bg-ink-accentA border-none py-1.5 px-[9px] cursor-pointer text-ink-accent text-[11.5px] font-medium"
+          style={{ borderRadius: R.sm }}
         >
           {TYPE_META[lesson.type].icon}
           {!isCompact && TYPE_META[lesson.type].label}
@@ -210,12 +162,7 @@ export default function VibeEditSpaceDemoPage() {
           value={lesson.title}
           onChange={e => updateLesson(chapter.id, lesson.id, { title: e.target.value })}
           placeholder="Tên bài học…"
-          className="vd-focusable"
-          style={{
-            flex: 1, minWidth: 0, background: 'transparent', border: 'none', outline: 'none',
-            fontFamily: T.sans, fontSize: 14.5, fontWeight: 500, color: T.ink,
-            padding: '6px 4px', caretColor: T.accent,
-          }}
+          className="vd-focusable flex-1 min-w-0 bg-transparent border-none outline-none text-[14.5px] font-medium text-ink-text py-1.5 px-1 caret-ink-accent"
         />
 
         {!isCompact && (
@@ -223,12 +170,7 @@ export default function VibeEditSpaceDemoPage() {
             value={lesson.duration}
             onChange={e => updateLesson(chapter.id, lesson.id, { duration: e.target.value })}
             placeholder="thời lượng"
-            className="vd-focusable"
-            style={{
-              width: 76, flexShrink: 0, background: 'transparent', border: 'none', outline: 'none',
-              fontFamily: T.mono, fontSize: 11.5, color: T.inkMuted, textAlign: 'right',
-              padding: '6px 2px', caretColor: T.accent,
-            }}
+            className="vd-focusable w-[76px] shrink-0 bg-transparent border-none outline-none font-mono text-[11.5px] text-ink-textMuted text-right py-1.5 px-0.5 caret-ink-accent"
           />
         )}
 
@@ -236,26 +178,19 @@ export default function VibeEditSpaceDemoPage() {
         <button
           onClick={() => updateLesson(chapter.id, lesson.id, { published: !lesson.published })}
           title={lesson.published ? 'Đã đăng — bấm để chuyển về bản thảo' : 'Bản thảo — bấm để hạ mực, đăng bài'}
-          className="vd-focusable"
-          style={{
-            flexShrink: 0, display: 'flex', alignItems: 'center', gap: 5,
-            background: 'none', border: `1px solid ${lesson.published ? T.accent : T.pencilLn}`,
-            borderRadius: R.sm, padding: '6px 9px', cursor: 'pointer',
-            color: lesson.published ? T.accent : T.inkMuted,
-            fontFamily: T.sans, fontSize: 11.5, fontWeight: 500,
-          }}
+          className={`vd-focusable shrink-0 flex items-center gap-[5px] bg-transparent border py-1.5 px-[9px] cursor-pointer text-[11.5px] font-medium ${lesson.published ? 'border-ink-accent text-ink-accent' : 'border-ink-pencil text-ink-textMuted'}`}
+          style={{ borderRadius: R.sm }}
         >
           {lesson.published ? <Check size={12} /> : <Pencil size={12} />}
           {!isCompact && (lesson.published ? 'Đã đăng' : 'Bản thảo')}
         </button>
 
-        <div style={{ display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+        <div className="flex flex-col shrink-0">
           <button
             onClick={() => moveLesson(chapter.id, lesson.id, -1)}
             disabled={idx === 0}
             aria-label="Di chuyển lên"
-            className="vd-focusable"
-            style={{ background: 'none', border: 'none', cursor: idx === 0 ? 'default' : 'pointer', color: idx === 0 ? T.inkDim : T.inkMuted, padding: 0, lineHeight: 0 }}
+            className={`vd-focusable bg-transparent border-none p-0 leading-none ${idx === 0 ? 'cursor-default text-ink-textDim' : 'cursor-pointer text-ink-textMuted'}`}
           >
             <ChevronUp size={13} />
           </button>
@@ -263,8 +198,7 @@ export default function VibeEditSpaceDemoPage() {
             onClick={() => moveLesson(chapter.id, lesson.id, 1)}
             disabled={idx === total - 1}
             aria-label="Di chuyển xuống"
-            className="vd-focusable"
-            style={{ background: 'none', border: 'none', cursor: idx === total - 1 ? 'default' : 'pointer', color: idx === total - 1 ? T.inkDim : T.inkMuted, padding: 0, lineHeight: 0 }}
+            className={`vd-focusable bg-transparent border-none p-0 leading-none ${idx === total - 1 ? 'cursor-default text-ink-textDim' : 'cursor-pointer text-ink-textMuted'}`}
           >
             <ChevronDown size={13} />
           </button>
@@ -273,10 +207,7 @@ export default function VibeEditSpaceDemoPage() {
         <button
           onClick={() => removeLesson(chapter.id, lesson.id)}
           aria-label="Xóa bài học"
-          className="vd-focusable"
-          style={{ flexShrink: 0, background: 'none', border: 'none', cursor: 'pointer', color: T.inkDim, padding: '4px' }}
-          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = T.inkMuted; }}
-          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = T.inkDim; }}
+          className="vd-focusable shrink-0 bg-transparent border-none cursor-pointer text-ink-textDim hover:text-ink-textMuted p-1"
         >
           <Trash2 size={13} />
         </button>
@@ -286,35 +217,33 @@ export default function VibeEditSpaceDemoPage() {
 
   /* ── Một chương: tiêu đề + danh sách bài + dòng "thêm bài" đứt nét ── */
   const renderChapter = (chapter: ChapterDraft, ci: number) => (
-    <div key={chapter.id} style={{
-      background: T.panel, border: `1px solid ${T.border}`, borderRadius: R.md,
-      boxShadow: T.shadowSm, overflow: 'hidden', marginBottom: 20,
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px', borderBottom: `1px solid ${T.border}` }}>
-        <GripVertical size={14} style={{ color: T.inkDim, flexShrink: 0 }} />
-        <span style={{ fontFamily: T.mono, fontSize: 11, color: T.inkDim, flexShrink: 0 }}>
+    <div
+      key={chapter.id}
+      className="bg-ink-panel border border-ink-border overflow-hidden mb-5"
+      style={{ borderRadius: R.md, boxShadow: T_SHADOW_SM }}
+    >
+      <div className="flex items-center gap-2.5 py-3.5 px-4 border-b border-ink-border">
+        <GripVertical size={14} className="text-ink-textDim shrink-0" />
+        <span className="font-mono text-[11px] text-ink-textDim shrink-0">
           Chương {String(ci + 1).padStart(2, '0')}
         </span>
         <input
           value={chapter.title}
           onChange={e => updateChapter(chapter.id, { title: e.target.value })}
           placeholder="Tên chương…"
-          className="vd-focusable"
-          style={{
-            flex: 1, minWidth: 0, background: 'transparent', border: 'none', outline: 'none',
-            fontFamily: T.sans, fontSize: 16, fontWeight: 700, color: T.ink,
-            padding: '4px', caretColor: T.accent,
-          }}
+          className="vd-focusable flex-1 min-w-0 bg-transparent border-none outline-none text-base font-bold text-ink-text p-1 caret-ink-accent"
         />
-        <span style={{ fontFamily: T.mono, fontSize: 11, color: T.inkDim, flexShrink: 0 }}>
+        <span className="font-mono text-[11px] text-ink-textDim shrink-0">
           {chapter.lessons.length} bài
         </span>
+        {/* shrink-0: tên chương dài (input flex-1 min-w-0 co lại trước) không
+            được phép bóp các nút hành động này — cùng nguyên tắc đã áp dụng
+            cho nhóm nút của dòng bài học bên dưới (renderLessonRow). */}
         <button
           onClick={() => moveChapter(chapter.id, -1)}
           disabled={ci === 0}
           aria-label="Chương lên"
-          className="vd-focusable"
-          style={{ background: 'none', border: 'none', cursor: ci === 0 ? 'default' : 'pointer', color: ci === 0 ? T.inkDim : T.inkMuted, padding: 2, lineHeight: 0 }}
+          className={`vd-focusable shrink-0 bg-transparent border-none p-0.5 leading-none ${ci === 0 ? 'cursor-default text-ink-textDim' : 'cursor-pointer text-ink-textMuted'}`}
         >
           <ChevronUp size={14} />
         </button>
@@ -322,41 +251,40 @@ export default function VibeEditSpaceDemoPage() {
           onClick={() => moveChapter(chapter.id, 1)}
           disabled={ci === chapters.length - 1}
           aria-label="Chương xuống"
-          className="vd-focusable"
-          style={{ background: 'none', border: 'none', cursor: ci === chapters.length - 1 ? 'default' : 'pointer', color: ci === chapters.length - 1 ? T.inkDim : T.inkMuted, padding: 2, lineHeight: 0 }}
+          className={`vd-focusable shrink-0 bg-transparent border-none p-0.5 leading-none ${ci === chapters.length - 1 ? 'cursor-default text-ink-textDim' : 'cursor-pointer text-ink-textMuted'}`}
         >
           <ChevronDown size={14} />
         </button>
         <button
           onClick={() => removeChapter(chapter.id)}
           aria-label="Xóa chương"
-          className="vd-focusable"
-          style={{ background: 'none', border: 'none', cursor: 'pointer', color: T.inkDim, padding: 4 }}
+          className="vd-focusable shrink-0 bg-transparent border-none cursor-pointer text-ink-textDim p-1"
         >
           <Trash2 size={14} />
         </button>
       </div>
 
-      <div style={{ padding: '4px 0' }}>
+      <div className="py-1">
         {chapter.lessons.map((l, li) => renderLessonRow(chapter, l, li, chapter.lessons.length))}
 
         {/* Dòng thêm bài — viền chì đứt nét, đúng ngôn ngữ "phác trước khi viết" */}
-        <div style={{ display: 'flex', alignItems: 'stretch' }}>
-          <span style={{ width: MARGIN_W, flexShrink: 0 }} />
+        <div className="flex items-stretch">
+          <span style={{ width: MARGIN_W }} className="shrink-0" />
           <button
             onClick={() => addLesson(chapter.id)}
-            className="vd-focusable"
+            className="vd-focusable flex-1 flex items-center gap-2 mt-1 mr-3 mb-2 ml-0 bg-transparent cursor-pointer pt-[9px] pr-3 pb-[9px] pl-3.5 text-[13.5px] font-medium text-ink-textMuted hover:text-ink-accent"
             style={{
-              flex: 1, display: 'flex', alignItems: 'center', gap: 8,
-              margin: '4px 12px 8px 0',
-              borderLeft: `1.5px dashed ${T.pencilLn}`,
-              background: 'none', border: 'none', borderLeftStyle: 'dashed',
-              padding: '9px 12px 9px 14px', cursor: 'pointer',
-              fontFamily: T.sans, fontSize: 13.5, fontWeight: 500, color: T.inkMuted,
+              // Ghi đè ĐÚNG THỨ TỰ thuộc tính gốc: borderLeft (1.5px dashed
+              // pencilLn) → border:'none' (reset toàn bộ 4 cạnh, width/color
+              // về initial) → borderLeftStyle:'dashed' (chỉ đặt lại style).
+              // Kết quả cascade THẬT là border-left: medium dashed currentColor
+              // (không phải 1.5px pencilLn như tên biến gợi ý) — giữ nguyên
+              // inline theo đúng thứ tự để không đổi hiệu ứng đang render.
+              borderLeft: '1.5px dashed rgba(33,38,51,0.30)',
+              border: 'none',
+              borderLeftStyle: 'dashed',
               borderRadius: R.sm,
             }}
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = T.accent; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = T.inkMuted; }}
           >
             <Plus size={14} />
             Thêm bài học
@@ -368,66 +296,52 @@ export default function VibeEditSpaceDemoPage() {
 
   /* ── Panel bên phải: thông tin không gian học ── */
   const renderPropertiesPanel = () => (
-    <div style={{
-      display: 'flex', flexDirection: 'column', gap: 20,
-      background: T.panel, border: `1px solid ${T.border}`, borderRadius: R.md,
-      boxShadow: T.shadowSm, padding: 20,
-    }}>
+    <div
+      className="flex flex-col gap-5 bg-ink-panel border border-ink-border p-5"
+      style={{ borderRadius: R.md, boxShadow: T_SHADOW_SM }}
+    >
       <div>
-        <div style={{ fontFamily: T.sans, fontSize: 12.5, fontWeight: 600, color: T.inkMuted, marginBottom: 8 }}>
+        <div className="text-[12.5px] font-semibold text-ink-textMuted mb-2">
           Ảnh bìa
         </div>
-        <div style={{
-          width: '100%', aspectRatio: '16/9', borderRadius: R.sm,
-          background: 'linear-gradient(135deg, #2E4A9E 0%, #4A63B8 60%, #8FA6EE 100%)',
-          border: `1px solid ${T.border}`,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontFamily: T.sans, fontSize: 12.5, fontWeight: 500, color: 'rgba(255,255,255,0.85)',
-        }}>
+        <div
+          className="w-full aspect-[16/9] bg-[linear-gradient(135deg,#2E4A9E_0%,#4A63B8_60%,#8FA6EE_100%)] border border-ink-border flex items-center justify-center text-[12.5px] font-medium text-[rgba(255,255,255,0.85)]"
+          style={{ borderRadius: R.sm }}
+        >
           Xem trước ảnh bìa
         </div>
       </div>
 
       <div>
-        <div style={{ fontFamily: T.sans, fontSize: 12.5, fontWeight: 600, color: T.inkMuted, marginBottom: 8 }}>
+        <div className="text-[12.5px] font-semibold text-ink-textMuted mb-2">
           Tên không gian
         </div>
         <input
           value={spaceTitle}
           onChange={e => setSpaceTitle(e.target.value)}
-          className="vd-focusable"
-          style={{
-            width: '100%', boxSizing: 'border-box',
-            background: T.page, border: `1px solid ${T.border}`, borderRadius: R.sm,
-            padding: '10px 12px', fontFamily: T.sans, fontSize: 15, fontWeight: 600, color: T.ink,
-            caretColor: T.accent,
-          }}
+          className="vd-focusable w-full box-border bg-ink-page border border-ink-border py-2.5 px-3 text-[15px] font-semibold text-ink-text caret-ink-accent"
+          style={{ borderRadius: R.sm }}
         />
       </div>
 
       <div>
-        <div style={{ fontFamily: T.sans, fontSize: 12.5, fontWeight: 600, color: T.inkMuted, marginBottom: 8 }}>
+        <div className="text-[12.5px] font-semibold text-ink-textMuted mb-2">
           Giới thiệu ngắn
         </div>
         <textarea
           value={spaceDesc}
           onChange={e => setSpaceDesc(e.target.value)}
           rows={3}
-          className="vd-focusable"
-          style={{
-            width: '100%', boxSizing: 'border-box', resize: 'vertical',
-            background: T.page, border: `1px solid ${T.border}`, borderRadius: R.sm,
-            padding: '10px 12px', fontFamily: T.sans, fontSize: 13.5, color: T.inkMid, lineHeight: 1.6,
-            caretColor: T.accent,
-          }}
+          className="vd-focusable w-full box-border resize-y bg-ink-page border border-ink-border py-2.5 px-3 text-[13.5px] text-ink-textMid leading-[1.6] caret-ink-accent"
+          style={{ borderRadius: R.sm }}
         />
       </div>
 
       <div>
-        <div style={{ fontFamily: T.sans, fontSize: 12.5, fontWeight: 600, color: T.inkMuted, marginBottom: 8 }}>
+        <div className="text-[12.5px] font-semibold text-ink-textMuted mb-2">
           Hiển thị
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div className="flex gap-2">
           {([
             { key: 'private' as const, label: 'Riêng tư', icon: <EyeOff size={13} /> },
             { key: 'public'  as const, label: 'Công khai', icon: <Eye size={13} /> },
@@ -437,15 +351,8 @@ export default function VibeEditSpaceDemoPage() {
               <button
                 key={opt.key}
                 onClick={() => setVisibility(opt.key)}
-                className="vd-focusable"
-                style={{
-                  flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                  padding: '9px 10px', cursor: 'pointer',
-                  background: isActive ? T.accentA : 'none',
-                  border: `1px solid ${isActive ? T.accent : T.border}`, borderRadius: R.sm,
-                  color: isActive ? T.accent : T.inkMuted,
-                  fontFamily: T.sans, fontSize: 13, fontWeight: 500,
-                }}
+                className={`vd-focusable flex-1 flex items-center justify-center gap-1.5 pt-[9px] pb-[9px] px-2.5 cursor-pointer border text-[13px] font-medium ${isActive ? 'bg-ink-accentA border-ink-accent text-ink-accent' : 'bg-transparent border-ink-border text-ink-textMuted'}`}
+                style={{ borderRadius: R.sm }}
               >
                 {opt.icon}
                 {opt.label}
@@ -455,16 +362,22 @@ export default function VibeEditSpaceDemoPage() {
         </div>
       </div>
 
-      <div style={{ borderTop: `1px solid ${T.border}`, paddingTop: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div className="border-t border-ink-border pt-4 flex flex-col gap-2">
+        {/* w-5 trên số liệu bên dưới: đã kiểm tra với số 3 chữ số (khóa học
+            50+ bài) — vì đây là flex item không có overflow:hidden, kích
+            thước tối thiểu tự động của flexbox vẫn giãn theo nội dung
+            (content-based min-width), nên số không bị cắt/clip, chỉ chiếm
+            thêm vài px. Không phải trường hợp "genuinely rigid" nên giữ w-5
+            nguyên vẹn thay vì đổi sang min-w. */}
         {[
           { n: String(chapters.length), label: 'chương' },
           { n: String(lessonCount),     label: 'bài học tổng' },
           { n: String(publishedCount),  label: 'đã đăng (mực)' },
           { n: String(draftCount),      label: 'còn ở bản thảo (chì)' },
         ].map((row, i) => (
-          <div key={i} style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-            <span style={{ fontFamily: T.mono, fontSize: 13, fontWeight: 600, color: T.accent, width: 20 }}>{row.n}</span>
-            <span style={{ fontFamily: T.sans, fontSize: 13, color: T.inkMuted }}>{row.label}</span>
+          <div key={i} className="flex items-baseline gap-2">
+            <span className="font-mono text-[13px] font-semibold text-ink-accent w-5">{row.n}</span>
+            <span className="text-[13px] text-ink-textMuted">{row.label}</span>
           </div>
         ))}
       </div>
@@ -473,60 +386,41 @@ export default function VibeEditSpaceDemoPage() {
 
   /* ─────────────────────────────────────────────────────────────────────── */
   return (
-    <>
+    <div className={beVietnam.className}>
       <style>{`
-        .vd-focusable:focus-visible {
-          outline: 2px solid ${T.accent};
-          outline-offset: 2px;
-          border-radius: 4px;
-        }
+        ${VIBE_GLOBAL_CSS}
         .vd-row { transition: background 120ms; }
         .vd-row:hover { background: rgba(33,38,51,0.02); }
-        @keyframes vd-ink-in {
-          from { opacity: 0; transform: translateY(-3px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-        .vd-ink-in { animation: vd-ink-in 400ms ease both; }
-        @media (prefers-reduced-motion: reduce) {
-          .vd-ink-in { animation: none; }
-        }
       `}</style>
 
       {/* ══ TOP BAR ══ */}
-      <div style={{
-        position: 'fixed',
-        top: 0, left: 0, right: 0,
-        height: TOP_BAR_H,
-        zIndex: 50,
-        background: T.panel,
-        borderBottom: `1px solid ${T.border}`,
-        display: 'flex', alignItems: 'center',
-        padding: '0 28px', gap: 8,
-        fontFamily: T.sans, fontSize: 12.5,
-        color: T.inkMuted,
-      }}>
-        <span>Spaces</span>
-        <ChevronRight size={11} style={{ color: T.inkDim }} />
-        <span>Soạn không gian học tập</span>
-        <ChevronRight size={11} style={{ color: T.inkDim }} />
-        <span style={{ color: T.ink, fontWeight: 500 }}>{spaceTitle || 'Chưa đặt tên'}</span>
+      <div
+        style={{ height: TOP_BAR_H }}
+        className="fixed top-0 left-0 right-0 z-50 bg-ink-panel border-b border-ink-border flex items-center px-7 gap-2 text-[12.5px] text-ink-textMuted"
+      >
+        <span className="shrink-0">Spaces</span>
+        <ChevronRight size={11} className="text-ink-textDim shrink-0" />
+        <span className="shrink-0">Soạn không gian học tập</span>
+        <ChevronRight size={11} className="text-ink-textDim shrink-0" />
+        {/* spaceTitle hiển thị thật (không phải input) — tên dài phải co lại
+            và cắt bớt, không được đẩy nút "Lưu bản thảo" ra ngoài thanh trên. */}
+        <span
+          className="min-w-0 flex-1 truncate text-ink-text font-medium"
+          title={spaceTitle || 'Chưa đặt tên'}
+        >
+          {spaceTitle || 'Chưa đặt tên'}
+        </span>
 
-        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 16 }}>
+        <div className="ml-auto flex items-center gap-4 shrink-0">
           {savedTick && (
-            <span key={savedTick} className="vd-ink-in" style={{ fontFamily: T.mono, fontSize: 11.5, color: T.accent }}>
+            <span key={savedTick} className="vd-ink-in font-mono text-[11.5px] text-ink-accent">
               đã lưu
             </span>
           )}
           <button
             onClick={save}
-            className="vd-focusable"
-            style={{
-              display: 'flex', alignItems: 'center', gap: 7,
-              padding: '7px 16px',
-              background: T.accent, color: T.onAccent,
-              border: 'none', borderRadius: R.sm, cursor: 'pointer',
-              fontFamily: T.sans, fontSize: 13, fontWeight: 600,
-            }}
+            className="vd-focusable flex items-center gap-[7px] py-[7px] px-4 bg-ink-accent text-ink-onAccent border-none cursor-pointer text-[13px] font-semibold"
+            style={{ borderRadius: R.sm }}
           >
             Lưu bản thảo
           </button>
@@ -534,49 +428,39 @@ export default function VibeEditSpaceDemoPage() {
       </div>
 
       {/* ══ WORKSPACE ══ */}
-      <div style={{
-        position: 'fixed',
-        top: TOP_BAR_H, left: 0, right: 0, bottom: 0,
-        zIndex: 1,
-        display: 'flex', justifyContent: 'center',
-        background: T.page,
-        overflowY: 'auto',
-      }} className="cs-scrollbar">
-        <div style={{
-          width: '100%', maxWidth: 1240,
-          padding: isCompact ? '20px 16px 48px' : '28px 32px 56px',
-          display: 'grid',
-          gridTemplateColumns: isCompact ? '1fr' : 'minmax(0,1fr) 320px',
-          gap: isCompact ? 20 : 32,
-          alignItems: 'start',
-        }}>
+      {/* Đã kiểm tra: đây là container cuộn TRANG (overflow-y-auto trên toàn
+          bộ vùng dưới top bar), không phải wrapper cắt theo chiều cao cố
+          định cho riêng danh sách chương/bài. Nhiều chương × nhiều bài chỉ
+          làm nội dung dài hơn và cuộn bình thường — không bị clip — giống
+          pattern ở các trang vibe-demo khác (home, spaces…). */}
+      <div
+        style={{ top: TOP_BAR_H }}
+        className="fixed left-0 right-0 bottom-0 z-[1] flex justify-center bg-ink-page overflow-y-auto cs-scrollbar"
+      >
+        <div
+          className="w-full max-w-[1240px] grid items-start"
+          style={{
+            padding: isCompact ? '20px 16px 48px' : '28px 32px 56px',
+            gridTemplateColumns: isCompact ? '1fr' : 'minmax(0,1fr) 320px',
+            gap: isCompact ? 20 : 32,
+          }}
+        >
           {/* ══ LEFT — bản thảo cấu trúc khóa học ══ */}
           <div>
-            <h1 style={{
-              fontFamily: T.sans, fontSize: 'clamp(19px, 2.1vw, 24px)', fontWeight: 700,
-              letterSpacing: '-0.015em', color: T.ink, margin: '0 0 4px',
-            }}>
+            <h1 className="text-[clamp(19px,2.1vw,24px)] font-bold tracking-[-0.015em] text-ink-text m-0 mb-1">
               Cấu trúc bài học
             </h1>
-            <p style={{ fontFamily: T.sans, fontSize: 13.5, color: T.inkMuted, margin: '0 0 20px', lineHeight: 1.6 }}>
+            <p className="text-[13.5px] text-ink-textMuted m-0 mb-5 leading-[1.6]">
               Mục viền chì đứt nét là bản thảo — chỉ học viên xem trước mới thấy. Bấm{' '}
-              <Pencil size={11} style={{ display: 'inline', verticalAlign: -1, color: T.inkMuted }} /> để hạ mực và đăng bài.
+              <Pencil size={11} className="inline align-[-1px] text-ink-textMuted" /> để hạ mực và đăng bài.
             </p>
 
             {chapters.map((c, ci) => renderChapter(c, ci))}
 
             <button
               onClick={addChapter}
-              className="vd-focusable"
-              style={{
-                width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                padding: '14px 0',
-                background: 'none', border: `1.5px dashed ${T.pencilLn}`, borderRadius: R.md,
-                cursor: 'pointer',
-                fontFamily: T.sans, fontSize: 14, fontWeight: 600, color: T.inkMuted,
-              }}
-              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = T.accent; (e.currentTarget as HTMLElement).style.borderColor = T.accent; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = T.inkMuted; (e.currentTarget as HTMLElement).style.borderColor = T.pencilLn; }}
+              className="vd-focusable w-full flex items-center justify-center gap-2 py-3.5 bg-transparent border-[1.5px] border-dashed border-ink-pencil cursor-pointer text-[14px] font-semibold text-ink-textMuted hover:text-ink-accent hover:border-ink-accent"
+              style={{ borderRadius: R.md }}
             >
               <Plus size={15} />
               Thêm chương
@@ -589,6 +473,11 @@ export default function VibeEditSpaceDemoPage() {
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }
+
+// Chỉ dùng cho boxShadow — chưa có entry tương ứng trong tailwind.config.js
+// nên giữ nguyên giá trị literal (khớp T.shadowSm cũ trong theme.ts) thay vì
+// tự đặt thêm token mới.
+const T_SHADOW_SM = '0 1px 2px rgba(33,38,51,0.04), 0 4px 12px -6px rgba(33,38,51,0.08)';
