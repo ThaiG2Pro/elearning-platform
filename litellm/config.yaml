@@ -7,7 +7,11 @@ model_list:
   # Groq — key thật đang có sẵn, dùng làm mặc định cho SHARED_FREE.
   - model_name: default
     litellm_params:
-      model: groq/llama-3.3-70b-versatile
+      model: groq/qwen/qwen3.6-27b
+      api_key: os.environ/GROQ_API_KEY
+  - model_name: groq-qwen-27b
+    litellm_params:
+      model: groq/qwen/qwen3.6-27b
       api_key: os.environ/GROQ_API_KEY
   - model_name: groq-llama-70b
     litellm_params:
