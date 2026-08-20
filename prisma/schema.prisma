@@ -21,6 +21,12 @@ model users {
   // and this app targets Vercel-style serverless where writing to disk at
   // runtime isn't reliable, so the DB is the simplest safe place for it.
   avatar_url        String?             @map("avatar_url") @db.Text
+  // WP4.1 — số dư credit hiện tại (nguồn nhanh để check trước generate);
+  // lịch sử đầy đủ từng giao dịch nằm ở credit_transactions. Additive,
+  // default 0 nên mọi user hiện có không bị ảnh hưởng.
+  credit_balance      Int                 @default(0) @map("credit_balance")
+  // WP4.1 — Stripe Customer id, tạo lười (lazy) ở lần mua credit đầu tiên.
+  stripe_customer_id  String?             @unique @map("stripe_customer_id") @db.VarChar(255)
   owned_courses     courses[]           @relation("CourseOwner")
   learning_progress learning_progress[]
   notes             notes[]
@@ -30,8 +36,29 @@ model users {
   // or the first SHARED_FREE cache-miss for a Source). Set to NULL on
   // account deletion, never cascade-deleted (ghi chú 2, mục 3 economics doc).
   ai_generations    ai_generations[]
+  // WP4.1 — ledger đầy đủ mua/tiêu/hoàn credit của user này.
+  credit_transactions credit_transactions[]
 
   @@map("users")
+}
+
+// WP4.1 (Checkpoint 4) — ledger đầy đủ, audit lại được số dư credit_balance.
+// unique(stripe_reference) chống Stripe gửi trùng webhook cộng credit 2 lần.
+model credit_transactions {
+  id                BigInt   @id @default(autoincrement()) @map("id")
+  user_id           BigInt   @map("user_id")
+  // Dương = mua/hoàn, âm = tiêu cho 1 lần generate PAID_TIER.
+  amount            Int      @map("amount")
+  // PURCHASE | AI_GENERATION_SPEND | REFUND
+  reason            String   @map("reason") @db.VarChar(30)
+  // Stripe session/payment_intent id — null cho SPEND/REFUND nội bộ.
+  stripe_reference  String?  @map("stripe_reference") @db.VarChar(255)
+  balance_after     Int      @map("balance_after")
+  created_at        DateTime @default(now()) @map("created_at")
+  user              users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id, created_at])
+  @@map("credit_transactions")
 }
 
 model roles {
@@ -68,6 +95,13 @@ model sources {
   // Nullable + fetched_at: fetch lazy khi user bấm dùng AI lần đầu.
   transcript            String?          @map("transcript") @db.Text
   transcript_fetched_at DateTime?        @map("transcript_fetched_at")
+  // WP4.2 — "lần cuối thật sự được dùng" (khác created_at/transcript_fetched_at
+  // — không phải lần tạo/fetch). Cập nhật mỗi lần AIGenerationService.generate()
+  // chạm tới Source này. Dùng làm tín hiệu chính cho archiveStaleData.ts.
+  last_accessed_at      DateTime?        @map("last_accessed_at")
+  // WP4.2 — đánh dấu đã archive (mục 6.4 economics doc); không xoá row, chỉ
+  // null hoá transcript ở tầng application để giữ cache-key/audit nhất quán.
+  archived_at           DateTime?        @map("archived_at")
   lessons               lessons[]
   // WP1.10.1 — courses created from this source (1 URL → 1 không gian học).
   courses               courses[]
@@ -113,6 +147,9 @@ model ai_generations {
   error                String?  @map("error") @db.Text
   created_at           DateTime @default(now()) @map("created_at")
   updated_at           DateTime @default(now()) @updatedAt @map("updated_at")
+  // WP4.2 — đánh dấu đã archive (mục 6.4); content bị null hoá ở tầng
+  // application khi archive, không xoá row (giữ recipe_hash cho cache-key).
+  archived_at          DateTime? @map("archived_at")
 
   source            sources   @relation(fields: [source_id], references: [id])
   generated_by_user users?    @relation(fields: [generated_by_user_id], references: [id])

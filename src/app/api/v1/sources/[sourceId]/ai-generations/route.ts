@@ -92,6 +92,7 @@ export async function POST(
             byokBaseUrl?: string;
             byokModel?: string;
             requestedVisibility?: 'PRIVATE' | 'SHARED';
+            paymentMethod?: 'CREDITS';
         } = await request.json();
         if (!body.type || !VALID_RECIPE_TYPES.includes(body.type as RecipeType)) {
             return NextResponse.json({ error: 'INVALID_RECIPE_TYPE' }, { status: 400 });
@@ -116,6 +117,7 @@ export async function POST(
             byokBaseUrl: body.byokBaseUrl,
             byokModel: body.byokModel,
             requestedVisibility: body.requestedVisibility,
+            paymentMethod: body.paymentMethod,
         });
 
         return NextResponse.json({
@@ -136,9 +138,15 @@ export async function POST(
             message === 'SOURCE_TOO_LONG_FOR_SHARED_FREE' ||
             message === 'TRANSCRIPT_UNSUPPORTED_SOURCE' ||
             message === 'SHARED_FREE_NOT_CONFIGURED' ||
-            message === 'BYOK_CONFIG_INCOMPLETE'
+            message === 'BYOK_CONFIG_INCOMPLETE' ||
+            message === 'BILLING_NOT_CONFIGURED'
         ) {
             return NextResponse.json({ error: message }, { status: 422 });
+        }
+        // WP4.1 — không đủ credit: 402 Payment Required khớp ngữ nghĩa hơn
+        // 422 (lỗi input) hoặc 403 (không phải vấn đề quyền truy cập).
+        if (message === 'AI_INSUFFICIENT_CREDITS') {
+            return NextResponse.json({ error: message }, { status: 402 });
         }
         console.error('AI generation error:', error);
         return NextResponse.json({ error: 'INTERNAL_ERROR' }, { status: 500 });

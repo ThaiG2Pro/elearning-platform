@@ -56,6 +56,38 @@ module.exports = {
     				'3': 'hsl(var(--chart-3))',
     				'4': 'hsl(var(--chart-4))',
     				'5': 'hsl(var(--chart-5))'
+    			},
+    			// "Mực xanh trên giấy trắng" — namespace riêng cho design system
+    			// vibe-demo, tách khỏi theme shadcn ở trên để không đụng tên
+    			// (accent/primary/border... đã có nghĩa khác trong theme cũ).
+    			// Giá trị hex tĩnh (không qua CSS var) vì dark mode của hệ này
+    			// KHÔNG phải theme toàn app — "phòng tối"/"focus mode" là trạng
+    			// thái cục bộ của từng trang, xem src/lib/vibe/theme.ts.
+    			// Giữ đồng bộ 1-1 với object T trong file đó khi còn tồn tại
+    			// song song hai hệ token.
+    			ink: {
+    				page: '#FAFAF7',
+    				pageDim: '#E9E9E4',
+    				room: '#1A1C22',
+    				panel: '#FFFFFF',
+    				screen: '#14161C',
+    				text: '#212633',
+    				textMid: 'rgba(33,38,51,0.72)',
+    				textMuted: 'rgba(33,38,51,0.50)',
+    				textDim: 'rgba(33,38,51,0.28)',
+    				border: 'rgba(33,38,51,0.10)',
+    				borderHi: 'rgba(33,38,51,0.20)',
+    				accent: '#2E4A9E',
+    				accentA: 'rgba(46,74,158,0.08)',
+    				accentScreen: '#8FA6EE',
+    				onAccent: '#FFFFFF',
+    				marginLn: 'rgba(46,74,158,0.30)',
+    				correct: '#217A4A',
+    				correctA: 'rgba(33,122,74,0.08)',
+    				wrong: '#A8362E',
+    				wrongA: 'rgba(168,54,46,0.07)',
+    				pencil: 'rgba(33,38,51,0.30)',
+    				codeBg: 'rgba(33,38,51,0.045)',
     			}
     		}
     	}

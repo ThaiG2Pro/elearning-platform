@@ -7,6 +7,18 @@ import { TranscriptProvider } from './TranscriptProvider';
 import { LLMProvider } from './LLMProvider';
 import { WebContentProvider } from './WebContentProvider';
 import { YouTubeOEmbedAdapter } from '../../../shared/adapters/YouTubeOEmbedAdapter';
+import { aiGenerationCreditCost } from '../../billing/domain/CreditLedger';
+
+/** WP4.1 — chỉ 2 method service này cần, tránh phụ thuộc cứng vào CreditRepository thật trong test. */
+export interface CreditSpender {
+    spendCredits(userId: bigint, amount: number): Promise<number>;
+    refundCredits(userId: bigint, amount: number): Promise<number>;
+}
+
+/** WP4.2 — chỉ method service này cần, cùng lý do trên. */
+export interface AccessTracker {
+    touchLastAccessed(sourceId: bigint): Promise<void>;
+}
 
 /**
  * WP2.2 — Checkpoint 2 minimal slice. Lazy-generate (chỉ chạy khi user thật
@@ -57,6 +69,12 @@ export interface GenerateRequest {
     /** Chỉ có ý nghĩa khi routing cuối cùng ra keySource = BYOK (mục 5) — user
      * tự chọn chia sẻ bản tuỳ biến của họ cho người khác tái dùng free. */
     requestedVisibility?: 'PRIVATE' | 'SHARED';
+    /**
+     * WP4.1 — user chọn "Trả phí để nền tảng tạo giúp" (nửa thứ 2 của nhánh
+     * UX #4). Chỉ có tác dụng khi routing lẽ ra rơi vào CHOICE_REQUIRED —
+     * không override BYOK/SHARED_FREE (những nhánh rẻ hơn luôn thắng).
+     */
+    paymentMethod?: 'CREDITS';
 }
 
 export interface GenerateResult {
@@ -74,12 +92,27 @@ export class AIGenerationService {
         // WP3.3 — optional để không phá test/caller hiện có chỉ dùng YouTube;
         // undefined + Source kiểu WEB_ARTICLE => TRANSCRIPT_UNSUPPORTED_SOURCE.
         private webContentProvider?: WebContentProvider,
+        // WP4.1 — optional, cùng lý do trên: nếu không wire (test cũ, hoặc
+        // billing chưa cấu hình), paymentMethod: 'CREDITS' throw rõ ràng thay
+        // vì âm thầm bỏ qua yêu cầu trả phí của user.
+        private creditSpender?: CreditSpender,
+        // WP4.2 — optional, best-effort (lỗi ở đây không chặn generate chính).
+        private accessTracker?: AccessTracker,
     ) { }
 
     async generate(req: GenerateRequest): Promise<GenerateResult> {
         const source = await this.prisma.sources.findUnique({ where: { id: req.sourceId } });
         if (!source) {
             throw new Error('SOURCE_NOT_FOUND');
+        }
+
+        // WP4.2 — "còn ai đang thật sự dùng" (mục 6.4), tách khỏi
+        // created_at/updated_at. Best-effort: không throw ra ngoài, generate
+        // chính không được phép fail vì lỗi ghi 1 cột phụ trợ.
+        if (this.accessTracker) {
+            this.accessTracker.touchLastAccessed(source.id).catch((err) => {
+                console.error('touchLastAccessed failed (non-fatal):', err);
+            });
         }
 
         // WP3.1 — `req.params` có mặt (kể cả trùng y hệt mặc định) hoặc có
@@ -106,11 +139,18 @@ export class AIGenerationService {
             ? await this.repo.findSharedByokMatch(req.sourceId, recipeHash)
             : null;
 
+        // WP4.1 — chỉ có ý nghĩa khi 3 nhánh rẻ hơn ở trên đều không khớp;
+        // decideRouting tự đảm bảo thứ tự ưu tiên đó, ở đây chỉ truyền ý
+        // định của user xuống.
+        if (req.paymentMethod === 'CREDITS' && !this.creditSpender) {
+            throw new Error('BILLING_NOT_CONFIGURED');
+        }
         const decision = AIGenerationPolicy.decideRouting({
             hasByokKey,
             isDefaultRecipe,
             hasDefaultCache: defaultCache !== null,
             hasSharedByokMatch: sharedByokMatch !== null,
+            creditsAuthorized: req.paymentMethod === 'CREDITS',
         });
 
         if (decision.action === 'USE_CACHE') {
@@ -136,6 +176,13 @@ export class AIGenerationService {
 
         if (decision.keySource === 'SHARED_FREE') {
             AIGenerationPolicy.enforceSharedFreeTokenBudget(transcript.length, sharedFreeMaxTranscriptChars());
+        }
+
+        // WP4.1 — trừ credit TRƯỚC khi gọi LLM (throw AI_INSUFFICIENT_CREDITS
+        // nếu không đủ, chưa tốn gì); hoàn lại trong nhánh catch bên dưới nếu
+        // LLM call thất bại sau khi đã trừ tiền.
+        if (decision.keySource === 'PAID_TIER') {
+            await this.creditSpender!.spendCredits(req.userId, aiGenerationCreditCost());
         }
 
         // WP3.1/mục 5 — user chỉ được tự chọn SHARED khi bản cuối cùng là
@@ -182,6 +229,11 @@ export class AIGenerationService {
         } catch (error) {
             const message = error instanceof Error ? error.message : 'AI_GENERATION_FAILED';
             await this.repo.markFailed(record.id, message);
+            // WP4.1 — LLM call thất bại sau khi đã trừ credit: hoàn lại ngay,
+            // user không trả tiền cho 1 lần generate lỗi.
+            if (decision.keySource === 'PAID_TIER') {
+                await this.creditSpender!.refundCredits(req.userId, aiGenerationCreditCost());
+            }
             throw error;
         }
     }
@@ -272,6 +324,13 @@ export class AIGenerationService {
 
         const questionCount = Number(params.questionCount) || 10;
         const difficulty = (params.difficulty as string) ?? 'medium';
-        return `Tạo đúng ${questionCount} câu hỏi trắc nghiệm (4 đáp án, 1 đáp án đúng) độ khó ${difficulty} ${languageInstruction} dựa trên nội dung sau, trả về dạng JSON array.${segmentInstruction}\n\n${transcript}`;
+        // Schema field names cố định (content/options/correctAnswer) khớp
+        // đúng `ParsedQuestionDto` phía backend (xem QuizService — cùng
+        // shape với luồng Excel upload) — để client (parseAIQuizContent,
+        // src/lib/aiGeneration.ts) có thể parse ra quiz thật và cho phép
+        // "AI tạo quiz" trong editor lưu thẳng thành 1 bài quiz mới, thay vì
+        // chỉ hiển thị văn bản thô như trước. Không có schema field cố định
+        // trước đây — model tự chọn shape tuỳ ý, không parse được.
+        return `Tạo đúng ${questionCount} câu hỏi trắc nghiệm (2-4 đáp án, 1 đáp án đúng) độ khó ${difficulty} ${languageInstruction} dựa trên nội dung sau. Trả về DUY NHẤT 1 JSON array hợp lệ, không kèm giải thích hay markdown, đúng schema: [{"content": string, "options": string[], "correctAnswer": string (phải là text của 1 phần tử trong options)}].${segmentInstruction}\n\n${transcript}`;
     }
 }

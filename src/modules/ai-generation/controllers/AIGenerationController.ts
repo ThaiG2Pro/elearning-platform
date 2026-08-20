@@ -4,6 +4,8 @@ import { AIGenerationRepository } from '../repositories/AIGenerationRepository';
 import { YoutubeTranscriptPlusProvider } from '../services/YoutubeTranscriptPlusProvider';
 import { LiteLLMProvider } from '../services/LiteLLMProvider';
 import { ReadabilityWebContentProvider } from '../services/ReadabilityWebContentProvider';
+import { CreditRepository } from '../../billing/repositories/CreditRepository';
+import { DataRetentionRepository } from '../../data-retention/repositories/DataRetentionRepository';
 
 export class AIGenerationController {
     private service: AIGenerationService;
@@ -16,6 +18,11 @@ export class AIGenerationController {
             new YoutubeTranscriptPlusProvider(),
             new LiteLLMProvider(),
             new ReadabilityWebContentProvider(),
+            // WP4.1 — cho phép routing PAID_TIER thật (trước đây rơi vào
+            // CHOICE_REQUIRED không có nhánh nào xử lý được).
+            new CreditRepository(prisma),
+            // WP4.2 — theo dõi "lần cuối thật sự được dùng" cho data retention.
+            new DataRetentionRepository(prisma),
         );
     }
 

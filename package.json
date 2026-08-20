@@ -14,7 +14,8 @@
     "test:coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit",
     "seed:showcase": "ts-node prisma/seed-showcase.ts",
-    "ai:usage-report": "ts-node scripts/aiUsageReport.ts"
+    "ai:usage-report": "ts-node scripts/aiUsageReport.ts",
+    "data:archive-stale": "ts-node scripts/archiveStaleData.ts"
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"
@@ -63,6 +64,7 @@
     "react": "^18",
     "react-dom": "^18",
     "react-youtube": "^10.1.0",
+    "stripe": "^22.5.0",
     "tailwind-merge": "^3.5.0",
     "tailwindcss": "^3",
     "tailwindcss-animate": "^1.0.7",
