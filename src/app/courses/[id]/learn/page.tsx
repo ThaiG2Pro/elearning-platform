@@ -631,9 +631,13 @@ export default function LearningPage() {
             </div>
 
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-                <div className={`grid grid-cols-1 gap-6 ${focusMode ? '' : 'lg:grid-cols-4'}`}>
+                {/* lg:grid-cols-[1fr_340px] — sidebar giữ chiều rộng cố định 340px
+                    khớp lưới của vibe-demo/quiz (1fr/340px), thay tỉ lệ 3:1 co dãn
+                    theo % cũ: playlist đọc tên bài dài không bị bóp hẹp dần trên
+                    màn rộng, và không quá rộng lãng phí trên màn hẹp hơn. */}
+                <div className={`grid grid-cols-1 gap-6 ${focusMode ? '' : 'lg:grid-cols-[1fr_340px]'}`}>
                     {/* Main Content Area */}
-                    <div className={focusMode ? 'space-y-4' : 'lg:col-span-3 space-y-4'}>
+                    <div className="space-y-4 min-w-0">
                         {/* Video Player or Quiz Area */}
                         <div className="bg-ink-panel rounded-ink-md border border-ink-border shadow-ink-sm p-6">
                             {/* WP1.5.7: switching lessons (or the very first load) used to
@@ -985,7 +989,7 @@ export default function LearningPage() {
 
                     {/* Sidebar - Lesson List (hidden in focus mode — no distraction from the current lesson) */}
                     {!focusMode && (
-                    <div className="lg:col-span-1">
+                    <div className="min-w-0">
                         <div className="bg-ink-panel rounded-ink-lg border border-ink-border shadow-ink-sm p-4 sticky top-28 space-y-4">
                             <div className="flex items-center justify-between border-b border-ink-border pb-3">
                                 <h3 className="text-xs font-bold text-ink-text uppercase tracking-wider">
