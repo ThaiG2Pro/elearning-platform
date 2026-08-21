@@ -1088,7 +1088,7 @@ export default function LearningPage() {
                             {/* Thẻ tĩnh thường trực — không phụ thuộc trạng thái hoàn thành */}
                             <button
                                 onClick={() => router.push(`/my-courses/${courseId}/edit`)}
-                                className="w-full text-left p-2.5 rounded-ink-md border border-dashed border-ink-border text-xs font-medium text-ink-textMuted hover:border-ink-accent hover:text-ink-accent hover:bg-ink-accentA/40 transition-colors"
+                                className="w-full text-left p-2.5 rounded-ink-md border border-dashed border-ink-border text-xs font-medium text-ink-textMuted hover:border-ink-accent hover:text-ink-accent hover:bg-ink-accentA transition-colors"
                             >
                                 + Thêm quiz/tóm tắt cho bài này
                             </button>
