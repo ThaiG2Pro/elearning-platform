@@ -33,7 +33,11 @@ export default function AboutPage() {
         <div className="min-h-screen bg-ink-page flex flex-col">
             <Header user={user} onLogout={handleLogout} onJoin={handleJoin} />
 
-            <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 w-full">
+            {/* py-7 md:py-10 — cùng nhịp khoảng cách đã áp cho homepage/course-detail
+                (thay py-10 cố định); max-w-7xl giữ nguyên vì nội dung trang này là
+                lưới nhiều cột (feature grid) cần rộng hơn, khác cột đơn của
+                homepage/course-detail (đã hẹp về 1180px/4xl). */}
+            <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-7 md:py-10 w-full">
                 {/* Hero Section */}
                 <section className="bg-ink-panel border border-ink-border rounded-ink-lg p-8 sm:p-12 shadow-ink-sm text-center max-w-4xl mx-auto mb-12 relative overflow-hidden">
                     <div className="absolute -top-24 -right-24 w-60 h-60 bg-ink-accentA rounded-full blur-3xl opacity-50 pointer-events-none" />
@@ -43,7 +47,7 @@ export default function AboutPage() {
                         ✨ Về E-Learning Cá Nhân
                     </span>
 
-                    <h1 className="text-3xl sm:text-5xl font-extrabold text-ink-text tracking-tight leading-tight">
+                    <h1 className="text-[clamp(28px,4vw,40px)] font-extrabold text-ink-text tracking-[-0.02em] leading-tight">
                         Học tập chủ động - Xây dựng tri thức theo cách của bạn
                     </h1>
 
@@ -141,7 +145,7 @@ export default function AboutPage() {
                             </div>
                             <h3 className="font-semibold text-ink-text text-base mb-1">Chương & Bài học</h3>
                             <p className="text-ink-textMid text-sm leading-relaxed">
-                                Sắp xếp nội dung khoa học theo các chương tùy chỉnh hoặc khóa học phẳng linh hoạt.
+                                Sắp xếp nội dung khoa học theo các chương tùy chỉnh hoặc Space phẳng linh hoạt.
                             </p>
                         </div>
 
