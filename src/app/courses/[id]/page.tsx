@@ -128,7 +128,7 @@ export default function CourseDetailPage() {
         <div className="min-h-screen bg-ink-page">
             <Header user={user} onLogout={handleLogout} onJoin={handleJoin} />
 
-            <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-7 md:py-10">
                 {/* Navigation Section */}
                 <section className="mb-6">
                     <button
@@ -180,7 +180,7 @@ export default function CourseDetailPage() {
                             <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium mb-3 border border-ink-border ${course.isOwner ? 'bg-ink-page text-ink-textMid' : 'bg-ink-accentA text-ink-accent'}`}>
                                 {course.isOwner ? 'Space của bạn' : 'Space của người dùng khác'}
                             </span>
-                            <h1 className="text-xl font-bold text-ink-text mb-3 leading-snug">{course.title}</h1>
+                            <h1 className="text-[clamp(19px,2.2vw,24px)] font-bold tracking-[-0.01em] text-ink-text mb-3 leading-snug">{course.title}</h1>
                             <div className="flex flex-wrap items-center gap-4 mb-4">
                                 {course.ownerName && (
                                     <p className="text-sm text-ink-textMuted">
