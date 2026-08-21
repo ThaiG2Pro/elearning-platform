@@ -727,6 +727,12 @@ export default function LearningPage() {
                                     {chapterGroup.lessons.map((lesson, lIdx) => {
                                         const isSelected = currentLesson?.id === lesson.id;
                                         const lessonNum = lesson.order || (lIdx + 1);
+                                        // Porting logic từ vibe-demo/page.tsx (isNext trong renderPlaylist):
+                                        // gợi ý "tiếp theo →" cho bài chưa hoàn thành đầu tiên, khi mọi bài
+                                        // trước nó (theo thứ tự flatten toàn course) đã xong hoặc đang chọn.
+                                        const flatIdx = lessons.findIndex(l => l.id === lesson.id);
+                                        const isNext = !lesson.isCompleted && !isSelected &&
+                                            lessons.slice(0, flatIdx).every(l => l.isCompleted || l.id === currentLesson?.id);
                                         return (
                                             <button
                                                 key={lesson.id}
@@ -762,8 +768,9 @@ export default function LearningPage() {
                                                         <span className="font-semibold text-ink-text mr-1">Bài {lessonNum}:</span>
                                                         {lesson.title}
                                                     </p>
-                                                    <p className="text-[10px] text-ink-textDim mt-0.5">
-                                                        {lesson.type.toLowerCase() === 'video' ? '📹 Video' : '📝 Quiz'}
+                                                    <p className="text-[10px] text-ink-textDim mt-0.5 flex items-center gap-1.5">
+                                                        <span>{lesson.type.toLowerCase() === 'video' ? '📹 Video' : '📝 Quiz'}</span>
+                                                        {isNext && <span className="text-ink-accent font-medium">tiếp theo →</span>}
                                                     </p>
                                                 </div>
                                             </button>
@@ -841,6 +848,10 @@ export default function LearningPage() {
                     )}
 
                     <textarea
+                        // Porting logic từ vibe-demo/page.tsx: mở tab Ghi chú tự focus luôn
+                        // vào ô nhập — textarea này chỉ mount khi sidebarTab === 'notes' nên
+                        // autoFocus ở đây tương đương inputRef.current?.focus() của vibe-demo.
+                        autoFocus
                         value={noteDraft}
                         onChange={(e) => setNoteDraft(e.target.value)}
                         placeholder="Nhập ghi chú mới..."
@@ -985,6 +996,18 @@ export default function LearningPage() {
                             <div className={appState === 'idle' ? 'block' : 'hidden'}>
                                 {currentLesson?.type?.toLowerCase() === 'video' && (
                                     <div>
+                                        {/* Porting logic từ vibe-demo/page.tsx: tên bài học là H1 rõ nét
+                                            ngay trên video (breadcrumb phía trên chỉ giữ vai trò điều
+                                            hướng, chữ nhỏ) — ẩn khi focusMode giống vibe-demo, vì lúc đó
+                                            chỉ còn video là trọng tâm duy nhất. */}
+                                        {!focusMode && (
+                                            <h1
+                                                title={currentLesson.title}
+                                                className="truncate text-[clamp(19px,2.1vw,26px)] font-bold tracking-[-0.015em] leading-tight text-ink-text mb-4"
+                                            >
+                                                {currentLesson.title}
+                                            </h1>
+                                        )}
                                         {currentLesson.videoUrl && isYouTubeUrl(currentLesson.videoUrl) ? (
                                             <YoutubePlayer
                                                 key={currentLesson.id}
