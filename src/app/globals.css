@@ -152,8 +152,15 @@
     --card-foreground: 222 47% 11%;
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
-    /* Primary = blue-600 (#2563EB) */
-    --primary: 221 83% 53%;
+    /* Primary/ring = ink.accent (#2E4A9E) — "Mực xanh trên giấy trắng".
+       Trước là blue-600 (221 83% 53%): mọi <Button> shadcn không set
+       variant (hoặc variant="destructive"/"outline" khi hover/focus) đã
+       hiện SAI accent trên toàn bộ trang đã migrate ink-* — hai xanh gần
+       giống nhưng khác token/hex thật, phá nguyên tắc "một accent duy
+       nhất" đúng ở nút bấm, chỗ dễ thấy nhất. --secondary/--accent/
+       --destructive giữ nguyên (nền trung tính/đỏ phổ quát, không thuộc
+       phạm vi 1-accent). */
+    --primary: 225 55% 40%;
     --primary-foreground: 0 0% 100%;
     --secondary: 214 32% 91%;        /* slate-200 */
     --secondary-foreground: 222 47% 11%;
@@ -165,7 +172,7 @@
     --destructive-foreground: 0 0% 100%;
     --border: 214 32% 91%;           /* slate-200 */
     --input: 214 32% 91%;
-    --ring: 221 83% 53%;             /* blue-600 */
+    --ring: 225 55% 40%;              /* = --primary, ink.accent */
     --radius: 0.625rem;
 
     /* Portal accent overrides (used via Tailwind classes directly) */
