@@ -73,7 +73,7 @@ export default function ForgotPasswordPage() {
             <p className="text-sm text-ink-textMuted">Nhập email để nhận liên kết đặt lại</p>
         </div>
 
-        <div className="bg-ink-panel border border-ink-border rounded-ink-md shadow-sm p-8">
+        <div className="bg-ink-panel border border-ink-border rounded-ink-md shadow-ink-sm p-8">
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-ink-text mb-1.5">Email</label>

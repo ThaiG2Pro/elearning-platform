@@ -163,7 +163,7 @@ export default function SharedCoursePage() {
                                     </section>
 
                                     {/* Information Section */}
-                                    <section className="bg-ink-panel border border-ink-border rounded-ink-md p-6 shadow-sm mb-6">
+                                    <section className="bg-ink-panel border border-ink-border rounded-ink-md p-6 shadow-ink-sm mb-6">
                                         <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium mb-3 ${isOwner ? 'bg-ink-accentA text-ink-accent' : 'bg-ink-page text-ink-textMid'}`}>
                                             {isOwner ? 'Space của bạn (Đang ở chế độ chia sẻ)' : 'Space được chia sẻ'}
                                         </span>
@@ -179,7 +179,7 @@ export default function SharedCoursePage() {
                                     </section>
 
                                     {/* Content Structure Section */}
-                                    <section className="bg-ink-panel border border-ink-border rounded-ink-md p-6 shadow-sm mb-6">
+                                    <section className="bg-ink-panel border border-ink-border rounded-ink-md p-6 shadow-ink-sm mb-6">
                                         <h2 className="text-xs font-semibold text-ink-textMuted uppercase tracking-wide mb-3">
                                             Nội dung Space
                                         </h2>
@@ -221,7 +221,7 @@ export default function SharedCoursePage() {
                                             <div className="flex flex-wrap items-center gap-3">
                                                 <button
                                                     onClick={() => router.push(`/courses/${course.id}/learn`)}
-                                                    className="inline-flex items-center gap-2 px-6 py-3 bg-ink-accent hover:bg-ink-accent/90 text-white font-medium rounded-lg transition-colors shadow-sm"
+                                                    className="inline-flex items-center gap-2 px-6 py-3 bg-ink-accent hover:bg-ink-accent/90 text-white font-medium rounded-lg transition-colors shadow-ink-sm"
                                                 >
                                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
@@ -231,7 +231,7 @@ export default function SharedCoursePage() {
                                                 </button>
                                                 <button
                                                     onClick={() => router.push(`/my-courses/${course.id}/edit`)}
-                                                    className="inline-flex items-center gap-2 px-6 py-3 border border-ink-border bg-ink-panel hover:bg-ink-page text-ink-text font-medium rounded-lg transition-colors shadow-sm"
+                                                    className="inline-flex items-center gap-2 px-6 py-3 border border-ink-border bg-ink-panel hover:bg-ink-page text-ink-text font-medium rounded-lg transition-colors shadow-ink-sm"
                                                 >
                                                     <svg className="w-4 h-4 text-ink-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -243,7 +243,7 @@ export default function SharedCoursePage() {
                                             <button
                                                 onClick={handleCopy}
                                                 disabled={copying}
-                                                className="inline-flex items-center gap-2 px-6 py-3 bg-ink-accent hover:bg-ink-accent/90 disabled:opacity-60 text-white font-medium rounded-lg transition-colors shadow-sm"
+                                                className="inline-flex items-center gap-2 px-6 py-3 bg-ink-accent hover:bg-ink-accent/90 disabled:opacity-60 text-white font-medium rounded-lg transition-colors shadow-ink-sm"
                                             >
                                                 {copying ? (
                                                     <>

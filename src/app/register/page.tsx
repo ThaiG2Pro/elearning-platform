@@ -116,7 +116,7 @@ export default function RegisterPage() {
                     <p className="text-sm text-ink-textMuted">Hoàn thành thông tin để bắt đầu học</p>
                 </div>
 
-                <div className="bg-ink-panel border border-ink-border rounded-ink-md shadow-sm p-8">
+                <div className="bg-ink-panel border border-ink-border rounded-ink-md shadow-ink-sm p-8">
                     <form onSubmit={handleSubmit} className="space-y-4">
                         {/* Email Display */}
                         <div>

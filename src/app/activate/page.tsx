@@ -51,7 +51,7 @@ export default function ActivatePage() {
     return (
         <div className="min-h-screen bg-ink-page">
             {/* Minimal header for activation page */}
-            <header className="bg-ink-panel border-b border-ink-border shadow-sm">
+            <header className="bg-ink-panel border-b border-ink-border shadow-ink-sm">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-center items-center h-16">
                         <div className="flex items-center gap-2">
@@ -65,7 +65,7 @@ export default function ActivatePage() {
             </header>
 
             <main className="max-w-md mx-auto px-4 py-16 text-center">
-                <div className="bg-ink-panel border border-ink-border rounded-ink-md shadow-sm p-10">
+                <div className="bg-ink-panel border border-ink-border rounded-ink-md shadow-ink-sm p-10">
                     {appState === 'submitting' && (
                         <div className="flex flex-col items-center gap-4">
                             <span className="w-12 h-12 border-4 border-ink-accent border-t-transparent rounded-full animate-spin" />
