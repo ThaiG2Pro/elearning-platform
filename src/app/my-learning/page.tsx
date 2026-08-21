@@ -109,22 +109,22 @@ export default function MyLearningPage() {
         completed: 'Hoàn thành',
     };
     const STATUS_BADGE_CLASS: Record<MyLearningCourse['status'], string> = {
-        not_started: 'bg-slate-100 text-slate-500',
-        in_progress: 'bg-blue-50 text-blue-600',
-        completed: 'bg-emerald-50 text-emerald-600',
+        not_started: 'bg-ink-page text-ink-textMid border border-ink-border',
+        in_progress: 'bg-ink-page text-ink-textMid border border-ink-border',
+        completed: 'bg-ink-page text-ink-textMid border border-ink-border',
     };
 
     return (
-        <div className="min-h-screen bg-slate-50">
+        <div className="min-h-screen bg-ink-page">
             <Header user={user} onLogout={handleLogout} onJoin={handleJoin} />
 
             {/* Body */}
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 <div className="mb-6">
-                    <h1 className="text-2xl font-bold text-slate-900 mb-1">
+                    <h1 className="text-2xl font-bold text-ink-text mb-1">
                         Space của tôi
                     </h1>
-                    <p className="text-sm text-slate-500">
+                    <p className="text-sm text-ink-textMuted">
                         Tiếp tục hành trình học tập của bạn
                     </p>
                 </div>
@@ -145,12 +145,12 @@ export default function MyLearningPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {appState === 'loading' && (
                         Array.from({ length: 6 }).map((_, index) => (
-                            <div key={index} className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
-                                <Skeleton className="w-full aspect-video rounded-none bg-slate-200" />
+                            <div key={index} className="bg-ink-panel rounded-xl shadow-ink-sm border border-ink-border overflow-hidden">
+                                <Skeleton className="w-full aspect-video rounded-none bg-ink-page" />
                                 <div className="p-4 space-y-2">
-                                    <Skeleton className="h-4 w-3/4 bg-slate-200" />
-                                    <Skeleton className="h-3 w-1/2 bg-slate-200" />
-                                    <Skeleton className="h-2 w-full rounded-full mt-3 bg-slate-200" />
+                                    <Skeleton className="h-4 w-3/4 bg-ink-page" />
+                                    <Skeleton className="h-3 w-1/2 bg-ink-page" />
+                                    <Skeleton className="h-2 w-full rounded-full mt-3 bg-ink-page" />
                                 </div>
                             </div>
                         ))
@@ -163,10 +163,10 @@ export default function MyLearningPage() {
                             role="button"
                             tabIndex={0}
                             onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleCourseClick(course.id); }}
-                            className="bg-white rounded-xl shadow-sm border border-slate-100 hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                            className="bg-ink-panel rounded-xl shadow-ink-sm border border-ink-border hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ink-accent"
                         >
                             {/* Thumbnail */}
-                            <div className="w-full aspect-video bg-slate-100 rounded-t-xl flex items-center justify-center overflow-hidden relative">
+                            <div className="w-full aspect-video bg-ink-page rounded-t-xl flex items-center justify-center overflow-hidden relative">
                                 {course.thumbnailUrl ? (
                                     <Image
                                         src={course.thumbnailUrl}
@@ -176,7 +176,7 @@ export default function MyLearningPage() {
                                         className="object-cover rounded-t-xl"
                                     />
                                 ) : (
-                                    <svg className="w-10 h-10 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg className="w-10 h-10 text-ink-textDim" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 10l4.553-2.069A1 1 0 0121 8.868V15.13a1 1 0 01-1.447.897L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
                                     </svg>
                                 )}
@@ -184,12 +184,12 @@ export default function MyLearningPage() {
 
                             <div className="p-5">
                                 {/* Course Title */}
-                                <h3 className="text-sm font-semibold text-slate-900 mb-1 leading-snug line-clamp-2">
+                                <h3 className="text-sm font-semibold text-ink-text mb-1 leading-snug line-clamp-2">
                                     {course.title}
                                 </h3>
                                 {/* WP1.10.6 — badge "N bài" phân biệt hình thái, không thêm
                                     tab/lọc riêng theo nguồn. */}
-                                <p className="text-xs text-slate-400 mb-3">{course.lessonCount} bài</p>
+                                <p className="text-xs text-ink-textDim mb-3">{course.lessonCount} bài</p>
 
                                 {/* Progress — WP1.6.4: a course with very few lessons (e.g. a
                                     single video) can only ever show completionRate 0 or 100, so
@@ -200,29 +200,29 @@ export default function MyLearningPage() {
                                     real percentage. */}
                                 <div className="mb-3">
                                     {course.status === 'not_started' ? (
-                                        <p className="text-xs text-slate-400">Chưa xem</p>
+                                        <p className="text-xs text-ink-textDim">Chưa xem</p>
                                     ) : course.completionRate > 0 ? (
                                         <>
-                                            <div className="flex justify-between text-xs text-slate-500 mb-1.5">
+                                            <div className="flex justify-between text-xs text-ink-textMuted mb-1.5">
                                                 <span>Tiến độ</span>
-                                                <span className="font-medium text-blue-600">{course.completionRate}%</span>
+                                                <span className="font-medium text-ink-accent">{course.completionRate}%</span>
                                             </div>
-                                            <div className="w-full bg-slate-100 rounded-full h-1.5">
+                                            <div className="w-full bg-ink-page rounded-full h-1.5">
                                                 <div
-                                                    className="bg-blue-600 h-1.5 rounded-full transition-all"
+                                                    className="bg-ink-accent h-1.5 rounded-full transition-all"
                                                     style={{ width: `${course.completionRate}%` }}
                                                 ></div>
                                             </div>
                                         </>
                                     ) : (
-                                        <p className="text-xs text-blue-600 font-medium">
+                                        <p className="text-xs text-ink-accent font-medium">
                                             Đã xem {formatWatchedTime(course.lastWatchedPositionSec || 0)}
                                         </p>
                                     )}
                                 </div>
 
                                 {/* Status and creation date */}
-                                <div className="flex justify-between items-center text-xs text-slate-400">
+                                <div className="flex justify-between items-center text-xs text-ink-textDim">
                                     <span className={`px-2 py-0.5 rounded-full font-medium ${STATUS_BADGE_CLASS[course.status]}`}>
                                         {STATUS_LABEL[course.status]}
                                     </span>
@@ -236,15 +236,15 @@ export default function MyLearningPage() {
 
                     {appState === 'no_results' && (
                         <div className="col-span-full flex flex-col items-center py-16 text-center">
-                            <div className="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center mb-4">
-                                <svg className="w-7 h-7 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div className="w-14 h-14 rounded-full bg-ink-page flex items-center justify-center mb-4">
+                                <svg className="w-7 h-7 text-ink-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                                 </svg>
                             </div>
-                            <h3 className="text-sm font-semibold text-slate-700 mb-1">
+                            <h3 className="text-sm font-semibold text-ink-textMid mb-1">
                                 Chưa có Space
                             </h3>
-                            <p className="text-sm text-slate-500 mb-4">
+                            <p className="text-sm text-ink-textMuted mb-4">
                                 Bạn chưa có Space nào trong mục này.
                             </p>
                             <Button onClick={() => router.push('/')}>
@@ -260,10 +260,10 @@ export default function MyLearningPage() {
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
                                 </svg>
                             </div>
-                            <h3 className="text-sm font-semibold text-slate-700 mb-1">
+                            <h3 className="text-sm font-semibold text-ink-textMid mb-1">
                                 Có lỗi xảy ra
                             </h3>
-                            <p className="text-sm text-slate-500 mb-4">
+                            <p className="text-sm text-ink-textMuted mb-4">
                                 {errorMessage}
                             </p>
                             <Button onClick={handleRetry}>

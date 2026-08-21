@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
+import { Play, ArrowRight } from 'lucide-react';
 import Header from '@/components/Header';
 import SearchBar from '@/components/SearchBar';
 import CourseList from '@/components/CourseList';
@@ -158,16 +160,16 @@ export default function Home() {
         : [...courses].sort((a, b) => (b.cloneCount || 0) - (a.cloneCount || 0));
 
     return (
-        <div className="min-h-screen bg-slate-50">
+        <div className="min-h-screen bg-ink-page">
             <Header user={user} onLogout={handleLogout} onJoin={handleJoin} />
 
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 {/* Hero / Search Section */}
-                <section className="mb-8 bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
+                <section className="mb-8 bg-ink-panel border border-ink-border rounded-xl p-6 shadow-ink-sm">
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                         <div>
-                            <h1 className="text-2xl font-bold text-slate-900">Khám phá Space</h1>
-                            <p className="text-sm text-slate-500 mt-1">Học bất cứ lúc nào — bắt đầu với Space phù hợp.</p>
+                            <h1 className="text-2xl font-bold text-ink-text">Khám phá Space</h1>
+                            <p className="text-sm text-ink-textMuted mt-1">Học bất cứ lúc nào — bắt đầu với Space phù hợp.</p>
                         </div>
                         <div className="w-full md:max-w-sm">
                             <SearchBar value={searchQuery} onChange={handleSearchChange} />
@@ -177,11 +179,11 @@ export default function Home() {
 
                 {/* Paste-link box for logged-in users */}
                 {user && !createdSpace && (
-                    <section className="mb-8 bg-blue-600 rounded-xl p-6 shadow-sm">
+                    <section className="mb-8 bg-ink-accent rounded-xl p-6 shadow-ink-sm">
                         <div className="flex flex-col md:flex-row md:items-center gap-4">
                             <div className="md:flex-shrink-0">
                                 <h2 className="text-lg font-bold text-white">Dán link video, tạo Space ngay</h2>
-                                <p className="text-sm text-blue-100 mt-0.5">Dán link YouTube — hệ thống tự lấy tiêu đề, ảnh và tạo bài học đầu tiên.</p>
+                                <p className="text-sm text-white/70 mt-0.5">Dán link YouTube — hệ thống tự lấy tiêu đề, ảnh và tạo bài học đầu tiên.</p>
                             </div>
                             <div className="flex-1 flex flex-col sm:flex-row items-stretch gap-2">
                                 <input
@@ -191,7 +193,7 @@ export default function Home() {
                                     onKeyDown={(e) => { if (e.key === 'Enter') handleCreateFromLink(); }}
                                     placeholder="https://www.youtube.com/watch?v=..."
                                     disabled={creatingFromLink}
-                                    className="flex-1 px-3 py-2.5 rounded-lg border-0 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-white disabled:opacity-60"
+                                    className="flex-1 px-3 py-2.5 rounded-lg border-0 text-sm text-ink-text placeholder:text-ink-textMuted focus:outline-none focus:ring-2 focus:ring-white disabled:opacity-60"
                                 />
                                 <Button
                                     onClick={handleCreateFromLink}
@@ -204,16 +206,16 @@ export default function Home() {
                             </div>
                         </div>
                         {linkError && (
-                            <p className="mt-2 text-sm text-blue-50 bg-blue-700/50 rounded-lg px-3 py-2">{linkError}</p>
+                            <p className="mt-2 text-sm text-white/90 bg-black/15 rounded-lg px-3 py-2">{linkError}</p>
                         )}
                     </section>
                 )}
 
                 {/* Card choices after pasting URL */}
                 {createdSpace && (
-                    <section className="mb-8 bg-white border border-emerald-200 rounded-xl p-6 shadow-sm">
-                        <p className="text-xs font-semibold text-emerald-600 uppercase tracking-wide mb-1">Đã tạo Space</p>
-                        <h2 className="text-lg font-bold text-slate-900">{createdSpace.title}</h2>
+                    <section className="mb-8 bg-ink-panel border border-ink-correct/30 rounded-xl p-6 shadow-ink-sm">
+                        <p className="text-xs font-semibold text-ink-correct uppercase tracking-wide mb-1">Đã tạo Space</p>
+                        <h2 className="text-lg font-bold text-ink-text">{createdSpace.title}</h2>
                         {createdSpace.titleIsPlaceholder && (
                             <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mt-2">
                                 Không đọc được tên video từ YouTube — đã đặt tên tạm, bạn có thể đổi trong phần chỉnh sửa.
@@ -234,45 +236,81 @@ export default function Home() {
                 )}
 
                 {/* KHU VỰC 1 (Dành cho User đã Login): "Tiếp tục học" */}
+                {/* Restyle theo "Mực xanh trên giấy trắng" (xem vibe-demo/home) — thẻ
+                    bookmark-ribbon thay cho card trắng + progress bar cũ. Cấu trúc dữ
+                    liệu/logic (grid nhiều Space, 3 trạng thái loading/loaded/rỗng) giữ
+                    nguyên 100%; model MyLearningCourse không có lessonTitle/chapter meta
+                    như mock nên phần "Đang học · {lessonTitle}" của mock được thay bằng
+                    field thật sẵn có: title + lessonCount. */}
                 {user && continueState !== 'idle' && continueState !== 'error' && (
                     <section className="mb-10">
                         <div className="flex items-center justify-between mb-4">
-                            <h2 className="text-lg font-bold text-slate-900">Tiếp tục học</h2>
-                            <span className="text-xs font-medium text-slate-400">Dành riêng cho bạn</span>
+                            <h2 className="text-lg font-bold text-ink-text">Tiếp tục học</h2>
+                            <span className="text-xs font-medium text-ink-textDim">Dành riêng cho bạn</span>
                         </div>
                         {continueState === 'loading' ? (
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                                 {Array.from({ length: 3 }).map((_, i) => (
-                                    <div key={i} className="h-20 bg-white border border-slate-100 rounded-xl animate-pulse" />
+                                    <div key={i} className="h-20 bg-ink-panel border border-ink-border rounded-xl animate-pulse" />
                                 ))}
                             </div>
                         ) : continueCourses.length > 0 ? (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                                {continueCourses.map((course) => (
+                            <div>
+                                {continueCourses.map((course, i) => (
                                     <button
                                         key={course.id}
                                         onClick={() => router.push(`/courses/${course.id}/learn`)}
-                                        className="text-left bg-white border border-slate-200 rounded-xl shadow-sm p-4 hover:shadow-md hover:-translate-y-0.5 transition-all"
+                                        className={`relative flex w-full flex-col sm:flex-row text-left bg-ink-panel border border-ink-border rounded-xl overflow-hidden shadow-ink-sm hover:shadow-md hover:-translate-y-0.5 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-ink-accent focus-visible:ring-offset-2 ${i > 0 ? 'mt-4' : ''}`}
                                     >
-                                        <h3 className="text-sm font-semibold text-slate-800 mb-2 line-clamp-1">{course.title}</h3>
-                                        {course.completionRate > 0 ? (
-                                            <>
-                                                <div className="w-full bg-slate-100 rounded-full h-1.5 mb-1.5">
-                                                    <div className="bg-emerald-500 h-1.5 rounded-full" style={{ width: `${course.completionRate}%` }} />
-                                                </div>
-                                                <span className="text-xs text-slate-400">{course.completionRate}% hoàn thành</span>
-                                            </>
-                                        ) : (
-                                            <span className="text-xs text-blue-600 font-medium">
-                                                Đã xem {formatDuration(course.lastWatchedPositionSec || 0)}
-                                            </span>
+                                        {course.completionRate > 0 && (
+                                            <div
+                                                className="absolute top-0 right-7 w-[30px] h-11 bg-ink-accent flex items-start justify-center pt-2 z-[2]"
+                                                style={{ clipPath: 'polygon(0 0, 100% 0, 100% 100%, 50% 78%, 0 100%)' }}
+                                            >
+                                                <span className="font-mono text-[9.5px] font-bold text-white">{course.completionRate}%</span>
+                                            </div>
                                         )}
+
+                                        <div className="relative flex items-center justify-center bg-ink-room shrink-0 w-full sm:w-[220px] aspect-video sm:aspect-auto">
+                                            {course.thumbnailUrl && (
+                                                <Image
+                                                    src={course.thumbnailUrl}
+                                                    alt=""
+                                                    fill
+                                                    sizes="220px"
+                                                    className="object-cover opacity-60"
+                                                />
+                                            )}
+                                            <div
+                                                className="relative w-[52px] h-[52px] rounded-full border-[1.5px] border-ink-accentScreen flex items-center justify-center"
+                                                style={{ background: 'rgba(244,246,252,0.12)' }}
+                                            >
+                                                <Play size={18} className="text-ink-accentScreen ml-0.5" fill="currentColor" />
+                                            </div>
+                                            {course.completionRate === 0 && (
+                                                <span
+                                                    className="absolute bottom-3 left-3.5 font-mono text-[11px]"
+                                                    style={{ color: 'rgba(244,246,252,0.55)' }}
+                                                >
+                                                    Đã xem {formatDuration(course.lastWatchedPositionSec || 0)}
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        <div className="flex-1 px-6 py-5 flex flex-col min-w-0">
+                                            <div className="text-[12.5px] font-medium text-ink-textMuted mb-1.5">Đang học</div>
+                                            <div className="text-lg font-bold text-ink-text leading-snug line-clamp-2">{course.title}</div>
+                                            <div className="text-[13.5px] text-ink-textMuted mt-2">{course.lessonCount} bài</div>
+                                            <span className="mt-auto inline-flex items-center gap-2 text-sm font-semibold text-ink-accent pt-4">
+                                                Tiếp tục học <ArrowRight size={15} />
+                                            </span>
+                                        </div>
                                     </button>
                                 ))}
                             </div>
                         ) : (
-                            <div className="bg-white border border-dashed border-slate-200 rounded-xl p-6 text-center">
-                                <p className="text-sm text-slate-500">Bạn chưa có Space nào đang học. Dán link video ở trên hoặc chọn một Space bên dưới để bắt đầu.</p>
+                            <div className="bg-ink-panel border border-dashed border-ink-border rounded-xl p-6 text-center">
+                                <p className="text-sm text-ink-textMuted">Bạn chưa có Space nào đang học. Dán link video ở trên hoặc chọn một Space bên dưới để bắt đầu.</p>
                             </div>
                         )}
                     </section>
@@ -283,11 +321,11 @@ export default function Home() {
                     /* Search Results */
                     <section>
                         <div className="mb-4 flex items-center justify-between">
-                            <h2 className="text-lg font-bold text-slate-900">
+                            <h2 className="text-lg font-bold text-ink-text">
                                 Kết quả cho &quot;{searchQuery}&quot;
                             </h2>
                             {appState === 'success' && courses.length > 0 && (
-                                <span className="text-xs text-slate-400">{courses.length} Space</span>
+                                <span className="text-xs text-ink-textDim">{courses.length} Space</span>
                             )}
                         </div>
 
@@ -305,15 +343,15 @@ export default function Home() {
                             <section>
                                 <div className="mb-4 flex items-center justify-between">
                                     <div className="flex items-center gap-2">
-                                        <h2 className="text-lg font-bold text-slate-900">Space Tuyển Chọn</h2>
-                                        <span className="text-xs font-semibold px-2.5 py-0.5 bg-blue-50 text-blue-700 rounded-full border border-blue-100">
+                                        <h2 className="text-lg font-bold text-ink-text">Space Tuyển Chọn</h2>
+                                        <span className="text-xs font-semibold px-2.5 py-0.5 bg-ink-accentA text-ink-accent rounded-full border border-ink-border">
                                             Chất lượng cao
                                         </span>
                                     </div>
                                     {showcaseCourses.length > 3 && (
                                         <button
                                             onClick={() => setShowAllShowcase(!showAllShowcase)}
-                                            className="text-xs font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1 transition-colors"
+                                            className="text-xs font-semibold text-ink-accent hover:text-ink-accent/80 flex items-center gap-1 transition-colors"
                                         >
                                             {showAllShowcase ? 'Thu gọn ↑' : `Xem tất cả (${showcaseCourses.length}) →`}
                                         </button>
@@ -333,15 +371,15 @@ export default function Home() {
                             <section>
                                 <div className="mb-4 flex items-center justify-between">
                                     <div className="flex items-center gap-2">
-                                        <h2 className="text-lg font-bold text-slate-900">Space Phổ biến nhất</h2>
-                                        <span className="text-xs font-semibold px-2.5 py-0.5 bg-emerald-50 text-emerald-700 rounded-full border border-emerald-100">
+                                        <h2 className="text-lg font-bold text-ink-text">Space Phổ biến nhất</h2>
+                                        <span className="text-xs font-semibold px-2.5 py-0.5 bg-ink-page text-ink-textMid rounded-full border border-ink-border">
                                             Nhiều người học
                                         </span>
                                     </div>
                                     {displayPopularCourses.length > 6 && (
                                         <button
                                             onClick={() => setShowAllPopular(!showAllPopular)}
-                                            className="text-xs font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1 transition-colors"
+                                            className="text-xs font-semibold text-ink-accent hover:text-ink-accent/80 flex items-center gap-1 transition-colors"
                                         >
                                             {showAllPopular ? 'Thu gọn ↑' : `Xem tất cả (${displayPopularCourses.length}) →`}
                                         </button>
@@ -365,7 +403,7 @@ export default function Home() {
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                             </svg>
                         </div>
-                        <p className="text-sm text-slate-600 mb-3">{errorMessage}</p>
+                        <p className="text-sm text-ink-textMid mb-3">{errorMessage}</p>
                         <Button
                             variant="link"
                             onClick={() => fetchCourses(debouncedSearchQuery)}

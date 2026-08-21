@@ -183,12 +183,12 @@ const MyCoursesPage = () => {
     };
 
     return (
-        <div className="min-h-screen bg-slate-50">
+        <div className="min-h-screen bg-ink-page">
             <Header user={user} onLogout={handleLogout} onJoin={handleJoin} />
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 <div className="mb-6">
-                    <h1 className="text-2xl font-bold text-slate-900">Space của tôi</h1>
-                    <p className="text-sm text-slate-500 mt-0.5">Quản lý và chỉnh sửa Space</p>
+                    <h1 className="text-2xl font-bold text-ink-text">Space của tôi</h1>
+                    <p className="text-sm text-ink-textMuted mt-0.5">Quản lý và chỉnh sửa Space</p>
                 </div>
 
                 {/* WP1.10.3 — hero paste-box thay cặp nút "Tạo khóa học"/"Tạo từ
@@ -196,9 +196,9 @@ const MyCoursesPage = () => {
                     tạo xong hiện card lựa chọn (bên dưới) thay vì redirect thẳng
                     vào editor. "Tạo Space trống" tụt xuống thành link phụ. */}
                 {!createdSpace && (
-                    <section className="mb-6 bg-blue-600 rounded-xl p-6 shadow-sm">
+                    <section className="mb-6 bg-ink-accent rounded-xl p-6 shadow-ink-sm">
                         <h2 className="text-lg font-bold text-white">Dán link YouTube, tạo Space ngay</h2>
-                        <p className="text-sm text-blue-100 mt-0.5">Hệ thống tự lấy tiêu đề, ảnh và tạo bài học đầu tiên.</p>
+                        <p className="text-sm text-ink-onAccent/80 mt-0.5">Hệ thống tự lấy tiêu đề, ảnh và tạo bài học đầu tiên.</p>
                         <div className="mt-4 flex flex-col sm:flex-row items-stretch gap-2">
                             <input
                                 ref={pasteInputRef}
@@ -208,7 +208,7 @@ const MyCoursesPage = () => {
                                 onKeyDown={(e) => { if (e.key === 'Enter') handleCreateFromLink(); }}
                                 placeholder="https://www.youtube.com/watch?v=..."
                                 disabled={creating}
-                                className="flex-1 px-3 py-2.5 rounded-lg border-0 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-white disabled:opacity-60"
+                                className="flex-1 px-3 py-2.5 rounded-lg border-0 text-sm text-ink-text placeholder:text-ink-textDim focus:outline-none focus:ring-2 focus:ring-white disabled:opacity-60"
                             />
                             <Button
                                 onClick={handleCreateFromLink}
@@ -220,12 +220,12 @@ const MyCoursesPage = () => {
                             </Button>
                         </div>
                         {pasteError && (
-                            <p className="mt-2 text-sm text-blue-50 bg-blue-700/50 rounded-lg px-3 py-2">{pasteError}</p>
+                            <p className="mt-2 text-sm text-ink-onAccent bg-ink-text/15 rounded-lg px-3 py-2">{pasteError}</p>
                         )}
                         <button
                             onClick={() => { setCreateError(null); setShowBlankModal(true); }}
                             disabled={creating}
-                            className="mt-3 text-xs text-blue-100 hover:text-white underline underline-offset-2"
+                            className="mt-3 text-xs text-ink-onAccent/80 hover:text-white underline underline-offset-2"
                         >
                             Tạo Space trống
                         </button>
@@ -234,9 +234,9 @@ const MyCoursesPage = () => {
 
                 {/* WP1.10.3 — card lựa chọn sau khi dán URL thành công. */}
                 {createdSpace && (
-                    <section className="mb-6 bg-white border border-emerald-200 rounded-xl p-6 shadow-sm">
-                        <p className="text-xs font-semibold text-emerald-600 uppercase tracking-wide mb-1">Đã tạo Space</p>
-                        <h2 className="text-lg font-bold text-slate-900">{createdSpace.title}</h2>
+                    <section className="mb-6 bg-ink-panel border border-ink-border rounded-xl p-6 shadow-ink-sm">
+                        <p className="text-xs font-semibold text-ink-textMid uppercase tracking-wide mb-1">Đã tạo Space</p>
+                        <h2 className="text-lg font-bold text-ink-text">{createdSpace.title}</h2>
                         {createdSpace.titleIsPlaceholder && (
                             <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mt-2">
                                 Không đọc được tên video từ YouTube — đã đặt tên tạm, bạn có thể đổi trong phần chỉnh sửa.
@@ -275,11 +275,11 @@ const MyCoursesPage = () => {
                 {loading ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {Array.from({ length: 6 }).map((_, index) => (
-                            <div key={index} className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
-                                <Skeleton className="h-32 w-full rounded-none bg-slate-200" />
+                            <div key={index} className="bg-ink-panel rounded-xl border border-ink-border shadow-ink-sm overflow-hidden">
+                                <Skeleton className="h-32 w-full rounded-none bg-ink-page" />
                                 <div className="p-5 space-y-2">
-                                    <Skeleton className="h-4 w-3/4 bg-slate-200" />
-                                    <Skeleton className="h-3 w-1/3 bg-slate-200" />
+                                    <Skeleton className="h-4 w-3/4 bg-ink-page" />
+                                    <Skeleton className="h-3 w-1/3 bg-ink-page" />
                                 </div>
                             </div>
                         ))}
@@ -291,20 +291,20 @@ const MyCoursesPage = () => {
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                             </svg>
                         </div>
-                        <p className="text-sm text-slate-600 mb-4">{getErrorMessage(error)}</p>
+                        <p className="text-sm text-ink-textMid mb-4">{getErrorMessage(error)}</p>
                         <Button onClick={() => fetchCourses(selectedStatus)}>
                             Thử lại
                         </Button>
                     </div>
                 ) : (!courses || courses.length === 0) ? (
                     <div className="flex flex-col items-center py-16 text-center">
-                        <div className="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center mb-4">
-                            <svg className="w-7 h-7 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div className="w-14 h-14 rounded-full bg-ink-page flex items-center justify-center mb-4">
+                            <svg className="w-7 h-7 text-ink-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                             </svg>
                         </div>
-                        <h3 className="text-sm font-semibold text-slate-700 mb-1">Không có Space</h3>
-                        <p className="text-sm text-slate-500 mb-5">Bạn chưa có Space nào trong mục này.</p>
+                        <h3 className="text-sm font-semibold text-ink-text mb-1">Không có Space</h3>
+                        <p className="text-sm text-ink-textMuted mb-5">Bạn chưa có Space nào trong mục này.</p>
                         {/* WP1.6.4 — ownership-based, not role-gated: every user owns their
                             own personal courses now (management/courses route already
                             dropped this same check at WP1.5.10). A STUDENT-role user
@@ -323,9 +323,9 @@ const MyCoursesPage = () => {
                             <div
                                 key={course.id}
                                 onClick={() => handleCourseClick(course)}
-                                className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all"
+                                className="bg-ink-panel rounded-xl border border-ink-border shadow-ink-sm overflow-hidden cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all"
                             >
-                                <div className="h-32 bg-slate-100 flex items-center justify-center overflow-hidden relative">
+                                <div className="h-32 bg-ink-page flex items-center justify-center overflow-hidden relative">
                                     {course.thumbnailUrl ? (
                                         <Image
                                             src={course.thumbnailUrl}
@@ -335,25 +335,25 @@ const MyCoursesPage = () => {
                                             className="object-cover"
                                         />
                                     ) : (
-                                        <svg className="w-8 h-8 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <svg className="w-8 h-8 text-ink-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 10l4.553-2.069A1 1 0 0121 8.868V15.13a1 1 0 01-1.447.897L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
                                         </svg>
                                     )}
                                 </div>
 
                                 <div className="p-5">
-                                    <h3 className="text-sm font-semibold text-slate-800 mb-1 line-clamp-2">{course.title}</h3>
+                                    <h3 className="text-sm font-semibold text-ink-text mb-1 line-clamp-2">{course.title}</h3>
                                     {/* WP1.10.6 — badge "N bài" phân biệt hình thái (1 video vs
                                         nhiều chương/bài), không thêm tab/lọc riêng theo nguồn. */}
                                     {typeof course.lessonCount === 'number' && (
-                                        <p className="text-xs text-slate-400 mb-2">{course.lessonCount} bài</p>
+                                        <p className="text-xs text-ink-textDim mb-2">{course.lessonCount} bài</p>
                                     )}
 
                                     <div className="flex items-center justify-between gap-2">
                                         <span
                                             className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${((course.status || '') as string).toUpperCase() === 'ACTIVE'
-                                                ? 'bg-emerald-50 text-emerald-700'
-                                                : 'bg-slate-100 text-slate-600'
+                                                ? 'bg-ink-page text-ink-textMid'
+                                                : 'bg-ink-page text-ink-textMuted'
                                                 }`}
                                         >
                                             {((course.status || '') as string).toUpperCase() === 'ACTIVE' ? 'Hoạt động' : 'Lưu trữ'}
@@ -390,7 +390,7 @@ const MyCoursesPage = () => {
                     </DialogHeader>
                     <div className="space-y-3 py-2">
                         <div>
-                            <label className="block text-xs font-semibold text-slate-700 mb-1">Tên Space</label>
+                            <label className="block text-xs font-semibold text-ink-text mb-1">Tên Space</label>
                             <input
                                 type="text"
                                 value={newTitle}
@@ -398,17 +398,17 @@ const MyCoursesPage = () => {
                                 onKeyDown={(e) => { if (e.key === 'Enter') handleCreateBlank(); }}
                                 placeholder="Ví dụ: Lập trình Python cơ bản…"
                                 autoFocus
-                                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                className="w-full px-3 py-2 border border-ink-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ink-accent"
                             />
                         </div>
                         <div>
-                            <label className="block text-xs font-semibold text-slate-700 mb-1">Mô tả (tùy chọn)</label>
+                            <label className="block text-xs font-semibold text-ink-text mb-1">Mô tả (tùy chọn)</label>
                             <textarea
                                 value={newDesc}
                                 onChange={(e) => setNewDesc(e.target.value)}
                                 placeholder="Mô tả ngắn gọn nội dung Space…"
                                 rows={3}
-                                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+                                className="w-full px-3 py-2 border border-ink-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ink-accent resize-none"
                             />
                         </div>
                     </div>

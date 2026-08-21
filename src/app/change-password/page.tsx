@@ -81,46 +81,46 @@ export default function ChangePasswordPage() {
     };
 
     return (
-        <div className="min-h-screen bg-slate-50">
+        <div className="min-h-screen bg-ink-page">
             <Header user={user} onLogout={handleLogout} onJoin={handleJoin} />
 
             <main className="max-w-lg mx-auto px-4 py-10">
                 <div className="mb-6">
-                    <h1 className="text-xl font-bold text-slate-900">Đổi mật khẩu</h1>
-                    <p className="text-sm text-slate-500 mt-0.5">Thay đổi mật khẩu đăng nhập của bạn</p>
+                    <h1 className="text-xl font-bold text-ink-text">Đổi mật khẩu</h1>
+                    <p className="text-sm text-ink-textMuted mt-0.5">Thay đổi mật khẩu đăng nhập của bạn</p>
                 </div>
 
-                <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-6">
+                <div className="bg-ink-panel border border-ink-border rounded-xl shadow-ink-sm p-6">
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div>
-                            <label htmlFor="currentPassword" className="block text-sm font-medium text-slate-700 mb-1.5">Mật khẩu hiện tại</label>
+                            <label htmlFor="currentPassword" className="block text-sm font-medium text-ink-text mb-1.5">Mật khẩu hiện tại</label>
                             <input
                                 id="currentPassword" name="currentPassword" type="password" autoComplete="current-password" required
                                 value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)}
                                 disabled={appState === 'submitting'}
-                                className="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 transition-shadow"
+                                className="w-full px-3 py-2.5 border border-ink-border rounded-lg text-sm text-ink-text placeholder:text-ink-textDim focus:outline-none focus:ring-2 focus:ring-ink-accent focus:border-transparent disabled:opacity-50 transition-shadow"
                                 placeholder="••••••••"
                             />
                         </div>
 
                         <div>
-                            <label htmlFor="newPassword" className="block text-sm font-medium text-slate-700 mb-1.5">Mật khẩu mới</label>
+                            <label htmlFor="newPassword" className="block text-sm font-medium text-ink-text mb-1.5">Mật khẩu mới</label>
                             <input
                                 id="newPassword" name="newPassword" type="password" autoComplete="new-password" required minLength={6}
                                 value={newPassword} onChange={(e) => setNewPassword(e.target.value)}
                                 disabled={appState === 'submitting'}
-                                className="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 transition-shadow"
+                                className="w-full px-3 py-2.5 border border-ink-border rounded-lg text-sm text-ink-text placeholder:text-ink-textDim focus:outline-none focus:ring-2 focus:ring-ink-accent focus:border-transparent disabled:opacity-50 transition-shadow"
                                 placeholder="Tối thiểu 6 ký tự"
                             />
                         </div>
 
                         <div>
-                            <label htmlFor="confirmPassword" className="block text-sm font-medium text-slate-700 mb-1.5">Xác nhận mật khẩu mới</label>
+                            <label htmlFor="confirmPassword" className="block text-sm font-medium text-ink-text mb-1.5">Xác nhận mật khẩu mới</label>
                             <input
                                 id="confirmPassword" name="confirmPassword" type="password" autoComplete="new-password" required
                                 value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)}
                                 disabled={appState === 'submitting'}
-                                className="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 transition-shadow"
+                                className="w-full px-3 py-2.5 border border-ink-border rounded-lg text-sm text-ink-text placeholder:text-ink-textDim focus:outline-none focus:ring-2 focus:ring-ink-accent focus:border-transparent disabled:opacity-50 transition-shadow"
                                 placeholder="Nhập lại mật khẩu mới"
                             />
                             {(appState === 'business_error' || appState === 'system_error') && errorMessage && (
@@ -129,9 +129,9 @@ export default function ChangePasswordPage() {
                         </div>
 
                         {appState === 'success' && (
-                            <div className="flex items-center gap-2 p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
-                                <svg className="w-4 h-4 text-emerald-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7"/></svg>
-                                <p className="text-sm text-emerald-700 font-medium">Mật khẩu đã được thay đổi thành công!</p>
+                            <div className="flex items-center gap-2 p-3 bg-ink-page border border-ink-border rounded-lg">
+                                <svg className="w-4 h-4 text-ink-textMid flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7"/></svg>
+                                <p className="text-sm text-ink-textMid font-medium">Mật khẩu đã được thay đổi thành công!</p>
                             </div>
                         )}
 

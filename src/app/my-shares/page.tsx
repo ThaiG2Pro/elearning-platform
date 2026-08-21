@@ -92,20 +92,20 @@ export default function MySharesPage() {
     };
 
     return (
-        <div className="min-h-screen bg-slate-50">
+        <div className="min-h-screen bg-ink-page">
             <Header user={user} onLogout={handleLogout} onJoin={handleJoin} />
 
             <main className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                <h1 className="text-xl font-bold text-slate-900 mb-1">Link chia sẻ của tôi</h1>
-                <p className="text-sm text-slate-500 mb-6">
+                <h1 className="text-xl font-bold text-ink-text mb-1">Link chia sẻ của tôi</h1>
+                <p className="text-sm text-ink-textMuted mb-6">
                     Xem lại, tạo mới hoặc thu hồi link chia sẻ cho từng Space bạn sở hữu.
                 </p>
 
                 {appState === 'loading' && (
                     <div className="space-y-3">
-                        <Skeleton className="h-20 rounded-xl bg-slate-200" />
-                        <Skeleton className="h-20 rounded-xl bg-slate-200" />
-                        <Skeleton className="h-20 rounded-xl bg-slate-200" />
+                        <Skeleton className="h-20 rounded-xl bg-ink-page" />
+                        <Skeleton className="h-20 rounded-xl bg-ink-page" />
+                        <Skeleton className="h-20 rounded-xl bg-ink-page" />
                     </div>
                 )}
 
@@ -117,7 +117,7 @@ export default function MySharesPage() {
 
                 {appState === 'idle' && links.length === 0 && (
                     <Card>
-                        <CardContent className="pt-6 text-sm text-slate-500 text-center">
+                        <CardContent className="pt-6 text-sm text-ink-textMuted text-center">
                             Bạn chưa có Space nào để chia sẻ.
                         </CardContent>
                     </Card>
@@ -126,14 +126,16 @@ export default function MySharesPage() {
                 {appState === 'idle' && links.length > 0 && (
                     <div className="space-y-3">
                         {links.map(link => (
-                            <Card key={link.id}>
+                            // border-l-ink-marginLn — "đường kẻ lề vở": mỗi Space trong danh
+                            // sách chia sẻ là một dòng, cùng motif với playlist/notes ở learn/page.tsx.
+                            <Card key={link.id} className="border-l-2 border-l-ink-marginLn">
                                 <CardContent className="pt-6 flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
                                     <div className="min-w-0">
-                                        <p className="text-sm font-medium text-slate-800 truncate">{link.title}</p>
+                                        <p className="text-sm font-medium text-ink-text truncate">{link.title}</p>
                                         {link.shareUrl ? (
-                                            <p className="text-xs text-slate-500 truncate mt-0.5">{link.shareUrl}</p>
+                                            <p className="text-xs text-ink-textMuted truncate mt-0.5">{link.shareUrl}</p>
                                         ) : (
-                                            <p className="text-xs text-slate-400 mt-0.5">Chưa có link chia sẻ</p>
+                                            <p className="text-xs text-ink-textDim mt-0.5">Chưa có link chia sẻ</p>
                                         )}
                                     </div>
                                     <div className="flex items-center gap-2 flex-shrink-0">
@@ -142,6 +144,7 @@ export default function MySharesPage() {
                                                 <Button
                                                     variant="outline"
                                                     size="sm"
+                                                    className="vd-focusable"
                                                     onClick={() => handleCopy(link)}
                                                 >
                                                     {copiedId === link.id ? 'Đã chép!' : 'Sao chép'}
@@ -149,6 +152,7 @@ export default function MySharesPage() {
                                                 <Button
                                                     variant="destructive"
                                                     size="sm"
+                                                    className="vd-focusable"
                                                     disabled={busyCourseId === link.id}
                                                     onClick={() => handleRevoke(link.id)}
                                                 >
@@ -158,6 +162,7 @@ export default function MySharesPage() {
                                         ) : (
                                             <Button
                                                 size="sm"
+                                                className="vd-focusable"
                                                 disabled={busyCourseId === link.id}
                                                 onClick={() => handleCreate(link.id)}
                                             >
