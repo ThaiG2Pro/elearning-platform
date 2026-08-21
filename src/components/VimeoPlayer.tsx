@@ -95,7 +95,9 @@ const VimeoPlayer = forwardRef<VideoPlayerHandle, Props>(({ videoId, initialPos,
     );
 
     return (
-        <div className="vimeo-player-wrapper w-full aspect-video rounded-ink-md overflow-hidden shadow-md border border-ink-border">
+        // Không còn viền/bo góc/shadow riêng — khung "màn hình rạp" ở learn/page.tsx
+        // (bg-ink-screen, border-ink-borderHi) giờ là viền duy nhất bọc quanh player.
+        <div className="vimeo-player-wrapper w-full aspect-video overflow-hidden">
             <iframe
                 ref={iframeRef}
                 src={embedUrl}

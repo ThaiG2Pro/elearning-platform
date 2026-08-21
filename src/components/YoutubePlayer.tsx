@@ -107,7 +107,9 @@ const YoutubePlayer = forwardRef<VideoPlayerHandle, Props>(({ videoId, initialPo
     }), []);
 
     return (
-        <div className="youtube-player-wrapper w-full aspect-video rounded-ink-md overflow-hidden shadow-md border border-ink-border">
+        // Không còn viền/bo góc/shadow riêng — khung "màn hình rạp" ở learn/page.tsx
+        // (bg-ink-screen, border-ink-borderHi) giờ là viền duy nhất bọc quanh player.
+        <div className="youtube-player-wrapper w-full aspect-video overflow-hidden">
             <YouTube
                 videoId={videoId}
                 opts={opts}

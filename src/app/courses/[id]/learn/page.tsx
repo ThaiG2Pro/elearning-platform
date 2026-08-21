@@ -6,6 +6,7 @@ import Header from '@/components/Header';
 import YoutubePlayer, { VideoPlayerHandle } from '@/components/YoutubePlayer';
 import VimeoPlayer from '@/components/VimeoPlayer';
 import { Skeleton } from '@/components/ui/skeleton';
+import { MARGIN_W } from '@/lib/vibe/theme';
 import { getLessons, getLessonProgress, updateLessonProgress, flushLessonProgress, startQuiz, submitQuiz, addLessonNote, getLessonNotes, deleteLessonNote } from '@/lib/course';
 import { Lesson, LessonProgress, QuizSession, QuizResult, LessonNote } from '@/types/course.types';
 import { User } from '@/types/auth.types';
@@ -722,8 +723,13 @@ export default function LearningPage() {
                                     </div>
                                 )}
 
-                                {/* Lessons List */}
-                                <div className="space-y-1 pl-1">
+                                {/* Lessons List — "trang vở kẻ lề" motif THẬT của vibe-demo/page.tsx
+                                    (renderPlaylist): một cột lề trái rộng MARGIN_W cho số thứ tự, một
+                                    đường kẻ mực xanh chạy dọc liên tục, nội dung bên phải. Bỏ hẳn nút
+                                    tròn checkmark lơ lửng bên trái kiểu cũ — trạng thái hoàn thành giờ
+                                    đổi màu/icon ngay trong cột lề, đọc-only (app không có tính năng tự
+                                    đánh dấu tay như demo, hoàn thành luôn suy ra từ tiến độ thật). */}
+                                <div>
                                     {chapterGroup.lessons.map((lesson, lIdx) => {
                                         const isSelected = currentLesson?.id === lesson.id;
                                         const lessonNum = lesson.order || (lIdx + 1);
@@ -734,46 +740,38 @@ export default function LearningPage() {
                                         const isNext = !lesson.isCompleted && !isSelected &&
                                             lessons.slice(0, flatIdx).every(l => l.isCompleted || l.id === currentLesson?.id);
                                         return (
-                                            <button
+                                            <div
                                                 key={lesson.id}
+                                                role="button"
+                                                tabIndex={0}
                                                 onClick={() => switchLesson(lesson)}
-                                                // border-l-ink-marginLn — "đường kẻ lề vở" cho danh sách
-                                                // bài học (playlist), khớp motif đã dùng ở notes phía trên.
-                                                className={`w-full text-left p-2.5 rounded-ink-md transition-all flex items-start gap-2.5 border-l-2 border-l-ink-marginLn ${
-                                                    isSelected
-                                                        ? 'bg-ink-accentA text-ink-text border-y border-r border-ink-border shadow-ink-sm font-semibold'
-                                                        : 'hover:bg-ink-page text-ink-text border-y border-r border-transparent'
-                                                }`}
+                                                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); switchLesson(lesson); } }}
+                                                className={`vd-focusable flex items-stretch cursor-pointer transition-colors ${isSelected ? 'bg-ink-accentA' : 'hover:bg-ink-page'}`}
                                             >
-                                                <div className={`flex-shrink-0 w-5 h-5 rounded-full border flex items-center justify-center mt-0.5 transition-colors ${
-                                                    lesson.isCompleted
-                                                        ? 'bg-ink-accent border-ink-accent'
-                                                        : isSelected
-                                                            ? 'border-ink-accent bg-ink-panel'
-                                                            : 'border-ink-border'
-                                                }`}>
+                                                <span
+                                                    style={{ width: MARGIN_W }}
+                                                    className={`shrink-0 flex items-start justify-center pt-[11px] font-mono text-[11px] ${isSelected ? 'font-semibold text-ink-accent' : lesson.isCompleted ? 'text-ink-textDim' : 'text-ink-textDim'}`}
+                                                >
                                                     {lesson.isCompleted ? (
-                                                        <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7"/>
+                                                        <svg className="w-3.5 h-3.5 text-ink-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7"/>
                                                         </svg>
-                                                    ) : (
-                                                        <span className="text-[10px] text-ink-textDim font-mono">
-                                                            {lessonNum}
-                                                        </span>
-                                                    )}
-                                                </div>
+                                                    ) : String(lessonNum).padStart(2, '0')}
+                                                </span>
 
-                                                <div className="flex-1 min-w-0">
-                                                    <p className="text-xs leading-snug truncate">
-                                                        <span className="font-semibold text-ink-text mr-1">Bài {lessonNum}:</span>
+                                                <div className="flex-1 min-w-0 border-l border-ink-marginLn pt-2.5 pr-3 pb-2.5 pl-3.5">
+                                                    <p
+                                                        title={lesson.title}
+                                                        className={`text-sm leading-snug truncate ${isSelected ? 'font-semibold text-ink-text' : 'font-medium text-ink-textMid'}`}
+                                                    >
                                                         {lesson.title}
                                                     </p>
-                                                    <p className="text-[10px] text-ink-textDim mt-0.5 flex items-center gap-1.5">
+                                                    <div className="mt-1 flex gap-2 font-mono text-[11px] text-ink-textDim">
                                                         <span>{lesson.type.toLowerCase() === 'video' ? '📹 Video' : '📝 Quiz'}</span>
                                                         {isNext && <span className="text-ink-accent font-medium">tiếp theo →</span>}
-                                                    </p>
+                                                    </div>
                                                 </div>
-                                            </button>
+                                            </div>
                                         );
                                     })}
                                 </div>
@@ -815,36 +813,51 @@ export default function LearningPage() {
                 </>
             ) : (
                 <div className="max-h-[calc(100vh-280px)] overflow-y-auto pr-1 pt-3">
-                    {notes.length > 0 && (
-                        <ul className="space-y-2 mb-4">
+                    {/* Danh sách ghi chú — cùng motif "lề vở" THẬT như playlist ở trên
+                        (cột lề trái MARGIN_W + đường kẻ dọc liên tục), thay khối
+                        card-viền-bo-góc-riêng-từng-note cũ. Nút xoá chỉ hiện khi hover,
+                        giữ nguyên hành vi cũ — chỉ đổi vị trí cho khớp layout mới. */}
+                    {notes.length === 0 ? (
+                        <div className="flex items-stretch mb-3">
+                            <span style={{ width: MARGIN_W }} className="shrink-0" />
+                            <div className="flex-1 border-l border-ink-marginLn pt-3.5 pr-3 pb-3.5 pl-3.5 text-sm text-ink-textDim">
+                                Chưa có ghi chú nào. Nét mực đầu tiên của bạn sẽ nằm ở đây.
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="mb-3">
                             {notes.map(note => (
-                                // border-l-ink-marginLn — "đường kẻ lề vở": motif cấu trúc
-                                // chung của playlist & notes trong theme.ts, đánh dấu mỗi
-                                // ghi chú như một dòng viết bên lề trang vở.
-                                <li key={note.id} className="flex items-start gap-2 p-3 rounded-lg border border-ink-border border-l-2 border-l-ink-marginLn group">
-                                    <div className="flex-1 min-w-0">
-                                        {note.videoTimestampSec != null && (
+                                <div key={note.id} className="vd-ink-in flex items-stretch group">
+                                    <span
+                                        style={{ width: MARGIN_W }}
+                                        className="shrink-0 flex items-start justify-center pt-[11px]"
+                                    >
+                                        {note.videoTimestampSec != null ? (
                                             <button
                                                 onClick={() => handleSeekToNote(note)}
-                                                className="text-xs font-mono font-medium text-ink-accent hover:underline mb-1"
+                                                className="font-mono text-[11px] font-medium text-ink-accent hover:underline"
                                             >
-                                                ⏱ {formatTime(note.videoTimestampSec)}
+                                                {formatTime(note.videoTimestampSec)}
                                             </button>
+                                        ) : (
+                                            <span className="font-mono text-[11px] text-ink-textDim">—</span>
                                         )}
-                                        <p className="text-sm text-ink-text whitespace-pre-wrap break-words">{note.content}</p>
+                                    </span>
+                                    <div className="flex-1 min-w-0 border-l border-ink-marginLn pt-2.5 pr-3 pb-2.5 pl-3.5 flex items-start gap-2">
+                                        <p className="flex-1 text-sm text-ink-textMid whitespace-pre-wrap break-words leading-[1.6]">{note.content}</p>
+                                        <button
+                                            onClick={() => handleDeleteNote(note.id)}
+                                            title="Xoá ghi chú"
+                                            className="flex-shrink-0 text-ink-textDim hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                                        >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                            </svg>
+                                        </button>
                                     </div>
-                                    <button
-                                        onClick={() => handleDeleteNote(note.id)}
-                                        title="Xoá ghi chú"
-                                        className="flex-shrink-0 text-ink-textDim hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
-                                    >
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                        </svg>
-                                    </button>
-                                </li>
+                                </div>
                             ))}
-                        </ul>
+                        </div>
                     )}
 
                     <textarea
@@ -1008,73 +1021,95 @@ export default function LearningPage() {
                                                 {currentLesson.title}
                                             </h1>
                                         )}
-                                        {currentLesson.videoUrl && isYouTubeUrl(currentLesson.videoUrl) ? (
-                                            <YoutubePlayer
-                                                key={currentLesson.id}
-                                                ref={playerHandleRef}
-                                                videoId={youtubeVideoId || ''}
-                                                initialPos={lessonProgress?.currentPosition || 0}
-                                                onProgress={handleProgressUpdate}
-                                                onDuration={handleDurationUpdate}
-                                                onFlush={handleFlushUpdate}
-                                                onEnded={handleVideoEnded}
-                                                onPlay={() => setIsVideoPlaying(true)}
-                                                onPause={() => setIsVideoPlaying(false)}
-                                            />
-                                        ) : currentLesson.videoUrl && isVimeoUrl(currentLesson.videoUrl) ? (
-                                            <VimeoPlayer
-                                                key={currentLesson.id}
-                                                ref={playerHandleRef}
-                                                videoId={vimeoVideoId || ''}
-                                                initialPos={lessonProgress?.currentPosition || 0}
-                                                onProgress={handleProgressUpdate}
-                                                onDuration={handleDurationUpdate}
-                                                onFlush={handleFlushUpdate}
-                                                onEnded={handleVideoEnded}
-                                                onPlay={() => setIsVideoPlaying(true)}
-                                                onPause={() => setIsVideoPlaying(false)}
-                                            />
-                                        ) : (
-                                            <video
-                                                key={currentLesson.id}
-                                                ref={videoRef}
-                                                controls
-                                                className="w-full rounded-lg"
-                                                onTimeUpdate={handleVideoProgress}
-                                                onEnded={() => { handleVideoProgress(); handleVideoEnded(); }}
-                                                onPlay={() => setIsVideoPlaying(true)}
-                                                onPause={() => setIsVideoPlaying(false)}
-                                                onLoadedMetadata={() => {
-                                                    if (videoRef.current) {
-                                                        setVideoDuration(Math.floor(videoRef.current.duration));
-                                                        // WP1.5.3: resume-position only worked on the YouTube
-                                                        // branch — a plain <video> lesson always restarted at 0.
-                                                        const resumeAt = lessonProgress?.currentPosition || 0;
-                                                        if (resumeAt > 0) {
-                                                            videoRef.current.currentTime = resumeAt;
+                                        {/* "Màn hình rạp" — porting logic từ vibe-demo/page.tsx: player +
+                                            thanh trạng thái hợp thành MỘT khối tối liền mạch (bg-ink-screen),
+                                            thay vì video card trắng với dòng "Tiến độ: mm:ss / mm:ss" tách
+                                            rời phía dưới như cũ. YoutubePlayer/VimeoPlayer bỏ border/rounding/
+                                            shadow riêng (chỉ dùng ở đây) để khung ngoài này là viền duy nhất. */}
+                                        <div
+                                            className={`bg-ink-screen border rounded-ink-md overflow-hidden shadow-ink-sm flex flex-col ${focusMode ? 'border-[rgba(255,255,255,0.10)]' : 'border-ink-borderHi'}`}
+                                        >
+                                            {currentLesson.videoUrl && isYouTubeUrl(currentLesson.videoUrl) ? (
+                                                <YoutubePlayer
+                                                    key={currentLesson.id}
+                                                    ref={playerHandleRef}
+                                                    videoId={youtubeVideoId || ''}
+                                                    initialPos={lessonProgress?.currentPosition || 0}
+                                                    onProgress={handleProgressUpdate}
+                                                    onDuration={handleDurationUpdate}
+                                                    onFlush={handleFlushUpdate}
+                                                    onEnded={handleVideoEnded}
+                                                    onPlay={() => setIsVideoPlaying(true)}
+                                                    onPause={() => setIsVideoPlaying(false)}
+                                                />
+                                            ) : currentLesson.videoUrl && isVimeoUrl(currentLesson.videoUrl) ? (
+                                                <VimeoPlayer
+                                                    key={currentLesson.id}
+                                                    ref={playerHandleRef}
+                                                    videoId={vimeoVideoId || ''}
+                                                    initialPos={lessonProgress?.currentPosition || 0}
+                                                    onProgress={handleProgressUpdate}
+                                                    onDuration={handleDurationUpdate}
+                                                    onFlush={handleFlushUpdate}
+                                                    onEnded={handleVideoEnded}
+                                                    onPlay={() => setIsVideoPlaying(true)}
+                                                    onPause={() => setIsVideoPlaying(false)}
+                                                />
+                                            ) : (
+                                                <video
+                                                    key={currentLesson.id}
+                                                    ref={videoRef}
+                                                    controls
+                                                    className="w-full aspect-video"
+                                                    onTimeUpdate={handleVideoProgress}
+                                                    onEnded={() => { handleVideoProgress(); handleVideoEnded(); }}
+                                                    onPlay={() => setIsVideoPlaying(true)}
+                                                    onPause={() => setIsVideoPlaying(false)}
+                                                    onLoadedMetadata={() => {
+                                                        if (videoRef.current) {
+                                                            setVideoDuration(Math.floor(videoRef.current.duration));
+                                                            // WP1.5.3: resume-position only worked on the YouTube
+                                                            // branch — a plain <video> lesson always restarted at 0.
+                                                            const resumeAt = lessonProgress?.currentPosition || 0;
+                                                            if (resumeAt > 0) {
+                                                                videoRef.current.currentTime = resumeAt;
+                                                            }
                                                         }
-                                                    }
-                                                }}
-                                            >
-                                                {currentLesson.videoUrl && (
-                                                    <source src={currentLesson.videoUrl} type="video/mp4" />
-                                                )}
-                                                Trình duyệt của bạn không hỗ trợ video.
-                                            </video>
-                                        )}
-                                        {lessonProgress && (
-                                            <div className="mt-3 text-xs text-ink-textDim">
-                                                Tiến độ: {formatTime(livePosition)} / {formatTime(videoDuration || currentLesson.duration || 0)}
-                                            </div>
-                                        )}
-                                        {progressSyncError && (
-                                            <div className="vd-ink-in mt-2 flex items-center gap-1.5 text-xs text-amber-600">
-                                                <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                                                </svg>
-                                                Chưa lưu được tiến độ, đang thử lại...
-                                            </div>
-                                        )}
+                                                    }}
+                                                >
+                                                    {currentLesson.videoUrl && (
+                                                        <source src={currentLesson.videoUrl} type="video/mp4" />
+                                                    )}
+                                                    Trình duyệt của bạn không hỗ trợ video.
+                                                </video>
+                                            )}
+
+                                            {/* Thanh trạng thái tối — khớp thanh footer 36px của vibe-demo
+                                                (mm:ss hiện tại, vạch tiến độ mỏng, tổng thời lượng, trạng thái
+                                                lưu) nhưng dùng SỐ LIỆU THẬT (livePosition/videoDuration/
+                                                progressSyncError), không phải progress giả 42% của demo. */}
+                                            {lessonProgress && (
+                                                <div className="h-9 border-t border-[rgba(255,255,255,0.10)] flex items-center gap-2.5 px-4 font-mono text-[11px] text-[rgba(255,255,255,0.55)] shrink-0">
+                                                    <span>{formatTime(livePosition)}</span>
+                                                    <div className="flex-1 h-0.5 bg-[rgba(255,255,255,0.16)] overflow-hidden rounded-[1px]">
+                                                        <div
+                                                            className="h-full bg-ink-accentScreen transition-[width] duration-300"
+                                                            style={{
+                                                                width: `${(videoDuration || currentLesson.duration)
+                                                                    ? Math.min(100, (livePosition / (videoDuration || currentLesson.duration || 1)) * 100)
+                                                                    : 0}%`,
+                                                            }}
+                                                        />
+                                                    </div>
+                                                    <span>{formatTime(videoDuration || currentLesson.duration || 0)}</span>
+                                                    {progressSyncError ? (
+                                                        <span className="vd-ink-in text-amber-400 ml-2 whitespace-nowrap">⟳ đang lưu lại...</span>
+                                                    ) : (
+                                                        <span className="text-ink-accentScreen ml-2 whitespace-nowrap">✓ đã lưu</span>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                 )}
                             </div>
