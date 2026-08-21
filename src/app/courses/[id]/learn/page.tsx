@@ -98,6 +98,19 @@ export default function LearningPage() {
     // WP1.2 — focus mode: hides the site header + lesson sidebar so the
     // learner sees only the video/quiz, no nav/recommendation distractions.
     const [focusMode, setFocusMode] = useState(false);
+    // Porting logic từ vibe-demo/page.tsx (roomBgClass): nền phòng dịu xuống
+    // (bg-ink-pageDim) khi video đang chạy, dù không ở chế độ tập trung —
+    // "đèn phòng tự mờ khi xem", khác với focusMode (người dùng bật tay).
+    // Không áp dụng cho quiz — chỉ theo dõi trạng thái play/pause của video.
+    const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+    // Panel bên phải (playlist/ghi chú) hợp nhất thành tab — porting logic
+    // từ vibe-demo/page.tsx (PanelTab). Reset về 'playlist' mỗi khi đổi bài
+    // để không "kẹt" ở tab ghi chú của bài trước.
+    const [sidebarTab, setSidebarTab] = useState<'playlist' | 'notes'>('playlist');
+    // Focus mode ẩn toàn bộ sidebar để không phân tâm — nhưng vibe-demo/page.tsx
+    // vẫn cho mở lại qua overlay nổi, nên "tập trung" không có nghĩa là mất
+    // hẳn quyền xem playlist/ghi chú.
+    const [focusOverlayOpen, setFocusOverlayOpen] = useState(false);
 
     // YouTube states
     const [videoDuration, setVideoDuration] = useState<number>(0);
@@ -349,6 +362,8 @@ export default function LearningPage() {
         setQuizResult(null);
         setAnswers({});
         setQuizQIdx(0);
+        setIsVideoPlaying(false);
+        setSidebarTab('playlist');
         setAppState('loading');
     };
 
@@ -656,13 +671,225 @@ export default function LearningPage() {
         return groups;
     }, [lessons]);
 
+    // Porting logic từ vibe-demo/page.tsx (renderTabs/renderPlaylist/renderNotes):
+    // playlist + ghi chú hợp nhất vào MỘT panel có tab, thay vì ghi chú nằm
+    // rời ở cột chính và playlist nằm cố định ở sidebar như trước. Dùng lại
+    // được cả ở cột sidebar bình thường VÀ ở overlay nổi khi focusMode (bên
+    // dưới) nên viết thành một hàm render, không lặp JSX hai lần.
+    const hasNotesTab = currentLesson?.type?.toLowerCase() === 'video';
+    const renderSidebarPanel = () => (
+        <>
+            <div className="flex items-center border-b border-ink-border">
+                <button
+                    onClick={() => setSidebarTab('playlist')}
+                    className={`vd-focusable flex-1 text-center px-2 py-2.5 text-xs font-bold uppercase tracking-wider border-b-2 transition-colors ${
+                        sidebarTab === 'playlist' || !hasNotesTab
+                            ? 'border-ink-accent text-ink-text'
+                            : 'border-transparent text-ink-textDim hover:text-ink-textMid'
+                    }`}
+                >
+                    Nội dung ({lessons.filter(l => l.isCompleted).length}/{lessons.length})
+                </button>
+                {hasNotesTab && (
+                    <button
+                        onClick={() => setSidebarTab('notes')}
+                        className={`vd-focusable flex-1 text-center px-2 py-2.5 text-xs font-bold uppercase tracking-wider border-b-2 transition-colors ${
+                            sidebarTab === 'notes'
+                                ? 'border-ink-accent text-ink-text'
+                                : 'border-transparent text-ink-textDim hover:text-ink-textMid'
+                        }`}
+                    >
+                        Ghi chú ({notes.length})
+                    </button>
+                )}
+            </div>
+
+            {(sidebarTab === 'playlist' || !hasNotesTab) ? (
+                <>
+                    <div className="space-y-4 max-h-[calc(100vh-280px)] overflow-y-auto pr-1 pt-3">
+                        {groupedChapters.map((chapterGroup, cIdx) => (
+                            <div key={chapterGroup.chapterId || cIdx} className="space-y-1.5">
+                                {/* Chapter Header — WP1.10.5: course có đúng 1 chương thì ẩn
+                                    tầng chương, in phẳng danh sách bài (khớp luật ở share/editor). */}
+                                {groupedChapters.length > 1 && (
+                                    <div className="flex items-center gap-2 px-1 py-1">
+                                        <span className="text-[11px] font-bold text-ink-accent bg-ink-accentA px-2 py-0.5 rounded-md flex-shrink-0">
+                                            Chương {chapterGroup.chapterOrder || (cIdx + 1)}
+                                        </span>
+                                        <span className="text-xs font-semibold text-ink-text truncate">
+                                            {chapterGroup.chapterTitle}
+                                        </span>
+                                    </div>
+                                )}
+
+                                {/* Lessons List */}
+                                <div className="space-y-1 pl-1">
+                                    {chapterGroup.lessons.map((lesson, lIdx) => {
+                                        const isSelected = currentLesson?.id === lesson.id;
+                                        const lessonNum = lesson.order || (lIdx + 1);
+                                        return (
+                                            <button
+                                                key={lesson.id}
+                                                onClick={() => switchLesson(lesson)}
+                                                // border-l-ink-marginLn — "đường kẻ lề vở" cho danh sách
+                                                // bài học (playlist), khớp motif đã dùng ở notes phía trên.
+                                                className={`w-full text-left p-2.5 rounded-ink-md transition-all flex items-start gap-2.5 border-l-2 border-l-ink-marginLn ${
+                                                    isSelected
+                                                        ? 'bg-ink-accentA text-ink-text border-y border-r border-ink-border shadow-ink-sm font-semibold'
+                                                        : 'hover:bg-ink-page text-ink-text border-y border-r border-transparent'
+                                                }`}
+                                            >
+                                                <div className={`flex-shrink-0 w-5 h-5 rounded-full border flex items-center justify-center mt-0.5 transition-colors ${
+                                                    lesson.isCompleted
+                                                        ? 'bg-ink-accent border-ink-accent'
+                                                        : isSelected
+                                                            ? 'border-ink-accent bg-ink-panel'
+                                                            : 'border-ink-border'
+                                                }`}>
+                                                    {lesson.isCompleted ? (
+                                                        <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7"/>
+                                                        </svg>
+                                                    ) : (
+                                                        <span className="text-[10px] text-ink-textDim font-mono">
+                                                            {lessonNum}
+                                                        </span>
+                                                    )}
+                                                </div>
+
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-xs leading-snug truncate">
+                                                        <span className="font-semibold text-ink-text mr-1">Bài {lessonNum}:</span>
+                                                        {lesson.title}
+                                                    </p>
+                                                    <p className="text-[10px] text-ink-textDim mt-0.5">
+                                                        {lesson.type.toLowerCase() === 'video' ? '📹 Video' : '📝 Quiz'}
+                                                    </p>
+                                                </div>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* WP1.10.4 — cue theo thời điểm: hiện ngay sau khi 1 lesson
+                        vừa được đánh dấu hoàn thành, không phụ thuộc 1 lần bấm đúng
+                        lúc tạo course. */}
+                    {showQuizCue && (
+                        <div className="vd-ink-in flex items-start gap-2 p-2.5 rounded-ink-md bg-ink-accentA border border-ink-border mt-3">
+                            <p className="flex-1 text-xs text-ink-text leading-snug">
+                                Đã xong video. Tạo quiz để ôn lại?
+                            </p>
+                            <button
+                                onClick={() => router.push(`/my-courses/${courseId}/edit`)}
+                                className="text-xs font-semibold text-ink-accent hover:text-ink-accent/80 flex-shrink-0"
+                            >
+                                Tạo ngay
+                            </button>
+                            <button
+                                onClick={() => setShowQuizCue(false)}
+                                className="text-ink-textMuted hover:text-ink-text flex-shrink-0"
+                                title="Đóng"
+                            >
+                                ✕
+                            </button>
+                        </div>
+                    )}
+
+                    {/* Thẻ tĩnh thường trực — không phụ thuộc trạng thái hoàn thành */}
+                    <button
+                        onClick={() => router.push(`/my-courses/${courseId}/edit`)}
+                        className="w-full text-left p-2.5 rounded-ink-md border border-dashed border-ink-border text-xs font-medium text-ink-textMuted hover:border-ink-accent hover:text-ink-accent hover:bg-ink-accentA transition-colors mt-3"
+                    >
+                        + Thêm quiz/tóm tắt cho bài này
+                    </button>
+                </>
+            ) : (
+                <div className="max-h-[calc(100vh-280px)] overflow-y-auto pr-1 pt-3">
+                    {notes.length > 0 && (
+                        <ul className="space-y-2 mb-4">
+                            {notes.map(note => (
+                                // border-l-ink-marginLn — "đường kẻ lề vở": motif cấu trúc
+                                // chung của playlist & notes trong theme.ts, đánh dấu mỗi
+                                // ghi chú như một dòng viết bên lề trang vở.
+                                <li key={note.id} className="flex items-start gap-2 p-3 rounded-lg border border-ink-border border-l-2 border-l-ink-marginLn group">
+                                    <div className="flex-1 min-w-0">
+                                        {note.videoTimestampSec != null && (
+                                            <button
+                                                onClick={() => handleSeekToNote(note)}
+                                                className="text-xs font-mono font-medium text-ink-accent hover:underline mb-1"
+                                            >
+                                                ⏱ {formatTime(note.videoTimestampSec)}
+                                            </button>
+                                        )}
+                                        <p className="text-sm text-ink-text whitespace-pre-wrap break-words">{note.content}</p>
+                                    </div>
+                                    <button
+                                        onClick={() => handleDeleteNote(note.id)}
+                                        title="Xoá ghi chú"
+                                        className="flex-shrink-0 text-ink-textDim hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                                    >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+
+                    <textarea
+                        value={noteDraft}
+                        onChange={(e) => setNoteDraft(e.target.value)}
+                        placeholder="Nhập ghi chú mới..."
+                        rows={3}
+                        maxLength={1000}
+                        className="w-full px-3 py-2.5 border border-ink-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ink-accent focus:border-transparent resize-none"
+                    />
+                    <div className="mt-2 flex items-center justify-between">
+                        <label className="inline-flex items-center gap-1.5 text-xs text-ink-textMuted">
+                            <input
+                                type="checkbox"
+                                checked={pinToTimestamp}
+                                onChange={(e) => setPinToTimestamp(e.target.checked)}
+                                className="rounded text-ink-accent focus:ring-ink-accent"
+                            />
+                            Gắn vào thời điểm hiện tại của video
+                        </label>
+                        <span className="text-xs text-ink-textDim">{noteDraft.length}/1000</span>
+                    </div>
+                    <div className="mt-3 flex justify-end">
+                        <button
+                            onClick={handleAddNote}
+                            disabled={isSavingNote || !noteDraft.trim()}
+                            className="inline-flex items-center gap-2 px-4 py-2 bg-ink-accent hover:bg-ink-accent/90 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors"
+                        >
+                            {isSavingNote ? (
+                                <>
+                                    <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"/>
+                                    Đang lưu...
+                                </>
+                            ) : 'Thêm ghi chú'}
+                        </button>
+                    </div>
+                </div>
+            )}
+        </>
+    );
+
     return (
         // "Phòng tắt đèn" — room/screen (theme.ts) áp cho NỀN NGOÀI khi
         // focusMode: bg-ink-room thay bg-ink-page. Các card nội dung bên
         // trong (video/quiz/notes) vẫn giữ bg-ink-panel trắng riêng của
         // chúng — "trang giấy vẫn sáng giữa phòng tối", nên không đổi màu
         // chữ/border của bất kỳ card con nào, tránh rủi ro vỡ contrast.
-        <div className={`min-h-screen transition-colors duration-500 ${focusMode ? 'bg-ink-room' : 'bg-ink-page'}`}>
+        // roomBgClass — porting logic từ vibe-demo/page.tsx: ngoài focusMode
+        // (người bật tay), đèn phòng còn tự dịu (bg-ink-pageDim) khi video
+        // đang chạy, dù chưa bật tập trung — "phòng tối lại một chút để mắt
+        // nhìn màn hình dễ hơn", tinh tế hơn on/off nhị phân trước đây.
+        <div className={`min-h-screen transition-colors duration-500 ${focusMode ? 'bg-ink-room' : isVideoPlaying ? 'bg-ink-pageDim' : 'bg-ink-page'}`}>
             {!focusMode && <Header user={user} onLogout={handleLogout} onJoin={handleJoin} />}
 
             {/* Lesson Sub-Header — "tắt đèn" cùng phòng khi focusMode: nền/chữ
@@ -768,6 +995,8 @@ export default function LearningPage() {
                                                 onDuration={handleDurationUpdate}
                                                 onFlush={handleFlushUpdate}
                                                 onEnded={handleVideoEnded}
+                                                onPlay={() => setIsVideoPlaying(true)}
+                                                onPause={() => setIsVideoPlaying(false)}
                                             />
                                         ) : currentLesson.videoUrl && isVimeoUrl(currentLesson.videoUrl) ? (
                                             <VimeoPlayer
@@ -779,6 +1008,8 @@ export default function LearningPage() {
                                                 onDuration={handleDurationUpdate}
                                                 onFlush={handleFlushUpdate}
                                                 onEnded={handleVideoEnded}
+                                                onPlay={() => setIsVideoPlaying(true)}
+                                                onPause={() => setIsVideoPlaying(false)}
                                             />
                                         ) : (
                                             <video
@@ -788,6 +1019,8 @@ export default function LearningPage() {
                                                 className="w-full rounded-lg"
                                                 onTimeUpdate={handleVideoProgress}
                                                 onEnded={() => { handleVideoProgress(); handleVideoEnded(); }}
+                                                onPlay={() => setIsVideoPlaying(true)}
+                                                onPause={() => setIsVideoPlaying(false)}
                                                 onLoadedMetadata={() => {
                                                     if (videoRef.current) {
                                                         setVideoDuration(Math.floor(videoRef.current.duration));
@@ -1144,84 +1377,6 @@ export default function LearningPage() {
                             )}
                         </div>
 
-                        {/* Notes Section - WP1.5.4: many notes per lesson now, each
-                            optionally pinned to the video timestamp it was written
-                            at (click a note to jump the player back there). */}
-                        {currentLesson?.type?.toLowerCase() === 'video' && (
-                            <div className="bg-ink-panel rounded-ink-md border border-ink-border shadow-ink-sm p-6">
-                                <h3 className="text-sm font-semibold text-ink-text mb-3">
-                                    Ghi chú bài học
-                                </h3>
-
-                                {notes.length > 0 && (
-                                    <ul className="space-y-2 mb-4">
-                                        {notes.map(note => (
-                                            // border-l-ink-marginLn — "đường kẻ lề vở": motif cấu trúc
-                                            // chung của playlist & notes trong theme.ts, đánh dấu mỗi
-                                            // ghi chú như một dòng viết bên lề trang vở.
-                                            <li key={note.id} className="flex items-start gap-2 p-3 rounded-lg border border-ink-border border-l-2 border-l-ink-marginLn group">
-                                                <div className="flex-1 min-w-0">
-                                                    {note.videoTimestampSec != null && (
-                                                        <button
-                                                            onClick={() => handleSeekToNote(note)}
-                                                            className="text-xs font-mono font-medium text-ink-accent hover:underline mb-1"
-                                                        >
-                                                            ⏱ {formatTime(note.videoTimestampSec)}
-                                                        </button>
-                                                    )}
-                                                    <p className="text-sm text-ink-text whitespace-pre-wrap break-words">{note.content}</p>
-                                                </div>
-                                                <button
-                                                    onClick={() => handleDeleteNote(note.id)}
-                                                    title="Xoá ghi chú"
-                                                    className="flex-shrink-0 text-ink-textDim hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
-                                                >
-                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                                    </svg>
-                                                </button>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                )}
-
-                                <textarea
-                                    value={noteDraft}
-                                    onChange={(e) => setNoteDraft(e.target.value)}
-                                    placeholder="Nhập ghi chú mới..."
-                                    rows={3}
-                                    maxLength={1000}
-                                    className="w-full px-3 py-2.5 border border-ink-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ink-accent focus:border-transparent resize-none"
-                                />
-                                <div className="mt-2 flex items-center justify-between">
-                                    <label className="inline-flex items-center gap-1.5 text-xs text-ink-textMuted">
-                                        <input
-                                            type="checkbox"
-                                            checked={pinToTimestamp}
-                                            onChange={(e) => setPinToTimestamp(e.target.checked)}
-                                            className="rounded text-ink-accent focus:ring-ink-accent"
-                                        />
-                                        Gắn vào thời điểm hiện tại của video
-                                    </label>
-                                    <span className="text-xs text-ink-textDim">{noteDraft.length}/1000</span>
-                                </div>
-                                <div className="mt-3 flex justify-end">
-                                    <button
-                                        onClick={handleAddNote}
-                                        disabled={isSavingNote || !noteDraft.trim()}
-                                        className="inline-flex items-center gap-2 px-4 py-2 bg-ink-accent hover:bg-ink-accent/90 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors"
-                                    >
-                                        {isSavingNote ? (
-                                            <>
-                                                <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"/>
-                                                Đang lưu...
-                                            </>
-                                        ) : 'Thêm ghi chú'}
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-
                         {/* Quyết định UX 2026-08-21: trang học KHÔNG trigger AI trực
                             tiếp nữa (AIGenerationPanel cũ đã gỡ) — mọi tính năng AI
                             (tạo quiz thành bài học thật, tóm tắt, tuỳ biến/BYOK) sống
@@ -1253,123 +1408,51 @@ export default function LearningPage() {
                         )}
                     </div>
 
-                    {/* Sidebar - Lesson List (hidden in focus mode — no distraction from the current lesson) */}
+                    {/* Sidebar - playlist + ghi chú hợp nhất qua tab (renderSidebarPanel).
+                        Ẩn ở focusMode để không phân tâm — nhưng vẫn mở lại được qua nút
+                        nổi bên dưới (porting logic overlayOpen của vibe-demo/page.tsx),
+                        nên tập trung không đồng nghĩa mất quyền xem playlist/ghi chú. */}
                     {!focusMode && (
                     <div className="min-w-0">
-                        <div className="bg-ink-panel rounded-ink-lg border border-ink-border shadow-ink-sm p-4 sticky top-28 space-y-4">
-                            <div className="flex items-center justify-between border-b border-ink-border pb-3">
-                                <h3 className="text-xs font-bold text-ink-text uppercase tracking-wider">
-                                    Nội dung Space
-                                </h3>
-                                <span className="text-xs text-ink-textDim font-medium">
-                                    {lessons.filter(l => l.isCompleted).length}/{lessons.length} bài
-                                </span>
-                            </div>
-
-                            <div className="space-y-4 max-h-[calc(100vh-220px)] overflow-y-auto pr-1">
-                                {groupedChapters.map((chapterGroup, cIdx) => (
-                                    <div key={chapterGroup.chapterId || cIdx} className="space-y-1.5">
-                                        {/* Chapter Header — WP1.10.5: course có đúng 1 chương thì ẩn
-                                            tầng chương, in phẳng danh sách bài (khớp luật ở share/editor). */}
-                                        {groupedChapters.length > 1 && (
-                                            <div className="flex items-center gap-2 px-1 py-1">
-                                                <span className="text-[11px] font-bold text-ink-accent bg-ink-accentA px-2 py-0.5 rounded-md flex-shrink-0">
-                                                    Chương {chapterGroup.chapterOrder || (cIdx + 1)}
-                                                </span>
-                                                <span className="text-xs font-semibold text-ink-text truncate">
-                                                    {chapterGroup.chapterTitle}
-                                                </span>
-                                            </div>
-                                        )}
-
-                                        {/* Lessons List */}
-                                        <div className="space-y-1 pl-1">
-                                            {chapterGroup.lessons.map((lesson, lIdx) => {
-                                                const isSelected = currentLesson?.id === lesson.id;
-                                                const lessonNum = lesson.order || (lIdx + 1);
-                                                return (
-                                                    <button
-                                                        key={lesson.id}
-                                                        onClick={() => switchLesson(lesson)}
-                                                        // border-l-ink-marginLn — "đường kẻ lề vở" cho danh sách
-                                                        // bài học (playlist), khớp motif đã dùng ở notes phía trên.
-                                                        className={`w-full text-left p-2.5 rounded-ink-md transition-all flex items-start gap-2.5 border-l-2 border-l-ink-marginLn ${
-                                                            isSelected
-                                                                ? 'bg-ink-accentA text-ink-text border-y border-r border-ink-border shadow-ink-sm font-semibold'
-                                                                : 'hover:bg-ink-page text-ink-text border-y border-r border-transparent'
-                                                        }`}
-                                                    >
-                                                        <div className={`flex-shrink-0 w-5 h-5 rounded-full border flex items-center justify-center mt-0.5 transition-colors ${
-                                                            lesson.isCompleted
-                                                                ? 'bg-ink-accent border-ink-accent'
-                                                                : isSelected
-                                                                    ? 'border-ink-accent bg-ink-panel'
-                                                                    : 'border-ink-border'
-                                                        }`}>
-                                                            {lesson.isCompleted ? (
-                                                                <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7"/>
-                                                                </svg>
-                                                            ) : (
-                                                                <span className="text-[10px] text-ink-textDim font-mono">
-                                                                    {lessonNum}
-                                                                </span>
-                                                            )}
-                                                        </div>
-
-                                                        <div className="flex-1 min-w-0">
-                                                            <p className="text-xs leading-snug truncate">
-                                                                <span className="font-semibold text-ink-text mr-1">Bài {lessonNum}:</span>
-                                                                {lesson.title}
-                                                            </p>
-                                                            <p className="text-[10px] text-ink-textDim mt-0.5">
-                                                                {lesson.type.toLowerCase() === 'video' ? '📹 Video' : '📝 Quiz'}
-                                                            </p>
-                                                        </div>
-                                                    </button>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-
-                            {/* WP1.10.4 — cue theo thời điểm: hiện ngay sau khi 1 lesson
-                                vừa được đánh dấu hoàn thành, không phụ thuộc 1 lần bấm đúng
-                                lúc tạo course. */}
-                            {showQuizCue && (
-                                <div className="vd-ink-in flex items-start gap-2 p-2.5 rounded-ink-md bg-ink-accentA border border-ink-border">
-                                    <p className="flex-1 text-xs text-ink-text leading-snug">
-                                        Đã xong video. Tạo quiz để ôn lại?
-                                    </p>
-                                    <button
-                                        onClick={() => router.push(`/my-courses/${courseId}/edit`)}
-                                        className="text-xs font-semibold text-ink-accent hover:text-ink-accent/80 flex-shrink-0"
-                                    >
-                                        Tạo ngay
-                                    </button>
-                                    <button
-                                        onClick={() => setShowQuizCue(false)}
-                                        className="text-ink-textMuted hover:text-ink-text flex-shrink-0"
-                                        title="Đóng"
-                                    >
-                                        ✕
-                                    </button>
-                                </div>
-                            )}
-
-                            {/* Thẻ tĩnh thường trực — không phụ thuộc trạng thái hoàn thành */}
-                            <button
-                                onClick={() => router.push(`/my-courses/${courseId}/edit`)}
-                                className="w-full text-left p-2.5 rounded-ink-md border border-dashed border-ink-border text-xs font-medium text-ink-textMuted hover:border-ink-accent hover:text-ink-accent hover:bg-ink-accentA transition-colors"
-                            >
-                                + Thêm quiz/tóm tắt cho bài này
-                            </button>
+                        <div className="bg-ink-panel rounded-ink-lg border border-ink-border shadow-ink-sm p-4 sticky top-28">
+                            {renderSidebarPanel()}
                         </div>
                     </div>
                     )}
                 </div>
             </div>
+
+            {/* Nút nổi + overlay panel khi focusMode — porting logic từ
+                vibe-demo/page.tsx (floating toggle mở overlay playlist/notes
+                trong lúc vẫn giữ layout tập trung một cột). */}
+            {focusMode && (
+                <>
+                    <button
+                        onClick={() => setFocusOverlayOpen(v => !v)}
+                        className="vd-focusable fixed bottom-6 right-6 z-20 inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-[rgba(244,246,252,0.10)] border border-[rgba(244,246,252,0.16)] text-[rgba(244,246,252,0.85)] text-xs font-medium shadow-lg backdrop-blur-sm hover:bg-[rgba(244,246,252,0.16)] transition-colors"
+                    >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7"/>
+                        </svg>
+                        {lessons.filter(l => l.isCompleted).length}/{lessons.length} bài{hasNotesTab ? ` · ${notes.length} ghi chú` : ''}
+                    </button>
+
+                    {focusOverlayOpen && (
+                        <div className="fixed inset-0 z-30 flex items-end sm:items-center justify-end sm:pr-6 pb-24 sm:pb-0" onClick={() => setFocusOverlayOpen(false)}>
+                            <div
+                                onClick={(e) => e.stopPropagation()}
+                                className="vd-ink-in w-full sm:w-[340px] max-h-[70vh] sm:max-h-[calc(100vh-120px)] mx-4 sm:mx-0 bg-ink-panel rounded-ink-lg border border-ink-border shadow-lg p-4 overflow-hidden flex flex-col"
+                            >
+                                <div className="flex items-center justify-between mb-1">
+                                    <span className="text-xs font-bold text-ink-textDim uppercase tracking-wider">Nội dung Space</span>
+                                    <button onClick={() => setFocusOverlayOpen(false)} className="text-ink-textMuted hover:text-ink-text" title="Đóng">✕</button>
+                                </div>
+                                {renderSidebarPanel()}
+                            </div>
+                        </div>
+                    )}
+                </>
+            )}
         </div>
     );
 }

@@ -8,6 +8,10 @@ interface Props {
     onDuration: (duration: number) => void;
     onFlush: (time: number) => void;
     onEnded?: () => void;
+    // Porting logic từ vibe-demo/page.tsx: nền phòng dịu (bg-ink-pageDim) khi
+    // video đang chạy — cha (learn/page.tsx) cần biết trạng thái play/pause.
+    onPlay?: () => void;
+    onPause?: () => void;
 }
 
 /**
@@ -17,7 +21,7 @@ interface Props {
  * Vimeo player iframe via its postMessage protocol (no extra dependency —
  * every Vimeo embed responds to this without needing the player.js SDK).
  */
-const VimeoPlayer = forwardRef<VideoPlayerHandle, Props>(({ videoId, initialPos, onProgress, onDuration, onFlush, onEnded }, ref) => {
+const VimeoPlayer = forwardRef<VideoPlayerHandle, Props>(({ videoId, initialPos, onProgress, onDuration, onFlush, onEnded, onPlay, onPause }, ref) => {
     const iframeRef = useRef<HTMLIFrameElement>(null);
     const readyRef = useRef(false);
     const lastKnownTimeRef = useRef(0);
@@ -50,6 +54,8 @@ const VimeoPlayer = forwardRef<VideoPlayerHandle, Props>(({ videoId, initialPos,
                 readyRef.current = true;
                 post('addEventListener', 'timeupdate');
                 post('addEventListener', 'finish');
+                post('addEventListener', 'play');
+                post('addEventListener', 'pause');
                 post('getDuration');
             } else if (data.event === 'timeupdate' && data.data) {
                 lastKnownTimeRef.current = data.data.seconds;
@@ -61,6 +67,10 @@ const VimeoPlayer = forwardRef<VideoPlayerHandle, Props>(({ videoId, initialPos,
                 onProgress(data.data.seconds);
             } else if (data.event === 'finish') {
                 onEnded?.();
+            } else if (data.event === 'play') {
+                onPlay?.();
+            } else if (data.event === 'pause') {
+                onPause?.();
             } else if (data.method === 'getDuration' && typeof data.value === 'number') {
                 durationRef.current = data.value;
                 onDuration(Math.floor(data.value));

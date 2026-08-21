@@ -9,6 +9,10 @@ interface Props {
     onFlush: (time: number) => void;
     // WP1.5.3: auto-advance to the next lesson when a video finishes.
     onEnded?: () => void;
+    // Porting logic từ vibe-demo/page.tsx: nền phòng dịu (bg-ink-pageDim) khi
+    // video đang chạy — cha (learn/page.tsx) cần biết trạng thái play/pause.
+    onPlay?: () => void;
+    onPause?: () => void;
 }
 
 export interface VideoPlayerHandle {
@@ -16,7 +20,7 @@ export interface VideoPlayerHandle {
     getCurrentTime: () => number;
 }
 
-const YoutubePlayer = forwardRef<VideoPlayerHandle, Props>(({ videoId, initialPos, onProgress, onDuration, onFlush, onEnded }, ref) => {
+const YoutubePlayer = forwardRef<VideoPlayerHandle, Props>(({ videoId, initialPos, onProgress, onDuration, onFlush, onEnded, onPlay, onPause }, ref) => {
     const playerRef = useRef<any>(null);
     const intervalRef = useRef<NodeJS.Timeout | null>(null);
     const isInitialSeekDone = useRef(false);
@@ -123,6 +127,9 @@ const YoutubePlayer = forwardRef<VideoPlayerHandle, Props>(({ videoId, initialPo
                         onEnded?.();
                     } else if (e.data === 1) {
                         hasEndedRef.current = false;
+                        onPlay?.();
+                    } else if (e.data === 2) { // PAUSED
+                        onPause?.();
                     }
                     startEngine(e.target);
                 }}
