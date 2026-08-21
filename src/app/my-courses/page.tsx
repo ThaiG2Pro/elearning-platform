@@ -185,10 +185,14 @@ const MyCoursesPage = () => {
     return (
         <div className="min-h-screen bg-ink-page">
             <Header user={user} onLogout={handleLogout} onJoin={handleJoin} />
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            {/* py-7 md:py-10 — cùng nhịp khoảng cách đã áp cho các trang khác
+                (homepage/course-detail/about/my-learning). */}
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-7 md:py-10">
                 <div className="mb-6">
-                    <h1 className="text-2xl font-bold text-ink-text">Space của tôi</h1>
-                    <p className="text-sm text-ink-textMuted mt-0.5">Quản lý và chỉnh sửa Space</p>
+                    <h1 className="text-[clamp(22px,2.6vw,30px)] font-bold tracking-[-0.015em] text-ink-text">Space của tôi</h1>
+                    <p className="text-sm text-ink-textMuted mt-0.5">
+                        {!loading && courses.length > 0 ? `${courses.length} Space — ` : ''}Quản lý và chỉnh sửa Space
+                    </p>
                 </div>
 
                 {/* WP1.10.3 — hero paste-box thay cặp nút "Tạo khóa học"/"Tạo từ

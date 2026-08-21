@@ -118,14 +118,24 @@ export default function MyLearningPage() {
         <div className="min-h-screen bg-ink-page">
             <Header user={user} onLogout={handleLogout} onJoin={handleJoin} />
 
-            {/* Body */}
-            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            {/* py-7 md:py-10 — cùng nhịp khoảng cách homepage/course-detail/about;
+                max-w-7xl giữ nguyên (lưới thumbnail nhiều cột cần rộng, khác cột
+                đơn 900px của vibe-demo/spaces — xem lý do không port "giá sách"
+                màu gáy ở phần Tabs bên dưới). */}
+            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-7 md:py-10">
                 <div className="mb-6">
-                    <h1 className="text-2xl font-bold text-ink-text mb-1">
+                    <h1 className="text-[clamp(22px,2.6vw,30px)] font-bold tracking-[-0.015em] text-ink-text mb-1">
                         Space của tôi
                     </h1>
+                    {/* Porting logic từ vibe-demo/spaces (đếm số không gian ngay dưới
+                        h1) — không port UI "giá sách"/màu gáy: real course có
+                        thumbnail thật (ảnh người dùng upload), giàu thông tin hơn
+                        khối màu trừu tượng của demo, đổi sang list-màu-gáy sẽ mất
+                        khả năng nhận diện bằng ảnh. Cũng giữ nguyên Tabs (Radix) đã
+                        thay hand-rolled tab strip trước đây (WP1.5.8), không quay lại
+                        tab tự vẽ theo style vibe-demo. */}
                     <p className="text-sm text-ink-textMuted">
-                        Tiếp tục hành trình học tập của bạn
+                        {appState === 'idle' && courses.length > 0 ? `${courses.length} Space — ` : ''}Tiếp tục hành trình học tập của bạn
                     </p>
                 </div>
 
