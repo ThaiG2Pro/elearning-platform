@@ -902,7 +902,9 @@ export default function CourseEditPage() {
             {/* Top Navigation Bar */}
             <header className="bg-ink-panel border-b border-ink-border sticky top-0 z-20 shadow-ink-sm">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex items-center justify-between h-16">
+                    {/* h-14 (56px) = APP_TOP_BAR_H, khớp chiều cao top-bar dùng chung
+                        (Header.tsx, learn/page.tsx sub-header) — trước là h-16/64px riêng. */}
+                    <div className="flex items-center justify-between h-14">
                         {/* Left: Back & Title */}
                         <div className="flex items-center gap-4 min-w-0">
                             <button
