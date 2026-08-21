@@ -171,29 +171,84 @@ là khoảng cách lớn nhất cần giải quyết trước khi tích hợp.
 
 ## 4. Trạng thái người dùng thật
 
-- [ ] Auth: chưa có concept "chưa đăng nhập", "hết hạn phiên", "không
-      có quyền truy cập không gian này" trong ngôn ngữ thiết kế mới.
-- [ ] Quiz:
-  - [ ] Thoát giữa chừng khi đang làm bài
-  - [ ] Mất mạng giữa lúc làm bài (auto-save? resume?)
-  - [ ] Đã làm quiz rồi — retake vs xem lại kết quả cũ
-  - [ ] Nộp bài trễ do đóng tab/đóng trình duyệt
-- [ ] Billing/paywall: app đang có `src/app/billing` song song, nhưng
-      chưa có màn "không gian bị khóa vì hết credit/subscription"
-      trong ngôn ngữ thiết kế "Mực xanh trên giấy trắng".
+- [x] **Auth** — thêm `src/components/vibe/StateScreens.tsx`: 1 component
+      `StateScreen` dùng chung (icon + eyebrow + tiêu đề + message + list
+      action, "tờ giấy" giữa trang trắng, full-viewport, KHÔNG có TopNav vì
+      nav "Không gian của tôi" vô nghĩa khi chưa có quyền/chưa đăng nhập) +
+      3 màn cụ thể dựng trên nó: `NotLoggedInScreen` (đăng nhập, giữ
+      `continueUrl`), `SessionExpiredScreen` (đăng nhập lại, nhắc quiz vẫn
+      còn lưu tại máy), `NoAccessScreen` (không thuộc quyền của mình, quay
+      về `/vibe-demo/spaces`). Trang demo không có backend auth thật nên
+      không tự nhiên rơi vào 2 trạng thái đầu — `spaces/page.tsx` có 1 dòng
+      "Xem trước trạng thái" (rõ ràng chỉ để duyệt thiết kế, không phải UI
+      thật) gọi trực tiếp 2 màn đó. `NoAccessScreen` demo bằng 1 space thật
+      trong list (`s7`, đánh dấu `locked: 'no_access'`, badge "Chưa có
+      quyền", bấm vào mở overlay có nút đóng).
+- [x] **Quiz** — sửa trực tiếp trong `quiz/page.tsx`, không tạo trang riêng
+      vì cả 4 case đều là biến thể của MỘT máy trạng thái (`SavedQuizState`
+      lưu localStorage theo `lessonId`, `submitted: false/true` phân biệt
+      "đang làm dở" vs "đã nộp"):
+  - [x] **Thoát giữa chừng / mất mạng giữa lúc làm bài**: autosave
+        `{picked, secondsLeft, qIdx}` vào localStorage mỗi lần đổi câu/đáp
+        án trong lúc `phase === 'taking'` — không có khái niệm "mất dữ liệu"
+        vì không phụ thuộc 1 lần submit cuối. Thêm banner offline (lắng
+        nghe `online`/`offline` event) trong lúc thi: "Mất kết nối — câu
+        trả lời vẫn được lưu tại máy".
+  - [x] **Nộp bài trễ do đóng tab/đóng trình duyệt**: thêm `beforeunload`
+        guard trong lúc `taking` (cảnh báo trước khi đóng/tải lại) + vì đã
+        autosave, đóng tab giữa chừng không còn nghĩa là "trễ" — bài chờ
+        đúng chỗ đã dừng ở lần quay lại sau (xem case resume dưới).
+  - [x] **Đã làm quiz rồi — retake vs xem lại kết quả cũ**: màn intro đọc
+        bản lưu khi vào lại (chỉ đọc lúc `phase === 'intro'`, không đè lên
+        bài đang làm): còn dở → banner "Tiếp tục làm bài" (khôi phục đúng
+        câu/đáp án/giờ còn lại) kèm nút phụ "Bắt đầu lại từ đầu"; đã nộp →
+        banner điểm số cũ + 2 nút "Xem kết quả lần trước" / "Bắt đầu lại từ
+        đầu". Nút "Làm lại" ở màn kết quả (retake trong cùng phiên) vẫn xoá
+        bản lưu như trước — đây là ý định retake rõ ràng, không cần hỏi lại.
+  - [x] Verify: `tsc --noEmit` sạch (còn đúng 2 lỗi `.css` side-effect
+        import pre-existing, không liên quan), route `/vibe-demo/quiz` và
+        `/vibe-demo/spaces` đều 200.
+- [x] **Billing/paywall** — `PaywalledSpaceScreen` (trong `StateScreens.tsx`)
+      dùng đúng ngôn ngữ "Mực xanh trên giấy trắng" (không mượn màu
+      correct/wrong của quiz — theme.ts đã ghi rõ 2 màu đó CHỈ dùng cho
+      chấm điểm), trỏ sang `/billing` (trang Stripe checkout đã có sẵn) để
+      mua thêm credit. Demo bằng 1 space thật (`s8`, `locked: 'paywall'`,
+      badge đỏ "Hết credit") trong `spaces/page.tsx`, bấm vào mở overlay
+      full-screen giống `NoAccessScreen`, có nút đóng quay lại danh sách.
 
 ## 5. Accessibility — mới ở mức tối thiểu
 
 Đã có: `.vd-focusable:focus-visible` outline, `prefers-reduced-motion`
 guard cho animation `vd-ink-in`.
 
-Chưa có:
-- [ ] Kiểm tra contrast ratio thật của các màu nhạt (`wrongA`,
-      `correctA` — nền xanh/đỏ rất nhạt trên nền trắng)
-- [ ] `aria-live` cho timer/countdown trong quiz (đọc to khi sắp hết
-      giờ, cho screen reader)
-- [ ] Test keyboard-only toàn bộ luồng quiz (chọn đáp án, next/prev,
-      nộp bài) bằng Tab thật, không chỉ code review
+- [x] Kiểm tra contrast ratio thật của các màu nhạt (`wrongA`,
+      `correctA` — nền xanh/đỏ rất nhạt trên nền trắng). Tính theo công
+      thức WCAG (relative luminance): chữ `correct` (#217A4A) trên nền
+      trắng đạt **5.3:1**, chữ `wrong` (#A8362E) đạt **6.5:1** — cả hai
+      vượt AA cho chữ thường (4.5:1). Riêng `correctA`/`wrongA` (nền
+      wash 7-8% alpha) tự thân chỉ ~1.02:1 so với trắng — KHÔNG đạt
+      3:1 (non-text contrast) nếu dùng làm ranh giới UI độc lập, nhưng
+      không phải lỗi: rà lại mọi nơi dùng 2 màu này (badge chấm điểm,
+      background câu trả lời, thẻ "Chưa có quyền"/"Hết credit") thì
+      luôn đi kèm icon (CheckCircle2/XCircle/ShieldOff/Lock) + label
+      chữ + border đậm màu — nền nhạt chỉ là "wash" trang trí, không
+      phải kênh truyền đạt ý nghĩa duy nhất. Không cần đổi màu.
+- [x] `aria-live` cho timer/countdown trong quiz — thêm vùng
+      `role="status" aria-live="polite" className="sr-only"` cạnh đồng
+      hồ hiển thị (`quiz/page.tsx`), cập nhật theo mốc chứ không phải
+      mỗi giây (30s/lần khi còn nhiều giờ, 10s/lần trong phút cuối,
+      từng giây trong 5s cuối) — đọc to mỗi giây sẽ spam và không kịp
+      nghe.
+- [x] Test keyboard-only toàn bộ luồng quiz (chọn đáp án, next/prev,
+      nộp bài) — rà lại từng phần tử tương tác: 4 lựa chọn câu hỏi đổi
+      từ `role="button"` rời rạc sang `role="radiogroup"`/`role="radio"
+      aria-checked` (đúng ngữ nghĩa "chọn 1-trong-N", không phải 4 nút
+      độc lập) và vẫn giữ `tabIndex`/`onKeyDown` (Enter/Space) đã có từ
+      mục 4; nút next/prev/nộp bài/xem đáp án/làm lại đều là `<button>`
+      thật (focusable, Enter/Space hoạt động mặc định); ô lưới câu hỏi
+      (`renderQuestionMap`) thêm `aria-label` báo cả trạng thái (đã
+      chọn/chưa chọn, hoặc đúng/sai khi đã chấm) — trước đó chỉ đọc số
+      thứ tự câu, người dùng screen reader không biết câu nào đã làm.
 
 ## 6. Vận hành / kỹ thuật khác
 
@@ -262,3 +317,29 @@ Chưa có:
   không đụng bug border "Thêm bài học" đã ghi nhận trước. Verify tổng:
   `tsc --noEmit` chỉ còn 2 lỗi tiền tồn tại không liên quan, cả 7
   route `/vibe-demo/*` trả 200. Mục 3 coi như xong.
+- **2026-08-21**: Xử lý Mục 4 (trạng thái người dùng thật) — auth +
+  quiz edge case + billing/paywall, theo yêu cầu ưu tiên mục này trước
+  mục 2 (responsive, người dùng tự test song song). Auth/billing:
+  thêm `src/components/vibe/StateScreens.tsx` (1 component nền
+  `StateScreen` + 4 màn cụ thể: `NotLoggedInScreen`, `SessionExpiredScreen`,
+  `NoAccessScreen`, `PaywalledSpaceScreen`), demo qua `spaces/page.tsx`
+  (dòng "Xem trước trạng thái" cho 2 màn auth không gắn 1 space cụ thể,
+  2 space demo `s7`/`s8` cho no_access/paywall). Quiz: nâng
+  `quiz/page.tsx` từ state hoàn toàn ephemeral sang có autosave
+  localStorage theo lesson (`SavedQuizState`), giải quyết đồng thời cả
+  4 case con (thoát giữa chừng, mất mạng, đóng tab, retake-vs-xem-lại)
+  bằng cùng 1 cơ chế lưu/đọc — không cần 4 giải pháp rời. Verify:
+  `tsc --noEmit` sạch (2 lỗi tiền tồn tại), route `/vibe-demo/quiz` và
+  `/vibe-demo/spaces` đều 200. Mục 4 coi như xong.
+- **2026-08-21**: Xử lý Mục 5 (accessibility). Contrast ratio: tính tay
+  theo WCAG cho `correct`/`wrong` (chữ trên nền trắng, đạt AA) và
+  `correctA`/`wrongA` (nền wash — thấp nếu đứng độc lập, nhưng luôn đi
+  kèm icon + label + border nên không phải kênh truyền đạt ý nghĩa duy
+  nhất, không cần đổi màu). Timer quiz: thêm vùng
+  `role="status" aria-live="polite"` ẩn hình (sr-only), cập nhật theo
+  mốc 30s/10s/1s tuỳ thời gian còn lại, không đọc mỗi giây. Keyboard/
+  screen reader cho luồng làm quiz: đổi 4 lựa chọn câu hỏi từ
+  `role="button"` rời rạc sang `radiogroup`/`radio` + `aria-checked`
+  đúng ngữ nghĩa; ô lưới câu hỏi thêm `aria-label` báo trạng thái đã
+  chọn/đúng/sai thay vì chỉ số thứ tự. Verify: `tsc --noEmit` sạch (2
+  lỗi tiền tồn tại), route `/vibe-demo/quiz` 200. Mục 5 coi như xong.

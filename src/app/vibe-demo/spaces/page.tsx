@@ -1,16 +1,22 @@
 'use client';
 
 import React, { useState } from 'react';
-import { ChevronRight, Plus, Archive, BookOpenCheck } from 'lucide-react';
+import { ChevronRight, Plus, Archive, BookOpenCheck, ShieldOff, Lock, X } from 'lucide-react';
 import { T, R, MARGIN_W, APP_TOP_BAR_H, useIsCompact, VIBE_GLOBAL_CSS, beVietnam } from '@/lib/vibe/theme';
 import { TopNav } from '@/components/vibe/TopNav';
+import { NotLoggedInScreen, SessionExpiredScreen, NoAccessScreen, PaywalledSpaceScreen } from '@/components/vibe/StateScreens';
 
 /* ─── Data ──────────────────────────────────────────────────────────────── */
 type SpaceStatus = 'active' | 'done' | 'archived';
 
+// Mục 4 — hai trạng thái mà một không gian THẬT có thể rơi vào ngoài
+// active/done/archived: không có quyền vào (chủ chưa chia sẻ) và bị khóa vì
+// hết credit AI (billing). Optional vì chỉ 2 trong 6 space demo minh hoạ.
+type SpaceLock = 'no_access' | 'paywall';
+
 interface Space {
   id: string; title: string; desc: string; chapters: number; pct: number;
-  color: string; lastOpened: string; status: SpaceStatus;
+  color: string; lastOpened: string; status: SpaceStatus; locked?: SpaceLock;
 }
 
 // "Gáy sách" — mỗi không gian mang một màu riêng, như gáy một cuốn sổ trên
@@ -29,6 +35,10 @@ const SPACES: Space[] = [
     chapters: 9, pct: 100, color: '#8A4A2E', lastOpened: '1 tháng trước', status: 'done' },
   { id: 's6', title: 'Thử nghiệm: Học máy cơ bản', desc: 'Dừng lại giữa chương 2 — chưa quay lại',
     chapters: 4, pct: 22, color: '#4A4A52', lastOpened: '2 tháng trước', status: 'archived' },
+  { id: 's7', title: 'Không gian nhóm: Kiến trúc backend', desc: 'Chia sẻ bởi đồng nghiệp — chưa được cấp quyền vào',
+    chapters: 6, pct: 0, color: '#4A4A52', lastOpened: '5 ngày trước', status: 'active', locked: 'no_access' },
+  { id: 's8', title: 'AI tóm tắt: Design Patterns nâng cao', desc: 'Không gian tạo bằng AI — đã dùng hết credit miễn phí',
+    chapters: 5, pct: 45, color: '#7A5C2E', lastOpened: 'Hôm nay, 08:15', status: 'active', locked: 'paywall' },
 ];
 
 type Tab = 'active' | 'done' | 'archived';
@@ -39,9 +49,41 @@ const TABS: { key: Tab; label: string }[] = [
 ];
 
 /* ─── Page ───────────────────────────────────────────────────────────────── */
+// Trạng thái không gắn với 1 space cụ thể — xem trước bằng nút riêng vì
+// trang demo này không có backend auth thật để tự nhiên rơi vào 2 trạng
+// thái này (chưa đăng nhập / hết hạn phiên đều xảy ra TRƯỚC khi tới được
+// trang có dữ liệu như trang này).
+type AuthPreview = 'not_logged_in' | 'session_expired' | null;
+
 export default function VibeSpacesDemoPage() {
   const [tab, setTab] = useState<Tab>('active');
   const isCompact = useIsCompact(760);
+  const [authPreview, setAuthPreview] = useState<AuthPreview>(null);
+  const [lockedSpace, setLockedSpace] = useState<Space | null>(null);
+
+  if (authPreview === 'not_logged_in') {
+    return <NotLoggedInScreen continueUrl="/vibe-demo/spaces" />;
+  }
+  if (authPreview === 'session_expired') {
+    return <SessionExpiredScreen continueUrl="/vibe-demo/spaces" />;
+  }
+  if (lockedSpace) {
+    return (
+      <div className="relative">
+        <button
+          onClick={() => setLockedSpace(null)}
+          aria-label="Đóng, quay lại danh sách"
+          className="vd-focusable fixed top-4 right-4 z-50 w-8 h-8 flex items-center justify-center bg-ink-panel border border-ink-border cursor-pointer text-ink-textMid"
+          style={{ borderRadius: R.sm, boxShadow: T.shadowSm }}
+        >
+          <X size={14} />
+        </button>
+        {lockedSpace.locked === 'no_access'
+          ? <NoAccessScreen spaceTitle={lockedSpace.title} />
+          : <PaywalledSpaceScreen spaceTitle={lockedSpace.title} />}
+      </div>
+    );
+  }
 
   const filtered = SPACES.filter(s => s.status === tab);
   const counts: Record<Tab, number> = {
@@ -83,6 +125,21 @@ export default function VibeSpacesDemoPage() {
             >
               <Plus size={15} />
               Tạo không gian mới
+            </button>
+          </div>
+
+          {/* Xem trước 2 trạng thái auth không gắn với 1 space cụ thể — chỉ
+              để duyệt thiết kế (mục 4), KHÔNG phải điều hướng thật. Trang
+              demo không có backend auth nên đây là cách duy nhất để nhìn
+              thấy 2 màn này. */}
+          <div className="flex items-center gap-2 mb-4 text-[12px] text-ink-textDim">
+            <span>Xem trước trạng thái:</span>
+            <button onClick={() => setAuthPreview('not_logged_in')} className="vd-focusable underline bg-transparent border-none cursor-pointer text-ink-textDim p-0">
+              Chưa đăng nhập
+            </button>
+            <span>·</span>
+            <button onClick={() => setAuthPreview('session_expired')} className="vd-focusable underline bg-transparent border-none cursor-pointer text-ink-textDim p-0">
+              Hết hạn phiên
             </button>
           </div>
 
@@ -128,13 +185,22 @@ export default function VibeSpacesDemoPage() {
               </div>
             )}
 
-            {filtered.map((s, i) => (
-              <a
+            {filtered.map((s, i) => {
+              const clickable = s.status === 'active';
+              const rowProps = s.locked
+                ? { onClick: () => setLockedSpace(s) }
+                : { href: clickable ? '/vibe-demo' : undefined };
+              const Tag: any = s.locked ? 'div' : 'a';
+              return (
+              <Tag
                 key={s.id}
-                href={s.status === 'active' ? '/vibe-demo' : undefined}
+                {...rowProps}
+                role={s.locked ? 'button' : undefined}
+                tabIndex={s.locked ? 0 : undefined}
+                onKeyDown={s.locked ? (e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setLockedSpace(s); } } : undefined}
                 className={`vd-shelf-row vd-focusable flex items-stretch no-underline text-inherit ${
                   i < filtered.length - 1 ? 'border-b border-ink-border' : 'border-b-0'
-                } ${s.status === 'active' ? 'cursor-pointer' : 'cursor-default'}`}
+                } ${clickable ? 'cursor-pointer' : 'cursor-default'}`}
               >
                 <span
                   style={{ width: MARGIN_W }}
@@ -167,7 +233,15 @@ export default function VibeSpacesDemoPage() {
                   </div>
 
                   <div className="flex items-center gap-[10px] shrink-0">
-                    {s.status === 'done' ? (
+                    {s.locked === 'no_access' ? (
+                      <span className="flex items-center gap-1.5 text-ink-textDim text-[12.5px] font-medium">
+                        <ShieldOff size={14} /> Chưa có quyền
+                      </span>
+                    ) : s.locked === 'paywall' ? (
+                      <span className="flex items-center gap-1.5 text-[12.5px] font-medium" style={{ color: T.wrong }}>
+                        <Lock size={14} /> Hết credit
+                      </span>
+                    ) : s.status === 'done' ? (
                       <span className="flex items-center gap-1.5 text-ink-accent text-[12.5px] font-semibold">
                         <BookOpenCheck size={14} /> Hoàn thành
                       </span>
@@ -188,8 +262,9 @@ export default function VibeSpacesDemoPage() {
                     <ChevronRight size={15} className="text-ink-textDim shrink-0" />
                   </div>
                 </div>
-              </a>
-            ))}
+              </Tag>
+              );
+            })}
           </div>
         </div>
       </div>

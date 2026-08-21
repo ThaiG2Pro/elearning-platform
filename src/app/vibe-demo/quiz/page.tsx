@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { CheckCircle2, Circle, XCircle, ChevronRight, ChevronLeft, X, Maximize2, Minimize2, ListVideo, RotateCcw, Play, Timer } from 'lucide-react';
+import { CheckCircle2, Circle, XCircle, ChevronRight, ChevronLeft, X, Maximize2, Minimize2, ListVideo, RotateCcw, Play, Timer, WifiOff, History } from 'lucide-react';
 import { beVietnam, T, R, TOP_BAR_H, MARGIN_W, useIsCompact, VIBE_GLOBAL_CSS } from '@/lib/vibe/theme';
 
 /*
@@ -88,6 +88,38 @@ function fmtTime(s: number): string {
   return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 }
 
+// Mục 4 — "trạng thái người dùng thật": làm bài quiz KHÔNG được coi là một
+// hành động atomic — người học có thể mất mạng, đóng tab, hoặc bỏ ngang.
+// Một bản ghi duy nhất trên localStorage đóng vai trò "tờ giấy nháp" chưa
+// nộp: `submitted: false` = còn đang làm (autosave mỗi khi đổi câu/đáp án),
+// `submitted: true` = đã nộp (giữ lại để có thể "xem kết quả lần trước" nếu
+// quay lại màn intro mà không bấm "Làm lại"). Khoá theo lessonId vì mỗi bài
+// học có thể có một quiz riêng.
+interface SavedQuizState {
+  picked: (number | null)[];
+  secondsLeft: number;
+  qIdx: number;
+  submitted: boolean;
+}
+const savedQuizKey = (lessonId: string) => `vd-quiz-save-${lessonId}`;
+function loadSavedQuiz(lessonId: string): SavedQuizState | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.localStorage.getItem(savedQuizKey(lessonId));
+    return raw ? JSON.parse(raw) as SavedQuizState : null;
+  } catch {
+    return null; // JSON hỏng/bị chỉnh tay — coi như không có bản lưu, không throw.
+  }
+}
+function saveQuiz(lessonId: string, state: SavedQuizState) {
+  if (typeof window === 'undefined') return;
+  window.localStorage.setItem(savedQuizKey(lessonId), JSON.stringify(state));
+}
+function clearSavedQuiz(lessonId: string) {
+  if (typeof window === 'undefined') return;
+  window.localStorage.removeItem(savedQuizKey(lessonId));
+}
+
 /* ─── Page ───────────────────────────────────────────────────────────────── */
 export default function VibeQuizDemoPage() {
   const [lessons, setLessons]     = useState<Lesson[]>(LESSONS);
@@ -100,6 +132,61 @@ export default function VibeQuizDemoPage() {
   const [qIdx, setQIdx]     = useState(0);
   const [picked, setPicked] = useState<(number | null)[]>(Array(QUIZ.length).fill(null));
   const [secondsLeft, setSecondsLeft] = useState(QUIZ_SECONDS);
+
+  // Trạng thái "chưa nộp" hoặc "đã nộp trước đó" đọc từ localStorage — quyết
+  // định màn intro hiện "Bắt đầu" đơn thuần hay mời tiếp tục/xem lại.
+  const [savedAttempt, setSavedAttempt] = useState<SavedQuizState | null>(null);
+  const [lastResult,   setLastResult]   = useState<SavedQuizState | null>(null);
+  const [isOffline,    setIsOffline]    = useState(false);
+// Mục 5 — a11y: câu thông báo đọc to bởi screen reader khi thời gian còn
+// lại tới các mốc đáng chú ý. Không đọc mỗi giây (spam, không nghe kịp) —
+// chỉ 30s/lần khi còn nhiều thời gian, rồi dày lên 10s/lần trong phút
+// cuối, rồi từng giây trong 5 giây cuối.
+const [timerAnnouncement, setTimerAnnouncement] = useState('');
+
+  // Đọc bản lưu MỘT LẦN khi vào lại màn intro của đúng bài quiz đang active
+  // (không đọc khi đang taking/result — tránh tự ý đè lên bài đang làm).
+  useEffect(() => {
+    if (phase !== 'intro') return;
+    const saved = loadSavedQuiz(activeId);
+    setSavedAttempt(saved && !saved.submitted ? saved : null);
+    setLastResult(saved && saved.submitted ? saved : null);
+  }, [phase, activeId]);
+
+  // Mất mạng giữa lúc làm bài: dữ liệu vẫn nằm trên máy (autosave dưới đây),
+  // chỉ cần báo cho người học biết KHÔNG mất gì, không cần chặn thao tác.
+  useEffect(() => {
+    setIsOffline(typeof navigator !== 'undefined' && !navigator.onLine);
+    const onOnline  = () => setIsOffline(false);
+    const onOffline = () => setIsOffline(true);
+    window.addEventListener('online', onOnline);
+    window.addEventListener('offline', onOffline);
+    return () => {
+      window.removeEventListener('online', onOnline);
+      window.removeEventListener('offline', onOffline);
+    };
+  }, []);
+
+  // Autosave mỗi khi đổi câu/đáp án/giờ trong lúc đang thi — đây là câu trả
+  // lời cho "mất mạng/đóng tab giữa lúc làm bài": không có gì để mất vì đề
+  // luôn nằm trên máy, không phụ thuộc một lần submit ở cuối.
+  useEffect(() => {
+    if (phase !== 'taking') return;
+    saveQuiz(activeId, { picked, secondsLeft, qIdx, submitted: false });
+  }, [phase, activeId, picked, secondsLeft, qIdx]);
+
+  // Đóng tab/refresh giữa lúc làm bài = "nộp bài trễ" nếu không có cảnh báo.
+  // Autosave phía trên đã đảm bảo không mất dữ liệu, nhưng vẫn nhắc để người
+  // học biết họ đang rời phòng thi (đề bài vẫn chờ ở lần quay lại sau).
+  useEffect(() => {
+    if (phase !== 'taking') return;
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+  }, [phase]);
 
   useEffect(() => {
     const html = document.documentElement.style;
@@ -117,6 +204,18 @@ export default function VibeQuizDemoPage() {
     const t = setInterval(() => setSecondsLeft(s => Math.max(0, s - 1)), 1000);
     return () => clearInterval(t);
   }, [phase]);
+
+  // Mục 5 — a11y: cập nhật vùng aria-live theo mốc thời gian còn lại, cho
+  // người dùng screen reader biết sắp hết giờ mà không cần nhìn màn hình.
+  useEffect(() => {
+    if (phase !== 'taking') return;
+    const shouldAnnounce =
+      secondsLeft === QUIZ_SECONDS ||
+      (secondsLeft > 60 && secondsLeft % 30 === 0) ||
+      (secondsLeft <= 60 && secondsLeft > 10 && secondsLeft % 10 === 0) ||
+      secondsLeft <= 10;
+    if (shouldAnnounce) setTimerAnnouncement(`Còn ${fmtTime(secondsLeft)}`);
+  }, [phase, secondsLeft]);
 
   // Hết giờ → tự nộp bài.
   useEffect(() => {
@@ -139,7 +238,13 @@ export default function VibeQuizDemoPage() {
   const taking        = phase === 'taking';
   const reviewing     = phase === 'review';
 
+  // Bắt đầu MỚI — dùng cho cả "Bắt đầu" lần đầu và "Bắt đầu lại từ đầu" khi
+  // đã có bản lưu (dang làm hoặc đã nộp): luôn xoá bản lưu cũ trước, vì từ
+  // thời điểm này bản lưu cũ không còn phản ánh đúng bài đang làm nữa.
   const startQuiz = () => {
+    clearSavedQuiz(activeId);
+    setSavedAttempt(null);
+    setLastResult(null);
     setPicked(Array(QUIZ.length).fill(null));
     setSecondsLeft(QUIZ_SECONDS);
     setQIdx(0);
@@ -147,12 +252,38 @@ export default function VibeQuizDemoPage() {
     setFocusMode(true);   // vào phòng thi = tắt đèn, không xao nhãng
     setOverlayOpen(false);
   };
+  // Tiếp tục bài đang làm (mất mạng/đóng tab giữa lúc thi rồi quay lại).
+  const resumeQuiz = () => {
+    if (!savedAttempt) return;
+    setPicked(savedAttempt.picked);
+    setSecondsLeft(savedAttempt.secondsLeft);
+    setQIdx(savedAttempt.qIdx);
+    setSavedAttempt(null);
+    setPhase('taking');
+    setFocusMode(true);
+    setOverlayOpen(false);
+  };
+  // Xem lại kết quả của lần nộp trước, không tính là một lượt làm mới.
+  const viewLastResult = () => {
+    if (!lastResult) return;
+    setPicked(lastResult.picked);
+    setSecondsLeft(lastResult.secondsLeft);
+    setQIdx(0);
+    setPhase('result');
+  };
   const submitQuiz = () => {
+    saveQuiz(activeId, { picked, secondsLeft, qIdx: 0, submitted: true });
     setPhase('result');
     setFocusMode(false);  // nộp bài = đèn bật lại
     setQIdx(0);
   };
   const backToIntro = () => {
+    // "Làm lại" từ màn kết quả là ý định retake rõ ràng trong cùng phiên —
+    // xoá bản lưu đã nộp để lần sau vào lại intro không mời "xem kết quả cũ"
+    // của một bài mà người học đã chủ động chọn làm lại.
+    clearSavedQuiz(activeId);
+    setSavedAttempt(null);
+    setLastResult(null);
     setPhase('intro');
     setFocusMode(false);
     setPicked(Array(QUIZ.length).fill(null));
@@ -259,7 +390,10 @@ export default function VibeQuizDemoPage() {
           <button
             key={i}
             onClick={() => setQIdx(i)}
-            aria-label={`Câu ${i + 1}`}
+            aria-label={`Câu ${i + 1}${
+              graded ? (picked[i] === q.answer ? ', đúng' : ', sai')
+                : picked[i] !== null ? ', đã chọn' : ', chưa chọn'
+            }`}
             aria-current={isCurrent ? 'true' : undefined}
             className="vd-focusable font-mono text-[11px] font-semibold cursor-pointer"
             style={{
@@ -292,7 +426,10 @@ export default function VibeQuizDemoPage() {
         </div>
       </div>
 
-      <div className="pb-2">
+      {/* Mục 5 — a11y: role="radiogroup"/"radio" thay vì "button" đơn lẻ —
+          đây là 4 lựa chọn LOẠI TRỪ NHAU của 1 câu hỏi, không phải 4 nút
+          độc lập, nên screen reader cần biết đang chọn 1-trong-N. */}
+      <div className="pb-2" role="radiogroup" aria-label={`Câu ${qIdx + 1}: ${question.q}`}>
         {question.choices.map((choice, ci) => {
           const isPicked  = picked[qIdx] === ci;
           const isCorrect = ci === question.answer;
@@ -302,7 +439,8 @@ export default function VibeQuizDemoPage() {
           return (
             <div
               key={ci}
-              role="button"
+              role="radio"
+              aria-checked={isPicked}
               tabIndex={graded ? -1 : 0}
               aria-disabled={graded}
               onClick={() => pick(ci)}
@@ -404,14 +542,65 @@ export default function VibeQuizDemoPage() {
             Khi bắt đầu, phòng học sẽ tắt đèn — chỉ còn tờ bài và đồng hồ. Bạn di chuyển
             tự do giữa các câu, sửa đáp án bao nhiêu lần tùy ý; kết quả chỉ chấm khi nộp bài.
           </div>
-          <button
-            onClick={startQuiz}
-            className="vd-focusable mt-[22px] inline-flex items-center gap-[9px] px-6 py-3 bg-ink-accent text-ink-onAccent border-none cursor-pointer text-[15px] font-semibold"
-            style={{ borderRadius: R.sm }}
-          >
-            <Play size={15} />
-            Bắt đầu
-          </button>
+
+          {/* Bỏ ngang giữa lúc làm bài (mất mạng/đóng tab) → mời tiếp tục
+              đúng chỗ đã dừng, thay vì im lặng bắt đầu lại từ đầu. */}
+          {savedAttempt && (
+            <div
+              className="mt-[18px] flex items-center gap-3 py-3 px-4"
+              style={{ background: T.accentA, border: `1px solid ${T.accent}`, borderRadius: R.sm }}
+            >
+              <History size={16} className="text-ink-accent shrink-0" />
+              <div className="flex-1 text-[13.5px] text-ink-text leading-[1.5]">
+                Có một lượt làm bài chưa nộp — đang ở câu {savedAttempt.qIdx + 1}/{QUIZ.length},
+                còn {fmtTime(savedAttempt.secondsLeft)}.
+              </div>
+            </div>
+          )}
+
+          {/* Đã nộp trước đó (và không đang có bài dở) → cho chọn xem lại
+              kết quả cũ hay làm lại, không mặc định coi đây là lần đầu. */}
+          {lastResult && !savedAttempt && (
+            <div
+              className="mt-[18px] flex items-center gap-3 py-3 px-4"
+              style={{ background: 'rgba(33,38,51,0.03)', border: `1px solid ${T.border}`, borderRadius: R.sm }}
+            >
+              <History size={16} className="text-ink-textDim shrink-0" />
+              <div className="flex-1 text-[13.5px] text-ink-textMid leading-[1.5]">
+                Bạn đã nộp bài này —{' '}
+                {lastResult.picked.reduce((s: number, v, i) => s + (v === QUIZ[i].answer ? 1 : 0), 0)}/{QUIZ.length} câu đúng.
+              </div>
+            </div>
+          )}
+
+          <div className="flex gap-2.5 mt-[22px]">
+            <button
+              onClick={savedAttempt ? resumeQuiz : startQuiz}
+              className="vd-focusable inline-flex items-center gap-[9px] px-6 py-3 bg-ink-accent text-ink-onAccent border-none cursor-pointer text-[15px] font-semibold"
+              style={{ borderRadius: R.sm }}
+            >
+              <Play size={15} />
+              {savedAttempt ? 'Tiếp tục làm bài' : 'Bắt đầu'}
+            </button>
+            {lastResult && !savedAttempt && (
+              <button
+                onClick={viewLastResult}
+                className="vd-focusable inline-flex items-center gap-2 px-5 py-3 bg-transparent text-ink-textMid border border-ink-borderHi cursor-pointer text-[14.5px] font-medium"
+                style={{ borderRadius: R.sm }}
+              >
+                Xem kết quả lần trước
+              </button>
+            )}
+            {(savedAttempt || lastResult) && (
+              <button
+                onClick={startQuiz}
+                className="vd-focusable inline-flex items-center gap-2 px-5 py-3 bg-transparent text-ink-textMuted border-none cursor-pointer text-[13.5px] font-medium"
+                style={{ borderRadius: R.sm }}
+              >
+                Bắt đầu lại từ đầu
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -439,8 +628,26 @@ export default function VibeQuizDemoPage() {
             >
               {fmtTime(secondsLeft)}
             </span>
+            {/* Chỉ cho screen reader — đồng hồ hiện trên vẫn im lặng với
+                aria (aria-hidden qua thuộc tính mono không đổi mỗi giây),
+                vùng này mới là nơi đọc to theo mốc thời gian. */}
+            <span role="status" aria-live="polite" className="sr-only">
+              {timerAnnouncement}
+            </span>
           </div>
         </div>
+
+        {/* Mất mạng giữa lúc thi — dữ liệu vẫn an toàn (autosave localStorage
+            phía trên), chỉ cần nói rõ để người học không hoảng khi thấy mất
+            kết nối giữa phòng thi. */}
+        {isOffline && (
+          <div className="flex items-center gap-2.5 py-2 px-5" style={{ background: T.wrongA, color: T.wrong }}>
+            <WifiOff size={13} className="shrink-0" />
+            <span className="text-[12.5px] font-medium">
+              Mất kết nối — câu trả lời vẫn được lưu tại máy, không mất dữ liệu.
+            </span>
+          </div>
+        )}
 
         {renderQuestion(false)}
 
