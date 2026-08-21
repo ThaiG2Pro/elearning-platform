@@ -11,6 +11,43 @@ import { Lesson, LessonProgress, QuizSession, QuizResult, LessonNote } from '@/t
 import { User } from '@/types/auth.types';
 import { logout as apiLogout, AuthUtils } from '@/lib/auth';
 
+// Porting logic từ vibe-demo/quiz (savedQuizKey/loadSavedQuiz/...): bản nháp
+// cục bộ cho lượt làm bài ĐANG DIỄN RA, để mất mạng/đóng tab/reload giữa lúc
+// làm bài không xoá sạch đáp án đã chọn. Khác vibe-demo (session giả lập
+// hoàn toàn ở client): ở đây phiên làm bài thật sống ở server
+// (QuizService.startQuiz), và server đã tự tái dùng attempt còn sống (chưa
+// nộp, chưa hết 10 phút) — nên bản nháp chỉ cần khớp đúng `sessionId` server
+// trả về là an toàn để khôi phục đáp án + câu đang xem, không cần tự quản lý
+// đồng hồ đếm ngược ở đây như vibe-demo (đồng hồ vẫn tính từ `expiresAt`).
+interface QuizDraft {
+    sessionId: string;
+    answers: Record<string, string>;
+    qIdx: number;
+}
+const quizDraftKey = (lessonId: string) => `learn-quiz-draft-${lessonId}`;
+function loadQuizDraft(lessonId: string): QuizDraft | null {
+    if (typeof window === 'undefined') return null;
+    try {
+        const raw = window.localStorage.getItem(quizDraftKey(lessonId));
+        return raw ? JSON.parse(raw) as QuizDraft : null;
+    } catch {
+        return null; // bản lưu hỏng/bị chỉnh tay — coi như không có, không throw.
+    }
+}
+function saveQuizDraft(lessonId: string, draft: QuizDraft) {
+    if (typeof window === 'undefined') return;
+    try {
+        window.localStorage.setItem(quizDraftKey(lessonId), JSON.stringify(draft));
+    } catch {
+        // localStorage đầy/bị chặn (private mode) — bản nháp là tiện ích
+        // tăng cường, không phải nguồn dữ liệu chính (server vẫn giữ session).
+    }
+}
+function clearQuizDraft(lessonId: string) {
+    if (typeof window === 'undefined') return;
+    window.localStorage.removeItem(quizDraftKey(lessonId));
+}
+
 export default function LearningPage() {
     const router = useRouter();
     const params = useParams();
@@ -20,7 +57,7 @@ export default function LearningPage() {
     const [lessons, setLessons] = useState<Lesson[]>([]);
     const [currentLesson, setCurrentLesson] = useState<Lesson | null>(null);
     const [lessonProgress, setLessonProgress] = useState<LessonProgress | null>(null);
-    const [appState, setAppState] = useState<'loading' | 'idle' | 'quiz_ready' | 'quiz_doing' | 'quiz_result' | 'error'>('loading');
+    const [appState, setAppState] = useState<'loading' | 'idle' | 'quiz_ready' | 'quiz_doing' | 'quiz_result' | 'quiz_review' | 'error'>('loading');
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [user, setUser] = useState<User | null>(null);
 
@@ -33,6 +70,17 @@ export default function LearningPage() {
     // submitQuiz requests, and against the auto-submit-on-timeout timer
     // firing on top of a manual submit already in flight.
     const [isSubmittingQuiz, setIsSubmittingQuiz] = useState(false);
+    // Porting logic từ vibe-demo/quiz: hiện MỘT câu tại một thời điểm (khi
+    // làm bài lẫn khi xem lại đáp án) thay vì đổ hết câu hỏi ra một danh
+    // sách cuộn dài — kèm lưới điều hướng câu hỏi (question map).
+    const [quizQIdx, setQuizQIdx] = useState(0);
+    // vibe-demo: mất mạng giữa lúc làm bài không mất dữ liệu (autosave cục bộ
+    // dưới đây) — chỉ cần báo cho học viên biết, không cần chặn thao tác.
+    const [isOffline, setIsOffline] = useState(false);
+    // vibe-demo (mục a11y): câu thông báo đọc to bởi screen reader theo mốc
+    // thời gian còn lại — không đọc mỗi giây (spam), thưa dần khi còn nhiều
+    // thời gian, dày lên trong phút cuối.
+    const [timerAnnouncement, setTimerAnnouncement] = useState('');
 
     // UI states — WP1.5.4: a lesson can have many notes now, not one blob.
     const [notes, setNotes] = useState<LessonNote[]>([]);
@@ -300,6 +348,7 @@ export default function LearningPage() {
         setQuizSession(null);
         setQuizResult(null);
         setAnswers({});
+        setQuizQIdx(0);
         setAppState('loading');
     };
 
@@ -382,14 +431,26 @@ export default function LearningPage() {
             setQuizSession(session);
             setAppState('quiz_doing');
 
-            // Initialize answers an toàn
-            const initialAnswers: Record<string, string> = {};
-            if (Array.isArray(session.questions)) {
-                session.questions.forEach(q => {
-                    initialAnswers[q.id] = '';
-                });
+            // Porting logic từ vibe-demo/quiz: nếu có bản nháp cục bộ khớp
+            // đúng sessionId server vừa trả (QuizService.startQuiz tái dùng
+            // attempt còn sống — chưa nộp, chưa hết 10 phút), khôi phục lại
+            // đáp án + câu đang xem thay vì bắt làm lại từ đầu chỉ vì
+            // tab bị đóng/reload giữa lúc làm bài.
+            const draft = loadQuizDraft(currentLesson.id);
+            const questionCount = Array.isArray(session.questions) ? session.questions.length : 0;
+            if (draft && draft.sessionId === session.sessionId) {
+                setAnswers(draft.answers);
+                setQuizQIdx(Math.min(draft.qIdx, Math.max(0, questionCount - 1)));
+            } else {
+                const initialAnswers: Record<string, string> = {};
+                if (Array.isArray(session.questions)) {
+                    session.questions.forEach(q => {
+                        initialAnswers[q.id] = '';
+                    });
+                }
+                setAnswers(initialAnswers);
+                setQuizQIdx(0);
             }
-            setAnswers(initialAnswers);
         } catch (error: any) {
             // Previously only set errorMessage without appState — since only
             // the 'error' branch renders errorMessage, a failed start (e.g.
@@ -416,6 +477,11 @@ export default function LearningPage() {
             const result = await submitQuiz(currentLesson.id, quizSession.sessionId, answers);
             setQuizResult(result);
             setAppState('quiz_result');
+            setQuizQIdx(0);
+            // Đã nộp — bản nháp cục bộ không còn phản ánh một lượt đang làm,
+            // xoá để lần startQuiz kế tiếp (attempt mới) không đọc nhầm đáp
+            // án của lượt đã nộp này.
+            clearQuizDraft(currentLesson.id);
             // WP1.5.12: submitting a quiz completes the lesson — reflect that
             // in the sidebar/progress-bar `lessons` list right away. Only do
             // this on an actual pass: the backend (LearningProgress.
@@ -515,6 +581,42 @@ export default function LearningPage() {
 
         return () => stopTimer();
     }, [quizSession, appState, startTimer, stopTimer]);
+
+    // Porting logic từ vibe-demo/quiz: autosave bản nháp (đáp án + câu đang
+    // xem) mỗi khi đổi trong lúc đang làm bài — câu trả lời cho "mất
+    // mạng/đóng tab giữa lúc làm bài": không có gì để mất, vì đáp án luôn
+    // nằm sẵn trên máy, không phụ thuộc một lần round-trip cuối.
+    useEffect(() => {
+        if (appState !== 'quiz_doing' || !currentLesson || !quizSession) return;
+        saveQuizDraft(currentLesson.id, { sessionId: quizSession.sessionId, answers, qIdx: quizQIdx });
+    }, [appState, currentLesson, quizSession, answers, quizQIdx]);
+
+    // vibe-demo: mất mạng giữa lúc làm bài — không mất dữ liệu (autosave ở
+    // trên), chỉ cần báo cho học viên biết.
+    useEffect(() => {
+        setIsOffline(typeof navigator !== 'undefined' && !navigator.onLine);
+        const onOnline = () => setIsOffline(false);
+        const onOffline = () => setIsOffline(true);
+        window.addEventListener('online', onOnline);
+        window.addEventListener('offline', onOffline);
+        return () => {
+            window.removeEventListener('online', onOnline);
+            window.removeEventListener('offline', onOffline);
+        };
+    }, []);
+
+    // vibe-demo (a11y): cập nhật vùng aria-live theo mốc thời gian còn lại,
+    // cho screen reader biết sắp hết giờ mà không cần nhìn màn hình — 30s/lần
+    // khi còn nhiều thời gian, dày lên 10s/lần trong phút cuối, từng giây
+    // trong 10 giây cuối.
+    useEffect(() => {
+        if (appState !== 'quiz_doing') return;
+        const shouldAnnounce =
+            (timeLeft > 60 && timeLeft % 30 === 0) ||
+            (timeLeft <= 60 && timeLeft > 10 && timeLeft % 10 === 0) ||
+            timeLeft <= 10;
+        if (shouldAnnounce) setTimerAnnouncement(`Còn ${formatTime(timeLeft)}`);
+    }, [appState, timeLeft]);
 
     const formatTime = (seconds: number) => {
         const s = Math.max(0, Math.floor(seconds || 0));
@@ -743,25 +845,52 @@ export default function LearningPage() {
                                 </div>
                             )}
 
-                            {appState === 'quiz_doing' && quizSession && (
-                                <div>
-                                    <div className="flex justify-between items-center mb-6 pb-4 border-b border-ink-border">
-                                        <h3 className="text-base font-semibold text-ink-text">
-                                            Bài kiểm tra
-                                        </h3>
-                                        <div className={`flex items-center gap-1.5 text-sm font-mono font-semibold px-3 py-1 rounded-full ${timeLeft <= 60 ? 'bg-red-50 text-red-600' : 'bg-ink-page text-ink-textMid'}`}>
-                                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                            </svg>
-                                            {formatTime(timeLeft)}
+                            {appState === 'quiz_doing' && quizSession && (() => {
+                                const questions = quizSession.questions || [];
+                                const total = questions.length;
+                                const question = questions[quizQIdx];
+                                const answeredCount = questions.filter(q => !!answers[q.id]).length;
+                                const low = timeLeft <= 60;
+                                return (
+                                    <div>
+                                        <div className="flex justify-between items-center mb-6 pb-4 border-b border-ink-border">
+                                            <h3 className="text-base font-semibold text-ink-text">
+                                                Bài kiểm tra
+                                            </h3>
+                                            <div className={`flex items-center gap-1.5 text-sm font-mono font-semibold px-3 py-1 rounded-full ${low ? 'bg-red-50 text-red-600' : 'bg-ink-page text-ink-textMid'}`}>
+                                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                                </svg>
+                                                {formatTime(timeLeft)}
+                                                {/* vibe-demo (a11y): đồng hồ hiện trên vẫn im lặng với screen
+                                                    reader (đổi mỗi giây, không nên đọc mỗi lần) — vùng này mới
+                                                    là nơi đọc to theo mốc thời gian. */}
+                                                <span role="status" aria-live="polite" className="sr-only">
+                                                    {timerAnnouncement}
+                                                </span>
+                                            </div>
                                         </div>
-                                    </div>
 
-                                    <div className="space-y-6">
-                                        {(quizSession.questions || []).map((question, index) => (
-                                            <div key={question.id} className="border-b border-ink-border pb-5 last:border-0">
+                                        {/* vibe-demo: mất mạng giữa lúc thi — dữ liệu vẫn an toàn (autosave
+                                            localStorage phía trên), chỉ cần nói rõ để học viên không hoảng
+                                            khi thấy mất kết nối giữa lúc làm bài. */}
+                                        {isOffline && (
+                                            <div className="vd-ink-in mb-4 flex items-center gap-2 px-3 py-2 rounded-lg bg-ink-wrongA text-ink-wrong text-xs font-medium">
+                                                <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 5.636a9 9 0 010 12.728m0 0l-2.829-2.829m2.829 2.829L21 21M15.536 8.464a5 5 0 010 7.072m0 0l-2.829-2.829m-4.243 2.829a4.978 4.978 0 01-1.414-2.83m-1.414 5.658a9 9 0 01-2.167-9.238m7.824 2.167a1 1 0 111.414 1.414m-1.414-1.414L3 3" />
+                                                </svg>
+                                                Mất kết nối — câu trả lời vẫn được lưu tại máy, không mất dữ liệu.
+                                            </div>
+                                        )}
+
+                                        {total === 0 && (
+                                            <p className="text-sm text-ink-textDim italic">Không có câu hỏi nào cho bài tập này.</p>
+                                        )}
+
+                                        {question && (
+                                            <>
                                                 <p className="text-sm font-medium text-ink-text mb-3">
-                                                    Câu {index + 1}: {question.text}
+                                                    Câu {quizQIdx + 1}/{total}: {question.text}
                                                 </p>
                                                 <div className="space-y-2">
                                                     {(question.options || []).map(option => (
@@ -778,32 +907,73 @@ export default function LearningPage() {
                                                         </label>
                                                     ))}
                                                 </div>
-                                            </div>
-                                        ))}
 
-                                        {(!quizSession.questions || quizSession.questions.length === 0) && (
-                                            <p className="text-sm text-ink-textDim italic">Không có câu hỏi nào cho bài tập này.</p>
+                                                {/* Porting logic từ vibe-demo/quiz (renderQuestionMap): lưới
+                                                    điều hướng câu hỏi — bấm để nhảy thẳng tới câu bất kỳ, thấy
+                                                    ngay câu nào đã trả lời mà không cần cuộn qua toàn bộ đề. */}
+                                                <div className="flex flex-wrap gap-1.5 mt-6 pt-5 border-t border-ink-border">
+                                                    {questions.map((q, i) => {
+                                                        const isCurrent = i === quizQIdx;
+                                                        const isAnswered = !!answers[q.id];
+                                                        return (
+                                                            <button
+                                                                key={q.id}
+                                                                onClick={() => setQuizQIdx(i)}
+                                                                aria-label={`Câu ${i + 1}${isAnswered ? ', đã trả lời' : ', chưa trả lời'}`}
+                                                                aria-current={isCurrent ? 'true' : undefined}
+                                                                className={`vd-focusable w-8 h-8 rounded-ink-sm border text-[11px] font-mono font-semibold transition-colors ${
+                                                                    isCurrent
+                                                                        ? 'border-ink-accent bg-ink-accentA text-ink-accent ring-2 ring-ink-accent/25'
+                                                                        : isAnswered
+                                                                            ? 'border-ink-accent/50 bg-ink-accentA/60 text-ink-accent'
+                                                                            : 'border-ink-border text-ink-textDim hover:bg-ink-page'
+                                                                }`}
+                                                            >
+                                                                {String(i + 1).padStart(2, '0')}
+                                                            </button>
+                                                        );
+                                                    })}
+                                                </div>
+
+                                                <div className="mt-5 flex items-center gap-2.5">
+                                                    <button
+                                                        onClick={() => setQuizQIdx(i => Math.max(0, i - 1))}
+                                                        disabled={quizQIdx === 0}
+                                                        className="vd-focusable inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-ink-border text-xs font-medium text-ink-textMid disabled:opacity-40 disabled:cursor-not-allowed hover:bg-ink-page transition-colors"
+                                                    >
+                                                        ← Trước
+                                                    </button>
+                                                    <button
+                                                        onClick={() => setQuizQIdx(i => Math.min(total - 1, i + 1))}
+                                                        disabled={quizQIdx === total - 1}
+                                                        className="vd-focusable inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-ink-border text-xs font-medium text-ink-textMid disabled:opacity-40 disabled:cursor-not-allowed hover:bg-ink-page transition-colors"
+                                                    >
+                                                        Sau →
+                                                    </button>
+                                                    <span className="text-xs text-ink-textDim ml-1">{answeredCount}/{total} đã trả lời</span>
+                                                    <button
+                                                        onClick={handleSubmitQuiz}
+                                                        disabled={isSubmittingQuiz}
+                                                        className="vd-focusable ml-auto inline-flex items-center gap-2 px-5 py-2.5 bg-ink-accent hover:bg-ink-accent/90 disabled:opacity-60 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors"
+                                                    >
+                                                        {isSubmittingQuiz ? 'Đang nộp…' : 'Nộp bài'}
+                                                    </button>
+                                                </div>
+                                            </>
                                         )}
                                     </div>
+                                );
+                            })()}
 
-                                    <div className="mt-8 flex justify-end">
-                                        <button
-                                            onClick={handleSubmitQuiz}
-                                            disabled={isSubmittingQuiz}
-                                            className="vd-focusable inline-flex items-center gap-2 px-5 py-2.5 bg-ink-accent hover:bg-ink-accent/90 disabled:opacity-60 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors"
-                                        >
-                                            {isSubmittingQuiz ? 'Đang nộp…' : 'Nộp bài'}
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
-
-                            {appState === 'quiz_result' && quizResult && (
+                            {appState === 'quiz_result' && quizResult && (() => {
+                                const total = (quizResult.questions || []).length;
+                                const correctCount = (quizResult.questions || []).filter(q => q.selectedId === q.correctId).length;
+                                return (
                                 // vd-ink-in — "hạ mực": kết quả chấm bài là trạng thái vừa xuất
                                 // hiện (bút chấm của giáo viên), nên có animation ink-drop-in
                                 // giống vibe-demo, có prefers-reduced-motion guard sẵn ở globals.css.
                                 <div className="vd-ink-in">
-                                    <div className="text-center mb-8 pb-6 border-b border-ink-border">
+                                    <div className="text-center mb-6 pb-6 border-b border-ink-border">
                                         <h3 className="text-base font-semibold text-ink-text mb-3">
                                             Kết quả bài kiểm tra
                                         </h3>
@@ -817,49 +987,145 @@ export default function LearningPage() {
                                         <div className={`inline-flex items-center justify-center w-20 h-20 rounded-full text-2xl font-bold ${quizResult.isPassed ? 'bg-ink-correctA text-ink-correct' : 'bg-ink-wrongA text-ink-wrong'}`}>
                                             {quizResult.score}
                                         </div>
-                                        <p className="text-xs text-ink-textDim mt-2">/ 100 điểm</p>
+                                        <p className="text-xs text-ink-textDim mt-2">/ 100 điểm{total > 0 ? ` · ${correctCount}/${total} câu đúng` : ''}</p>
                                         <p className={`text-sm font-semibold mt-2 ${quizResult.isPassed ? 'text-ink-correct' : 'text-ink-wrong'}`}>
                                             {quizResult.isPassed ? '✓ Đạt' : '✗ Chưa đạt (cần từ 80 điểm trở lên)'}
                                         </p>
                                     </div>
 
-                                    <div className="space-y-4">
-                                        {(quizResult.questions || []).map((question, index) => (
-                                            <div key={question.id} className="border border-ink-border rounded-ink-md p-4">
-                                                <p className="text-sm font-medium text-ink-text mb-3">
-                                                    Câu {index + 1}: {question.text}
-                                                </p>
-                                                <div className="space-y-1.5">
-                                                    {(question.options || []).map(option => (
-                                                        <div
-                                                            key={option.id}
-                                                            className={`flex items-center gap-2 p-2.5 rounded-lg text-sm ${option.id === question.correctId
-                                                                ? 'bg-ink-correctA text-ink-correct font-medium'
-                                                                : option.id === question.selectedId && option.id !== question.correctId
-                                                                    ? 'bg-ink-wrongA text-ink-wrong'
-                                                                    : 'text-ink-textMid'
-                                                                }`}
-                                                        >
-                                                            {option.id === question.correctId ? (
-                                                                <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7"/></svg>
-                                                            ) : option.id === question.selectedId && option.id !== question.correctId ? (
-                                                                <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/></svg>
-                                                            ) : (
-                                                                <span className="w-4 h-4 flex-shrink-0"/>
-                                                            )}
-                                                            {option.text}
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        ))}
+                                    {/* Porting logic từ vibe-demo/quiz (renderResult): bản đồ đúng/sai
+                                        thu nhỏ + tách "Xem đáp án" (lật từng câu) khỏi "Làm lại" (nộp
+                                        thêm một lượt mới), thay vì đổ hết bài chấm ra ngay dưới điểm số. */}
+                                    {total > 0 && (
+                                        <div className="flex flex-wrap gap-1.5 justify-center mb-6">
+                                            {(quizResult.questions || []).map((q, i) => {
+                                                const ok = q.selectedId === q.correctId;
+                                                return (
+                                                    <button
+                                                        key={q.id}
+                                                        onClick={() => { setQuizQIdx(i); setAppState('quiz_review'); }}
+                                                        aria-label={`Câu ${i + 1}, ${ok ? 'đúng' : 'sai'}`}
+                                                        className={`vd-focusable w-8 h-8 rounded-ink-sm border text-[11px] font-mono font-semibold transition-colors ${ok ? 'border-ink-correct bg-ink-correctA text-ink-correct' : 'border-ink-wrong bg-ink-wrongA text-ink-wrong'}`}
+                                                    >
+                                                        {String(i + 1).padStart(2, '0')}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
 
-                                        {(!quizResult.questions || quizResult.questions.length === 0) && (
-                                            <p className="text-center text-sm text-ink-textDim">Không có dữ liệu xem lại câu hỏi.</p>
+                                    <div className="flex justify-center gap-2.5">
+                                        {total > 0 && (
+                                            <button
+                                                onClick={() => { setQuizQIdx(0); setAppState('quiz_review'); }}
+                                                className="vd-focusable inline-flex items-center gap-2 px-5 py-2.5 bg-ink-accent hover:bg-ink-accent/90 text-white text-sm font-medium rounded-lg transition-colors"
+                                            >
+                                                Xem đáp án
+                                            </button>
                                         )}
+                                        <button
+                                            onClick={handleStartQuiz}
+                                            className="vd-focusable inline-flex items-center gap-2 px-5 py-2.5 border border-ink-border text-ink-textMid hover:bg-ink-page text-sm font-medium rounded-lg transition-colors"
+                                        >
+                                            Làm lại
+                                        </button>
                                     </div>
+
+                                    {total === 0 && (
+                                        <p className="text-center text-sm text-ink-textDim mt-4">Không có dữ liệu xem lại câu hỏi.</p>
+                                    )}
                                 </div>
-                            )}
+                                );
+                            })()}
+
+                            {appState === 'quiz_review' && quizResult && (() => {
+                                const questions = quizResult.questions || [];
+                                const total = questions.length;
+                                const question = questions[quizQIdx];
+                                if (!question) return null;
+                                return (
+                                    <div>
+                                        <div className="flex justify-between items-center mb-6 pb-4 border-b border-ink-border">
+                                            <h3 className="text-base font-semibold text-ink-text">
+                                                Đáp án &amp; giải thích
+                                            </h3>
+                                            <span className="text-xs font-mono font-medium text-ink-textDim">{quizQIdx + 1}/{total}</span>
+                                        </div>
+
+                                        <p className="text-sm font-medium text-ink-text mb-3">
+                                            Câu {quizQIdx + 1}: {question.text}
+                                        </p>
+                                        <div className="space-y-1.5 mb-6">
+                                            {(question.options || []).map(option => (
+                                                <div
+                                                    key={option.id}
+                                                    className={`flex items-center gap-2 p-2.5 rounded-lg text-sm ${option.id === question.correctId
+                                                        ? 'bg-ink-correctA text-ink-correct font-medium'
+                                                        : option.id === question.selectedId && option.id !== question.correctId
+                                                            ? 'bg-ink-wrongA text-ink-wrong'
+                                                            : 'text-ink-textMid'
+                                                        }`}
+                                                >
+                                                    {option.id === question.correctId ? (
+                                                        <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7"/></svg>
+                                                    ) : option.id === question.selectedId && option.id !== question.correctId ? (
+                                                        <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/></svg>
+                                                    ) : (
+                                                        <span className="w-4 h-4 flex-shrink-0"/>
+                                                    )}
+                                                    {option.text}
+                                                </div>
+                                            ))}
+                                            {question.selectedId == null && (
+                                                <p className="text-xs text-ink-wrong font-medium pt-1">Chưa trả lời.</p>
+                                            )}
+                                        </div>
+
+                                        {/* Porting logic từ vibe-demo/quiz (renderQuestionMap graded=true):
+                                            bấm để nhảy thẳng tới câu bất kỳ trong lúc lật đáp án. */}
+                                        <div className="flex flex-wrap gap-1.5 mb-5 pt-4 border-t border-ink-border">
+                                            {questions.map((q, i) => {
+                                                const ok = q.selectedId === q.correctId;
+                                                const isCurrent = i === quizQIdx;
+                                                return (
+                                                    <button
+                                                        key={q.id}
+                                                        onClick={() => setQuizQIdx(i)}
+                                                        aria-label={`Câu ${i + 1}, ${ok ? 'đúng' : 'sai'}`}
+                                                        aria-current={isCurrent ? 'true' : undefined}
+                                                        className={`vd-focusable w-8 h-8 rounded-ink-sm border text-[11px] font-mono font-semibold transition-colors ${ok ? 'border-ink-correct bg-ink-correctA text-ink-correct' : 'border-ink-wrong bg-ink-wrongA text-ink-wrong'} ${isCurrent ? 'ring-2 ring-ink-accent/25' : ''}`}
+                                                    >
+                                                        {String(i + 1).padStart(2, '0')}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+
+                                        <div className="flex items-center gap-2.5">
+                                            <button
+                                                onClick={() => setQuizQIdx(i => Math.max(0, i - 1))}
+                                                disabled={quizQIdx === 0}
+                                                className="vd-focusable inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-ink-border text-xs font-medium text-ink-textMid disabled:opacity-40 disabled:cursor-not-allowed hover:bg-ink-page transition-colors"
+                                            >
+                                                ← Trước
+                                            </button>
+                                            <button
+                                                onClick={() => setQuizQIdx(i => Math.min(total - 1, i + 1))}
+                                                disabled={quizQIdx === total - 1}
+                                                className="vd-focusable inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-ink-border text-xs font-medium text-ink-textMid disabled:opacity-40 disabled:cursor-not-allowed hover:bg-ink-page transition-colors"
+                                            >
+                                                Sau →
+                                            </button>
+                                            <button
+                                                onClick={() => setAppState('quiz_result')}
+                                                className="vd-focusable ml-auto inline-flex items-center gap-2 px-4 py-2 border border-ink-border text-ink-textMid hover:bg-ink-page text-xs font-medium rounded-lg transition-colors"
+                                            >
+                                                ← Kết quả
+                                            </button>
+                                        </div>
+                                    </div>
+                                );
+                            })()}
 
                             {appState === 'error' && (
                                 <div className="flex flex-col items-center py-12 text-center">
