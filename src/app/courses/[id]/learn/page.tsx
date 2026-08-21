@@ -566,7 +566,10 @@ export default function LearningPage() {
             {/* Lesson Sub-Header — "tắt đèn" cùng phòng khi focusMode: nền/chữ
                 chuyển sang cặp màu tối (ink.room + trắng mờ), progress bar
                 chuyển sang ink-accentScreen, cùng công thức với vibe-demo/page.tsx. */}
-            <div className={`border-b sticky z-10 transition-colors duration-500 ${focusMode ? 'top-0 bg-ink-room border-b-[rgba(244,246,252,0.10)]' : 'top-16 bg-ink-panel border-ink-border'}`}>
+            {/* top-14 (56px) = APP_TOP_BAR_H của Header phía trên khi !focusMode
+                (Header trước đây cao h-16/64px — top-16 cũ đã lệch sau khi Header
+                đổi sang APP_TOP_BAR_H trong bước "Header→TopNav motif"). */}
+            <div className={`border-b sticky z-10 transition-colors duration-500 ${focusMode ? 'top-0 bg-ink-room border-b-[rgba(244,246,252,0.10)]' : 'top-14 bg-ink-panel border-ink-border'}`}>
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex items-center justify-between h-14">
                         <div className="flex items-center gap-4 min-w-0">
