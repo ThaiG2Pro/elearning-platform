@@ -9,12 +9,28 @@ module.exports = {
     theme: {
     	extend: {
     		fontFamily: {
-    			sans: ['var(--font-inter)', 'Inter', 'system-ui', 'sans-serif'],
+    			// "Mực xanh trên giấy trắng" — Be Vietnam Pro (đăng ký ở layout.tsx
+    			// dưới biến CSS --font-sans), giữ Inter/system-ui làm fallback.
+    			sans: ['var(--font-sans)', 'Inter', 'system-ui', 'sans-serif'],
     		},
     		borderRadius: {
     			lg: 'var(--radius)',
     			md: 'calc(var(--radius) - 2px)',
-    			sm: 'calc(var(--radius) - 4px)'
+    			sm: 'calc(var(--radius) - 4px)',
+    			// Bán kính bo góc riêng của hệ "Mực xanh trên giấy trắng" — đồng
+    			// bộ 1-1 với R trong src/lib/vibe/theme.ts (sm=6/md=12/lg=16).
+    			// Namespace riêng (rounded-ink-*) để không đè lên rounded-sm/md/lg
+    			// mặc định mà các trang chưa migrate vẫn đang dùng.
+    			'ink-sm': '6px',
+    			'ink-md': '12px',
+    			'ink-lg': '16px',
+    		},
+    		boxShadow: {
+    			// Đồng bộ 1-1 với T.shadowSm / T.shadowMd trong theme.ts — bóng
+    			// đổ mềm, 2 lớp (contact shadow sát + ambient shadow xa), thay
+    			// cho shadow-sm/shadow-md mặc định của Tailwind trên panel/card.
+    			'ink-sm': '0 1px 2px rgba(33,38,51,0.04), 0 4px 12px -6px rgba(33,38,51,0.08)',
+    			'ink-md': '0 2px 4px rgba(33,38,51,0.04), 0 16px 40px -16px rgba(33,38,51,0.20)',
     		},
     		colors: {
     			background: 'hsl(var(--background))',

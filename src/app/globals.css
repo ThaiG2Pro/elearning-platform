@@ -122,6 +122,27 @@
 }
 
 
+/* ─────────────────────────────────────────────────────────────────────────
+   "MỰC XANH TRÊN GIẤY TRẮNG" — global a11y/motion cho hệ ink-*
+   Đồng bộ 1-1 với VIBE_GLOBAL_CSS trong src/lib/vibe/theme.ts. Trước đây
+   mỗi trang /vibe-demo/* tự nhúng qua <style>{VIBE_GLOBAL_CSS}</style>; ở
+   trang thật đặt 1 lần ở đây để mọi trang dùng chung .vd-focusable/.vd-ink-in
+   mà không phải tự import/nhúng lại.
+   ───────────────────────────────────────────────────────────────────────── */
+.vd-focusable:focus-visible {
+  outline: 2px solid #2E4A9E;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+@keyframes vd-ink-in {
+  from { opacity: 0; transform: translateY(-3px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.vd-ink-in { animation: vd-ink-in 400ms ease both; }
+@media (prefers-reduced-motion: reduce) {
+  .vd-ink-in { animation: none; }
+}
+
 @layer base {
   :root {
     /* Corporate Professional — Blue base */

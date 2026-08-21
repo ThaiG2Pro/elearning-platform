@@ -35,6 +35,7 @@ import {
 } from '@/types/management.types';
 import { Button } from '@/components/ui/button';
 import Toast from '@/components/Toast';
+import AILessonComposer, { AIVideoSourceOption } from '@/components/AILessonComposer';
 import {
     Dialog,
     DialogContent,
@@ -159,6 +160,12 @@ export default function CourseEditPage() {
     // đúng lesson QUIZ đang mở (không tạo lesson mới).
     const [aiQuizSourceLessonId, setAiQuizSourceLessonId] = useState<number | null>(null);
     const [savingAIQuizIntoCurrentLesson, setSavingAIQuizIntoCurrentLesson] = useState(false);
+    // Quyết định UX 2026-08-21: trang edit là nơi duy nhất trigger AI (trang
+    // học chỉ điều hướng về đây). Composer = dialog cấp-space: chọn bất kỳ
+    // video nào trong space làm nguồn + đủ tuỳ chọn (số câu/độ khó/chủ đề
+    // focus/BYOK/trả phí), quiz sinh ra ráp NGAY thành lesson QUIZ mới.
+    const [aiComposerOpen, setAiComposerOpen] = useState(false);
+    const [aiComposerType, setAiComposerType] = useState<'summary' | 'quiz'>('quiz');
 
     const isProcessing = quizFlowStatus === 'processing';
     const isReviewing = quizFlowStatus === 'reviewing';
@@ -605,10 +612,9 @@ export default function CourseEditPage() {
     };
 
     // AI trong editor — luôn do user chủ động bấm (không có gì tự chạy).
-    // Dùng chung generateAIContent với AIGenerationPanel ở trang học: cùng 1
-    // Source có thể đã có bản SHARED_FREE cache sẵn từ lần ai đó generate ở
-    // trang học, nên bấm ở đây có thể trả về ngay (servedFromCache), không
-    // tốn thêm 1 lần gọi LLM.
+    // Cùng 1 Source có thể đã có bản SHARED_FREE cache sẵn (vd generate qua
+    // composer cấp-space phía trên), nên bấm ở đây có thể trả về ngay
+    // (servedFromCache), không tốn thêm 1 lần gọi LLM.
     const handleGenerateAISummary = async () => {
         if (!lessonForm.sourceId) return;
         setAiLoading('summary');
@@ -616,15 +622,15 @@ export default function CourseEditPage() {
         setAiErrorCode(null);
         try {
             const result = await generateAIContent(lessonForm.sourceId, 'summary');
-            // Bỏ sót ban đầu: 1 kết quả FAILED (LLM/proxy lỗi tạm thời) trả
-            // về HTTP 200 kèm content=null, không throw — thiếu check này
-            // khiến người dùng bấm nút mà không thấy gì xảy ra, không thấy
-            // lỗi, không hiểu vì sao (đúng như phản ánh thật). Cùng nhánh xử
-            // lý `status === 'FAILED'` mà AIGenerationPanel ở trang học đã có.
-            if (result.status === 'FAILED') {
-                setAiError('Tạo tóm tắt AI thất bại, thử lại sau.');
-            } else if (result.content) {
+            // Contract sync (hướng a): POST chỉ trả về khi READY (có content)
+            // hoặc throw. Check theo content thay vì `status === 'FAILED'` —
+            // server không bao giờ trả FAILED qua POST (nó throw), và cache
+            // giờ chỉ khớp READY; content rỗng là bất thường → hiện lỗi thay
+            // vì im lặng không làm gì.
+            if (result.content) {
                 setAiSummary(result.content);
+            } else {
+                setAiError('Tạo tóm tắt AI thất bại, thử lại sau.');
             }
         } catch (err: any) {
             setAiError(err.message || 'Có lỗi xảy ra khi tạo tóm tắt bằng AI.');
@@ -647,11 +653,13 @@ export default function CourseEditPage() {
         setAiQuizServedFromCache(false);
         try {
             const result = await generateAIContent(sourceId, 'quiz', paymentMethod ? { paymentMethod } : undefined);
-            if (result.status === 'FAILED') {
-                setAiError('Tạo quiz AI thất bại, thử lại sau.');
-            } else if (result.content) {
+            // Cùng lý do với handleGenerateAISummary: check theo content,
+            // nhánh FAILED cũ là dead code với contract sync.
+            if (result.content) {
                 setAiQuizDraft(parseAIQuizContent(result.content));
                 setAiQuizServedFromCache(result.servedFromCache);
+            } else {
+                setAiError('Tạo quiz AI thất bại, thử lại sau.');
             }
         } catch (err: any) {
             setAiError(err.message || 'Có lỗi xảy ra khi tạo quiz bằng AI.');
@@ -727,6 +735,39 @@ export default function CourseEditPage() {
         }
     };
 
+    // Composer cấp-space (AILessonComposer): tạo lesson QUIZ mới trong đúng
+    // chương của video nguồn từ bản nháp đã parse. Tách khỏi
+    // handleCreateQuizLessonFromAIDraft vì chương đích do composer chỉ định
+    // (video nguồn chọn từ dropdown, có thể ở bất kỳ chương nào), không suy
+    // ra từ lesson đang mở. Throw lại cho composer catch → lỗi hiện trong
+    // dialog, không toast đè lên dialog đang mở.
+    const handleComposerCreateQuizLesson = async (
+        chapterId: number,
+        draft: AIQuizQuestionDraft[],
+        sourceLessonTitle: string,
+        servedFromCache: boolean,
+    ) => {
+        const targetChapter = course?.chapters.find(ch => ch.id === chapterId);
+        if (!targetChapter) throw new Error('Không tìm thấy chương của video nguồn — tải lại trang rồi thử lại.');
+        const nextIndex = targetChapter.lessons.length + 1;
+        const title = `Quiz (AI) — ${sourceLessonTitle}`;
+        const res = await createLesson(chapterId, { title, videoUrl: '', orderIndex: nextIndex, type: 'QUIZ' });
+        const newLessonId = Number((res as any).lessonId ?? (res as any).id);
+
+        await saveGeneratedQuizQuestions(newLessonId, draft);
+
+        const newLesson: Lesson = { id: newLessonId, title, type: 'QUIZ', orderIndex: nextIndex };
+        setCourse(prev => prev ? {
+            ...prev,
+            chapters: prev.chapters.map(ch => ch.id === chapterId ? { ...ch, lessons: [...ch.lessons, newLesson] } : ch)
+        } : null);
+        setToast({
+            message: `Đã tạo bài quiz mới với ${draft.length} câu hỏi!${servedFromCache ? ' (dùng lại bản AI đã tạo trước đó cho video này)' : ''}`,
+            type: 'success',
+        });
+        selectLesson(newLesson);
+    };
+
     const getErrorMessage = (errorCode: string) => {
         switch (errorCode) {
             case 'ACCESS_DENIED':
@@ -746,10 +787,10 @@ export default function CourseEditPage() {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+            <div className="min-h-screen bg-ink-page flex items-center justify-center">
                 <div className="flex flex-col items-center gap-3">
-                    <div className="animate-spin rounded-full h-9 w-9 border-2 border-indigo-600 border-t-transparent"/>
-                    <p className="text-xs text-slate-500 font-medium">Đang tải trình chỉnh sửa Space…</p>
+                    <div className="animate-spin rounded-full h-9 w-9 border-2 border-ink-accent border-t-transparent"/>
+                    <p className="text-xs text-ink-textMuted font-medium">Đang tải trình chỉnh sửa Space…</p>
                 </div>
             </div>
         );
@@ -757,15 +798,15 @@ export default function CourseEditPage() {
 
     if (error) {
         return (
-            <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-                <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-8 max-w-md w-full text-center">
+            <div className="min-h-screen bg-ink-page flex items-center justify-center p-4">
+                <div className="bg-ink-panel border border-ink-border rounded-2xl shadow-ink-sm p-8 max-w-md w-full text-center">
                     <div className="w-12 h-12 rounded-full bg-red-50 text-red-500 flex items-center justify-center mx-auto mb-4">
                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
                         </svg>
                     </div>
-                    <h3 className="text-base font-bold text-slate-800 mb-2">Đã có lỗi xảy ra</h3>
-                    <p className="text-sm text-slate-600 mb-6">{getErrorMessage(error)}</p>
+                    <h3 className="text-base font-bold text-ink-text mb-2">Đã có lỗi xảy ra</h3>
+                    <p className="text-sm text-ink-textMid mb-6">{getErrorMessage(error)}</p>
                     <Button onClick={() => router.push('/')} className="w-full">
                         Quay lại trang chủ
                     </Button>
@@ -786,8 +827,22 @@ export default function CourseEditPage() {
         ? course.chapters.find(ch => ch.lessons.some(l => l.id === selectedItem.id))
         : undefined;
 
+    // Toàn bộ video có Source trong space — ứng viên "video nguồn" cho
+    // composer AI (không giới hạn cùng chương như dropdown trong lesson QUIZ).
+    const aiVideoOptions: AIVideoSourceOption[] = course.chapters.flatMap(ch =>
+        ch.lessons
+            .filter((l): l is Lesson & { sourceId: number } => l.type === 'VIDEO' && !!l.sourceId)
+            .map(l => ({
+                lessonId: l.id,
+                lessonTitle: l.title,
+                sourceId: l.sourceId,
+                chapterId: ch.id,
+                chapterTitle: ch.title,
+            }))
+    );
+
     return (
-        <div className="min-h-screen bg-slate-50 flex flex-col">
+        <div className="min-h-screen bg-ink-page flex flex-col">
             {/* Toast Notification */}
             {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
@@ -835,15 +890,24 @@ export default function CourseEditPage() {
                 </DialogContent>
             </Dialog>
 
+            {/* Composer AI cấp-space — mở từ 2 nút trigger ở sidebar */}
+            <AILessonComposer
+                open={aiComposerOpen}
+                initialType={aiComposerType}
+                videoOptions={aiVideoOptions}
+                onClose={() => setAiComposerOpen(false)}
+                onCreateQuizLesson={handleComposerCreateQuizLesson}
+            />
+
             {/* Top Navigation Bar */}
-            <header className="bg-white border-b border-slate-200 sticky top-0 z-20 shadow-xs">
+            <header className="bg-ink-panel border-b border-ink-border sticky top-0 z-20 shadow-ink-sm">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex items-center justify-between h-16">
                         {/* Left: Back & Title */}
                         <div className="flex items-center gap-4 min-w-0">
                             <button
                                 onClick={() => router.push('/')}
-                                className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 transition-colors font-medium focus:outline-none"
+                                className="inline-flex items-center gap-1.5 text-sm text-ink-textMuted hover:text-ink-text transition-colors font-medium focus:outline-none"
                             >
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7"/>
@@ -851,11 +915,11 @@ export default function CourseEditPage() {
                                 <span>Trang chủ</span>
                             </button>
 
-                            <div className="w-px h-5 bg-slate-200 hidden sm:block"/>
+                            <div className="w-px h-5 bg-ink-border hidden sm:block"/>
 
                             <div className="min-w-0">
                                 <div className="flex items-center gap-2">
-                                    <h1 className="text-sm font-bold text-slate-900 truncate max-w-xs sm:max-w-md leading-none">
+                                    <h1 className="text-sm font-bold text-ink-text truncate max-w-xs sm:max-w-md leading-none">
                                         {course.title}
                                     </h1>
                                     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold border ${
@@ -866,7 +930,7 @@ export default function CourseEditPage() {
                                         {course.status === 'Active' ? 'Đang hoạt động' : 'Đã lưu trữ'}
                                     </span>
                                 </div>
-                                <p className="text-xs text-slate-400 mt-0.5">
+                                <p className="text-xs text-ink-textDim mt-0.5">
                                     {course.chapters.length} chương • {totalLessons} bài học
                                 </p>
                             </div>
@@ -884,9 +948,9 @@ export default function CourseEditPage() {
                                 title="Sao chép link chia sẻ Space"
                             >
                                 {generatingShare ? (
-                                    <span className="w-3.5 h-3.5 border-2 border-slate-400 border-t-transparent rounded-full animate-spin"/>
+                                    <span className="w-3.5 h-3.5 border-2 border-ink-textDim border-t-transparent rounded-full animate-spin"/>
                                 ) : (
-                                    <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg className="w-4 h-4 text-ink-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/>
                                     </svg>
                                 )}
@@ -900,7 +964,7 @@ export default function CourseEditPage() {
                                 onClick={() => router.push(`/courses/${courseId}/learn`)}
                                 className="inline-flex items-center gap-1.5"
                             >
-                                <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg className="w-4 h-4 text-ink-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                 </svg>
@@ -910,13 +974,13 @@ export default function CourseEditPage() {
                     </div>
 
                     {/* Sub-Header Tabs */}
-                    <div className="flex border-t border-slate-100 gap-6">
+                    <div className="flex border-t border-ink-pageDim gap-6">
                         <button
                             onClick={() => setActiveTab('curriculum')}
                             className={`py-3 text-xs font-semibold border-b-2 transition-colors flex items-center gap-2 ${
                                 activeTab === 'curriculum'
-                                    ? 'border-indigo-600 text-indigo-600'
-                                    : 'border-transparent text-slate-500 hover:text-slate-800'
+                                    ? 'border-ink-accent text-ink-accent'
+                                    : 'border-transparent text-ink-textMuted hover:text-ink-text'
                             }`}
                         >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -928,8 +992,8 @@ export default function CourseEditPage() {
                             onClick={() => setActiveTab('settings')}
                             className={`py-3 text-xs font-semibold border-b-2 transition-colors flex items-center gap-2 ${
                                 activeTab === 'settings'
-                                    ? 'border-indigo-600 text-indigo-600'
-                                    : 'border-transparent text-slate-500 hover:text-slate-800'
+                                    ? 'border-ink-accent text-ink-accent'
+                                    : 'border-transparent text-ink-textMuted hover:text-ink-text'
                             }`}
                         >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -948,34 +1012,56 @@ export default function CourseEditPage() {
                     <div className="flex flex-col lg:flex-row gap-6">
                         {/* Sidebar: Course Tree */}
                         <div className="w-full lg:w-80 flex-shrink-0">
-                            <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-4 sticky top-36">
-                                <div className="flex items-center justify-between mb-3 pb-3 border-b border-slate-100">
-                                    <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                            <div className="bg-ink-panel rounded-2xl border border-ink-border shadow-ink-sm p-4 sticky top-36">
+                                <div className="flex items-center justify-between mb-3 pb-3 border-b border-ink-pageDim">
+                                    <h2 className="text-xs font-bold text-ink-text uppercase tracking-wider">
                                         Nội dung Space
                                     </h2>
-                                    <span className="text-xs text-slate-400 font-medium">
+                                    <span className="text-xs text-ink-textDim font-medium">
                                         {course.chapters.length} chương
                                     </span>
                                 </div>
 
+                                {/* Trigger AI tinh tế cấp-space (quyết định UX 2026-08-21):
+                                    chỉ hiện khi có ít nhất 1 video từ link làm nguồn được. */}
+                                {aiVideoOptions.length > 0 && (
+                                    <div className="flex gap-2 mb-3">
+                                        <button
+                                            onClick={() => { setAiComposerType('quiz'); setAiComposerOpen(true); }}
+                                            className="flex-1 inline-flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg text-[11px] font-medium border border-dashed border-ink-accentA text-ink-accent hover:bg-ink-accentA hover:border-ink-accentA transition-colors"
+                                        >
+                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                                            </svg>
+                                            Tạo quiz tại đây
+                                        </button>
+                                        <button
+                                            onClick={() => { setAiComposerType('summary'); setAiComposerOpen(true); }}
+                                            className="flex-1 inline-flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg text-[11px] font-medium border border-dashed border-ink-accentA text-ink-accent hover:bg-ink-accentA hover:border-ink-accentA transition-colors"
+                                        >
+                                            Tạo tóm tắt
+                                        </button>
+                                    </div>
+                                )}
+
                                 {/* Chapter Tree List */}
                                 <div className="space-y-3 max-h-[calc(100vh-250px)] overflow-y-auto pr-1">
                                     {course.chapters.length === 0 ? (
-                                        <div className="p-6 border-2 border-dashed border-slate-200 rounded-xl text-center">
-                                            <div className="w-10 h-10 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto mb-2">
+                                        <div className="p-6 border-2 border-dashed border-ink-border rounded-xl text-center">
+                                            <div className="w-10 h-10 rounded-full bg-ink-accentA text-ink-accent flex items-center justify-center mx-auto mb-2">
                                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
                                                 </svg>
                                             </div>
-                                            <p className="text-xs font-semibold text-slate-700 mb-1">Chưa có chương nào</p>
-                                            <p className="text-xs text-slate-400 mb-4">Bắt đầu bằng cách tạo chương đầu tiên.</p>
+                                            <p className="text-xs font-semibold text-ink-text mb-1">Chưa có chương nào</p>
+                                            <p className="text-xs text-ink-textDim mb-4">Bắt đầu bằng cách tạo chương đầu tiên.</p>
                                             <Button
                                                 onClick={() => {
                                                     setChapterForm({ title: 'Chương 1: Tổng quan', orderIndex: 0 });
                                                     setShowAddChapter(true);
                                                 }}
                                                 size="sm"
-                                                className="w-full bg-indigo-600 text-white"
+                                                className="w-full bg-ink-accent text-white"
                                             >
                                                 + Tạo chương đầu tiên
                                             </Button>
@@ -986,22 +1072,22 @@ export default function CourseEditPage() {
                                             return (
                                                 <div
                                                     key={chapter.id}
-                                                    className={`border rounded-xl transition-all overflow-hidden bg-white ${
+                                                    className={`border rounded-xl transition-all overflow-hidden bg-ink-panel ${
                                                         isChapterSelected
-                                                            ? 'border-indigo-400 ring-2 ring-indigo-50/50 shadow-xs'
-                                                            : 'border-slate-200 hover:border-slate-300'
+                                                            ? 'border-ink-accent ring-2 ring-ink-accentA shadow-ink-sm'
+                                                            : 'border-ink-border hover:border-ink-borderHi'
                                                     }`}
                                                 >
                                                     {/* Chapter Header */}
                                                     <div
                                                         onClick={() => handleChapterSelect(chapter)}
-                                                        className="px-3.5 py-2.5 cursor-pointer bg-slate-50/60 hover:bg-slate-100/80 transition-colors flex items-center justify-between gap-2"
+                                                        className="px-3.5 py-2.5 cursor-pointer bg-ink-page/60 hover:bg-ink-pageDim/80 transition-colors flex items-center justify-between gap-2"
                                                     >
                                                         <div className="flex items-center gap-2 min-w-0">
-                                                            <span className="text-xs font-bold text-indigo-600 flex-shrink-0">
+                                                            <span className="text-xs font-bold text-ink-accent flex-shrink-0">
                                                                 C{chIdx + 1}
                                                             </span>
-                                                            <span className="text-xs font-semibold text-slate-800 truncate">
+                                                            <span className="text-xs font-semibold text-ink-text truncate">
                                                                 {chapter.title}
                                                             </span>
                                                         </div>
@@ -1010,7 +1096,7 @@ export default function CourseEditPage() {
                                                             <button
                                                                 disabled={chIdx === 0}
                                                                 onClick={() => handleMoveChapter(chapter.id, -1)}
-                                                                className="p-1 text-slate-400 hover:text-slate-700 disabled:opacity-30 rounded hover:bg-slate-200"
+                                                                className="p-1 text-ink-textDim hover:text-ink-text disabled:opacity-30 rounded hover:bg-ink-border"
                                                                 title="Chuyển lên"
                                                             >
                                                                 ↑
@@ -1018,7 +1104,7 @@ export default function CourseEditPage() {
                                                             <button
                                                                 disabled={chIdx === course.chapters.length - 1}
                                                                 onClick={() => handleMoveChapter(chapter.id, 1)}
-                                                                className="p-1 text-slate-400 hover:text-slate-700 disabled:opacity-30 rounded hover:bg-slate-200"
+                                                                className="p-1 text-ink-textDim hover:text-ink-text disabled:opacity-30 rounded hover:bg-ink-border"
                                                                 title="Chuyển xuống"
                                                             >
                                                                 ↓
@@ -1028,14 +1114,14 @@ export default function CourseEditPage() {
                                                                     setAddingLessonChapterId(addingLessonChapterId === chapter.id ? null : chapter.id);
                                                                     setNewLessonTitle('');
                                                                 }}
-                                                                className="text-xs font-medium text-indigo-600 hover:text-indigo-800 p-1 hover:bg-indigo-50 rounded transition-colors"
+                                                                className="text-xs font-medium text-ink-accent hover:text-ink-text p-1 hover:bg-ink-accentA rounded transition-colors"
                                                                 title="Thêm bài học"
                                                             >
                                                                 + Bài học
                                                             </button>
                                                             <button
                                                                 onClick={() => setChapterToDelete(chapter.id)}
-                                                                className="text-slate-400 hover:text-red-600 p-1 hover:bg-red-50 rounded transition-colors text-xs"
+                                                                className="text-ink-textDim hover:text-red-600 p-1 hover:bg-red-50 rounded transition-colors text-xs"
                                                                 title="Xóa chương"
                                                             >
                                                                 ✕
@@ -1045,7 +1131,7 @@ export default function CourseEditPage() {
 
                                                     {/* Quick Add Lesson Input */}
                                                     {addingLessonChapterId === chapter.id && (
-                                                        <div className="p-2.5 bg-indigo-50/50 border-t border-b border-indigo-100 space-y-2">
+                                                        <div className="p-2.5 bg-ink-accentA border-t border-b border-ink-accentA space-y-2">
                                                             <input
                                                                 type="text"
                                                                 placeholder="Tên bài học mới…"
@@ -1054,14 +1140,14 @@ export default function CourseEditPage() {
                                                                 onKeyDown={(e) => {
                                                                     if (e.key === 'Enter') handleQuickAddLesson(chapter.id);
                                                                 }}
-                                                                className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                                                className="w-full px-2.5 py-1.5 bg-ink-panel border border-ink-borderHi rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-ink-accent"
                                                                 autoFocus
                                                             />
                                                             <div className="flex items-center justify-between gap-2">
                                                                 <select
                                                                     value={newLessonType}
                                                                     onChange={(e) => setNewLessonType(e.target.value as 'VIDEO' | 'QUIZ')}
-                                                                    className="px-2 py-1 bg-white border border-slate-300 rounded-lg text-xs text-slate-700"
+                                                                    className="px-2 py-1 bg-ink-panel border border-ink-borderHi rounded-lg text-xs text-ink-text"
                                                                 >
                                                                     <option value="VIDEO">📹 Video</option>
                                                                     <option value="QUIZ">📝 Quiz</option>
@@ -1070,7 +1156,7 @@ export default function CourseEditPage() {
                                                                     <button
                                                                         onClick={() => setAddingLessonChapterId(null)}
                                                                         disabled={creatingLesson}
-                                                                        className="px-2 py-1 text-xs text-slate-500 hover:text-slate-700 disabled:opacity-50"
+                                                                        className="px-2 py-1 text-xs text-ink-textMuted hover:text-ink-text disabled:opacity-50"
                                                                     >
                                                                         Hủy
                                                                     </button>
@@ -1078,7 +1164,7 @@ export default function CourseEditPage() {
                                                                         onClick={() => handleQuickAddLesson(chapter.id)}
                                                                         disabled={creatingLesson}
                                                                         size="sm"
-                                                                        className="text-xs py-1 h-7 bg-indigo-600 text-white"
+                                                                        className="text-xs py-1 h-7 bg-ink-accent text-white"
                                                                     >
                                                                         {creatingLesson ? 'Đang tạo…' : 'Tạo'}
                                                                     </Button>
@@ -1090,7 +1176,7 @@ export default function CourseEditPage() {
                                                     {/* Lessons List */}
                                                     <div className="p-1 space-y-1">
                                                         {chapter.lessons.length === 0 ? (
-                                                            <p className="text-[11px] text-slate-400 italic px-3 py-1.5 text-center">
+                                                            <p className="text-[11px] text-ink-textDim italic px-3 py-1.5 text-center">
                                                                 Chưa có bài học trong chương này
                                                             </p>
                                                         ) : (
@@ -1102,12 +1188,12 @@ export default function CourseEditPage() {
                                                                         onClick={() => selectLesson(lesson)}
                                                                         className={`group flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-xs cursor-pointer transition-all ${
                                                                             isLessonSelected
-                                                                                ? 'bg-indigo-50/90 text-indigo-900 font-semibold'
-                                                                                : 'hover:bg-slate-100/80 text-slate-700'
+                                                                                ? 'bg-ink-accentA text-ink-text font-semibold'
+                                                                                : 'hover:bg-ink-pageDim/80 text-ink-text'
                                                                         }`}
                                                                     >
                                                                         <div className="flex items-center gap-2 min-w-0 flex-1">
-                                                                            <span className="text-slate-400 text-[11px]">
+                                                                            <span className="text-ink-textDim text-[11px]">
                                                                                 {lesson.type === 'VIDEO' ? '📹' : '📝'}
                                                                             </span>
                                                                             <span className="truncate">{lesson.title}</span>
@@ -1118,7 +1204,7 @@ export default function CourseEditPage() {
                                                                             <button
                                                                                 disabled={lIdx === 0}
                                                                                 onClick={() => handleMoveLesson(chapter.id, lesson.id, -1)}
-                                                                                className="p-1 text-slate-400 hover:text-slate-700 disabled:opacity-30 rounded hover:bg-slate-200"
+                                                                                className="p-1 text-ink-textDim hover:text-ink-text disabled:opacity-30 rounded hover:bg-ink-border"
                                                                                 title="Lên"
                                                                             >
                                                                                 ↑
@@ -1126,14 +1212,14 @@ export default function CourseEditPage() {
                                                                             <button
                                                                                 disabled={lIdx === chapter.lessons.length - 1}
                                                                                 onClick={() => handleMoveLesson(chapter.id, lesson.id, 1)}
-                                                                                className="p-1 text-slate-400 hover:text-slate-700 disabled:opacity-30 rounded hover:bg-slate-200"
+                                                                                className="p-1 text-ink-textDim hover:text-ink-text disabled:opacity-30 rounded hover:bg-ink-border"
                                                                                 title="Xuống"
                                                                             >
                                                                                 ↓
                                                                             </button>
                                                                             <button
                                                                                 onClick={() => setLessonToDelete({ chapterId: chapter.id, lessonId: lesson.id })}
-                                                                                className="p-1 text-slate-400 hover:text-red-600 rounded hover:bg-red-50"
+                                                                                className="p-1 text-ink-textDim hover:text-red-600 rounded hover:bg-red-50"
                                                                                 title="Xóa"
                                                                             >
                                                                                 ✕
@@ -1151,9 +1237,9 @@ export default function CourseEditPage() {
                                 </div>
 
                                 {/* Add Chapter Section */}
-                                <div className="mt-4 pt-3 border-t border-slate-100">
+                                <div className="mt-4 pt-3 border-t border-ink-pageDim">
                                     {showAddChapter ? (
-                                        <div className="space-y-2 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                                        <div className="space-y-2 bg-ink-page p-3 rounded-xl border border-ink-border">
                                             <input
                                                 type="text"
                                                 placeholder="Tên chương mới…"
@@ -1162,13 +1248,13 @@ export default function CourseEditPage() {
                                                 onKeyDown={(e) => {
                                                     if (e.key === 'Enter') handleCreateChapter();
                                                 }}
-                                                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                                className="w-full px-3 py-2 bg-ink-panel border border-ink-borderHi rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-ink-accent"
                                                 autoFocus
                                             />
                                             <div className="flex items-center justify-end gap-2">
                                                 <button
                                                     onClick={() => setShowAddChapter(false)}
-                                                    className="px-2.5 py-1 text-xs text-slate-500 hover:text-slate-700"
+                                                    className="px-2.5 py-1 text-xs text-ink-textMuted hover:text-ink-text"
                                                 >
                                                     Hủy
                                                 </button>
@@ -1176,7 +1262,7 @@ export default function CourseEditPage() {
                                                     onClick={handleCreateChapter}
                                                     disabled={chapterCreating}
                                                     size="sm"
-                                                    className="text-xs py-1 h-8 bg-indigo-600 text-white"
+                                                    className="text-xs py-1 h-8 bg-ink-accent text-white"
                                                 >
                                                     {chapterCreating ? 'Đang tạo…' : 'Xác nhận tạo'}
                                                 </Button>
@@ -1188,7 +1274,7 @@ export default function CourseEditPage() {
                                                 setChapterForm({ title: '', orderIndex: course.chapters.length });
                                                 setShowAddChapter(true);
                                             }}
-                                            className="w-full py-2.5 px-3 border border-dashed border-slate-300 hover:border-indigo-400 hover:bg-indigo-50/50 rounded-xl text-xs font-semibold text-indigo-600 transition-colors flex items-center justify-center gap-1.5"
+                                            className="w-full py-2.5 px-3 border border-dashed border-ink-borderHi hover:border-ink-accent hover:bg-ink-accentA rounded-xl text-xs font-semibold text-ink-accent transition-colors flex items-center justify-center gap-1.5"
                                         >
                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
@@ -1202,34 +1288,34 @@ export default function CourseEditPage() {
 
                         {/* Main Editor Panel */}
                         <div className="flex-1">
-                            <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 min-h-[500px]">
+                            <div className="bg-ink-panel rounded-2xl border border-ink-border shadow-ink-sm p-6 min-h-[500px]">
                                 {editState === 'idle' && selectedItem && 'lessons' in selectedItem ? (
                                     /* Chapter Edit Form */
                                     <div className="space-y-6">
-                                        <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                                        <div className="flex items-center justify-between border-b border-ink-pageDim pb-4">
                                             <div>
-                                                <span className="text-xs font-semibold text-indigo-600 uppercase tracking-wide">
+                                                <span className="text-xs font-semibold text-ink-accent uppercase tracking-wide">
                                                     Chỉnh sửa chương
                                                 </span>
-                                                <h3 className="text-lg font-bold text-slate-900 mt-1">
+                                                <h3 className="text-lg font-bold text-ink-text mt-1">
                                                     {selectedItem.title}
                                                 </h3>
                                             </div>
-                                            <span className="text-xs text-slate-400">
+                                            <span className="text-xs text-ink-textDim">
                                                 {selectedItem.lessons.length} bài học
                                             </span>
                                         </div>
 
                                         <div className="space-y-4 max-w-lg">
                                             <div>
-                                                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                                                <label className="block text-xs font-semibold text-ink-text mb-1.5">
                                                     Tên chương
                                                 </label>
                                                 <input
                                                     type="text"
                                                     value={chapterForm.title}
                                                     onChange={(e) => setChapterForm(prev => ({ ...prev, title: e.target.value }))}
-                                                    className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                                    className="w-full px-3.5 py-2.5 border border-ink-borderHi rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-ink-accent"
                                                 />
                                             </div>
 
@@ -1237,7 +1323,7 @@ export default function CourseEditPage() {
                                                 <Button
                                                     onClick={handleUpdateChapter}
                                                     disabled={savingChapter}
-                                                    className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                                                    className="bg-ink-accent hover:bg-ink-accent text-white"
                                                 >
                                                     {savingChapter ? 'Đang lưu…' : 'Cập nhật tên chương'}
                                                 </Button>
@@ -1254,17 +1340,17 @@ export default function CourseEditPage() {
                                 ) : editState === 'editingVideo' ? (
                                     /* Video Lesson Form */
                                     <div className="space-y-6">
-                                        <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                                        <div className="flex items-center justify-between border-b border-ink-pageDim pb-4">
                                             <div>
                                                 {parentChapterOfSelected && (
-                                                    <p className="text-xs text-slate-400 mb-1.5">
+                                                    <p className="text-xs text-ink-textDim mb-1.5">
                                                         {parentChapterOfSelected.title} <span className="mx-1">›</span> {lessonForm.title || 'Bài học mới'}
                                                     </p>
                                                 )}
-                                                <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-full mb-1">
+                                                <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-ink-accent bg-ink-accentA px-2.5 py-0.5 rounded-full mb-1">
                                                     📹 Bài học Video
                                                 </span>
-                                                <h3 className="text-lg font-bold text-slate-900">
+                                                <h3 className="text-lg font-bold text-ink-text">
                                                     {lessonForm.title || 'Chi tiết bài học'}
                                                 </h3>
                                             </div>
@@ -1274,7 +1360,7 @@ export default function CourseEditPage() {
                                             {/* Inputs Column */}
                                             <div className="space-y-4">
                                                 <div>
-                                                    <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                                                    <label className="block text-xs font-semibold text-ink-text mb-1.5">
                                                         Tên bài học
                                                     </label>
                                                     <input
@@ -1282,12 +1368,12 @@ export default function CourseEditPage() {
                                                         value={lessonForm.title}
                                                         onChange={(e) => setLessonForm(prev => ({ ...prev, title: e.target.value }))}
                                                         placeholder="Nhập tên bài học…"
-                                                        className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                                        className="w-full px-3.5 py-2.5 border border-ink-borderHi rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-ink-accent"
                                                     />
                                                 </div>
 
                                                 <div>
-                                                    <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                                                    <label className="block text-xs font-semibold text-ink-text mb-1.5">
                                                         Đường dẫn Video (YouTube)
                                                     </label>
                                                     <input
@@ -1295,14 +1381,14 @@ export default function CourseEditPage() {
                                                         value={lessonForm.videoUrl}
                                                         onChange={(e) => setLessonForm(prev => ({ ...prev, videoUrl: e.target.value }))}
                                                         placeholder="https://www.youtube.com/watch?v=…"
-                                                        className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                                        className="w-full px-3.5 py-2.5 border border-ink-borderHi rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-ink-accent"
                                                     />
                                                     {lessonForm.videoUrl && !extractYoutubeId(lessonForm.videoUrl) ? (
                                                         <p className="text-[11px] text-red-600 mt-1 font-medium">
                                                             Không phải link YouTube hợp lệ.
                                                         </p>
                                                     ) : (
-                                                        <p className="text-[11px] text-slate-400 mt-1">
+                                                        <p className="text-[11px] text-ink-textDim mt-1">
                                                             Hỗ trợ link YouTube tiêu chuẩn hoặc link ngắn (youtu.be).
                                                         </p>
                                                     )}
@@ -1311,7 +1397,7 @@ export default function CourseEditPage() {
                                                 <Button
                                                     onClick={handleSaveLesson}
                                                     disabled={savingLesson || !lessonForm.title.trim()}
-                                                    className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                                                    className="bg-ink-accent hover:bg-ink-accent text-white"
                                                 >
                                                     {savingLesson ? 'Đang lưu…' : 'Lưu bài học'}
                                                 </Button>
@@ -1319,11 +1405,11 @@ export default function CourseEditPage() {
 
                                             {/* Preview Column */}
                                             <div>
-                                                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                                                <label className="block text-xs font-semibold text-ink-text mb-1.5">
                                                     Xem trước Video Player
                                                 </label>
                                                 {lessonForm.videoUrl && extractYoutubeId(lessonForm.videoUrl) ? (
-                                                    <div className="aspect-video bg-black rounded-2xl overflow-hidden shadow-xs border border-slate-200">
+                                                    <div className="aspect-video bg-black rounded-2xl overflow-hidden shadow-ink-sm border border-ink-border">
                                                         <iframe
                                                             src={`https://www.youtube.com/embed/${extractYoutubeId(lessonForm.videoUrl)}`}
                                                             className="w-full h-full"
@@ -1331,12 +1417,12 @@ export default function CourseEditPage() {
                                                         />
                                                     </div>
                                                 ) : (
-                                                    <div className="aspect-video bg-slate-100 rounded-2xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center p-6 text-center text-slate-400">
-                                                        <svg className="w-12 h-12 mb-2 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <div className="aspect-video bg-ink-pageDim rounded-2xl border-2 border-dashed border-ink-border flex flex-col items-center justify-center p-6 text-center text-ink-textDim">
+                                                        <svg className="w-12 h-12 mb-2 text-ink-borderHi" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 10l4.553-2.069A1 1 0 0121 8.868V15.13a1 1 0 01-1.447.897L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
                                                         </svg>
                                                         <p className="text-xs font-medium">Chưa có link YouTube</p>
-                                                        <p className="text-[11px] mt-1 text-slate-400">Dán link YouTube ở cột bên trái để hiển thị xem trước tại đây.</p>
+                                                        <p className="text-[11px] mt-1 text-ink-textDim">Dán link YouTube ở cột bên trái để hiển thị xem trước tại đây.</p>
                                                     </div>
                                                 )}
                                             </div>
@@ -1346,14 +1432,14 @@ export default function CourseEditPage() {
                                             (tạo từ link, có transcript để AI đọc). Luôn optional, luôn do user
                                             chủ động bấm — không có gì tự chạy khi mở editor/thêm lesson mới. */}
                                         {lessonForm.sourceId && (
-                                            <div className="border-t border-slate-100 pt-6">
-                                                <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                                                    <svg className="w-3.5 h-3.5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <div className="border-t border-ink-pageDim pt-6">
+                                                <h4 className="text-xs font-bold text-ink-text uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                                                    <svg className="w-3.5 h-3.5 text-ink-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z"/>
                                                     </svg>
                                                     Dùng AI cho bài này
                                                 </h4>
-                                                <p className="text-[11px] text-slate-400 mb-3">
+                                                <p className="text-[11px] text-ink-textDim mb-3">
                                                     AI đọc nội dung video này để tóm tắt hoặc tạo sẵn 1 bài quiz — chỉ chạy khi bạn bấm,
                                                     kết quả quiz có thể lưu ngay thành 1 bài học mới trong chương này.
                                                 </p>
@@ -1398,37 +1484,40 @@ export default function CourseEditPage() {
                                                 )}
 
                                                 {aiSummary && (
-                                                    <div className="mt-3 p-3 rounded-lg bg-slate-50 border border-slate-100">
-                                                        <p className="text-xs font-semibold text-slate-500 mb-1.5">Tóm tắt</p>
-                                                        <p className="text-sm text-slate-700 whitespace-pre-line">{aiSummary}</p>
+                                                    <div className="mt-3 p-3 rounded-lg bg-ink-page border border-ink-pageDim">
+                                                        <p className="text-xs font-semibold text-ink-textMuted mb-1.5">Tóm tắt</p>
+                                                        <p className="text-sm text-ink-text whitespace-pre-line">{aiSummary}</p>
                                                     </div>
                                                 )}
 
                                                 {aiQuizDraft && (
-                                                    <div className="mt-3">
+                                                    // vd-ink-in — bản nháp AI vừa sinh ra, chưa lưu; viền nét đứt
+                                                    // border-ink-pencil bên dưới đánh dấu đây là "bản thảo" (motif
+                                                    // pencilLn của theme.ts), khác với câu hỏi đã lưu (viền liền).
+                                                    <div className="mt-3 vd-ink-in">
                                                         {aiQuizServedFromCache && (
-                                                            <p className="text-[11px] text-indigo-500 mb-1.5">
+                                                            <p className="text-[11px] text-ink-accent mb-1.5">
                                                                 ℹ️ Video này đã có bản quiz AI tạo trước đó (dùng lại, không tốn thêm
                                                                 lượt gọi AI) — nếu bài quiz khác trong chương cũng chọn video này làm
                                                                 nguồn, câu hỏi sẽ giống hệt nhau.
                                                             </p>
                                                         )}
                                                         <div className="flex items-center justify-between mb-2">
-                                                            <p className="text-xs font-semibold text-slate-500">
+                                                            <p className="text-xs font-semibold text-ink-textMuted">
                                                                 Xem trước quiz do AI tạo ({aiQuizDraft.length} câu)
                                                             </p>
                                                             <Button
                                                                 onClick={handleCreateQuizLessonFromAIDraft}
                                                                 disabled={creatingAIQuizLesson}
-                                                                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                                                                className="vd-focusable bg-emerald-600 hover:bg-emerald-700 text-white"
                                                             >
                                                                 {creatingAIQuizLesson ? 'Đang tạo…' : 'Tạo bài quiz mới từ đây'}
                                                             </Button>
                                                         </div>
                                                         <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
                                                             {aiQuizDraft.map((q, idx) => (
-                                                                <div key={idx} className="border border-slate-200 rounded-xl p-4 bg-slate-50/50">
-                                                                    <p className="text-xs font-bold text-slate-800 mb-2">
+                                                                <div key={idx} className="border border-dashed border-ink-pencil rounded-xl p-4 bg-ink-page/50">
+                                                                    <p className="text-xs font-bold text-ink-text mb-2">
                                                                         Câu {idx + 1}: {q.content}
                                                                     </p>
                                                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -1438,7 +1527,7 @@ export default function CourseEditPage() {
                                                                                 className={`px-3 py-1.5 rounded-lg text-xs flex items-center justify-between ${
                                                                                     opt.trim().toUpperCase() === q.correctAnswer.trim().toUpperCase()
                                                                                         ? 'bg-emerald-100/70 text-emerald-800 font-semibold border border-emerald-300'
-                                                                                        : 'bg-white text-slate-600 border border-slate-200'
+                                                                                        : 'bg-ink-panel text-ink-textMid border border-ink-border'
                                                                                 }`}
                                                                             >
                                                                                 <span>{opt}</span>
@@ -1456,17 +1545,17 @@ export default function CourseEditPage() {
                                 ) : editState === 'editingQuiz' ? (
                                     /* Quiz Lesson Form */
                                     <div className="space-y-6">
-                                        <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                                        <div className="flex items-center justify-between border-b border-ink-pageDim pb-4">
                                             <div>
                                                 {parentChapterOfSelected && (
-                                                    <p className="text-xs text-slate-400 mb-1.5">
+                                                    <p className="text-xs text-ink-textDim mb-1.5">
                                                         {parentChapterOfSelected.title} <span className="mx-1">›</span> {lessonForm.title || 'Bài học mới'}
                                                     </p>
                                                 )}
-                                                <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-purple-600 bg-purple-50 px-2.5 py-0.5 rounded-full mb-1">
+                                                <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-ink-accent bg-ink-accentA px-2.5 py-0.5 rounded-full mb-1">
                                                     📝 Bài học Quiz Trắc nghiệm
                                                 </span>
-                                                <h3 className="text-lg font-bold text-slate-900">
+                                                <h3 className="text-lg font-bold text-ink-text">
                                                     {lessonForm.title || 'Chi tiết bài học Quiz'}
                                                 </h3>
                                             </div>
@@ -1474,7 +1563,7 @@ export default function CourseEditPage() {
 
                                         <div className="space-y-4 max-w-xl">
                                             <div>
-                                                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                                                <label className="block text-xs font-semibold text-ink-text mb-1.5">
                                                     Tên bài học
                                                 </label>
                                                 <input
@@ -1482,14 +1571,14 @@ export default function CourseEditPage() {
                                                     value={lessonForm.title}
                                                     onChange={(e) => setLessonForm(prev => ({ ...prev, title: e.target.value }))}
                                                     placeholder="Nhập tên bài học Quiz…"
-                                                    className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                                    className="w-full px-3.5 py-2.5 border border-ink-borderHi rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-ink-accent"
                                                 />
                                             </div>
 
                                             <Button
                                                 onClick={handleSaveLesson}
                                                 disabled={savingLesson || !lessonForm.title.trim()}
-                                                className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                                                className="bg-ink-accent hover:bg-ink-accent text-white"
                                             >
                                                 {savingLesson ? 'Đang lưu…' : 'Lưu tên bài học'}
                                             </Button>
@@ -1497,18 +1586,18 @@ export default function CourseEditPage() {
                                             {/* Existing Questions — shown so the owner never re-uploads blind into
                                                 a destructive replace-all (BR-UPLOAD-01) without seeing what's there. */}
                                             {loadingLessonDetail ? (
-                                                <p className="text-xs text-slate-400">Đang tải câu hỏi hiện có…</p>
+                                                <p className="text-xs text-ink-textDim">Đang tải câu hỏi hiện có…</p>
                                             ) : existingQuizQuestions && existingQuizQuestions.length > 0 ? (
-                                                <div className="border-t border-slate-100 pt-4">
-                                                    <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-3">
+                                                <div className="border-t border-ink-pageDim pt-4">
+                                                    <h4 className="text-xs font-bold text-ink-text uppercase tracking-wider mb-3">
                                                         Câu hỏi hiện có ({existingQuizQuestions.length})
                                                     </h4>
                                                     <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
                                                         {existingQuizQuestions.map((q, idx) => {
                                                             const correctIdx = getCorrectOptionIndex(q);
                                                             return (
-                                                                <div key={q.id ?? idx} className="border border-slate-200 rounded-xl p-4 bg-slate-50/50">
-                                                                    <p className="text-xs font-bold text-slate-800 mb-2">
+                                                                <div key={q.id ?? idx} className="border border-ink-border rounded-xl p-4 bg-ink-page/50">
+                                                                    <p className="text-xs font-bold text-ink-text mb-2">
                                                                         Câu {idx + 1}: {getQuestionText(q)}
                                                                     </p>
                                                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -1518,7 +1607,7 @@ export default function CourseEditPage() {
                                                                                 className={`px-3 py-1.5 rounded-lg text-xs flex items-center justify-between ${
                                                                                     optIdx === correctIdx
                                                                                         ? 'bg-emerald-100/70 text-emerald-800 font-semibold border border-emerald-300'
-                                                                                        : 'bg-white text-slate-600 border border-slate-200'
+                                                                                        : 'bg-ink-panel text-ink-textMid border border-ink-border'
                                                                                 }`}
                                                                             >
                                                                                 <span>{opt}</span>
@@ -1536,7 +1625,7 @@ export default function CourseEditPage() {
                                                     </div>
                                                 </div>
                                             ) : (
-                                                <p className="text-xs text-slate-400">Chưa có câu hỏi nào trong bài học này.</p>
+                                                <p className="text-xs text-ink-textDim">Chưa có câu hỏi nào trong bài học này.</p>
                                             )}
 
                                             {/* Bổ sung: lesson QUIZ tự nó không có sourceId (tạo tay hoặc rỗng),
@@ -1556,11 +1645,11 @@ export default function CourseEditPage() {
                                                 const selectedVideo = videoCandidates.find(l => l.sourceId === selectedSourceId) ?? videoCandidates[0];
                                                 const multiChapter = new Set(videoCandidates.map(l => l.chapterTitle)).size > 1;
                                                 return (
-                                                    <div className="border-t border-slate-100 pt-4">
-                                                        <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                                                    <div className="border-t border-ink-pageDim pt-4">
+                                                        <h4 className="text-xs font-bold text-ink-text uppercase tracking-wider mb-2">
                                                             Dùng AI tạo quiz cho bài “{lessonForm.title || 'chưa đặt tên'}”
                                                         </h4>
-                                                        <p className="text-[11px] text-slate-400 mb-2">
+                                                        <p className="text-[11px] text-ink-textDim mb-2">
                                                             Chọn 1 video làm nguồn để AI đọc và sinh quiz. Kết quả lưu thẳng vào bài
                                                             học đang mở (“{lessonForm.title || 'chưa đặt tên'}”, thay thế toàn bộ câu
                                                             hỏi hiện có nếu có) — <strong>không đụng tới video hay bài quiz nào khác</strong>.
@@ -1568,7 +1657,7 @@ export default function CourseEditPage() {
                                                         <select
                                                             value={selectedSourceId}
                                                             onChange={(e) => setAiQuizSourceLessonId(Number(e.target.value))}
-                                                            className="w-full mb-2 px-2.5 py-1.5 text-xs border border-slate-300 rounded-lg bg-white"
+                                                            className="w-full mb-2 px-2.5 py-1.5 text-xs border border-ink-borderHi rounded-lg bg-ink-panel"
                                                         >
                                                             {videoCandidates.map((l) => (
                                                                 <option key={l.id} value={l.sourceId}>
@@ -1576,8 +1665,8 @@ export default function CourseEditPage() {
                                                                 </option>
                                                             ))}
                                                         </select>
-                                                        <p className="text-[11px] text-slate-500 mb-2">
-                                                            Nguồn hiện chọn: <span className="font-semibold text-slate-700">{selectedVideo.title}</span>
+                                                        <p className="text-[11px] text-ink-textMuted mb-2">
+                                                            Nguồn hiện chọn: <span className="font-semibold text-ink-text">{selectedVideo.title}</span>
                                                         </p>
                                                         <Button
                                                             variant="outline"
@@ -1611,28 +1700,28 @@ export default function CourseEditPage() {
                                                         {aiQuizDraft && (
                                                             <div className="mt-3">
                                                                 {aiQuizServedFromCache && (
-                                                                    <p className="text-[11px] text-indigo-500 mb-1.5">
+                                                                    <p className="text-[11px] text-ink-accent mb-1.5">
                                                                         ℹ️ Video “{selectedVideo.title}” đã có bản quiz AI tạo trước đó
                                                                         (dùng lại, không tốn thêm lượt gọi AI) — nếu bài quiz khác trong
                                                                         chương cũng chọn video này, câu hỏi sẽ giống hệt nhau.
                                                                     </p>
                                                                 )}
                                                                 <div className="flex items-center justify-between mb-2">
-                                                                    <p className="text-xs font-semibold text-slate-500">
+                                                                    <p className="text-xs font-semibold text-ink-textMuted">
                                                                         Xem trước quiz do AI tạo ({aiQuizDraft.length} câu)
                                                                     </p>
                                                                     <Button
                                                                         onClick={handleSaveAIQuizDraftIntoCurrentLesson}
                                                                         disabled={savingAIQuizIntoCurrentLesson}
-                                                                        className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                                                                        className="vd-focusable bg-emerald-600 hover:bg-emerald-700 text-white"
                                                                     >
                                                                         {savingAIQuizIntoCurrentLesson ? 'Đang lưu…' : 'Lưu vào bài quiz này'}
                                                                     </Button>
                                                                 </div>
                                                                 <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
                                                                     {aiQuizDraft.map((q, idx) => (
-                                                                        <div key={idx} className="border border-slate-200 rounded-xl p-4 bg-slate-50/50">
-                                                                            <p className="text-xs font-bold text-slate-800 mb-2">
+                                                                        <div key={idx} className="border border-dashed border-ink-pencil rounded-xl p-4 bg-ink-page/50">
+                                                                            <p className="text-xs font-bold text-ink-text mb-2">
                                                                                 Câu {idx + 1}: {q.content}
                                                                             </p>
                                                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -1642,7 +1731,7 @@ export default function CourseEditPage() {
                                                                                         className={`px-3 py-1.5 rounded-lg text-xs flex items-center justify-between ${
                                                                                             opt.trim().toUpperCase() === q.correctAnswer.trim().toUpperCase()
                                                                                                 ? 'bg-emerald-100/70 text-emerald-800 font-semibold border border-emerald-300'
-                                                                                                : 'bg-white text-slate-600 border border-slate-200'
+                                                                                                : 'bg-ink-panel text-ink-textMid border border-ink-border'
                                                                                         }`}
                                                                                     >
                                                                                         <span>{opt}</span>
@@ -1660,18 +1749,18 @@ export default function CourseEditPage() {
 
                                             <div>
                                                 <div className="flex items-center justify-between mb-1.5 gap-2">
-                                                    <label className="block text-xs font-semibold text-slate-700">
+                                                    <label className="block text-xs font-semibold text-ink-text">
                                                         Tải lên bộ câu hỏi từ Excel (.xlsx) — sẽ thay thế toàn bộ câu hỏi hiện có
                                                     </label>
                                                     <button
                                                         type="button"
                                                         onClick={handleDownloadQuizTemplate}
-                                                        className="shrink-0 text-xs font-semibold text-indigo-600 hover:text-indigo-700 hover:underline whitespace-nowrap"
+                                                        className="shrink-0 text-xs font-semibold text-ink-accent hover:text-ink-accent hover:underline whitespace-nowrap"
                                                     >
                                                         ⬇ Tải file mẫu
                                                     </button>
                                                 </div>
-                                                <div className="border-2 border-dashed border-slate-200 hover:border-indigo-400 bg-slate-50/50 rounded-2xl p-6 text-center transition-colors">
+                                                <div className="border-2 border-dashed border-ink-border hover:border-ink-accent bg-ink-page/50 rounded-2xl p-6 text-center transition-colors">
                                                     <input
                                                         type="file"
                                                         accept=".xlsx"
@@ -1680,15 +1769,15 @@ export default function CourseEditPage() {
                                                         id="quiz-file-upload"
                                                     />
                                                     <label htmlFor="quiz-file-upload" className="cursor-pointer block">
-                                                        <div className="w-10 h-10 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto mb-2">
+                                                        <div className="w-10 h-10 rounded-full bg-ink-accentA text-ink-accent flex items-center justify-center mx-auto mb-2">
                                                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
                                                             </svg>
                                                         </div>
-                                                        <span className="text-xs font-semibold text-indigo-600 hover:underline">
+                                                        <span className="text-xs font-semibold text-ink-accent hover:underline">
                                                             {quizFile ? quizFile.name : 'Bấm để chọn tệp Excel (.xlsx)'}
                                                         </span>
-                                                        <p className="text-[11px] text-slate-400 mt-1">
+                                                        <p className="text-[11px] text-ink-textDim mt-1">
                                                             Tệp chứa các cột: Câu hỏi, Đáp án A, B, C, D, Đáp án đúng.
                                                         </p>
                                                     </label>
@@ -1715,7 +1804,7 @@ export default function CourseEditPage() {
                                                         <Button
                                                             onClick={handleUploadQuiz}
                                                             disabled={isProcessing}
-                                                            className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
+                                                            className="vd-focusable flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
                                                         >
                                                             {isProcessing ? 'Đang tải lên…' : 'Xác nhận Tải lên'}
                                                         </Button>
@@ -1726,14 +1815,17 @@ export default function CourseEditPage() {
 
                                         {/* Quiz Questions Preview */}
                                         {isReviewing && parsedQuestions && (
-                                            <div className="mt-6 pt-6 border-t border-slate-100">
-                                                <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-3">
+                                            // vd-ink-in — vừa parse xong từ Excel, chưa "Xác nhận Tải lên";
+                                            // các card câu hỏi bên dưới dùng viền nét đứt border-ink-pencil
+                                            // (motif pencilLn) để đánh dấu đây vẫn là bản thảo, chưa lưu.
+                                            <div className="mt-6 pt-6 border-t border-ink-pageDim vd-ink-in">
+                                                <h4 className="text-xs font-bold text-ink-text uppercase tracking-wider mb-3">
                                                     Xem trước danh sách câu hỏi ({parsedQuestions.questions.length})
                                                 </h4>
                                                 <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
                                                     {parsedQuestions.questions.map((q, idx) => (
-                                                        <div key={idx} className="border border-slate-200 rounded-xl p-4 bg-slate-50/50">
-                                                            <p className="text-xs font-bold text-slate-800 mb-2">
+                                                        <div key={idx} className="border border-dashed border-ink-pencil rounded-xl p-4 bg-ink-page/50">
+                                                            <p className="text-xs font-bold text-ink-text mb-2">
                                                                 Câu {idx + 1}: {q.text}
                                                             </p>
                                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -1743,7 +1835,7 @@ export default function CourseEditPage() {
                                                                         className={`px-3 py-1.5 rounded-lg text-xs flex items-center justify-between ${
                                                                             optIdx === q.correctId
                                                                                 ? 'bg-emerald-100/70 text-emerald-800 font-semibold border border-emerald-300'
-                                                                                : 'bg-white text-slate-600 border border-slate-200'
+                                                                                : 'bg-ink-panel text-ink-textMid border border-ink-border'
                                                                         }`}
                                                                     >
                                                                         <span>{opt}</span>
@@ -1764,15 +1856,15 @@ export default function CourseEditPage() {
                                 ) : (
                                     /* Empty State when no item is selected */
                                     <div className="h-full flex flex-col items-center justify-center py-16 text-center">
-                                        <div className="w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mb-3">
+                                        <div className="w-12 h-12 rounded-full bg-ink-pageDim text-ink-textDim flex items-center justify-center mb-3">
                                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122"/>
                                             </svg>
                                         </div>
-                                        <h3 className="text-sm font-bold text-slate-700 mb-1">
+                                        <h3 className="text-sm font-bold text-ink-text mb-1">
                                             Chọn một bài học hoặc chương để chỉnh sửa
                                         </h3>
-                                        <p className="text-xs text-slate-400 max-w-sm">
+                                        <p className="text-xs text-ink-textDim max-w-sm">
                                             Bấm vào danh sách bên trái để xem và cập nhật chi tiết nội dung.
                                         </p>
                                     </div>
@@ -1784,9 +1876,9 @@ export default function CourseEditPage() {
                     /* Tab 2: Settings & Share Link */
                     <div className="max-w-3xl mx-auto space-y-6">
                         {/* Course Metadata Card */}
-                        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6">
-                            <h2 className="text-base font-bold text-slate-900 mb-4 pb-3 border-b border-slate-100 flex items-center gap-2">
-                                <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div className="bg-ink-panel rounded-2xl border border-ink-border shadow-ink-sm p-6">
+                            <h2 className="text-base font-bold text-ink-text mb-4 pb-3 border-b border-ink-pageDim flex items-center gap-2">
+                                <svg className="w-5 h-5 text-ink-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                                 </svg>
                                 Thông tin cơ bản Space
@@ -1794,26 +1886,26 @@ export default function CourseEditPage() {
 
                             <div className="space-y-4">
                                 <div>
-                                    <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                                    <label className="block text-xs font-semibold text-ink-text mb-1.5">
                                         Tên Space
                                     </label>
                                     <input
                                         type="text"
                                         value={metaTitle}
                                         onChange={(e) => setMetaTitle(e.target.value)}
-                                        className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                        className="w-full px-3.5 py-2.5 border border-ink-borderHi rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-ink-accent"
                                     />
                                 </div>
 
                                 <div>
-                                    <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                                    <label className="block text-xs font-semibold text-ink-text mb-1.5">
                                         Mô tả tổng quan Space
                                     </label>
                                     <textarea
                                         value={metaDesc}
                                         onChange={(e) => setMetaDesc(e.target.value)}
                                         rows={4}
-                                        className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+                                        className="w-full px-3.5 py-2.5 border border-ink-borderHi rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-ink-accent resize-none"
                                     />
                                 </div>
 
@@ -1821,7 +1913,7 @@ export default function CourseEditPage() {
                                     <Button
                                         onClick={handleSaveSettings}
                                         disabled={savingMeta}
-                                        className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                                        className="bg-ink-accent hover:bg-ink-accent text-white"
                                     >
                                         {savingMeta ? 'Đang lưu…' : 'Cập nhật thông tin'}
                                     </Button>
@@ -1830,14 +1922,14 @@ export default function CourseEditPage() {
                         </div>
 
                         {/* Share Link Card */}
-                        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6">
-                            <h2 className="text-base font-bold text-slate-900 mb-2 flex items-center gap-2">
-                                <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div className="bg-ink-panel rounded-2xl border border-ink-border shadow-ink-sm p-6">
+                            <h2 className="text-base font-bold text-ink-text mb-2 flex items-center gap-2">
+                                <svg className="w-5 h-5 text-ink-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/>
                                 </svg>
                                 Link chia sẻ Space (Public Share)
                             </h2>
-                            <p className="text-xs text-slate-500 mb-4 leading-relaxed">
+                            <p className="text-xs text-ink-textMuted mb-4 leading-relaxed">
                                 Tạo đường dẫn ổn định cho Space. Bất kỳ ai có link này đều có thể xem trước nội dung và bấm &quot;Sao chép về học&quot; để lưu Space vào tài khoản cá nhân của họ.
                             </p>
 
@@ -1846,7 +1938,7 @@ export default function CourseEditPage() {
                                     type="text"
                                     readOnly
                                     value={shareUrl || 'Bấm nút để lấy link chia sẻ…'}
-                                    className="flex-1 px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-slate-600 focus:outline-none"
+                                    className="flex-1 px-3.5 py-2.5 bg-ink-page border border-ink-border rounded-xl text-xs font-mono text-ink-textMid focus:outline-none"
                                 />
                                 <Button
                                     onClick={handleCopyShareLink}
