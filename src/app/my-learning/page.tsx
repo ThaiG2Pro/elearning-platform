@@ -127,13 +127,7 @@ export default function MyLearningPage() {
                     <h1 className="text-[clamp(22px,2.6vw,30px)] font-bold tracking-[-0.015em] text-ink-text mb-1">
                         Space của tôi
                     </h1>
-                    {/* Porting logic từ vibe-demo/spaces (đếm số không gian ngay dưới
-                        h1) — không port UI "giá sách"/màu gáy: real course có
-                        thumbnail thật (ảnh người dùng upload), giàu thông tin hơn
-                        khối màu trừu tượng của demo, đổi sang list-màu-gáy sẽ mất
-                        khả năng nhận diện bằng ảnh. Cũng giữ nguyên Tabs (Radix) đã
-                        thay hand-rolled tab strip trước đây (WP1.5.8), không quay lại
-                        tab tự vẽ theo style vibe-demo. */}
+                    {/* Porting logic từ vibe-demo/spaces (đếm số không gian ngay dưới h1). */}
                     <p className="text-sm text-ink-textMuted">
                         {appState === 'idle' && courses.length > 0 ? `${courses.length} Space — ` : ''}Tiếp tục hành trình học tập của bạn
                     </p>
@@ -151,55 +145,68 @@ export default function MyLearningPage() {
                     </Tabs>
                 </div>
 
-                {/* Section 02: Danh sách khóa học */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {/* Section 02: Danh sách Space — "giá sách" THẬT từ vibe-demo/spaces
+                    (renderRow): danh sách dạng dòng với cột lề trái đánh số, thay lưới
+                    card cũ. KHÔNG dùng "gáy sách" màu trừu tượng của demo — course thật
+                    có thumbnail ảnh do người dùng upload, giàu thông tin hơn một khối
+                    màu, nên giữ thumbnail thật ở đúng vị trí gáy sách (ảnh nhỏ 16:9 thay
+                    vạch màu). Badge trạng thái + progress bar giữ nguyên logic cũ. */}
+                <div className="bg-ink-panel border border-ink-border rounded-ink-md shadow-ink-sm overflow-hidden">
                     {appState === 'loading' && (
-                        Array.from({ length: 6 }).map((_, index) => (
-                            <div key={index} className="bg-ink-panel rounded-ink-md shadow-ink-sm border border-ink-border overflow-hidden">
-                                <Skeleton className="w-full aspect-video rounded-none bg-ink-page" />
-                                <div className="p-4 space-y-2">
-                                    <Skeleton className="h-4 w-3/4 bg-ink-page" />
-                                    <Skeleton className="h-3 w-1/2 bg-ink-page" />
-                                    <Skeleton className="h-2 w-full rounded-full mt-3 bg-ink-page" />
+                        Array.from({ length: 5 }).map((_, index) => (
+                            <div key={index} className={`flex items-stretch p-4 gap-4 ${index < 4 ? 'border-b border-ink-border' : ''}`}>
+                                <Skeleton className="w-24 aspect-video rounded-ink-sm bg-ink-page shrink-0" />
+                                <div className="flex-1 space-y-2 py-1">
+                                    <Skeleton className="h-4 w-1/2 bg-ink-page" />
+                                    <Skeleton className="h-3 w-1/3 bg-ink-page" />
+                                    <Skeleton className="h-2 w-full max-w-xs rounded-full mt-3 bg-ink-page" />
                                 </div>
                             </div>
                         ))
                     )}
 
-                    {appState === 'idle' && courses.map((course) => (
+                    {appState === 'idle' && courses.map((course, i) => (
                         <div
                             key={course.id}
                             onClick={() => handleCourseClick(course.id)}
                             role="button"
                             tabIndex={0}
                             onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleCourseClick(course.id); }}
-                            className="bg-ink-panel rounded-ink-md shadow-ink-sm border border-ink-border hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ink-accent"
+                            className={`vd-focusable flex items-stretch cursor-pointer transition-colors hover:bg-ink-page ${i < courses.length - 1 ? 'border-b border-ink-border' : ''}`}
                         >
-                            {/* Thumbnail */}
-                            <div className="w-full aspect-video bg-ink-page rounded-t-ink-md flex items-center justify-center overflow-hidden relative">
+                            <span className="hidden sm:flex w-10 shrink-0 items-start justify-center pt-4 font-mono text-[11px] text-ink-textDim">
+                                {String(i + 1).padStart(2, '0')}
+                            </span>
+
+                            {/* Thumbnail thật — thay "gáy sách" màu của vibe-demo */}
+                            <div className="w-28 sm:w-32 aspect-video bg-ink-page shrink-0 my-3 ml-3 sm:ml-0 rounded-ink-sm overflow-hidden relative border border-ink-border">
                                 {course.thumbnailUrl ? (
                                     <Image
                                         src={course.thumbnailUrl}
                                         alt={course.title}
                                         fill
-                                        sizes="(max-width: 768px) 100vw, 400px"
-                                        className="object-cover rounded-t-ink-md"
+                                        sizes="140px"
+                                        className="object-cover"
                                     />
                                 ) : (
-                                    <svg className="w-10 h-10 text-ink-textDim" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 10l4.553-2.069A1 1 0 0121 8.868V15.13a1 1 0 01-1.447.897L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
-                                    </svg>
+                                    <div className="w-full h-full flex items-center justify-center">
+                                        <svg className="w-6 h-6 text-ink-textDim" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 10l4.553-2.069A1 1 0 0121 8.868V15.13a1 1 0 01-1.447.897L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                                        </svg>
+                                    </div>
                                 )}
                             </div>
 
-                            <div className="p-5">
-                                {/* Course Title */}
-                                <h3 className="text-sm font-semibold text-ink-text mb-1 leading-snug line-clamp-2">
-                                    {course.title}
-                                </h3>
-                                {/* WP1.10.6 — badge "N bài" phân biệt hình thái, không thêm
-                                    tab/lọc riêng theo nguồn. */}
-                                <p className="text-xs text-ink-textDim mb-3">{course.lessonCount} bài</p>
+                            <div className="flex-1 min-w-0 py-3.5 px-4 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                                <div className="flex-1 min-w-0">
+                                    <h3 title={course.title} className="text-sm font-semibold text-ink-text leading-snug truncate">
+                                        {course.title}
+                                    </h3>
+                                    <div className="flex items-center gap-2 mt-1">
+                                        <span className="font-mono text-[11px] text-ink-textDim">{course.lessonCount} bài</span>
+                                        <span className="font-mono text-[11px] text-ink-textDim">{formatDate(course.createdAt)}</span>
+                                    </div>
+                                </div>
 
                                 {/* Progress — WP1.6.4: a course with very few lessons (e.g. a
                                     single video) can only ever show completionRate 0 or 100, so
@@ -208,44 +215,31 @@ export default function MyLearningPage() {
                                     saved video position, show "đã xem 3:20" instead of a flat 0%
                                     bar — there's no persisted lesson duration to turn that into a
                                     real percentage. */}
-                                <div className="mb-3">
-                                    {course.status === 'not_started' ? (
-                                        <p className="text-xs text-ink-textDim">Chưa xem</p>
-                                    ) : course.completionRate > 0 ? (
-                                        <>
-                                            <div className="flex justify-between text-xs text-ink-textMuted mb-1.5">
-                                                <span>Tiến độ</span>
-                                                <span className="font-medium text-ink-accent">{course.completionRate}%</span>
-                                            </div>
-                                            <div className="w-full bg-ink-page rounded-full h-1.5">
-                                                <div
-                                                    className="bg-ink-accent h-1.5 rounded-full transition-all"
-                                                    style={{ width: `${course.completionRate}%` }}
-                                                ></div>
-                                            </div>
-                                        </>
-                                    ) : (
-                                        <p className="text-xs text-ink-accent font-medium">
-                                            Đã xem {formatWatchedTime(course.lastWatchedPositionSec || 0)}
-                                        </p>
-                                    )}
-                                </div>
-
-                                {/* Status and creation date */}
-                                <div className="flex justify-between items-center text-xs text-ink-textDim">
-                                    <span className={`px-2 py-0.5 rounded-full font-medium ${STATUS_BADGE_CLASS[course.status]}`}>
+                                <div className="flex items-center gap-2.5 shrink-0 sm:w-[180px]">
+                                    <span className={`px-2 py-0.5 rounded-full text-[11px] font-medium shrink-0 ${STATUS_BADGE_CLASS[course.status]}`}>
                                         {STATUS_LABEL[course.status]}
                                     </span>
-                                    <span>
-                                        {formatDate(course.createdAt)}
-                                    </span>
+                                    {course.status !== 'not_started' && (
+                                        course.completionRate > 0 ? (
+                                            <div className="flex-1 flex items-center gap-2 min-w-0">
+                                                <div className="flex-1 h-1 bg-ink-page rounded-full overflow-hidden">
+                                                    <div className="h-full bg-ink-accent rounded-full" style={{ width: `${course.completionRate}%` }} />
+                                                </div>
+                                                <span className="font-mono text-[11px] font-semibold text-ink-accent shrink-0">{course.completionRate}%</span>
+                                            </div>
+                                        ) : (
+                                            <span className="text-[11px] text-ink-accent font-medium truncate">
+                                                Đã xem {formatWatchedTime(course.lastWatchedPositionSec || 0)}
+                                            </span>
+                                        )
+                                    )}
                                 </div>
                             </div>
                         </div>
                     ))}
 
                     {appState === 'no_results' && (
-                        <div className="col-span-full flex flex-col items-center py-16 text-center">
+                        <div className="flex flex-col items-center py-16 text-center">
                             <div className="w-14 h-14 rounded-full bg-ink-page flex items-center justify-center mb-4">
                                 <svg className="w-7 h-7 text-ink-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
@@ -264,7 +258,7 @@ export default function MyLearningPage() {
                     )}
 
                     {appState === 'error' && (
-                        <div className="col-span-full flex flex-col items-center py-16 text-center">
+                        <div className="flex flex-col items-center py-16 text-center">
                             <div className="w-14 h-14 rounded-full bg-red-50 flex items-center justify-center mb-4">
                                 <svg className="w-7 h-7 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />

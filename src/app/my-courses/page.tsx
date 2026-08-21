@@ -277,14 +277,16 @@ const MyCoursesPage = () => {
                     <Toast message={createError} type="error" onClose={() => setCreateError(null)} />
                 )}
 
-                {/* Section 02: Danh sách khóa học */}
+                {/* Section 02: Danh sách Space — "giá sách" từ vibe-demo/spaces, cùng
+                    motif dòng-đánh-số đã áp cho my-learning; giữ thumbnail thật thay
+                    "gáy sách" màu (xem lý do ở my-learning/page.tsx). */}
                 {loading ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {Array.from({ length: 6 }).map((_, index) => (
-                            <div key={index} className="bg-ink-panel rounded-ink-md border border-ink-border shadow-ink-sm overflow-hidden">
-                                <Skeleton className="h-32 w-full rounded-none bg-ink-page" />
-                                <div className="p-5 space-y-2">
-                                    <Skeleton className="h-4 w-3/4 bg-ink-page" />
+                    <div className="bg-ink-panel border border-ink-border rounded-ink-md shadow-ink-sm overflow-hidden">
+                        {Array.from({ length: 5 }).map((_, index) => (
+                            <div key={index} className={`flex items-stretch p-4 gap-4 ${index < 4 ? 'border-b border-ink-border' : ''}`}>
+                                <Skeleton className="w-24 aspect-video rounded-ink-sm bg-ink-page shrink-0" />
+                                <div className="flex-1 space-y-2 py-1">
+                                    <Skeleton className="h-4 w-1/2 bg-ink-page" />
                                     <Skeleton className="h-3 w-1/3 bg-ink-page" />
                                 </div>
                             </div>
@@ -324,45 +326,56 @@ const MyCoursesPage = () => {
                         )}
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {courses.map((course) => (
+                    <div className="bg-ink-panel border border-ink-border rounded-ink-md shadow-ink-sm overflow-hidden">
+                        {courses.map((course, i) => {
+                            const isActive = ((course.status || '') as string).toUpperCase() === 'ACTIVE';
+                            return (
                             <div
                                 key={course.id}
                                 onClick={() => handleCourseClick(course)}
-                                className="bg-ink-panel rounded-ink-md border border-ink-border shadow-ink-sm overflow-hidden cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all"
+                                role="button"
+                                tabIndex={0}
+                                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleCourseClick(course); }}
+                                className={`vd-focusable flex items-stretch cursor-pointer transition-colors hover:bg-ink-page ${i < courses.length - 1 ? 'border-b border-ink-border' : ''}`}
                             >
-                                <div className="h-32 bg-ink-page flex items-center justify-center overflow-hidden relative">
+                                <span className="hidden sm:flex w-10 shrink-0 items-start justify-center pt-4 font-mono text-[11px] text-ink-textDim">
+                                    {String(i + 1).padStart(2, '0')}
+                                </span>
+
+                                {/* Thumbnail thật — thay "gáy sách" màu của vibe-demo/spaces. */}
+                                <div className="w-28 sm:w-32 aspect-video bg-ink-page shrink-0 my-3 ml-3 sm:ml-0 rounded-ink-sm overflow-hidden relative border border-ink-border">
                                     {course.thumbnailUrl ? (
                                         <Image
                                             src={course.thumbnailUrl}
                                             alt={course.title}
                                             fill
-                                            sizes="(max-width: 768px) 100vw, 300px"
+                                            sizes="140px"
                                             className="object-cover"
                                         />
                                     ) : (
-                                        <svg className="w-8 h-8 text-ink-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 10l4.553-2.069A1 1 0 0121 8.868V15.13a1 1 0 01-1.447.897L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
-                                        </svg>
+                                        <div className="w-full h-full flex items-center justify-center">
+                                            <svg className="w-6 h-6 text-ink-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 10l4.553-2.069A1 1 0 0121 8.868V15.13a1 1 0 01-1.447.897L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                                            </svg>
+                                        </div>
                                     )}
                                 </div>
 
-                                <div className="p-5">
-                                    <h3 className="text-sm font-semibold text-ink-text mb-1 line-clamp-2">{course.title}</h3>
-                                    {/* WP1.10.6 — badge "N bài" phân biệt hình thái (1 video vs
-                                        nhiều chương/bài), không thêm tab/lọc riêng theo nguồn. */}
-                                    {typeof course.lessonCount === 'number' && (
-                                        <p className="text-xs text-ink-textDim mb-2">{course.lessonCount} bài</p>
-                                    )}
+                                <div className="flex-1 min-w-0 py-3.5 px-4 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                                    <div className="flex-1 min-w-0">
+                                        <h3 title={course.title} className="text-sm font-semibold text-ink-text leading-snug truncate">{course.title}</h3>
+                                        {/* WP1.10.6 — badge "N bài" phân biệt hình thái (1 video vs
+                                            nhiều chương/bài), không thêm tab/lọc riêng theo nguồn. */}
+                                        {typeof course.lessonCount === 'number' && (
+                                            <span className="font-mono text-[11px] text-ink-textDim">{course.lessonCount} bài</span>
+                                        )}
+                                    </div>
 
-                                    <div className="flex items-center justify-between gap-2">
+                                    <div className="flex items-center gap-2.5 shrink-0">
                                         <span
-                                            className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${((course.status || '') as string).toUpperCase() === 'ACTIVE'
-                                                ? 'bg-ink-page text-ink-textMid'
-                                                : 'bg-ink-page text-ink-textMuted'
-                                                }`}
+                                            className={`px-2 py-0.5 rounded-full text-[11px] font-medium ${isActive ? 'bg-ink-page text-ink-textMid' : 'bg-ink-page text-ink-textMuted'}`}
                                         >
-                                            {((course.status || '') as string).toUpperCase() === 'ACTIVE' ? 'Hoạt động' : 'Lưu trữ'}
+                                            {isActive ? 'Hoạt động' : 'Lưu trữ'}
                                         </span>
                                         <Button
                                             variant="outline"
@@ -370,16 +383,13 @@ const MyCoursesPage = () => {
                                             disabled={archivingId === course.id}
                                             onClick={(e) => handleToggleArchive(e, course)}
                                         >
-                                            {archivingId === course.id
-                                                ? '...'
-                                                : ((course.status || '') as string).toUpperCase() === 'ACTIVE'
-                                                    ? 'Lưu trữ'
-                                                    : 'Khôi phục'}
+                                            {archivingId === course.id ? '...' : isActive ? 'Lưu trữ' : 'Khôi phục'}
                                         </Button>
                                     </div>
                                 </div>
                             </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 )}
             </div>
