@@ -95,11 +95,6 @@ async function upsertVideoSource(url: string, title: string) {
 async function main() {
     console.log('🌱 Seeding public showcase artifact (WP1.9)...');
 
-    let studentRole = await prisma.roles.findFirst({ where: { name: 'STUDENT' } });
-    if (!studentRole) {
-        studentRole = await prisma.roles.create({ data: { name: 'STUDENT' } });
-    }
-
     // Dedicated showcase account — deliberately not one of seed.ts's test
     // logins (jack@gmail.com etc.). Nobody is meant to log in as this user;
     // it exists only so showcase courses have a stable, clearly-labelled
@@ -113,7 +108,7 @@ async function main() {
                 email: showcaseEmail,
                 password_hash: hashedPassword,
                 full_name: 'E-Learning Showcase',
-                role_id: studentRole.id,
+                role: 'STUDENT',
                 status: 'ACTIVE',
                 created_at: new Date(),
             },

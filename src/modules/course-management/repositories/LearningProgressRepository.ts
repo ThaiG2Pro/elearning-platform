@@ -10,21 +10,20 @@ export class LearningProgressRepository {
     constructor(private prisma: PrismaClient) { }
 
     private toDomain(progress: {
-        id: bigint; user_id: bigint | null; course_id: bigint | null;
+        id: bigint; user_id: bigint; course_id: bigint;
         lesson_id: bigint; is_finished: boolean; video_last_position: number | null;
-        quiz_max_score: number | null; quiz_start_time: Date | null; personal_note: string | null;
+        quiz_max_score: number | null; quiz_start_time: Date | null;
         quiz_question_ids: string | null;
     }): LearningProgress {
         return new LearningProgress(
             progress.id,
-            progress.user_id!,
-            progress.course_id!,
+            progress.user_id,
+            progress.course_id,
             progress.lesson_id,
             progress.is_finished,
             progress.video_last_position,
             progress.quiz_max_score,
             progress.quiz_start_time,
-            progress.personal_note,
             progress.quiz_question_ids ? (() => { try { return JSON.parse(progress.quiz_question_ids!).map((id: string) => BigInt(id)); } catch { console.error('Failed to parse quiz_question_ids:', progress.quiz_question_ids); return []; } })() : [],
         );
     }
@@ -46,7 +45,6 @@ export class LearningProgressRepository {
             video_last_position: progress.videoLastPosition,
             quiz_max_score: progress.quizMaxScore,
             quiz_start_time: progress.quizStartTime,
-            personal_note: progress.personalNote,
             quiz_question_ids: progress.quizQuestionIds ? JSON.stringify(progress.quizQuestionIds.map(id => id.toString())) : null,
         };
 

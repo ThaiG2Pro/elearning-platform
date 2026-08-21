@@ -4,6 +4,7 @@ import { CreateCourseDto, CourseSummaryDto } from '../dtos/CourseManagementDto';
 import { CreateSectionDto, UpdateSectionDto, SectionDto, CreateLessonDto, UpdateLessonDto, LessonDto } from '../dtos/ContentDto';
 import { PublicCourseDto, ChapterDto as PublicChapterDto, LessonDto as PublicLessonDto } from '../dtos/CourseDetailDto';
 import { PrismaClient } from '@prisma/client';
+import type { source_type, lesson_type } from '@prisma/client';
 import { VideoThumbnailUtil } from '../../shared/utils/VideoThumbnailUtil';
 import { YouTubeOEmbedAdapter } from '../../../shared/adapters/YouTubeOEmbedAdapter';
 import { WebPageAdapter } from '../../../shared/adapters/WebPageAdapter';
@@ -161,7 +162,7 @@ export class ContentManagementService {
         if (!source) {
             let title: string;
             let thumbnailUrl: string | undefined;
-            let sourceType: string;
+            let sourceType: source_type;
 
             if (isYouTube) {
                 const videoId = YouTubeOEmbedAdapter.extractVideoId(trimmedUrl);
@@ -197,7 +198,7 @@ export class ContentManagementService {
                     normalized_url: normalizedUrl,
                     title,
                     type: sourceType,
-                    metadata: thumbnailUrl ? JSON.stringify({ thumbnailUrl }) : null,
+                    metadata: thumbnailUrl ? { thumbnailUrl } : undefined,
                 },
             });
         }
@@ -432,11 +433,16 @@ export class ContentManagementService {
     async createLesson(userId: bigint, sectionId: bigint, dto: CreateLessonDto): Promise<bigint> {
         AccessControlPolicy.validateOwnership(userId, await this.getOwnerIdForSection(sectionId));
 
+        // DB giờ enforce lesson_type bằng enum — validate ở đây để trả lỗi
+        // nghiệp vụ rõ ràng thay vì Prisma error thô.
+        if (!['VIDEO', 'QUIZ', 'ARTICLE'].includes(dto.type)) {
+            throw new Error('INVALID_LESSON_TYPE');
+        }
         const lesson = await this.prisma.lessons.create({
             data: {
                 chapter_id: sectionId,
                 title: dto.title,
-                type: dto.type,
+                type: dto.type as lesson_type,
                 content_url: dto.contentUrl,
                 order_index: dto.orderIndex,
             },

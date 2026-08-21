@@ -20,8 +20,8 @@ vi.mock('../../domain/UserFactory', () => ({
 const future = new Date(Date.now() + 3_600_000);
 const past   = new Date(Date.now() - 3_600_000);
 
-const makeUser = (status = 'ACTIVE', roleId = 2, roleName = 'STUDENT') =>
-    new UserEntity(1n, 'user@test.com', '$2a$10$invalidhash', status, roleId, roleName, 'Test User', 25);
+const makeUser = (status = 'ACTIVE', role = 'STUDENT') =>
+    new UserEntity(1n, 'user@test.com', '$2a$10$invalidhash', status, role, 'Test User', 25);
 
 const makeToken = (type = 'ACTIVATION', overrides: Partial<{ expiresAt: Date; isUsed: boolean }> = {}) =>
     new TokenEntity(1n, 1n, 'valid-uuid-code', type, overrides.expiresAt ?? future, overrides.isUsed ?? false);

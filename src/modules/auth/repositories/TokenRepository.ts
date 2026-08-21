@@ -1,5 +1,6 @@
 import { prisma } from '../../../shared/config/database';
 import { TokenEntity } from '../domain/TokenEntity';
+import type { token_type } from '@prisma/client';
 
 export class TokenRepository {
     async findByCode(code: string): Promise<TokenEntity | null> {
@@ -15,7 +16,7 @@ export class TokenRepository {
             data: {
                 user_id: token.userId,
                 code: token.code,
-                type: token.type,
+                type: token.type as token_type,
                 expires_at: token.expiresAt,
                 is_used: token.isUsed,
             },
@@ -29,7 +30,7 @@ export class TokenRepository {
         });
     }
 
-    async revokeAllByType(userId: bigint, type: string): Promise<void> {
+    async revokeAllByType(userId: bigint, type: token_type): Promise<void> {
         await prisma.tokens.updateMany({
             where: { user_id: userId, type },
             data: { is_used: true },

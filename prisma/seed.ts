@@ -48,7 +48,7 @@ async function upsertVideoSource(
     url: string,
     title: string,
     options: {
-        transcript?: string;
+        transcript?: string | null;
         lastAccessedAt?: Date;
         archivedAt?: Date;
     } = {}
@@ -79,26 +79,8 @@ async function main() {
 
     // Clear existing data — use TRUNCATE to ensure tables are fully cleared and sequences reset
     console.log('🧹 Truncating tables and resetting sequences...');
-    await prisma.$executeRaw`TRUNCATE TABLE "credit_transactions","ai_generations","questions","learning_progress","notes","lessons","sources","chapters","courses","tokens","users","roles" RESTART IDENTITY CASCADE;`;
+    await prisma.$executeRaw`TRUNCATE TABLE "credit_transactions","ai_generations","questions","learning_progress","notes","lessons","sources","chapters","courses","tokens","user_avatars","users" RESTART IDENTITY CASCADE;`;
     console.log('✅ Tables truncated and sequences reset');
-
-    // 1. ROLES
-    const studentRole = await prisma.roles.upsert({
-        where: { id: 1 },
-        update: {},
-        create: { id: 1, name: 'STUDENT' },
-    });
-    const lecturerRole = await prisma.roles.upsert({
-        where: { id: 2 },
-        update: {},
-        create: { id: 2, name: 'LECTURER' },
-    });
-    const adminRole = await prisma.roles.upsert({
-        where: { id: 3 },
-        update: {},
-        create: { id: 3, name: 'ADMIN' },
-    });
-    console.log('✅ Roles created (STUDENT, LECTURER, ADMIN)');
 
     // 2. USERS (Various profiles & states)
     const hashedPassword = await bcrypt.hash('password123', 10);
@@ -111,12 +93,18 @@ async function main() {
             password_hash: hashedPassword,
             full_name: 'John Doe',
             age: 25,
-            role_id: studentRole.id,
+            role: 'STUDENT',
             status: 'ACTIVE',
             created_at: new Date(now.getTime() - 30 * 24 * 3600 * 1000),
             credit_balance: 50,
             stripe_customer_id: 'cus_seed_john_doe_123',
-            avatar_url: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect width="64" height="64" fill="%232563eb"/><text x="50%" y="55%" font-size="24" fill="white" text-anchor="middle" dominant-baseline="middle">JD</text></svg>',
+        },
+    });
+    // Avatar sống ở bảng user_avatars (1-1), không còn trên users.
+    await prisma.user_avatars.create({
+        data: {
+            user_id: john.id,
+            data: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect width="64" height="64" fill="%232563eb"/><text x="50%" y="55%" font-size="24" fill="white" text-anchor="middle" dominant-baseline="middle">JD</text></svg>',
         },
     });
 
@@ -127,7 +115,7 @@ async function main() {
             password_hash: hashedPassword,
             full_name: 'Jack Smith',
             age: 38,
-            role_id: studentRole.id,
+            role: 'STUDENT',
             status: 'ACTIVE',
             created_at: new Date(now.getTime() - 60 * 24 * 3600 * 1000),
             credit_balance: 10,
@@ -141,7 +129,7 @@ async function main() {
             password_hash: hashedPassword,
             full_name: 'Alice Johnson',
             age: 29,
-            role_id: studentRole.id,
+            role: 'STUDENT',
             status: 'ACTIVE',
             created_at: new Date(now.getTime() - 15 * 24 * 3600 * 1000),
             credit_balance: 0,
@@ -155,21 +143,21 @@ async function main() {
             password_hash: hashedPassword,
             full_name: 'Bob Newbie',
             age: 20,
-            role_id: studentRole.id,
-            status: 'PENDING',
+            role: 'STUDENT',
+            status: 'INACTIVE',
             created_at: now,
             credit_balance: 0,
         },
     });
 
     // User 5: Trọng Tín — Admin
-    const admin = await prisma.users.create({
+    await prisma.users.create({
         data: {
             email: 'admin1@gmail.com',
             password_hash: hashedPassword,
             full_name: 'Trọng Tín',
             age: 31,
-            role_id: adminRole.id,
+            role: 'ADMIN',
             status: 'ACTIVE',
             created_at: new Date(now.getTime() - 90 * 24 * 3600 * 1000),
             credit_balance: 100,
@@ -270,7 +258,7 @@ async function main() {
 
     // Stale / Archived source (for Data Retention / Archiving testing WP4.2)
     const staleUrl = 'https://www.youtube.com/watch?v=stale_video_sample_123';
-    const staleSource = await upsertVideoSource(staleUrl, 'Khóa học Cũ đã lưu trữ (Archived Source)', {
+    await upsertVideoSource(staleUrl, 'Khóa học Cũ đã lưu trữ (Archived Source)', {
         transcript: null, // nullified by archiveStaleData
         lastAccessedAt: new Date(now.getTime() - 45 * 24 * 3600 * 1000), // 45 days ago
         archivedAt: new Date(now.getTime() - 15 * 24 * 3600 * 1000), // archived 15 days ago
@@ -435,19 +423,13 @@ async function main() {
                 lesson_id: javaLesson2.id,
                 content: 'Java là ngôn ngữ lập trình theo mô hình nào?',
                 answer_key: 'A',
-                option_a: 'Hướng đối tượng (OOP)',
-                option_b: 'Hướng thủ tục thuần túy',
-                option_c: 'Hàm thuần túy',
-                option_d: 'Logic thuần túy',
+                options: ['Hướng đối tượng (OOP)', 'Hướng thủ tục thuần túy', 'Hàm thuần túy', 'Logic thuần túy'],
             },
             {
                 lesson_id: javaLesson2.id,
                 content: 'Tệp chứa mã nguồn Java sau khi biên dịch có đuôi mở rộng là gì?',
                 answer_key: 'C',
-                option_a: '.java',
-                option_b: '.exe',
-                option_c: '.class',
-                option_d: '.jar',
+                options: ['.java', '.exe', '.class', '.jar'],
             },
         ],
     });
@@ -478,7 +460,7 @@ async function main() {
     const tsLesson2 = await prisma.lessons.create({
         data: { chapter_id: tsChapter1.id, title: '1.2 Quiz kiểm tra TypeScript Types', type: 'QUIZ', order_index: 2 },
     });
-    const tsLesson3 = await prisma.lessons.create({
+    await prisma.lessons.create({
         data: { chapter_id: tsChapter2.id, source_id: tsSource.id, title: '2.1 Repository Pattern với Prisma ORM', type: 'VIDEO', content_url: tsUrl, order_index: 1 },
     });
 
@@ -488,10 +470,7 @@ async function main() {
                 lesson_id: tsLesson2.id,
                 content: 'Khác biệt chính giữa `type` và `interface` trong TypeScript?',
                 answer_key: 'B',
-                option_a: 'Type chạy chậm hơn Interface',
-                option_b: 'Interface hỗ trợ declaration merging, type thì không',
-                option_c: 'Type không dùng được với Object',
-                option_d: 'Không có điểm khác biệt',
+                options: ['Type chạy chậm hơn Interface', 'Interface hỗ trợ declaration merging, type thì không', 'Type không dùng được với Object', 'Không có điểm khác biệt'],
             },
         ],
     });
@@ -512,7 +491,7 @@ async function main() {
     const rChapterA = await prisma.chapters.create({
         data: { course_id: reactCourseA.id, title: 'Chương 1: Server Components & Actions', order_index: 1 },
     });
-    const rLessonA = await prisma.lessons.create({
+    await prisma.lessons.create({
         data: { chapter_id: rChapterA.id, source_id: reactSource.id, title: 'React Server Components căn bản', type: 'VIDEO', content_url: reactUrl, order_index: 1 },
     });
 
@@ -552,7 +531,7 @@ async function main() {
     const rChapterC = await prisma.chapters.create({
         data: { course_id: reactCourseC.id, title: 'Chương 1: Server Components & Actions', order_index: 1 },
     });
-    const rLessonC = await prisma.lessons.create({
+    await prisma.lessons.create({
         data: { chapter_id: rChapterC.id, source_id: reactSource.id, title: 'React Server Components căn bản', type: 'VIDEO', content_url: reactUrl, order_index: 1 },
     });
 
@@ -613,7 +592,6 @@ async function main() {
             lesson_id: javaLesson1.id,
             is_finished: true,
             video_last_position: 180,
-            personal_note: 'Đã nắm chắc phần JVM và biến môi trường JAVA_HOME.',
         },
     });
 

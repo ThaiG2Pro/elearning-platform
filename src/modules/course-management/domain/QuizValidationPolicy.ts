@@ -62,10 +62,9 @@ export class QuizValidationPolicy {
             throw new ExcelInvalidException(rowIndex, `Row ${rowIndex}: Content is required and must be non-empty`);
         }
 
-        // The `questions` table has exactly 4 fixed columns (option_a..d) —
-        // anything beyond the 4th was previously truncated silently at
-        // insert time, which could drop the actual correct answer's text
-        // with no error at upload time.
+        // Storage không còn giới hạn số đáp án (options là jsonb array từ
+        // 2026-08-21) — trần 4 dưới đây giờ là business rule thuần (UI quiz
+        // thiết kế cho A-D); nới chỉ cần đổi đúng chỗ này.
         const options = Array.isArray(q.options) ? q.options : [];
         if (options.length < 2) {
             throw new ExcelInvalidException(rowIndex, `Row ${rowIndex}: At least 2 options required`);

@@ -145,7 +145,7 @@ export class AuthService {
             {
                 id: Number(user.id), // Convert BigInt to number for JSON serialization
                 email: user.email,
-                role: user.roleName,
+                role: user.role,
                 fullName: user.fullName,
             },
             redirectUrl,
@@ -203,7 +203,7 @@ export class AuthService {
             email: user.email,
             fullName: user.fullName,
             age: user.age || 0,
-            role: user.roleName,
+            role: user.role,
             avatarUrl: user.avatarUrl,
         };
     }

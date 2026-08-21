@@ -28,12 +28,12 @@ export class TokenFactory {
         try {
             const secret = this.getJwtSecret();
             const accessToken = jwt.sign(
-                { id: user.id.toString(), role: user.roleName, type: 'access' },
+                { id: user.id.toString(), role: user.role, type: 'access' },
                 secret,
                 { expiresIn: '15m' } // Short-lived access token
             );
             const refreshToken = jwt.sign(
-                { id: user.id.toString(), role: user.roleName, type: 'refresh' },
+                { id: user.id.toString(), role: user.role, type: 'refresh' },
                 secret,
                 { expiresIn: '7d' } // Long-lived refresh token
             );

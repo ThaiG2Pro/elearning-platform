@@ -3,7 +3,7 @@ import { RegistrationPolicy } from '../RegistrationPolicy';
 import { UserEntity } from '../UserEntity';
 
 const makeUser = (status: string) =>
-    new UserEntity(1n, 'test@test.com', 'hash', status, 2, 'STUDENT', 'Test User');
+    new UserEntity(1n, 'test@test.com', 'hash', status, 'STUDENT', 'Test User');
 
 describe('RegistrationPolicy', () => {
     describe('validateRegistrationEligibility', () => {

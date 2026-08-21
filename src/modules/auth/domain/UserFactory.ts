@@ -1,6 +1,5 @@
 import { UserEntity } from './UserEntity';
 import * as bcrypt from 'bcryptjs';;
-import { prisma } from '../../../shared/config/database';
 
 export class UserFactory {
     static async createInactiveUser(email: string, password: string, fullName: string, age?: number): Promise<UserEntity> {
@@ -13,21 +12,12 @@ export class UserFactory {
             throw new Error('INVALID_AGE');
         }
 
-        // Get STUDENT role ID dynamically
-        const studentRole = await prisma.roles.findFirst({
-            where: { name: 'STUDENT' },
-        });
-        if (!studentRole) {
-            throw new Error('STUDENT_ROLE_NOT_FOUND');
-        }
-
         const hashedPassword = await bcrypt.hash(password, 10);
         return new UserEntity(
             BigInt(0), // ID will be set by DB
             email,
             hashedPassword,
             'INACTIVE',
-            studentRole.id,
             'STUDENT',
             fullName,
             age,
@@ -51,8 +41,7 @@ export class UserFactory {
             existingUser.email,
             hashedPassword,
             'INACTIVE', // Reset to inactive
-            existingUser.roleId,
-            existingUser.roleName,
+            existingUser.role,
             fullName,
             age !== undefined ? age : existingUser.age,
             existingUser.createdAt, // Keep existing createdAt

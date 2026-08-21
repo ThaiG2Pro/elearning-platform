@@ -5,7 +5,7 @@ export interface AIGenerationRecord {
     id: bigint;
     sourceId: bigint;
     recipeHash: string;
-    recipeType: string;
+    recipeType: 'summary' | 'quiz';
     isDefaultRecipe: boolean;
     keySource: KeySource;
     generatedByUserId: bigint | null;
@@ -19,7 +19,7 @@ export interface AIGenerationRecord {
 export interface CreateAIGenerationInput {
     sourceId: bigint;
     recipeHash: string;
-    recipeType: string;
+    recipeType: 'summary' | 'quiz';
     isDefaultRecipe: boolean;
     keySource: KeySource;
     generatedByUserId: bigint | null;
@@ -45,7 +45,7 @@ function toRecord(row: {
         id: row.id,
         sourceId: row.source_id,
         recipeHash: row.recipe_hash,
-        recipeType: row.recipe_type,
+        recipeType: row.recipe_type as 'summary' | 'quiz',
         isDefaultRecipe: row.is_default_recipe,
         keySource: row.key_source as KeySource,
         generatedByUserId: row.generated_by_user_id,

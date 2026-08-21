@@ -15,7 +15,6 @@ export class LearningProgress {
         public videoLastPosition: number | null,
         public quizMaxScore: number | null,
         public quizStartTime: Date | null,
-        public personalNote: string | null,
         public quizQuestionIds: bigint[] | null = null,
     ) { }
 
@@ -27,7 +26,6 @@ export class LearningProgress {
             courseId,
             lessonId,
             false,
-            null,
             null,
             null,
             null,
@@ -59,10 +57,6 @@ export class LearningProgress {
         }
 
         return false;
-    }
-
-    updateNote(content: string): void {
-        this.personalNote = content;
     }
 
     startQuiz(): void {

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { UserEntity } from '../UserEntity';
 
 const makeUser = (status = 'ACTIVE') =>
-    new UserEntity(1n, 'user@test.com', '$2a$10$hash', status, 2, 'STUDENT', 'Test User', 22);
+    new UserEntity(1n, 'user@test.com', '$2a$10$hash', status, 'STUDENT', 'Test User', 22);
 
 describe('UserEntity', () => {
     describe('isActive', () => {

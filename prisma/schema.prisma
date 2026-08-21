@@ -7,77 +7,151 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ── Enums (schema hardening 2026-08-21) ─────────────────────────────────────
+// Trước đây các cột status/type đều là VarChar tự do — DB nhận mọi string,
+// một typo ở tầng service (đặc biệt key_source/visibility, thứ quyết định
+// tiền và quyền riêng tư) nằm im trong data không ai phát hiện. Enum Postgres
+// chặn sai giá trị ngay tại DB, gần như miễn phí với app mới.
+
+enum user_role {
+  STUDENT
+  LECTURER
+  ADMIN
+}
+
+// INACTIVE = chưa kích hoạt (chờ activation, bị dọn sau 24h) — giá trị
+// 'PENDING' cũ trong seed đã được migrate về INACTIVE cho thống nhất với code.
+// DELETED = soft-delete (WP1.5.6).
+enum user_status {
+  INACTIVE
+  ACTIVE
+  DELETED
+}
+
+enum token_type {
+  ACTIVATION
+  RECOVERY
+}
+
+enum source_type {
+  YOUTUBE_VIDEO
+  WEB_ARTICLE
+}
+
+enum course_status {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+enum lesson_type {
+  VIDEO
+  QUIZ
+  ARTICLE
+}
+
+enum ai_recipe_type {
+  summary
+  quiz
+}
+
+enum ai_key_source {
+  SHARED_FREE
+  BYOK
+  PAID_TIER
+}
+
+enum ai_visibility {
+  PRIVATE
+  SHARED
+}
+
+enum ai_status {
+  PENDING
+  READY
+  FAILED
+}
+
+enum credit_reason {
+  PURCHASE
+  AI_GENERATION_SPEND
+  REFUND
+}
+
 model users {
   id                BigInt              @id @default(autoincrement()) @map("id")
   email             String              @unique @map("email") @db.VarChar(255)
   password_hash     String              @map("password_hash") @db.VarChar(255)
   full_name         String              @map("full_name") @db.VarChar(100)
   age               Int?                @map("age")
-  role_id           Int                 @map("role_id")
-  status            String              @map("status") @db.VarChar(20)
+  // Thay bảng roles + role_id: chỉ có ~3 role tĩnh, không có permission
+  // matrix — bảng riêng chỉ thêm 1 join cho mọi lần auth mà không mua được gì.
+  role              user_role           @default(STUDENT) @map("role")
+  status            user_status         @map("status")
   created_at        DateTime?           @map("created_at") @db.Timestamp(6)
-  // WP1.5.6: client-side-resized avatar image, stored as a data: URL — no
-  // file storage exists anywhere in this codebase (no S3/disk-upload infra)
-  // and this app targets Vercel-style serverless where writing to disk at
-  // runtime isn't reliable, so the DB is the simplest safe place for it.
-  avatar_url        String?             @map("avatar_url") @db.Text
   // WP4.1 — số dư credit hiện tại (nguồn nhanh để check trước generate);
-  // lịch sử đầy đủ từng giao dịch nằm ở credit_transactions. Additive,
-  // default 0 nên mọi user hiện có không bị ảnh hưởng.
+  // lịch sử đầy đủ từng giao dịch nằm ở credit_transactions.
   credit_balance      Int                 @default(0) @map("credit_balance")
   // WP4.1 — Stripe Customer id, tạo lười (lazy) ở lần mua credit đầu tiên.
   stripe_customer_id  String?             @unique @map("stripe_customer_id") @db.VarChar(255)
+  // Avatar (ảnh data-URL, có thể hàng trăm KB) tách sang user_avatars —
+  // bảng users là bảng nóng nhất (auth, join khắp nơi), không để nó cõng blob.
+  avatar            user_avatars?
   owned_courses     courses[]           @relation("CourseOwner")
   learning_progress learning_progress[]
   notes             notes[]
-  role              roles               @relation(fields: [role_id], references: [id])
   tokens            tokens[]
-  // WP2.1 — AI generations this user personally triggered (BYOK/PAID_TIER,
-  // or the first SHARED_FREE cache-miss for a Source). Set to NULL on
+  // WP2.1 — AI generations this user personally triggered. Set to NULL on
   // account deletion, never cascade-deleted (ghi chú 2, mục 3 economics doc).
   ai_generations    ai_generations[]
-  // WP4.1 — ledger đầy đủ mua/tiêu/hoàn credit của user này.
   credit_transactions credit_transactions[]
 
   @@map("users")
 }
 
+// WP1.5.6 (tách khỏi users 2026-08-21): client-side-resized avatar image,
+// stored as a data: URL — no file storage exists anywhere in this codebase
+// (no S3/disk-upload infra) and this app targets Vercel-style serverless
+// where writing to disk at runtime isn't reliable, so the DB is the simplest
+// safe place for it. 1-1 với users, PK = user_id.
+model user_avatars {
+  user_id    BigInt   @id @map("user_id")
+  data       String   @map("data") @db.Text
+  updated_at DateTime @default(now()) @updatedAt @map("updated_at")
+  user       users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("user_avatars")
+}
+
 // WP4.1 (Checkpoint 4) — ledger đầy đủ, audit lại được số dư credit_balance.
 // unique(stripe_reference) chống Stripe gửi trùng webhook cộng credit 2 lần.
 model credit_transactions {
-  id                BigInt   @id @default(autoincrement()) @map("id")
-  user_id           BigInt   @map("user_id")
+  id                BigInt        @id @default(autoincrement()) @map("id")
+  user_id           BigInt        @map("user_id")
   // Dương = mua/hoàn, âm = tiêu cho 1 lần generate PAID_TIER.
-  amount            Int      @map("amount")
-  // PURCHASE | AI_GENERATION_SPEND | REFUND
-  reason            String   @map("reason") @db.VarChar(30)
+  amount            Int           @map("amount")
+  reason            credit_reason @map("reason")
   // Stripe session/payment_intent id — null cho SPEND/REFUND nội bộ.
-  stripe_reference  String?  @unique @map("stripe_reference") @db.VarChar(255)
-  balance_after     Int      @map("balance_after")
-  created_at        DateTime @default(now()) @map("created_at")
-  user              users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  stripe_reference  String?       @unique @map("stripe_reference") @db.VarChar(255)
+  balance_after     Int           @map("balance_after")
+  created_at        DateTime      @default(now()) @map("created_at")
+  user              users         @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@index([user_id, created_at])
   @@map("credit_transactions")
 }
 
-model roles {
-  id    Int     @id @default(autoincrement()) @map("id")
-  name  String  @map("name") @db.VarChar(20)
-  users users[]
-
-  @@map("roles")
-}
-
 model tokens {
-  id         BigInt   @id @default(autoincrement()) @map("id")
-  user_id    BigInt   @map("user_id")
-  code       String   @unique @map("code") @db.Uuid
-  type       String   @map("type") @db.VarChar(20)
-  expires_at DateTime @map("expires_at") @db.Timestamp(6)
-  is_used    Boolean  @map("is_used")
-  user       users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  id         BigInt     @id @default(autoincrement()) @map("id")
+  user_id    BigInt     @map("user_id")
+  code       String     @unique @map("code") @db.Uuid
+  type       token_type @map("type")
+  expires_at DateTime   @map("expires_at") @db.Timestamp(6)
+  is_used    Boolean    @map("is_used")
+  user       users      @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
+  // Prisma/Postgres không tự index FK — cascade delete theo user cần index này.
+  @@index([user_id])
   @@map("tokens")
 }
 
@@ -86,8 +160,9 @@ model sources {
   url                   String           @unique @map("url") @db.VarChar(1000)
   normalized_url        String           @unique @map("normalized_url") @db.VarChar(1000)
   title                 String?          @map("title") @db.VarChar(255)
-  type                  String           @map("type") @db.VarChar(50)
-  metadata              String?          @map("metadata") @db.Text
+  type                  source_type      @map("type")
+  // jsonb thay vì Text-chứa-JSON-string: query được, DB validate cấu trúc JSON.
+  metadata              Json?            @map("metadata")
   created_at            DateTime?        @default(now()) @map("created_at") @db.Timestamp(6)
   // WP2.2 — transcript lưu Ở ĐÂY DUY NHẤT (mục 6.5 economics doc): mọi
   // AIGeneration của Source này tham chiếu qua source_id, không tự lưu lại
@@ -95,61 +170,52 @@ model sources {
   // Nullable + fetched_at: fetch lazy khi user bấm dùng AI lần đầu.
   transcript            String?          @map("transcript") @db.Text
   transcript_fetched_at DateTime?        @map("transcript_fetched_at")
-  // WP4.2 — "lần cuối thật sự được dùng" (khác created_at/transcript_fetched_at
-  // — không phải lần tạo/fetch). Cập nhật mỗi lần AIGenerationService.generate()
-  // chạm tới Source này. Dùng làm tín hiệu chính cho archiveStaleData.ts.
+  // WP4.2 — "lần cuối thật sự được dùng"; tín hiệu chính cho archiveStaleData.
   last_accessed_at      DateTime?        @map("last_accessed_at")
-  // WP4.2 — đánh dấu đã archive (mục 6.4 economics doc); không xoá row, chỉ
-  // null hoá transcript ở tầng application để giữ cache-key/audit nhất quán.
+  // WP4.2 — đánh dấu đã archive (mục 6.4); không xoá row, chỉ null hoá
+  // transcript ở tầng application để giữ cache-key/audit nhất quán.
   archived_at           DateTime?        @map("archived_at")
   lessons               lessons[]
   // WP1.10.1 — courses created from this source (1 URL → 1 không gian học).
   courses               courses[]
-  // WP2.1 — every AI output (summary/quiz) generated from this source's
-  // content. Transcript lives only here (economics doc mục 6.5) — never
-  // duplicated into ai_generations.
   ai_generations        ai_generations[]
 
   @@map("sources")
 }
 
 // WP2.1 — 1 bản output AI cụ thể (tóm tắt hoặc quiz), theo
-// docs/design/ai-personalization-economics.md mục 3. Additive, không đổi
-// bảng cũ (nguyên tắc #1 ở ROADMAP.md từ Checkpoint 1 trở đi).
+// docs/design/ai-personalization-economics.md mục 3.
 model ai_generations {
-  id                   BigInt   @id @default(autoincrement()) @map("id")
-  source_id            BigInt   @map("source_id")
+  id                   BigInt         @id @default(autoincrement()) @map("id")
+  source_id            BigInt         @map("source_id")
   // hash(type, params, segmentRange, modelVersion) — modelVersion bắt buộc
   // nằm trong hash (ghi chú 1, mục 3 economics doc) để nâng cấp model tự
   // tạo cache-miss có kiểm soát, không cần xoá tay bản cache cũ.
-  recipe_hash          String   @map("recipe_hash") @db.VarChar(128)
-  // 'summary' | 'quiz' — slice tối thiểu Checkpoint 2 (ai-integration-plan.md
-  // mục 3): không mở rộng flashcard/mindmap/chat.
-  recipe_type          String   @map("recipe_type") @db.VarChar(20)
+  recipe_hash          String         @map("recipe_hash") @db.VarChar(128)
+  recipe_type          ai_recipe_type @map("recipe_type")
   // true chỉ khi recipe == cấu hình mặc định hệ thống, không do user chọn
   // tham số nào (kể cả segment) — ranh giới cứng ở mục 2 economics doc.
-  is_default_recipe    Boolean  @default(false) @map("is_default_recipe")
-  // SHARED_FREE | BYOK | PAID_TIER — nguồn chi phí gốc, quyết định luật
-  // free-rider ở mục 5 economics doc.
-  key_source           String   @map("key_source") @db.VarChar(20)
+  is_default_recipe    Boolean        @default(false) @map("is_default_recipe")
+  // Nguồn chi phí gốc, quyết định luật free-rider ở mục 5 economics doc.
+  key_source           ai_key_source  @map("key_source")
   // NULL nếu hệ thống seed HOẶC user gốc đã xoá tài khoản (ghi chú 2, mục 3)
   // — không cascade-delete theo user, giữ nguyên content/visibility.
-  generated_by_user_id BigInt?  @map("generated_by_user_id")
-  // PRIVATE | SHARED — SHARED chỉ hợp lệ khi key_source = BYOK (ràng buộc 2,
-  // mục 3); key_source = PAID_TIER luôn bị ép cứng PRIVATE ở tầng service.
-  visibility           String   @default("PRIVATE") @map("visibility") @db.VarChar(20)
-  // PENDING | READY | FAILED — enqueue nhẹ (ai-integration-plan.md mục 4):
-  // route POST trả 202 ngay với PENDING, xử lý trong cùng process, UI poll.
-  status               String   @default("PENDING") @map("status") @db.VarChar(20)
-  model_version        String   @map("model_version") @db.VarChar(50)
+  generated_by_user_id BigInt?        @map("generated_by_user_id")
+  // SHARED chỉ hợp lệ khi key_source = BYOK (ràng buộc 2, mục 3);
+  // key_source = PAID_TIER luôn bị ép cứng PRIVATE ở tầng service.
+  visibility           ai_visibility  @default(PRIVATE) @map("visibility")
+  // Enqueue nhẹ (ai-integration-plan.md mục 4): route POST trả 202 ngay với
+  // PENDING, xử lý trong cùng process, UI poll.
+  status               ai_status      @default(PENDING) @map("status")
+  model_version        String         @map("model_version") @db.VarChar(50)
   // Output đã xử lý — KHÔNG chứa lại transcript gốc (mục 6.5 economics doc).
-  content              String?  @map("content") @db.Text
-  error                String?  @map("error") @db.Text
-  created_at           DateTime @default(now()) @map("created_at")
-  updated_at           DateTime @default(now()) @updatedAt @map("updated_at")
-  // WP4.2 — đánh dấu đã archive (mục 6.4); content bị null hoá ở tầng
-  // application khi archive, không xoá row (giữ recipe_hash cho cache-key).
-  archived_at          DateTime? @map("archived_at")
+  content              String?        @map("content") @db.Text
+  error                String?        @map("error") @db.Text
+  created_at           DateTime       @default(now()) @map("created_at")
+  updated_at           DateTime       @default(now()) @updatedAt @map("updated_at")
+  // WP4.2 — content bị null hoá ở tầng application khi archive, không xoá
+  // row (giữ recipe_hash cho cache-key).
+  archived_at          DateTime?      @map("archived_at")
 
   source            sources   @relation(fields: [source_id], references: [id])
   generated_by_user users?    @relation(fields: [generated_by_user_id], references: [id], onDelete: SetNull)
@@ -166,34 +232,25 @@ model ai_generations {
 
 model courses {
   id                    BigInt              @id @default(autoincrement()) @map("id")
-  // WP1.6 follow-up — this used to be paired with a `lecturer_id` column,
-  // a leftover from the marketplace model where a course's "author" and its
-  // "owner" could in theory differ. In the ownership model they never do —
-  // every write path set both to the same value — so `lecturer_id` was
-  // dropped entirely; `owner_id` is now the sole identity field.
+  // WP1.6 follow-up — `lecturer_id` was dropped entirely; `owner_id` is the
+  // sole identity field (ownership model, not marketplace).
   owner_id              BigInt              @map("owner_id")
   title                 String              @map("title") @db.VarChar(255)
   slug                  String              @unique @map("slug") @db.VarChar(255)
   share_token           String?             @unique @map("share_token") @db.VarChar(100)
   description           String?             @map("description") @db.Text
-  status                String              @default("active") @map("status") @db.VarChar(20)
-  // WP1.5.12 — records which course a "Sao chép về học" clone came from, so
-  // cloneForOwner can dedupe: same (owner, source) pair reuses the existing
-  // clone instead of creating a duplicate on a double-submit/double-fire.
+  status                course_status       @default(ACTIVE) @map("status")
+  // WP1.5.12 — records which course a "Sao chép về học" clone came from.
+  // Self-FK SetNull (2026-08-21): xoá course gốc thì clone mất lineage chứ
+  // không giữ id dangling trỏ vào hư không.
   cloned_from_course_id BigInt?             @map("cloned_from_course_id")
-  // WP1.6.2 — "/my-learning" shows this as the "enrolled at" date, reading
-  // owned courses directly instead of the (now-removed) legacy `enrollments`
-  // table's own enrolled_at column.
+  // WP1.6.2 — "/my-learning" shows this as the "enrolled at" date.
   created_at            DateTime            @default(now()) @map("created_at")
-  // WP1.9 — marks a course as a public showcase artifact (seeded from a real,
-  // popular free YouTube course, owned by a dedicated showcase account, not a
-  // dev/test login) vs. ordinary dev/test seed or user-created data. Purely a
-  // tagging flag for outreach/audit purposes today — no route currently
-  // filters on it; the artifact is shared via the existing share_token link.
+  updated_at            DateTime            @default(now()) @updatedAt @map("updated_at")
+  // WP1.9 — public showcase artifact tag (outreach/audit; no route filters on it).
   is_showcase           Boolean             @default(false) @map("is_showcase")
-  // WP1.10.1 — "course này sinh từ nguồn nào" (video lẻ hay playlist), neo ở
-  // tầng course (không phải lesson) khớp mô hình "1 URL → 1 không gian học".
-  // Nullable vì course tạo trống (không qua from-link) không có nguồn.
+  // WP1.10.1 — "course này sinh từ nguồn nào", neo ở tầng course khớp mô hình
+  // "1 URL → 1 không gian học". Nullable vì course tạo trống không có nguồn.
   // Clone copy nguyên giá trị này — xuất xứ nội dung không đổi khi đổi chủ.
   source_id             BigInt?             @map("source_id")
   chapters              chapters[]
@@ -201,11 +258,12 @@ model courses {
   notes                 notes[]
   owner                 users               @relation("CourseOwner", fields: [owner_id], references: [id], onDelete: Cascade)
   source                sources?            @relation(fields: [source_id], references: [id], onDelete: SetNull)
+  cloned_from           courses?            @relation("CourseCloneOrigin", fields: [cloned_from_course_id], references: [id], onDelete: SetNull)
+  clones                courses[]           @relation("CourseCloneOrigin")
 
   // Postgres allows multiple NULLs through a unique index, so this only
-  // constrains actual clones (cloned_from_course_id set) — owner-authored
-  // courses are unaffected. This is what makes cloneForOwner's
-  // check-then-create race-safe under concurrent double-submits.
+  // constrains actual clones — what makes cloneForOwner's check-then-create
+  // race-safe under concurrent double-submits.
   @@unique([owner_id, cloned_from_course_id])
   @@index([owner_id])
   @@index([source_id])
@@ -229,12 +287,12 @@ model lessons {
   chapter_id        BigInt              @map("chapter_id")
   source_id         BigInt?             @map("source_id")
   title             String              @map("title") @db.VarChar(255)
-  type              String              @map("type") @db.VarChar(20)
+  type              lesson_type         @map("type")
   content_url       String?             @map("content_url") @db.VarChar(500)
   order_index       Int                 @map("order_index")
+  updated_at        DateTime            @default(now()) @updatedAt @map("updated_at")
   // WP2.1 — NULL hợp lệ luôn: tổ chức/học/theo dõi tiến độ không cần chạm AI
-  // (mục 8 economics doc, "core free mãi mãi"). Gán bản AIGeneration cụ thể
-  // là bước UI riêng, generate không tự gán.
+  // (mục 8 economics doc, "core free mãi mãi").
   ai_generation_id  BigInt?             @map("ai_generation_id")
   chapter           chapters            @relation(fields: [chapter_id], references: [id], onDelete: Cascade)
   source            sources?            @relation(fields: [source_id], references: [id], onDelete: SetNull)
@@ -249,10 +307,8 @@ model lessons {
   @@map("lessons")
 }
 
-// WP1.5.4: notes used to "ride" on learning_progress.personal_note — one
-// note per (user, lesson), no timestamp, no delete. A real note-taking
-// feature needs its own table: many notes per lesson, each optionally
-// pinned to a video timestamp so clicking it can seek the player there.
+// WP1.5.4: many notes per lesson, each optionally pinned to a video
+// timestamp so clicking it can seek the player there.
 model notes {
   id                  BigInt   @id @default(autoincrement()) @map("id")
   user_id             BigInt   @map("user_id")
@@ -273,24 +329,23 @@ model notes {
 
 model learning_progress {
   id                  BigInt    @id @default(autoincrement()) @map("id")
-  user_id             BigInt?   @map("user_id")
-  course_id           BigInt?   @map("course_id")
+  // NOT NULL (2026-08-21): trước đây nullable làm unique(user_id, lesson_id)
+  // vô hiệu với row NULL (Postgres cho vô số NULL trùng nhau). Không có use
+  // case progress vô danh nên siết cứng luôn. `personal_note` legacy (đã
+  // thay bằng bảng notes) cũng bị drop.
+  user_id             BigInt    @map("user_id")
+  course_id           BigInt    @map("course_id")
   lesson_id           BigInt    @map("lesson_id")
   is_finished         Boolean   @default(false) @map("is_finished")
   video_last_position Int?      @map("video_last_position")
   quiz_max_score      Int?      @map("quiz_max_score")
   quiz_start_time     DateTime? @map("quiz_start_time")
-  personal_note       String?   @map("personal_note") @db.Text
   quiz_question_ids   String?   @map("quiz_question_ids") @db.Text
   lesson              lessons   @relation(fields: [lesson_id], references: [id], onDelete: Cascade)
-  user                users?    @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  course              courses?  @relation(fields: [course_id], references: [id], onDelete: Cascade)
+  user                users     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  course              courses   @relation(fields: [course_id], references: [id], onDelete: Cascade)
 
-  // WP1.3: progress is keyed by ownership (user_id + lesson_id), not by the
-  // marketplace enrollment row — this is the identity going forward. The
-  // legacy `enrollments` table and this row's enrollment_id FK (WP1.6, follow-
-  // up cleanup) were dropped entirely: both were confirmed empty/unread in
-  // production and nothing in the codebase writes to `enrollments` anymore.
+  // WP1.3: progress is keyed by ownership (user_id + lesson_id).
   @@unique([user_id, lesson_id])
   @@index([user_id, course_id])
   @@index([course_id])
@@ -302,10 +357,11 @@ model questions {
   lesson_id  BigInt  @map("lesson_id")
   content    String  @map("content") @db.Text
   answer_key String? @map("answer_key") @db.VarChar(255)
-  option_a   String  @map("option_a") @db.VarChar(255)
-  option_b   String  @map("option_b") @db.VarChar(255)
-  option_c   String  @map("option_c") @db.VarChar(255)
-  option_d   String  @map("option_d") @db.VarChar(255)
+  // JSON array of option strings (2026-08-21) — thay 4 cột option_a..d cứng:
+  // hết pad-'' khi <4 đáp án, hết trần 4 đáp án, hết VarChar(255) cắt text.
+  // Số đáp án tối đa giờ là business rule ở QuizValidationPolicy, không phải
+  // giới hạn storage.
+  options    Json    @map("options")
   lesson     lessons @relation(fields: [lesson_id], references: [id], onDelete: Cascade)
 
   @@index([lesson_id])

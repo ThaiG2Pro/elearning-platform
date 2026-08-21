@@ -38,10 +38,7 @@ export class UserDataExportDto {
                 questions: Array<{
                     id: string;
                     content: string;
-                    optionA: string;
-                    optionB: string;
-                    optionC: string;
-                    optionD: string;
+                    options: string[];
                     answerKey: string | null;
                 }>;
             }>;
@@ -54,7 +51,6 @@ export class UserDataExportDto {
         videoLastPosition: number | null;
         quizMaxScore: number | null;
         quizStartTime: string | null;
-        personalNote: string | null;
     }>;
     notes: Array<{
         id: string;
@@ -74,7 +70,7 @@ export class UserDataExportDto {
             email: user.email,
             fullName: user.fullName,
             age: user.age ?? null,
-            role: user.roleName,
+            role: user.role,
             avatarUrl: user.avatarUrl ?? null,
         };
 
@@ -99,10 +95,7 @@ export class UserDataExportDto {
                     questions: l.questions.map((q: any) => ({
                         id: q.id.toString(),
                         content: q.content,
-                        optionA: q.option_a,
-                        optionB: q.option_b,
-                        optionC: q.option_c,
-                        optionD: q.option_d,
+                        options: Array.isArray(q.options) ? q.options : [],
                         answerKey: q.answer_key ?? null,
                     })),
                 })),
@@ -116,7 +109,6 @@ export class UserDataExportDto {
             videoLastPosition: p.video_last_position ?? null,
             quizMaxScore: p.quiz_max_score ?? null,
             quizStartTime: p.quiz_start_time ? p.quiz_start_time.toISOString() : null,
-            personalNote: p.personal_note ?? null,
         }));
 
         this.notes = notes.map((n: any) => ({

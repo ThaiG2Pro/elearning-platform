@@ -4,7 +4,7 @@ import { NavigationAction } from '../NavigationAction';
 import { UserEntity } from '../UserEntity';
 
 const makeUser = (status: string) =>
-    new UserEntity(1n, 'test@test.com', 'hash', status, 2, 'STUDENT', 'Test User');
+    new UserEntity(1n, 'test@test.com', 'hash', status, 'STUDENT', 'Test User');
 
 describe('IdentityPolicy', () => {
     describe('determineNextAction', () => {
