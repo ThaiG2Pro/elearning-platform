@@ -50,10 +50,11 @@ export default function ActivatePage() {
 
     return (
         <div className="min-h-screen bg-ink-page">
-            {/* Minimal header for activation page */}
+            {/* Minimal header for activation page — h-14 (56px) khớp APP_TOP_BAR_H,
+                cùng chiều cao Header/TopNav đã chuẩn hoá ở các trang khác. */}
             <header className="bg-ink-panel border-b border-ink-border shadow-ink-sm">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex justify-center items-center h-16">
+                    <div className="flex justify-center items-center h-14">
                         <div className="flex items-center gap-2">
                             <div className="w-8 h-8 rounded-lg bg-ink-accent flex items-center justify-center">
                                 <span className="text-white font-bold text-sm">E</span>
