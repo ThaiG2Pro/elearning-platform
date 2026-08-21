@@ -555,25 +555,32 @@ export default function LearningPage() {
     }, [lessons]);
 
     return (
-        <div className="min-h-screen bg-ink-page">
+        // "Phòng tắt đèn" — room/screen (theme.ts) áp cho NỀN NGOÀI khi
+        // focusMode: bg-ink-room thay bg-ink-page. Các card nội dung bên
+        // trong (video/quiz/notes) vẫn giữ bg-ink-panel trắng riêng của
+        // chúng — "trang giấy vẫn sáng giữa phòng tối", nên không đổi màu
+        // chữ/border của bất kỳ card con nào, tránh rủi ro vỡ contrast.
+        <div className={`min-h-screen transition-colors duration-500 ${focusMode ? 'bg-ink-room' : 'bg-ink-page'}`}>
             {!focusMode && <Header user={user} onLogout={handleLogout} onJoin={handleJoin} />}
 
-            {/* Lesson Sub-Header */}
-            <div className={`bg-ink-panel border-b border-ink-border sticky z-10 ${focusMode ? 'top-0' : 'top-16'}`}>
+            {/* Lesson Sub-Header — "tắt đèn" cùng phòng khi focusMode: nền/chữ
+                chuyển sang cặp màu tối (ink.room + trắng mờ), progress bar
+                chuyển sang ink-accentScreen, cùng công thức với vibe-demo/page.tsx. */}
+            <div className={`border-b sticky z-10 transition-colors duration-500 ${focusMode ? 'top-0 bg-ink-room border-b-[rgba(244,246,252,0.10)]' : 'top-16 bg-ink-panel border-ink-border'}`}>
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex items-center justify-between h-14">
                         <div className="flex items-center gap-4 min-w-0">
                             <button
                                 onClick={() => router.push('/my-learning')}
-                                className="flex-shrink-0 text-sm text-ink-textMuted hover:text-ink-text transition-colors flex items-center gap-1"
+                                className={`flex-shrink-0 text-sm transition-colors flex items-center gap-1 ${focusMode ? 'text-[rgba(244,246,252,0.45)] hover:text-[rgba(244,246,252,0.85)]' : 'text-ink-textMuted hover:text-ink-text'}`}
                             >
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7"/>
                                 </svg>
                                 Quay lại
                             </button>
-                            <div className="hidden sm:block w-px h-5 bg-ink-border"/>
-                            <p className="text-sm font-medium text-ink-text truncate">
+                            <div className={`hidden sm:block w-px h-5 ${focusMode ? 'bg-[rgba(244,246,252,0.16)]' : 'bg-ink-border'}`}/>
+                            <p className={`text-sm font-medium truncate ${focusMode ? 'text-[rgba(244,246,252,0.85)]' : 'text-ink-text'}`}>
                                 {currentLesson ? `Bài ${currentLesson.order}: ${currentLesson.title}` : 'Đang tải...'}
                             </p>
                         </div>
@@ -595,7 +602,7 @@ export default function LearningPage() {
                             <button
                                 onClick={toggleFocusMode}
                                 title={focusMode ? 'Thoát chế độ tập trung' : 'Bật chế độ tập trung'}
-                                className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${focusMode ? 'bg-ink-accentA text-ink-accent' : 'text-ink-textMuted hover:bg-ink-page'}`}
+                                className={`vd-focusable inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${focusMode ? 'bg-[rgba(143,166,238,0.14)] text-ink-accentScreen' : 'text-ink-textMuted hover:bg-ink-page'}`}
                             >
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     {focusMode ? (
@@ -606,14 +613,14 @@ export default function LearningPage() {
                                 </svg>
                                 {focusMode ? 'Thoát tập trung' : 'Tập trung'}
                             </button>
-                            <div className="flex items-center gap-2 text-xs text-ink-textMuted">
-                                <div className="w-24 bg-ink-page rounded-full h-1.5">
+                            <div className={`flex items-center gap-2 text-xs ${focusMode ? 'text-[rgba(244,246,252,0.45)]' : 'text-ink-textMuted'}`}>
+                                <div className={`w-24 rounded-full h-1.5 ${focusMode ? 'bg-[rgba(244,246,252,0.16)]' : 'bg-ink-page'}`}>
                                     <div
-                                        className="bg-ink-accent h-1.5 rounded-full transition-all"
+                                        className={`h-1.5 rounded-full transition-all ${focusMode ? 'bg-ink-accentScreen' : 'bg-ink-accent'}`}
                                         style={{ width: `${calculateCourseProgress()}%` }}
                                     />
                                 </div>
-                                <span className="font-medium text-ink-accent">{calculateCourseProgress()}%</span>
+                                <span className={`font-medium ${focusMode ? 'text-ink-accentScreen' : 'text-ink-accent'}`}>{calculateCourseProgress()}%</span>
                             </div>
                         </div>
                     </div>
