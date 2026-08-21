@@ -163,12 +163,17 @@ export default function Home() {
         <div className="min-h-screen bg-ink-page">
             <Header user={user} onLogout={handleLogout} onJoin={handleJoin} />
 
-            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            {/* max-w-[1180px] + padding rhythm khớp cột nội dung của vibe-demo/home
+                (trước là max-w-7xl/py-8 độc lập) — chỉ đổi container/spacing, KHÔNG
+                đụng logic hiển thị bên trong. Không port lưới 1fr/320px + rail lịch-
+                mực/streak của vibe-demo: đó là 1 feature (lịch streak) app thật chưa
+                có model dữ liệu, bịa ra sẽ là thêm tính năng giả, ngoài phạm vi layout. */}
+            <main className="max-w-[1180px] mx-auto px-4 sm:px-6 lg:px-8 py-7 md:py-10">
                 {/* Hero / Search Section */}
                 <section className="mb-8 bg-ink-panel border border-ink-border rounded-ink-md p-6 shadow-ink-sm">
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                         <div>
-                            <h1 className="text-2xl font-bold text-ink-text">Khám phá Space</h1>
+                            <h1 className="text-[clamp(22px,2.6vw,30px)] font-bold tracking-[-0.015em] text-ink-text">Khám phá Space</h1>
                             <p className="text-sm text-ink-textMuted mt-1">Học bất cứ lúc nào — bắt đầu với Space phù hợp.</p>
                         </div>
                         <div className="w-full md:max-w-sm">
