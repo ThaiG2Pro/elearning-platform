@@ -90,7 +90,7 @@ export default function ChangePasswordPage() {
                     <p className="text-sm text-ink-textMuted mt-0.5">Thay đổi mật khẩu đăng nhập của bạn</p>
                 </div>
 
-                <div className="bg-ink-panel border border-ink-border rounded-xl shadow-ink-sm p-6">
+                <div className="bg-ink-panel border border-ink-border rounded-ink-md shadow-ink-sm p-6">
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div>
                             <label htmlFor="currentPassword" className="block text-sm font-medium text-ink-text mb-1.5">Mật khẩu hiện tại</label>

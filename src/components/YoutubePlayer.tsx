@@ -103,7 +103,7 @@ const YoutubePlayer = forwardRef<VideoPlayerHandle, Props>(({ videoId, initialPo
     }), []);
 
     return (
-        <div className="youtube-player-wrapper w-full aspect-video rounded-xl overflow-hidden shadow-md border border-slate-200">
+        <div className="youtube-player-wrapper w-full aspect-video rounded-ink-md overflow-hidden shadow-md border border-ink-border">
             <YouTube
                 videoId={videoId}
                 opts={opts}

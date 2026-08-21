@@ -243,7 +243,7 @@ export default function EditProfilePage() {
                     <p className="text-sm text-ink-textMuted mt-0.5">Cập nhật thông tin tài khoản của bạn</p>
                 </div>
 
-                <div className="bg-ink-panel border border-ink-border rounded-xl shadow-ink-sm p-6 space-y-6">
+                <div className="bg-ink-panel border border-ink-border rounded-ink-md shadow-ink-sm p-6 space-y-6">
                     {/* WP1.5.6 — avatar thật, thay vì chỉ chữ cái đầu */}
                     <div className="flex items-center gap-4">
                         <div className="relative w-16 h-16 flex-shrink-0">
@@ -346,7 +346,7 @@ export default function EditProfilePage() {
                 {/* WP1.5.11 — xuất dữ liệu cá nhân (nửa "export" của cặp
                     xoá tài khoản/export dữ liệu; xoá tài khoản đã có từ
                     WP1.5.6 ở khối dưới). */}
-                <div className="bg-ink-panel border border-ink-border rounded-xl shadow-ink-sm p-6">
+                <div className="bg-ink-panel border border-ink-border rounded-ink-md shadow-ink-sm p-6">
                     <h2 className="text-sm font-semibold text-ink-text mb-1">Xuất dữ liệu của tôi</h2>
                     <p className="text-sm text-ink-textMuted mb-4">
                         Tải về một bản sao dữ liệu của bạn (hồ sơ, Space đã tạo, tiến độ học, ghi chú) dưới dạng tệp JSON.
@@ -359,7 +359,7 @@ export default function EditProfilePage() {
                 </div>
 
                 {/* WP1.5.6 — xoá tài khoản */}
-                <div className="bg-ink-panel border border-red-200 rounded-xl shadow-ink-sm p-6">
+                <div className="bg-ink-panel border border-red-200 rounded-ink-md shadow-ink-sm p-6">
                     <h2 className="text-sm font-semibold text-red-700 mb-1">Xoá tài khoản</h2>
                     <p className="text-sm text-ink-textMuted mb-4">
                         Hành động này không thể hoàn tác. Bạn sẽ không thể đăng nhập lại bằng tài khoản này.

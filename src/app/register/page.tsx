@@ -104,37 +104,37 @@ export default function RegisterPage() {
     };
 
     return (
-        <div className="min-h-screen bg-slate-50">
+        <div className="min-h-screen bg-ink-page">
             <Header onJoin={() => router.push('/join')} />
 
             <main className="max-w-md mx-auto px-4 py-12">
                 <div className="text-center mb-8">
-                    <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-blue-600 mb-4">
+                    <div className="inline-flex items-center justify-center w-12 h-12 rounded-ink-md bg-ink-accent mb-4">
                         <span className="text-white font-bold text-xl">E</span>
                     </div>
-                    <h1 className="text-2xl font-bold text-slate-900 mb-1">Tạo tài khoản</h1>
-                    <p className="text-sm text-slate-500">Hoàn thành thông tin để bắt đầu học</p>
+                    <h1 className="text-2xl font-bold text-ink-text mb-1">Tạo tài khoản</h1>
+                    <p className="text-sm text-ink-textMuted">Hoàn thành thông tin để bắt đầu học</p>
                 </div>
 
-                <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-8">
+                <div className="bg-ink-panel border border-ink-border rounded-ink-md shadow-sm p-8">
                     <form onSubmit={handleSubmit} className="space-y-4">
                         {/* Email Display */}
                         <div>
-                            <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-1.5">Email</label>
+                            <label htmlFor="email" className="block text-sm font-medium text-ink-text mb-1.5">Email</label>
                             <input
                                 id="email" name="email" type="email" value={email} readOnly
-                                className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm bg-slate-50 text-slate-500"
+                                className="w-full px-3 py-2.5 border border-ink-border rounded-lg text-sm bg-ink-page text-ink-textMuted"
                             />
                         </div>
 
                         {/* Full Name */}
                         <div>
-                            <label htmlFor="fullName" className="block text-sm font-medium text-slate-700 mb-1.5">Họ và tên</label>
+                            <label htmlFor="fullName" className="block text-sm font-medium text-ink-text mb-1.5">Họ và tên</label>
                             <input
                                 id="fullName" name="fullName" type="text" required
                                 value={fullName} onChange={(e) => setFullName(e.target.value)}
                                 disabled={appState === 'submitting'}
-                                className={`w-full px-3 py-2.5 border rounded-lg text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 transition-shadow ${fieldErrors.fullName ? 'border-red-400 bg-red-50' : 'border-slate-300'}`}
+                                className={`w-full px-3 py-2.5 border rounded-lg text-sm text-ink-text placeholder:text-ink-textMuted focus:outline-none focus:ring-2 focus:ring-ink-accent focus:border-transparent disabled:opacity-50 transition-shadow ${fieldErrors.fullName ? 'border-red-400 bg-red-50' : 'border-ink-border'}`}
                                 placeholder="Nguyễn Văn A"
                             />
                             {fieldErrors.fullName && <p className="mt-1 text-xs text-red-600">{fieldErrors.fullName}</p>}
@@ -142,12 +142,12 @@ export default function RegisterPage() {
 
                         {/* Age */}
                         <div>
-                            <label htmlFor="age" className="block text-sm font-medium text-slate-700 mb-1.5">Tuổi</label>
+                            <label htmlFor="age" className="block text-sm font-medium text-ink-text mb-1.5">Tuổi</label>
                             <input
                                 id="age" name="age" type="number" min="1" required
                                 value={age} onChange={(e) => setAge(e.target.value)}
                                 disabled={appState === 'submitting'}
-                                className={`w-full px-3 py-2.5 border rounded-lg text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 transition-shadow ${fieldErrors.age ? 'border-red-400 bg-red-50' : 'border-slate-300'}`}
+                                className={`w-full px-3 py-2.5 border rounded-lg text-sm text-ink-text placeholder:text-ink-textMuted focus:outline-none focus:ring-2 focus:ring-ink-accent focus:border-transparent disabled:opacity-50 transition-shadow ${fieldErrors.age ? 'border-red-400 bg-red-50' : 'border-ink-border'}`}
                                 placeholder="18"
                             />
                             {fieldErrors.age && <p className="mt-1 text-xs text-red-600">{fieldErrors.age}</p>}
@@ -155,12 +155,12 @@ export default function RegisterPage() {
 
                         {/* Password */}
                         <div>
-                            <label htmlFor="password" className="block text-sm font-medium text-slate-700 mb-1.5">Mật khẩu</label>
+                            <label htmlFor="password" className="block text-sm font-medium text-ink-text mb-1.5">Mật khẩu</label>
                             <input
                                 id="password" name="password" type="password" autoComplete="new-password" required minLength={6}
                                 value={password} onChange={(e) => setPassword(e.target.value)}
                                 disabled={appState === 'submitting'}
-                                className={`w-full px-3 py-2.5 border rounded-lg text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 transition-shadow ${fieldErrors.password ? 'border-red-400 bg-red-50' : 'border-slate-300'}`}
+                                className={`w-full px-3 py-2.5 border rounded-lg text-sm text-ink-text placeholder:text-ink-textMuted focus:outline-none focus:ring-2 focus:ring-ink-accent focus:border-transparent disabled:opacity-50 transition-shadow ${fieldErrors.password ? 'border-red-400 bg-red-50' : 'border-ink-border'}`}
                                 placeholder="Tối thiểu 6 ký tự"
                             />
                             {fieldErrors.password && <p className="mt-1 text-xs text-red-600">{fieldErrors.password}</p>}
@@ -169,7 +169,7 @@ export default function RegisterPage() {
                         <button
                             type="submit"
                             disabled={appState === 'submitting'}
-                            className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 flex items-center justify-center gap-2 mt-2"
+                            className="w-full py-2.5 px-4 bg-ink-accent hover:bg-ink-accent/90 text-white text-sm font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-ink-accent focus:ring-offset-2 disabled:opacity-50 flex items-center justify-center gap-2 mt-2"
                         >
                             {appState === 'submitting' && <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
                             {appState === 'submitting' ? 'Đang tạo tài khoản...' : 'Đăng ký'}
@@ -177,7 +177,7 @@ export default function RegisterPage() {
                     </form>
 
                     <div className="mt-5 text-center">
-                        <button onClick={handleBackToIdentify} className="text-sm text-slate-500 hover:text-slate-700 transition-colors">
+                        <button onClick={handleBackToIdentify} className="text-sm text-ink-textMuted hover:text-ink-text transition-colors">
                             ← Quay lại
                         </button>
                     </div>

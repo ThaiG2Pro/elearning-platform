@@ -9,10 +9,13 @@ interface ToastProps {
     duration?: number; // ms
 }
 
+// error/success dùng đỏ/lục ngữ nghĩa trạng thái phổ quát (giống activate,
+// error page) — KHÔNG dùng ink-correct/ink-wrong vì token đó chỉ dành cho
+// chấm quiz. "info" là loại trung lập/mặc định nên map thẳng vào ink-accent.
 const toastConfig = {
-    error:   { bg: 'bg-white border-l-4 border-l-red-500', icon: 'text-red-500', text: 'text-slate-800' },
-    success: { bg: 'bg-white border-l-4 border-l-emerald-500', icon: 'text-emerald-500', text: 'text-slate-800' },
-    info:    { bg: 'bg-white border-l-4 border-l-blue-500', icon: 'text-blue-500', text: 'text-slate-800' },
+    error:   { bg: 'bg-ink-panel border-l-4 border-l-red-500', icon: 'text-red-500', text: 'text-ink-text' },
+    success: { bg: 'bg-ink-panel border-l-4 border-l-emerald-500', icon: 'text-emerald-500', text: 'text-ink-text' },
+    info:    { bg: 'bg-ink-panel border-l-4 border-l-ink-accent', icon: 'text-ink-accent', text: 'text-ink-text' },
 };
 
 const icons = {
@@ -43,7 +46,7 @@ export default function Toast({ message, type = 'info', onClose, duration = 3500
 
     return (
         <div
-            className={`fixed right-4 top-20 z-50 w-full max-w-sm ${cfg.bg} rounded-lg shadow-lg border border-slate-200 p-4 flex items-start gap-3 animate-in slide-in-from-right-5 duration-300`}
+            className={`fixed right-4 top-20 z-50 w-full max-w-sm ${cfg.bg} rounded-lg shadow-lg border border-ink-border p-4 flex items-start gap-3 animate-in slide-in-from-right-5 duration-300`}
             role="status"
             aria-live="polite"
         >
@@ -51,7 +54,7 @@ export default function Toast({ message, type = 'info', onClose, duration = 3500
             <p className={`text-sm leading-relaxed ${cfg.text} flex-1`}>{message}</p>
             <button
                 onClick={onClose}
-                className="flex-shrink-0 text-slate-400 hover:text-slate-600 transition-colors ml-1"
+                className="flex-shrink-0 text-ink-textMuted hover:text-ink-text transition-colors ml-1"
                 aria-label="Đóng thông báo"
             >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

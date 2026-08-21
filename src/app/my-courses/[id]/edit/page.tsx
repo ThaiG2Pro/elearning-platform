@@ -799,7 +799,7 @@ export default function CourseEditPage() {
     if (error) {
         return (
             <div className="min-h-screen bg-ink-page flex items-center justify-center p-4">
-                <div className="bg-ink-panel border border-ink-border rounded-2xl shadow-ink-sm p-8 max-w-md w-full text-center">
+                <div className="bg-ink-panel border border-ink-border rounded-ink-lg shadow-ink-sm p-8 max-w-md w-full text-center">
                     <div className="w-12 h-12 rounded-full bg-red-50 text-red-500 flex items-center justify-center mx-auto mb-4">
                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
@@ -1012,7 +1012,7 @@ export default function CourseEditPage() {
                     <div className="flex flex-col lg:flex-row gap-6">
                         {/* Sidebar: Course Tree */}
                         <div className="w-full lg:w-80 flex-shrink-0">
-                            <div className="bg-ink-panel rounded-2xl border border-ink-border shadow-ink-sm p-4 sticky top-36">
+                            <div className="bg-ink-panel rounded-ink-lg border border-ink-border shadow-ink-sm p-4 sticky top-36">
                                 <div className="flex items-center justify-between mb-3 pb-3 border-b border-ink-pageDim">
                                     <h2 className="text-xs font-bold text-ink-text uppercase tracking-wider">
                                         Nội dung Space
@@ -1047,7 +1047,7 @@ export default function CourseEditPage() {
                                 {/* Chapter Tree List */}
                                 <div className="space-y-3 max-h-[calc(100vh-250px)] overflow-y-auto pr-1">
                                     {course.chapters.length === 0 ? (
-                                        <div className="p-6 border-2 border-dashed border-ink-border rounded-xl text-center">
+                                        <div className="p-6 border-2 border-dashed border-ink-border rounded-ink-md text-center">
                                             <div className="w-10 h-10 rounded-full bg-ink-accentA text-ink-accent flex items-center justify-center mx-auto mb-2">
                                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
@@ -1072,7 +1072,7 @@ export default function CourseEditPage() {
                                             return (
                                                 <div
                                                     key={chapter.id}
-                                                    className={`border rounded-xl transition-all overflow-hidden bg-ink-panel ${
+                                                    className={`border rounded-ink-md transition-all overflow-hidden bg-ink-panel ${
                                                         isChapterSelected
                                                             ? 'border-ink-accent ring-2 ring-ink-accentA shadow-ink-sm'
                                                             : 'border-ink-border hover:border-ink-borderHi'
@@ -1239,7 +1239,7 @@ export default function CourseEditPage() {
                                 {/* Add Chapter Section */}
                                 <div className="mt-4 pt-3 border-t border-ink-pageDim">
                                     {showAddChapter ? (
-                                        <div className="space-y-2 bg-ink-page p-3 rounded-xl border border-ink-border">
+                                        <div className="space-y-2 bg-ink-page p-3 rounded-ink-md border border-ink-border">
                                             <input
                                                 type="text"
                                                 placeholder="Tên chương mới…"
@@ -1274,7 +1274,7 @@ export default function CourseEditPage() {
                                                 setChapterForm({ title: '', orderIndex: course.chapters.length });
                                                 setShowAddChapter(true);
                                             }}
-                                            className="w-full py-2.5 px-3 border border-dashed border-ink-borderHi hover:border-ink-accent hover:bg-ink-accentA rounded-xl text-xs font-semibold text-ink-accent transition-colors flex items-center justify-center gap-1.5"
+                                            className="w-full py-2.5 px-3 border border-dashed border-ink-borderHi hover:border-ink-accent hover:bg-ink-accentA rounded-ink-md text-xs font-semibold text-ink-accent transition-colors flex items-center justify-center gap-1.5"
                                         >
                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
@@ -1288,7 +1288,7 @@ export default function CourseEditPage() {
 
                         {/* Main Editor Panel */}
                         <div className="flex-1">
-                            <div className="bg-ink-panel rounded-2xl border border-ink-border shadow-ink-sm p-6 min-h-[500px]">
+                            <div className="bg-ink-panel rounded-ink-lg border border-ink-border shadow-ink-sm p-6 min-h-[500px]">
                                 {editState === 'idle' && selectedItem && 'lessons' in selectedItem ? (
                                     /* Chapter Edit Form */
                                     <div className="space-y-6">
@@ -1315,7 +1315,7 @@ export default function CourseEditPage() {
                                                     type="text"
                                                     value={chapterForm.title}
                                                     onChange={(e) => setChapterForm(prev => ({ ...prev, title: e.target.value }))}
-                                                    className="w-full px-3.5 py-2.5 border border-ink-borderHi rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-ink-accent"
+                                                    className="w-full px-3.5 py-2.5 border border-ink-borderHi rounded-ink-md text-sm focus:outline-none focus:ring-2 focus:ring-ink-accent"
                                                 />
                                             </div>
 
@@ -1368,7 +1368,7 @@ export default function CourseEditPage() {
                                                         value={lessonForm.title}
                                                         onChange={(e) => setLessonForm(prev => ({ ...prev, title: e.target.value }))}
                                                         placeholder="Nhập tên bài học…"
-                                                        className="w-full px-3.5 py-2.5 border border-ink-borderHi rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-ink-accent"
+                                                        className="w-full px-3.5 py-2.5 border border-ink-borderHi rounded-ink-md text-sm focus:outline-none focus:ring-2 focus:ring-ink-accent"
                                                     />
                                                 </div>
 
@@ -1381,7 +1381,7 @@ export default function CourseEditPage() {
                                                         value={lessonForm.videoUrl}
                                                         onChange={(e) => setLessonForm(prev => ({ ...prev, videoUrl: e.target.value }))}
                                                         placeholder="https://www.youtube.com/watch?v=…"
-                                                        className="w-full px-3.5 py-2.5 border border-ink-borderHi rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-ink-accent"
+                                                        className="w-full px-3.5 py-2.5 border border-ink-borderHi rounded-ink-md text-sm focus:outline-none focus:ring-2 focus:ring-ink-accent"
                                                     />
                                                     {lessonForm.videoUrl && !extractYoutubeId(lessonForm.videoUrl) ? (
                                                         <p className="text-[11px] text-red-600 mt-1 font-medium">
@@ -1409,7 +1409,7 @@ export default function CourseEditPage() {
                                                     Xem trước Video Player
                                                 </label>
                                                 {lessonForm.videoUrl && extractYoutubeId(lessonForm.videoUrl) ? (
-                                                    <div className="aspect-video bg-black rounded-2xl overflow-hidden shadow-ink-sm border border-ink-border">
+                                                    <div className="aspect-video bg-black rounded-ink-lg overflow-hidden shadow-ink-sm border border-ink-border">
                                                         <iframe
                                                             src={`https://www.youtube.com/embed/${extractYoutubeId(lessonForm.videoUrl)}`}
                                                             className="w-full h-full"
@@ -1417,7 +1417,7 @@ export default function CourseEditPage() {
                                                         />
                                                     </div>
                                                 ) : (
-                                                    <div className="aspect-video bg-ink-pageDim rounded-2xl border-2 border-dashed border-ink-border flex flex-col items-center justify-center p-6 text-center text-ink-textDim">
+                                                    <div className="aspect-video bg-ink-pageDim rounded-ink-lg border-2 border-dashed border-ink-border flex flex-col items-center justify-center p-6 text-center text-ink-textDim">
                                                         <svg className="w-12 h-12 mb-2 text-ink-borderHi" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 10l4.553-2.069A1 1 0 0121 8.868V15.13a1 1 0 01-1.447.897L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
                                                         </svg>
@@ -1516,7 +1516,7 @@ export default function CourseEditPage() {
                                                         </div>
                                                         <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
                                                             {aiQuizDraft.map((q, idx) => (
-                                                                <div key={idx} className="border border-dashed border-ink-pencil rounded-xl p-4 bg-ink-page/50">
+                                                                <div key={idx} className="border border-dashed border-ink-pencil rounded-ink-md p-4 bg-ink-page/50">
                                                                     <p className="text-xs font-bold text-ink-text mb-2">
                                                                         Câu {idx + 1}: {q.content}
                                                                     </p>
@@ -1571,7 +1571,7 @@ export default function CourseEditPage() {
                                                     value={lessonForm.title}
                                                     onChange={(e) => setLessonForm(prev => ({ ...prev, title: e.target.value }))}
                                                     placeholder="Nhập tên bài học Quiz…"
-                                                    className="w-full px-3.5 py-2.5 border border-ink-borderHi rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-ink-accent"
+                                                    className="w-full px-3.5 py-2.5 border border-ink-borderHi rounded-ink-md text-sm focus:outline-none focus:ring-2 focus:ring-ink-accent"
                                                 />
                                             </div>
 
@@ -1596,7 +1596,7 @@ export default function CourseEditPage() {
                                                         {existingQuizQuestions.map((q, idx) => {
                                                             const correctIdx = getCorrectOptionIndex(q);
                                                             return (
-                                                                <div key={q.id ?? idx} className="border border-ink-border rounded-xl p-4 bg-ink-page/50">
+                                                                <div key={q.id ?? idx} className="border border-ink-border rounded-ink-md p-4 bg-ink-page/50">
                                                                     <p className="text-xs font-bold text-ink-text mb-2">
                                                                         Câu {idx + 1}: {getQuestionText(q)}
                                                                     </p>
@@ -1720,7 +1720,7 @@ export default function CourseEditPage() {
                                                                 </div>
                                                                 <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
                                                                     {aiQuizDraft.map((q, idx) => (
-                                                                        <div key={idx} className="border border-dashed border-ink-pencil rounded-xl p-4 bg-ink-page/50">
+                                                                        <div key={idx} className="border border-dashed border-ink-pencil rounded-ink-md p-4 bg-ink-page/50">
                                                                             <p className="text-xs font-bold text-ink-text mb-2">
                                                                                 Câu {idx + 1}: {q.content}
                                                                             </p>
@@ -1760,7 +1760,7 @@ export default function CourseEditPage() {
                                                         ⬇ Tải file mẫu
                                                     </button>
                                                 </div>
-                                                <div className="border-2 border-dashed border-ink-border hover:border-ink-accent bg-ink-page/50 rounded-2xl p-6 text-center transition-colors">
+                                                <div className="border-2 border-dashed border-ink-border hover:border-ink-accent bg-ink-page/50 rounded-ink-lg p-6 text-center transition-colors">
                                                     <input
                                                         type="file"
                                                         accept=".xlsx"
@@ -1824,7 +1824,7 @@ export default function CourseEditPage() {
                                                 </h4>
                                                 <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
                                                     {parsedQuestions.questions.map((q, idx) => (
-                                                        <div key={idx} className="border border-dashed border-ink-pencil rounded-xl p-4 bg-ink-page/50">
+                                                        <div key={idx} className="border border-dashed border-ink-pencil rounded-ink-md p-4 bg-ink-page/50">
                                                             <p className="text-xs font-bold text-ink-text mb-2">
                                                                 Câu {idx + 1}: {q.text}
                                                             </p>
@@ -1876,7 +1876,7 @@ export default function CourseEditPage() {
                     /* Tab 2: Settings & Share Link */
                     <div className="max-w-3xl mx-auto space-y-6">
                         {/* Course Metadata Card */}
-                        <div className="bg-ink-panel rounded-2xl border border-ink-border shadow-ink-sm p-6">
+                        <div className="bg-ink-panel rounded-ink-lg border border-ink-border shadow-ink-sm p-6">
                             <h2 className="text-base font-bold text-ink-text mb-4 pb-3 border-b border-ink-pageDim flex items-center gap-2">
                                 <svg className="w-5 h-5 text-ink-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
@@ -1893,7 +1893,7 @@ export default function CourseEditPage() {
                                         type="text"
                                         value={metaTitle}
                                         onChange={(e) => setMetaTitle(e.target.value)}
-                                        className="w-full px-3.5 py-2.5 border border-ink-borderHi rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-ink-accent"
+                                        className="w-full px-3.5 py-2.5 border border-ink-borderHi rounded-ink-md text-sm focus:outline-none focus:ring-2 focus:ring-ink-accent"
                                     />
                                 </div>
 
@@ -1905,7 +1905,7 @@ export default function CourseEditPage() {
                                         value={metaDesc}
                                         onChange={(e) => setMetaDesc(e.target.value)}
                                         rows={4}
-                                        className="w-full px-3.5 py-2.5 border border-ink-borderHi rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-ink-accent resize-none"
+                                        className="w-full px-3.5 py-2.5 border border-ink-borderHi rounded-ink-md text-sm focus:outline-none focus:ring-2 focus:ring-ink-accent resize-none"
                                     />
                                 </div>
 
@@ -1922,7 +1922,7 @@ export default function CourseEditPage() {
                         </div>
 
                         {/* Share Link Card */}
-                        <div className="bg-ink-panel rounded-2xl border border-ink-border shadow-ink-sm p-6">
+                        <div className="bg-ink-panel rounded-ink-lg border border-ink-border shadow-ink-sm p-6">
                             <h2 className="text-base font-bold text-ink-text mb-2 flex items-center gap-2">
                                 <svg className="w-5 h-5 text-ink-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/>
@@ -1938,7 +1938,7 @@ export default function CourseEditPage() {
                                     type="text"
                                     readOnly
                                     value={shareUrl || 'Bấm nút để lấy link chia sẻ…'}
-                                    className="flex-1 px-3.5 py-2.5 bg-ink-page border border-ink-border rounded-xl text-xs font-mono text-ink-textMid focus:outline-none"
+                                    className="flex-1 px-3.5 py-2.5 bg-ink-page border border-ink-border rounded-ink-md text-xs font-mono text-ink-textMid focus:outline-none"
                                 />
                                 <Button
                                     onClick={handleCopyShareLink}

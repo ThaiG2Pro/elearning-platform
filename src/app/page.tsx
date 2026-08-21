@@ -165,7 +165,7 @@ export default function Home() {
 
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 {/* Hero / Search Section */}
-                <section className="mb-8 bg-ink-panel border border-ink-border rounded-xl p-6 shadow-ink-sm">
+                <section className="mb-8 bg-ink-panel border border-ink-border rounded-ink-md p-6 shadow-ink-sm">
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                         <div>
                             <h1 className="text-2xl font-bold text-ink-text">Khám phá Space</h1>
@@ -179,7 +179,7 @@ export default function Home() {
 
                 {/* Paste-link box for logged-in users */}
                 {user && !createdSpace && (
-                    <section className="mb-8 bg-ink-accent rounded-xl p-6 shadow-ink-sm">
+                    <section className="mb-8 bg-ink-accent rounded-ink-md p-6 shadow-ink-sm">
                         <div className="flex flex-col md:flex-row md:items-center gap-4">
                             <div className="md:flex-shrink-0">
                                 <h2 className="text-lg font-bold text-white">Dán link video, tạo Space ngay</h2>
@@ -199,7 +199,7 @@ export default function Home() {
                                     onClick={handleCreateFromLink}
                                     disabled={creatingFromLink || !linkUrl.trim()}
                                     variant="secondary"
-                                    className="whitespace-nowrap"
+                                    className="vd-focusable whitespace-nowrap"
                                 >
                                     {creatingFromLink ? 'Đang tạo…' : 'Tạo Space'}
                                 </Button>
@@ -213,7 +213,10 @@ export default function Home() {
 
                 {/* Card choices after pasting URL */}
                 {createdSpace && (
-                    <section className="mb-8 bg-ink-panel border border-ink-correct/30 rounded-xl p-6 shadow-ink-sm">
+                    // vd-ink-in — "hạ mực": card vừa xuất hiện ngay sau khi tạo Space
+                    // thành công (đồng bộ motif với my-courses/page.tsx và quiz-result
+                    // ở learn/page.tsx).
+                    <section className="mb-8 bg-ink-panel border border-ink-correct/30 rounded-ink-md p-6 shadow-ink-sm vd-ink-in">
                         <p className="text-xs font-semibold text-ink-correct uppercase tracking-wide mb-1">Đã tạo Space</p>
                         <h2 className="text-lg font-bold text-ink-text">{createdSpace.title}</h2>
                         {createdSpace.titleIsPlaceholder && (
@@ -222,7 +225,7 @@ export default function Home() {
                             </p>
                         )}
                         <div className="flex flex-col sm:flex-row gap-3 mt-4">
-                            <Button onClick={() => router.push(`/courses/${createdSpace.courseId}/learn`)}>
+                            <Button className="vd-focusable" onClick={() => router.push(`/courses/${createdSpace.courseId}/learn`)}>
                                 Học ngay
                             </Button>
                             <Button variant="outline" onClick={() => router.push(`/my-courses/${createdSpace.courseId}/edit`)}>
@@ -251,7 +254,7 @@ export default function Home() {
                         {continueState === 'loading' ? (
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                                 {Array.from({ length: 3 }).map((_, i) => (
-                                    <div key={i} className="h-20 bg-ink-panel border border-ink-border rounded-xl animate-pulse" />
+                                    <div key={i} className="h-20 bg-ink-panel border border-ink-border rounded-ink-md animate-pulse" />
                                 ))}
                             </div>
                         ) : continueCourses.length > 0 ? (
@@ -260,7 +263,7 @@ export default function Home() {
                                     <button
                                         key={course.id}
                                         onClick={() => router.push(`/courses/${course.id}/learn`)}
-                                        className={`relative flex w-full flex-col sm:flex-row text-left bg-ink-panel border border-ink-border rounded-xl overflow-hidden shadow-ink-sm hover:shadow-md hover:-translate-y-0.5 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-ink-accent focus-visible:ring-offset-2 ${i > 0 ? 'mt-4' : ''}`}
+                                        className={`relative flex w-full flex-col sm:flex-row text-left bg-ink-panel border border-ink-border rounded-ink-md overflow-hidden shadow-ink-sm hover:shadow-md hover:-translate-y-0.5 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-ink-accent focus-visible:ring-offset-2 ${i > 0 ? 'mt-4' : ''}`}
                                     >
                                         {course.completionRate > 0 && (
                                             <div
@@ -309,7 +312,7 @@ export default function Home() {
                                 ))}
                             </div>
                         ) : (
-                            <div className="bg-ink-panel border border-dashed border-ink-border rounded-xl p-6 text-center">
+                            <div className="bg-ink-panel border border-dashed border-ink-border rounded-ink-md p-6 text-center">
                                 <p className="text-sm text-ink-textMuted">Bạn chưa có Space nào đang học. Dán link video ở trên hoặc chọn một Space bên dưới để bắt đầu.</p>
                             </div>
                         )}

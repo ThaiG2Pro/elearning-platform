@@ -49,31 +49,34 @@ export default function ActivatePage() {
     }, [handleActivate]);
 
     return (
-        <div className="min-h-screen bg-slate-50">
+        <div className="min-h-screen bg-ink-page">
             {/* Minimal header for activation page */}
-            <header className="bg-white border-b border-slate-200 shadow-sm">
+            <header className="bg-ink-panel border-b border-ink-border shadow-sm">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-center items-center h-16">
                         <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center">
+                            <div className="w-8 h-8 rounded-lg bg-ink-accent flex items-center justify-center">
                                 <span className="text-white font-bold text-sm">E</span>
                             </div>
-                            <span className="font-semibold text-slate-900">E-Learning</span>
+                            <span className="font-semibold text-ink-text">E-Learning</span>
                         </div>
                     </div>
                 </div>
             </header>
 
             <main className="max-w-md mx-auto px-4 py-16 text-center">
-                <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-10">
+                <div className="bg-ink-panel border border-ink-border rounded-ink-md shadow-sm p-10">
                     {appState === 'submitting' && (
                         <div className="flex flex-col items-center gap-4">
-                            <span className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
-                            <h2 className="text-xl font-bold text-slate-900">Đang kích hoạt...</h2>
-                            <p className="text-sm text-slate-500">Vui lòng đợi trong giây lát</p>
+                            <span className="w-12 h-12 border-4 border-ink-accent border-t-transparent rounded-full animate-spin" />
+                            <h2 className="text-xl font-bold text-ink-text">Đang kích hoạt...</h2>
+                            <p className="text-sm text-ink-textMuted">Vui lòng đợi trong giây lát</p>
                         </div>
                     )}
 
+                    {/* Thành công/thất bại kích hoạt dùng xanh lá/đỏ ngữ nghĩa trạng
+                        thái phổ quát (giống error icon các trang khác), KHÔNG dùng
+                        ink-correct/ink-wrong — token đó chỉ dành cho chấm quiz. */}
                     {appState === 'success' && (
                         <div className="flex flex-col items-center gap-4">
                             <div className="w-14 h-14 rounded-full bg-emerald-100 flex items-center justify-center">
@@ -82,9 +85,9 @@ export default function ActivatePage() {
                                 </svg>
                             </div>
                             <div>
-                                <h2 className="text-xl font-bold text-slate-900 mb-1">Kích hoạt thành công!</h2>
-                                <p className="text-sm text-slate-500">Tài khoản của bạn đã được kích hoạt.</p>
-                                <p className="text-xs text-slate-400 mt-3">Đang chuyển hướng về trang đăng nhập...</p>
+                                <h2 className="text-xl font-bold text-ink-text mb-1">Kích hoạt thành công!</h2>
+                                <p className="text-sm text-ink-textMuted">Tài khoản của bạn đã được kích hoạt.</p>
+                                <p className="text-xs text-ink-textDim mt-3">Đang chuyển hướng về trang đăng nhập...</p>
                             </div>
                         </div>
                     )}
@@ -97,11 +100,11 @@ export default function ActivatePage() {
                                 </svg>
                             </div>
                             <div>
-                                <h2 className="text-xl font-bold text-slate-900 mb-1">Kích hoạt thất bại</h2>
-                                <p className="text-sm text-slate-500 mb-5">{errorMessage}</p>
+                                <h2 className="text-xl font-bold text-ink-text mb-1">Kích hoạt thất bại</h2>
+                                <p className="text-sm text-ink-textMuted mb-5">{errorMessage}</p>
                                 <button
                                     onClick={() => router.push('/join')}
-                                    className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                                    className="px-5 py-2.5 bg-ink-accent hover:bg-ink-accent/90 text-white text-sm font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-ink-accent focus:ring-offset-2"
                                 >
                                     Quay lại đăng nhập
                                 </button>

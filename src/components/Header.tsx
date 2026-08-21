@@ -153,7 +153,7 @@ export default function Header({ user, onLogout, onJoin }: HeaderProps) {
                                     <>
                                         {/* Backdrop */}
                                         <div className="fixed inset-0 z-10" onClick={() => setIsDropdownOpen(false)} />
-                                        <div className="absolute right-0 mt-2 w-52 bg-ink-panel rounded-xl shadow-lg border border-ink-border z-20 overflow-hidden">
+                                        <div className="absolute right-0 mt-2 w-52 bg-ink-panel rounded-ink-md shadow-lg border border-ink-border z-20 overflow-hidden">
                                             {/* User info header */}
                                             <div className="px-4 py-3 border-b border-ink-border bg-ink-page">
                                                 <p className="text-xs font-medium text-ink-textMuted uppercase tracking-wide">

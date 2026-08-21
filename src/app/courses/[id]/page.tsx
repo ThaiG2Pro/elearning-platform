@@ -144,7 +144,7 @@ export default function CourseDetailPage() {
 
                 {appState === 'loading' ? (
                     <div className="space-y-4">
-                        <Skeleton className="h-64 rounded-xl bg-ink-page" />
+                        <Skeleton className="h-64 rounded-ink-md bg-ink-page" />
                         <Skeleton className="h-6 w-2/3 bg-ink-page" />
                         <Skeleton className="h-4 w-1/3 bg-ink-page" />
                         <Skeleton className="h-4 w-full bg-ink-page" />
@@ -155,7 +155,7 @@ export default function CourseDetailPage() {
                     <>
                         {/* Visual Content Section */}
                         <section className="mb-6">
-                            <div className="w-full aspect-video bg-ink-page rounded-xl overflow-hidden border border-ink-border relative">
+                            <div className="w-full aspect-video bg-ink-page rounded-ink-md overflow-hidden border border-ink-border relative">
                                 {course.thumbnailUrl ? (
                                     <Image
                                         src={course.thumbnailUrl}
@@ -176,7 +176,7 @@ export default function CourseDetailPage() {
                         </section>
 
                         {/* Information Section */}
-                        <section className="bg-ink-panel border border-ink-border rounded-xl p-6 shadow-ink-sm mb-6">
+                        <section className="bg-ink-panel border border-ink-border rounded-ink-md p-6 shadow-ink-sm mb-6">
                             <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium mb-3 border border-ink-border ${course.isOwner ? 'bg-ink-page text-ink-textMid' : 'bg-ink-accentA text-ink-accent'}`}>
                                 {course.isOwner ? 'Space của bạn' : 'Space của người dùng khác'}
                             </span>
@@ -209,7 +209,7 @@ export default function CourseDetailPage() {
 
                         {/* Content Structure Section */}
                         {course.chapters && course.chapters.length > 0 && (
-                            <section className="bg-ink-panel border border-ink-border rounded-xl p-6 shadow-ink-sm mb-6">
+                            <section className="bg-ink-panel border border-ink-border rounded-ink-md p-6 shadow-ink-sm mb-6">
                                 <h2 className="text-xs font-semibold text-ink-textMuted uppercase tracking-wide mb-3">
                                     Nội dung Space
                                 </h2>
@@ -247,7 +247,7 @@ export default function CourseDetailPage() {
                         {/* WP1.7 — Companions Section: who else is learning this
                             course's clone lineage, read-only, lineage-scoped. */}
                         {companions.length > 0 && (
-                            <section className="bg-ink-panel border border-ink-border rounded-xl p-6 shadow-ink-sm mb-6">
+                            <section className="bg-ink-panel border border-ink-border rounded-ink-md p-6 shadow-ink-sm mb-6">
                                 <h2 className="text-sm font-semibold text-ink-text mb-3">Cùng học</h2>
                                 <ul className="space-y-3">
                                     {companions.map((companion) => (

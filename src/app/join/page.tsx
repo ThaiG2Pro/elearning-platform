@@ -65,23 +65,23 @@ export default function JoinPage() {
     };
 
     return (
-        <div className="min-h-screen bg-slate-50">
+        <div className="min-h-screen bg-ink-page">
             <Header onJoin={() => router.push('/join')} />
 
             <main className="max-w-md mx-auto px-4 py-12">
                 {/* Logo + Title */}
                 <div className="text-center mb-8">
-                    <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-blue-600 mb-4">
+                    <div className="inline-flex items-center justify-center w-12 h-12 rounded-ink-md bg-ink-accent mb-4">
                         <span className="text-white font-bold text-xl">E</span>
                     </div>
-                    <h1 className="text-2xl font-bold text-slate-900 mb-1">Bắt đầu ngay</h1>
-                    <p className="text-sm text-slate-500">Nhập email của bạn để tiếp tục</p>
+                    <h1 className="text-2xl font-bold text-ink-text mb-1">Bắt đầu ngay</h1>
+                    <p className="text-sm text-ink-textMuted">Nhập email của bạn để tiếp tục</p>
                 </div>
 
-                <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-8">
+                <div className="bg-ink-panel border border-ink-border rounded-ink-md shadow-sm p-8">
                     <form onSubmit={handleSubmit} className="space-y-5">
                         <div>
-                            <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-1.5">
+                            <label htmlFor="email" className="block text-sm font-medium text-ink-text mb-1.5">
                                 Địa chỉ Email
                             </label>
                             <input
@@ -93,7 +93,7 @@ export default function JoinPage() {
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 disabled={appState === 'submitting' || appState === 'redirecting'}
-                                className="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 disabled:bg-slate-50 transition-shadow"
+                                className="w-full px-3 py-2.5 border border-ink-border rounded-lg text-sm text-ink-text placeholder:text-ink-textMuted focus:outline-none focus:ring-2 focus:ring-ink-accent focus:border-transparent disabled:opacity-50 disabled:bg-ink-page transition-shadow"
                                 placeholder="your@email.com"
                             />
                         </div>
@@ -101,7 +101,7 @@ export default function JoinPage() {
                         <button
                             type="submit"
                             disabled={appState === 'submitting' || appState === 'redirecting'}
-                            className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 flex items-center justify-center gap-2"
+                            className="w-full py-2.5 px-4 bg-ink-accent hover:bg-ink-accent/90 text-white text-sm font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-ink-accent focus:ring-offset-2 disabled:opacity-50 flex items-center justify-center gap-2"
                         >
                             {(appState === 'submitting' || appState === 'redirecting') && (
                                 <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />

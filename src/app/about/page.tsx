@@ -35,7 +35,7 @@ export default function AboutPage() {
 
             <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 w-full">
                 {/* Hero Section */}
-                <section className="bg-ink-panel border border-ink-border rounded-2xl p-8 sm:p-12 shadow-ink-sm text-center max-w-4xl mx-auto mb-12 relative overflow-hidden">
+                <section className="bg-ink-panel border border-ink-border rounded-ink-lg p-8 sm:p-12 shadow-ink-sm text-center max-w-4xl mx-auto mb-12 relative overflow-hidden">
                     <div className="absolute -top-24 -right-24 w-60 h-60 bg-ink-accentA rounded-full blur-3xl opacity-50 pointer-events-none" />
                     <div className="absolute -bottom-24 -left-24 w-60 h-60 bg-ink-accentA rounded-full blur-3xl opacity-50 pointer-events-none" />
 
@@ -54,7 +54,7 @@ export default function AboutPage() {
                     <div className="mt-8 flex flex-wrap justify-center gap-4">
                         <Button
                             onClick={() => router.push('/')}
-                            className="bg-ink-accent hover:bg-ink-accent/90 text-white font-medium px-6 py-2.5 h-auto text-sm sm:text-base rounded-xl shadow-ink-sm transition-all"
+                            className="bg-ink-accent hover:bg-ink-accent/90 text-white font-medium px-6 py-2.5 h-auto text-sm sm:text-base rounded-ink-md shadow-ink-sm transition-all"
                         >
                             Khám phá Space
                         </Button>
@@ -62,7 +62,7 @@ export default function AboutPage() {
                             <Button
                                 onClick={() => router.push('/my-courses')}
                                 variant="outline"
-                                className="border-ink-border text-ink-text hover:bg-ink-page font-medium px-6 py-2.5 h-auto text-sm sm:text-base rounded-xl transition-all"
+                                className="border-ink-border text-ink-text hover:bg-ink-page font-medium px-6 py-2.5 h-auto text-sm sm:text-base rounded-ink-md transition-all"
                             >
                                 Space của tôi
                             </Button>
@@ -70,7 +70,7 @@ export default function AboutPage() {
                             <Button
                                 onClick={handleJoin}
                                 variant="outline"
-                                className="border-ink-border text-ink-text hover:bg-ink-page font-medium px-6 py-2.5 h-auto text-sm sm:text-base rounded-xl transition-all"
+                                className="border-ink-border text-ink-text hover:bg-ink-page font-medium px-6 py-2.5 h-auto text-sm sm:text-base rounded-ink-md transition-all"
                             >
                                 Tham gia ngay
                             </Button>
@@ -80,9 +80,9 @@ export default function AboutPage() {
 
                 {/* Mission & Vision */}
                 <section className="grid md:grid-cols-2 gap-6 mb-12">
-                    <div className="bg-ink-panel border border-ink-border rounded-2xl p-6 sm:p-8 shadow-ink-sm flex flex-col justify-between">
+                    <div className="bg-ink-panel border border-ink-border rounded-ink-lg p-6 sm:p-8 shadow-ink-sm flex flex-col justify-between">
                         <div>
-                            <div className="w-12 h-12 rounded-xl bg-ink-accentA border border-ink-border flex items-center justify-center text-ink-accent mb-5">
+                            <div className="w-12 h-12 rounded-ink-md bg-ink-accentA border border-ink-border flex items-center justify-center text-ink-accent mb-5">
                                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                                 </svg>
@@ -94,9 +94,9 @@ export default function AboutPage() {
                         </div>
                     </div>
 
-                    <div className="bg-ink-panel border border-ink-border rounded-2xl p-6 sm:p-8 shadow-ink-sm flex flex-col justify-between">
+                    <div className="bg-ink-panel border border-ink-border rounded-ink-lg p-6 sm:p-8 shadow-ink-sm flex flex-col justify-between">
                         <div>
-                            <div className="w-12 h-12 rounded-xl bg-ink-accentA border border-ink-border flex items-center justify-center text-ink-accent mb-5">
+                            <div className="w-12 h-12 rounded-ink-md bg-ink-accentA border border-ink-border flex items-center justify-center text-ink-accent mb-5">
                                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
@@ -125,7 +125,7 @@ export default function AboutPage() {
                         nguyên tắc "một accent duy nhất" (nguyên tắc đó nhằm vào chip/
                         nút hành động, không nhằm vào icon trang trí minh hoạ nội dung). */}
                     <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                        <div className="bg-ink-panel border border-ink-border rounded-xl p-6 shadow-ink-sm hover:border-ink-borderHi transition-all">
+                        <div className="bg-ink-panel border border-ink-border rounded-ink-md p-6 shadow-ink-sm hover:border-ink-borderHi transition-all">
                             <div className="w-10 h-10 rounded-lg bg-blue-100/70 text-blue-700 flex items-center justify-center font-bold mb-4">
                                 🔗
                             </div>
@@ -135,7 +135,7 @@ export default function AboutPage() {
                             </p>
                         </div>
 
-                        <div className="bg-ink-panel border border-ink-border rounded-xl p-6 shadow-ink-sm hover:border-ink-borderHi transition-all">
+                        <div className="bg-ink-panel border border-ink-border rounded-ink-md p-6 shadow-ink-sm hover:border-ink-borderHi transition-all">
                             <div className="w-10 h-10 rounded-lg bg-emerald-100/70 text-emerald-700 flex items-center justify-center font-bold mb-4">
                                 📚
                             </div>
@@ -145,7 +145,7 @@ export default function AboutPage() {
                             </p>
                         </div>
 
-                        <div className="bg-ink-panel border border-ink-border rounded-xl p-6 shadow-ink-sm hover:border-ink-borderHi transition-all">
+                        <div className="bg-ink-panel border border-ink-border rounded-ink-md p-6 shadow-ink-sm hover:border-ink-borderHi transition-all">
                             <div className="w-10 h-10 rounded-lg bg-amber-100/70 text-amber-700 flex items-center justify-center font-bold mb-4">
                                 ⚡
                             </div>
@@ -155,7 +155,7 @@ export default function AboutPage() {
                             </p>
                         </div>
 
-                        <div className="bg-ink-panel border border-ink-border rounded-xl p-6 shadow-ink-sm hover:border-ink-borderHi transition-all">
+                        <div className="bg-ink-panel border border-ink-border rounded-ink-md p-6 shadow-ink-sm hover:border-ink-borderHi transition-all">
                             <div className="w-10 h-10 rounded-lg bg-purple-100/70 text-purple-700 flex items-center justify-center font-bold mb-4">
                                 📈
                             </div>
@@ -173,7 +173,7 @@ export default function AboutPage() {
                     như khối trang trí này — ép ink-text (màu tối) lên nền tối sẽ vỡ
                     contrast. Đây không phải "chế độ tối toàn app" (đã chốt KHÔNG làm
                     ở mục 6), chỉ là 1 khối trang trí cục bộ trên trang giới thiệu. */}
-                <section className="bg-slate-900 text-white rounded-2xl p-8 sm:p-12 mb-12 shadow-md">
+                <section className="bg-slate-900 text-white rounded-ink-lg p-8 sm:p-12 mb-12 shadow-md">
                     <div className="max-w-3xl">
                         <span className="text-xs font-semibold uppercase tracking-wider text-blue-400">Triết lý thiết kế</span>
                         <h2 className="text-2xl sm:text-4xl font-bold mt-2 mb-4 text-white">Tối giản để tập trung nghiền ngẫm</h2>
@@ -199,7 +199,7 @@ export default function AboutPage() {
                 </section>
 
                 {/* CTA Banner */}
-                <section className="bg-ink-accent text-white rounded-2xl p-8 text-center shadow-ink-sm">
+                <section className="bg-ink-accent text-white rounded-ink-lg p-8 text-center shadow-ink-sm">
                     <h2 className="text-2xl sm:text-3xl font-bold">Bắt đầu hành trình học tập của bạn ngay hôm nay</h2>
                     <p className="text-white/70 text-sm sm:text-base mt-2 max-w-xl mx-auto">
                         Tạo Space học tập riêng hoặc tìm kiếm các chủ đề thú vị từ thư viện không gian học tập.
@@ -207,7 +207,7 @@ export default function AboutPage() {
                     <div className="mt-6">
                         <Button
                             onClick={() => router.push('/')}
-                            className="bg-white hover:bg-ink-page text-ink-accent font-semibold px-6 py-2.5 h-auto text-sm sm:text-base rounded-xl transition-all shadow"
+                            className="bg-white hover:bg-ink-page text-ink-accent font-semibold px-6 py-2.5 h-auto text-sm sm:text-base rounded-ink-md transition-all shadow"
                         >
                             Khám phá ngay
                         </Button>

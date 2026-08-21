@@ -69,31 +69,31 @@ export default function BillingPage() {
     };
 
     return (
-        <div className="min-h-screen bg-slate-50">
+        <div className="min-h-screen bg-ink-page">
             <Header user={user} onLogout={handleLogout} />
 
             <main className="max-w-3xl mx-auto px-4 py-8">
-                <h1 className="text-xl font-semibold text-slate-800 mb-1">Credit</h1>
-                <p className="text-sm text-slate-500 mb-6">
+                <h1 className="text-xl font-semibold text-ink-text mb-1">Credit</h1>
+                <p className="text-sm text-ink-textMuted mb-6">
                     Dùng credit để nền tảng tạo tóm tắt/quiz tuỳ biến giúp bạn khi bạn chưa muốn
                     nhập API key riêng (BYOK). Core học tập + AI mặc định miễn phí không cần credit.
                 </p>
 
                 {checkoutStatus === 'success' && (
-                    <div className="mb-4 text-sm text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg p-3">
+                    <div className="mb-4 text-sm text-ink-textMid bg-ink-page border border-ink-border rounded-lg p-3">
                         Thanh toán thành công — số dư credit đã được cập nhật.
                     </div>
                 )}
                 {checkoutStatus === 'cancelled' && (
-                    <div className="mb-4 text-sm text-slate-600 bg-slate-100 border border-slate-200 rounded-lg p-3">
+                    <div className="mb-4 text-sm text-ink-textMuted bg-ink-page border border-ink-border rounded-lg p-3">
                         Đã huỷ thanh toán — chưa trừ tiền.
                     </div>
                 )}
 
                 <Card className="mb-6">
                     <CardContent className="p-4">
-                        <p className="text-sm text-slate-500">Số dư hiện tại</p>
-                        <p className="text-2xl font-semibold text-slate-800">
+                        <p className="text-sm text-ink-textMuted">Số dư hiện tại</p>
+                        <p className="text-2xl font-semibold text-ink-text">
                             {balance === null ? '…' : `${balance} credit`}
                         </p>
                     </CardContent>
@@ -103,8 +103,8 @@ export default function BillingPage() {
                     {CREDIT_PACKAGE_OPTIONS.map((pkg) => (
                         <Card key={pkg.id}>
                             <CardContent className="p-4 flex flex-col items-start gap-2">
-                                <p className="text-sm font-semibold text-slate-800">{pkg.credits} credit</p>
-                                <p className="text-xs text-slate-500">${(pkg.priceUsdCents / 100).toFixed(2)}</p>
+                                <p className="text-sm font-semibold text-ink-text">{pkg.credits} credit</p>
+                                <p className="text-xs text-ink-textMuted">${(pkg.priceUsdCents / 100).toFixed(2)}</p>
                                 <Button
                                     className="w-full mt-1"
                                     disabled={busyPackageId !== null}

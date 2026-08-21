@@ -95,7 +95,7 @@ export default function SharedCoursePage() {
     };
 
     return (
-        <div className="min-h-screen bg-slate-50">
+        <div className="min-h-screen bg-ink-page">
             <Header user={user} onLogout={handleLogout} onJoin={() => router.push('/join')} />
 
             <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -103,7 +103,7 @@ export default function SharedCoursePage() {
                 <section className="mb-6">
                     <button
                         onClick={() => router.push('/')}
-                        className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800 transition-colors focus:outline-none"
+                        className="inline-flex items-center gap-1.5 text-sm text-ink-textMuted hover:text-ink-text transition-colors focus:outline-none"
                     >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -114,10 +114,10 @@ export default function SharedCoursePage() {
 
                 {appState === 'loading' ? (
                     <div className="space-y-4">
-                        <Skeleton className="h-64 rounded-xl bg-slate-200" />
-                        <Skeleton className="h-6 w-2/3 bg-slate-200" />
-                        <Skeleton className="h-4 w-1/3 bg-slate-200" />
-                        <Skeleton className="h-32 rounded-xl bg-slate-200" />
+                        <Skeleton className="h-64 rounded-ink-md bg-ink-pageDim" />
+                        <Skeleton className="h-6 w-2/3 bg-ink-pageDim" />
+                        <Skeleton className="h-4 w-1/3 bg-ink-pageDim" />
+                        <Skeleton className="h-32 rounded-ink-md bg-ink-pageDim" />
                     </div>
                 ) : appState === 'error' ? (
                     <div className="flex flex-col items-center py-16 text-center">
@@ -126,10 +126,10 @@ export default function SharedCoursePage() {
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
                         </div>
-                        <p className="text-sm text-slate-600 mb-4">{errorMessage}</p>
+                        <p className="text-sm text-ink-textMid mb-4">{errorMessage}</p>
                         <button
                             onClick={() => router.push('/')}
-                            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
+                            className="px-4 py-2 bg-ink-accent hover:bg-ink-accent/90 text-white text-sm font-medium rounded-lg transition-colors"
                         >
                             Về trang chủ
                         </button>
@@ -142,7 +142,7 @@ export default function SharedCoursePage() {
                                 <>
                                     {/* Visual Content Section (Thumbnail Banner) */}
                                     <section className="mb-6">
-                                        <div className="w-full aspect-video bg-slate-100 rounded-xl overflow-hidden border border-slate-200 relative">
+                                        <div className="w-full aspect-video bg-ink-page rounded-ink-md overflow-hidden border border-ink-border relative">
                                             {course.thumbnailUrl ? (
                                                 <Image
                                                     src={course.thumbnailUrl}
@@ -152,7 +152,7 @@ export default function SharedCoursePage() {
                                                     className="object-cover"
                                                 />
                                             ) : (
-                                                <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-slate-300">
+                                                <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-ink-textMuted">
                                                     <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 10l4.553-2.069A1 1 0 0121 8.868V15.13a1 1 0 01-1.447.897L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
                                                     </svg>
@@ -163,32 +163,32 @@ export default function SharedCoursePage() {
                                     </section>
 
                                     {/* Information Section */}
-                                    <section className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm mb-6">
-                                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium mb-3 ${isOwner ? 'bg-emerald-50 text-emerald-700' : 'bg-blue-50 text-blue-700'}`}>
+                                    <section className="bg-ink-panel border border-ink-border rounded-ink-md p-6 shadow-sm mb-6">
+                                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium mb-3 ${isOwner ? 'bg-ink-accentA text-ink-accent' : 'bg-ink-page text-ink-textMid'}`}>
                                             {isOwner ? 'Space của bạn (Đang ở chế độ chia sẻ)' : 'Space được chia sẻ'}
                                         </span>
-                                        <h1 className="text-xl font-bold text-slate-900 mb-3 leading-snug">{course.title}</h1>
+                                        <h1 className="text-xl font-bold text-ink-text mb-3 leading-snug">{course.title}</h1>
                                         {course.ownerName && (
-                                            <p className="text-sm text-slate-500 mb-2">
-                                                Tác giả: <span className="font-medium text-slate-800">{isOwner ? 'Bạn' : course.ownerName}</span>
+                                            <p className="text-sm text-ink-textMuted mb-2">
+                                                Tác giả: <span className="font-medium text-ink-text">{isOwner ? 'Bạn' : course.ownerName}</span>
                                             </p>
                                         )}
                                         {course.description && (
-                                            <p className="text-sm text-slate-600 leading-relaxed">{course.description}</p>
+                                            <p className="text-sm text-ink-textMid leading-relaxed">{course.description}</p>
                                         )}
                                     </section>
 
                                     {/* Content Structure Section */}
-                                    <section className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm mb-6">
-                                        <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">
+                                    <section className="bg-ink-panel border border-ink-border rounded-ink-md p-6 shadow-sm mb-6">
+                                        <h2 className="text-xs font-semibold text-ink-textMuted uppercase tracking-wide mb-3">
                                             Nội dung Space
                                         </h2>
                                         {course.chapters.length === 1 ? (
                                             <ul className="space-y-1">
                                                 {course.chapters[0].lessons.map((lesson) => (
-                                                    <li key={lesson.id} className="text-sm text-slate-700 flex items-center justify-between py-1 border-b border-slate-50 last:border-0">
+                                                    <li key={lesson.id} className="text-sm text-ink-text flex items-center justify-between py-1 border-b border-ink-border last:border-0">
                                                         <span>{lesson.title}</span>
-                                                        <span className="text-slate-400 text-xs font-mono uppercase bg-slate-100 px-2 py-0.5 rounded">{lesson.type}</span>
+                                                        <span className="text-ink-textMuted text-xs font-mono uppercase bg-ink-page px-2 py-0.5 rounded">{lesson.type}</span>
                                                     </li>
                                                 ))}
                                             </ul>
@@ -196,12 +196,12 @@ export default function SharedCoursePage() {
                                             <div className="space-y-4">
                                                 {course.chapters.map((chapter) => (
                                                     <div key={chapter.id}>
-                                                        <p className="text-sm font-semibold text-slate-800 mb-1.5">{chapter.title}</p>
+                                                        <p className="text-sm font-semibold text-ink-text mb-1.5">{chapter.title}</p>
                                                         <ul className="pl-4 space-y-1">
                                                             {chapter.lessons.map((lesson) => (
-                                                                <li key={lesson.id} className="text-sm text-slate-600 flex items-center justify-between py-0.5">
+                                                                <li key={lesson.id} className="text-sm text-ink-textMid flex items-center justify-between py-0.5">
                                                                     <span>{lesson.title}</span>
-                                                                    <span className="text-slate-400 text-xs font-mono uppercase bg-slate-100 px-2 py-0.5 rounded">{lesson.type}</span>
+                                                                    <span className="text-ink-textMuted text-xs font-mono uppercase bg-ink-page px-2 py-0.5 rounded">{lesson.type}</span>
                                                                 </li>
                                                             ))}
                                                         </ul>
@@ -221,7 +221,7 @@ export default function SharedCoursePage() {
                                             <div className="flex flex-wrap items-center gap-3">
                                                 <button
                                                     onClick={() => router.push(`/courses/${course.id}/learn`)}
-                                                    className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg transition-colors shadow-sm"
+                                                    className="inline-flex items-center gap-2 px-6 py-3 bg-ink-accent hover:bg-ink-accent/90 text-white font-medium rounded-lg transition-colors shadow-sm"
                                                 >
                                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
@@ -231,9 +231,9 @@ export default function SharedCoursePage() {
                                                 </button>
                                                 <button
                                                     onClick={() => router.push(`/my-courses/${course.id}/edit`)}
-                                                    className="inline-flex items-center gap-2 px-6 py-3 border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-medium rounded-lg transition-colors shadow-sm"
+                                                    className="inline-flex items-center gap-2 px-6 py-3 border border-ink-border bg-ink-panel hover:bg-ink-page text-ink-text font-medium rounded-lg transition-colors shadow-sm"
                                                 >
-                                                    <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <svg className="w-4 h-4 text-ink-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                                     </svg>
                                                     Chỉnh sửa Space
@@ -243,7 +243,7 @@ export default function SharedCoursePage() {
                                             <button
                                                 onClick={handleCopy}
                                                 disabled={copying}
-                                                className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white font-medium rounded-lg transition-colors shadow-sm"
+                                                className="inline-flex items-center gap-2 px-6 py-3 bg-ink-accent hover:bg-ink-accent/90 disabled:opacity-60 text-white font-medium rounded-lg transition-colors shadow-sm"
                                             >
                                                 {copying ? (
                                                     <>

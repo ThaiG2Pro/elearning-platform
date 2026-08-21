@@ -85,7 +85,7 @@ const VimeoPlayer = forwardRef<VideoPlayerHandle, Props>(({ videoId, initialPos,
     );
 
     return (
-        <div className="vimeo-player-wrapper w-full aspect-video rounded-xl overflow-hidden shadow-md border border-slate-200">
+        <div className="vimeo-player-wrapper w-full aspect-video rounded-ink-md overflow-hidden shadow-md border border-ink-border">
             <iframe
                 ref={iframeRef}
                 src={embedUrl}

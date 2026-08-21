@@ -145,7 +145,7 @@ export default function MyLearningPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {appState === 'loading' && (
                         Array.from({ length: 6 }).map((_, index) => (
-                            <div key={index} className="bg-ink-panel rounded-xl shadow-ink-sm border border-ink-border overflow-hidden">
+                            <div key={index} className="bg-ink-panel rounded-ink-md shadow-ink-sm border border-ink-border overflow-hidden">
                                 <Skeleton className="w-full aspect-video rounded-none bg-ink-page" />
                                 <div className="p-4 space-y-2">
                                     <Skeleton className="h-4 w-3/4 bg-ink-page" />
@@ -163,17 +163,17 @@ export default function MyLearningPage() {
                             role="button"
                             tabIndex={0}
                             onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleCourseClick(course.id); }}
-                            className="bg-ink-panel rounded-xl shadow-ink-sm border border-ink-border hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ink-accent"
+                            className="bg-ink-panel rounded-ink-md shadow-ink-sm border border-ink-border hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ink-accent"
                         >
                             {/* Thumbnail */}
-                            <div className="w-full aspect-video bg-ink-page rounded-t-xl flex items-center justify-center overflow-hidden relative">
+                            <div className="w-full aspect-video bg-ink-page rounded-t-ink-md flex items-center justify-center overflow-hidden relative">
                                 {course.thumbnailUrl ? (
                                     <Image
                                         src={course.thumbnailUrl}
                                         alt={course.title}
                                         fill
                                         sizes="(max-width: 768px) 100vw, 400px"
-                                        className="object-cover rounded-t-xl"
+                                        className="object-cover rounded-t-ink-md"
                                     />
                                 ) : (
                                     <svg className="w-10 h-10 text-ink-textDim" fill="none" stroke="currentColor" viewBox="0 0 24 24">

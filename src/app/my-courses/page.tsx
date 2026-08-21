@@ -196,7 +196,7 @@ const MyCoursesPage = () => {
                     tạo xong hiện card lựa chọn (bên dưới) thay vì redirect thẳng
                     vào editor. "Tạo Space trống" tụt xuống thành link phụ. */}
                 {!createdSpace && (
-                    <section className="mb-6 bg-ink-accent rounded-xl p-6 shadow-ink-sm">
+                    <section className="mb-6 bg-ink-accent rounded-ink-md p-6 shadow-ink-sm">
                         <h2 className="text-lg font-bold text-white">Dán link YouTube, tạo Space ngay</h2>
                         <p className="text-sm text-ink-onAccent/80 mt-0.5">Hệ thống tự lấy tiêu đề, ảnh và tạo bài học đầu tiên.</p>
                         <div className="mt-4 flex flex-col sm:flex-row items-stretch gap-2">
@@ -214,7 +214,7 @@ const MyCoursesPage = () => {
                                 onClick={handleCreateFromLink}
                                 disabled={creating || !pasteUrl.trim()}
                                 variant="secondary"
-                                className="whitespace-nowrap"
+                                className="vd-focusable whitespace-nowrap"
                             >
                                 {creating ? 'Đang tạo…' : 'Tạo Space'}
                             </Button>
@@ -234,7 +234,9 @@ const MyCoursesPage = () => {
 
                 {/* WP1.10.3 — card lựa chọn sau khi dán URL thành công. */}
                 {createdSpace && (
-                    <section className="mb-6 bg-ink-panel border border-ink-border rounded-xl p-6 shadow-ink-sm">
+                    // vd-ink-in — "hạ mực": card vừa xuất hiện ngay sau khi tạo
+                    // Space thành công (đồng bộ motif với quiz-result ở learn/page.tsx).
+                    <section className="mb-6 bg-ink-panel border border-ink-border rounded-ink-md p-6 shadow-ink-sm vd-ink-in">
                         <p className="text-xs font-semibold text-ink-textMid uppercase tracking-wide mb-1">Đã tạo Space</p>
                         <h2 className="text-lg font-bold text-ink-text">{createdSpace.title}</h2>
                         {createdSpace.titleIsPlaceholder && (
@@ -275,7 +277,7 @@ const MyCoursesPage = () => {
                 {loading ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {Array.from({ length: 6 }).map((_, index) => (
-                            <div key={index} className="bg-ink-panel rounded-xl border border-ink-border shadow-ink-sm overflow-hidden">
+                            <div key={index} className="bg-ink-panel rounded-ink-md border border-ink-border shadow-ink-sm overflow-hidden">
                                 <Skeleton className="h-32 w-full rounded-none bg-ink-page" />
                                 <div className="p-5 space-y-2">
                                     <Skeleton className="h-4 w-3/4 bg-ink-page" />
@@ -323,7 +325,7 @@ const MyCoursesPage = () => {
                             <div
                                 key={course.id}
                                 onClick={() => handleCourseClick(course)}
-                                className="bg-ink-panel rounded-xl border border-ink-border shadow-ink-sm overflow-hidden cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all"
+                                className="bg-ink-panel rounded-ink-md border border-ink-border shadow-ink-sm overflow-hidden cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all"
                             >
                                 <div className="h-32 bg-ink-page flex items-center justify-center overflow-hidden relative">
                                     {course.thumbnailUrl ? (

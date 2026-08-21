@@ -103,9 +103,9 @@ export default function MySharesPage() {
 
                 {appState === 'loading' && (
                     <div className="space-y-3">
-                        <Skeleton className="h-20 rounded-xl bg-ink-page" />
-                        <Skeleton className="h-20 rounded-xl bg-ink-page" />
-                        <Skeleton className="h-20 rounded-xl bg-ink-page" />
+                        <Skeleton className="h-20 rounded-ink-md bg-ink-page" />
+                        <Skeleton className="h-20 rounded-ink-md bg-ink-page" />
+                        <Skeleton className="h-20 rounded-ink-md bg-ink-page" />
                     </div>
                 )}
 

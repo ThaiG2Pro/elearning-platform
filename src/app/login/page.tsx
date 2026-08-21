@@ -65,23 +65,23 @@ export default function LoginPage() {
     };
 
     return (
-        <div className="min-h-screen bg-slate-50">
+        <div className="min-h-screen bg-ink-page">
             <Header onJoin={() => router.push('/join')} />
 
             <main className="max-w-md mx-auto px-4 py-12">
                 <div className="text-center mb-8">
-                    <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-blue-600 mb-4">
+                    <div className="inline-flex items-center justify-center w-12 h-12 rounded-ink-md bg-ink-accent mb-4">
                         <span className="text-white font-bold text-xl">E</span>
                     </div>
-                    <h1 className="text-2xl font-bold text-slate-900 mb-1">Đăng nhập</h1>
-                    <p className="text-sm text-slate-500">Chào mừng bạn quay trở lại</p>
+                    <h1 className="text-2xl font-bold text-ink-text mb-1">Đăng nhập</h1>
+                    <p className="text-sm text-ink-textMuted">Chào mừng bạn quay trở lại</p>
                 </div>
 
-                <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-8">
+                <div className="bg-ink-panel border border-ink-border rounded-ink-md shadow-sm p-8">
                     <form onSubmit={handleSubmit} className="space-y-5">
                         {/* Email Display */}
                         <div>
-                            <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-1.5">
+                            <label htmlFor="email" className="block text-sm font-medium text-ink-text mb-1.5">
                                 Email
                             </label>
                             <div className="flex items-center gap-2">
@@ -91,12 +91,12 @@ export default function LoginPage() {
                                     type="email"
                                     value={email}
                                     readOnly
-                                    className="flex-1 px-3 py-2.5 border border-slate-200 rounded-lg text-sm bg-slate-50 text-slate-500"
+                                    className="flex-1 px-3 py-2.5 border border-ink-border rounded-lg text-sm bg-ink-page text-ink-textMuted"
                                 />
                                 <button
                                     type="button"
                                     onClick={handleChangeEmail}
-                                    className="text-sm text-blue-600 hover:text-blue-700 font-medium whitespace-nowrap"
+                                    className="text-sm text-ink-accent hover:text-ink-accent/80 font-medium whitespace-nowrap"
                                 >
                                     Thay đổi
                                 </button>
@@ -106,13 +106,13 @@ export default function LoginPage() {
                         {/* Password */}
                         <div>
                             <div className="flex items-center justify-between mb-1.5">
-                                <label htmlFor="password" className="block text-sm font-medium text-slate-700">
+                                <label htmlFor="password" className="block text-sm font-medium text-ink-text">
                                     Mật khẩu
                                 </label>
                                 <button
                                     type="button"
                                     onClick={handleForgotPassword}
-                                    className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+                                    className="text-xs text-ink-accent hover:text-ink-accent/80 font-medium"
                                 >
                                     Quên mật khẩu?
                                 </button>
@@ -126,7 +126,7 @@ export default function LoginPage() {
                                 minLength={6}
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
-                                className="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow"
+                                className="w-full px-3 py-2.5 border border-ink-border rounded-lg text-sm text-ink-text focus:outline-none focus:ring-2 focus:ring-ink-accent focus:border-transparent transition-shadow"
                                 placeholder="••••••••"
                             />
                         </div>
@@ -134,7 +134,7 @@ export default function LoginPage() {
                         <button
                             type="submit"
                             disabled={appState === 'submitting'}
-                            className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 flex items-center justify-center gap-2"
+                            className="w-full py-2.5 px-4 bg-ink-accent hover:bg-ink-accent/90 text-white text-sm font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-ink-accent focus:ring-offset-2 disabled:opacity-50 flex items-center justify-center gap-2"
                         >
                             {appState === 'submitting' && (
                                 <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
