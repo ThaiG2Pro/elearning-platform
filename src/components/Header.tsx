@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { User } from '@/types/auth.types';
+import { APP_TOP_BAR_H } from '@/lib/vibe/theme';
 
 interface HeaderProps {
     user?: User | null;
@@ -69,13 +70,19 @@ export default function Header({ user, onLogout, onJoin }: HeaderProps) {
 
     return (
         <header className="bg-ink-panel border-b border-ink-border sticky top-0 z-30 shadow-ink-sm">
+            {/* Giữ sticky (không đổi sang position:fixed như TopNav vibe-demo) —
+                fixed sẽ đẩy header ra khỏi flow và bắt buộc mọi trang thật phải
+                thêm padding-top thủ công để bù, rủi ro vỡ layout cao hơn nhiều
+                so với lợi ích. Chiều cao đồng bộ APP_TOP_BAR_H (56px = h-14,
+                trước là h-16/64px) + nav dùng motif "gạch chân accent khi active"
+                giống TopNav, thay pill nền — 2 điểm khớp trực quan an toàn nhất. */}
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="flex justify-between items-center h-16">
+                <div className="flex justify-between items-center" style={{ height: APP_TOP_BAR_H }}>
                     {/* Logo & Main Nav */}
                     <div className="flex items-center gap-6 sm:gap-8">
                         <button
                             onClick={() => router.push('/')}
-                            className="flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-ink-accent focus:ring-offset-2 rounded-md"
+                            className="flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-ink-accent focus:ring-offset-2 rounded-md whitespace-nowrap"
                             aria-label="Trang chủ"
                         >
                             <div className="w-8 h-8 rounded-lg bg-ink-accent flex items-center justify-center">
@@ -84,23 +91,23 @@ export default function Header({ user, onLogout, onJoin }: HeaderProps) {
                             <span className="font-semibold text-ink-text text-base hidden sm:block">E-Learning</span>
                         </button>
 
-                        <nav className="flex items-center gap-1 sm:gap-2" aria-label="Main Navigation">
+                        <nav className="flex items-center gap-1 sm:gap-5 overflow-x-auto" aria-label="Main Navigation">
                             <button
                                 onClick={handleHomeClick}
-                                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                                className={`vd-focusable whitespace-nowrap px-1 py-1.5 border-b-2 text-sm font-medium transition-colors ${
                                     pathname === '/'
-                                        ? 'bg-ink-accentA text-ink-accent font-semibold'
-                                        : 'text-ink-textMuted hover:text-ink-text hover:bg-ink-page'
+                                        ? 'border-ink-accent text-ink-text font-semibold'
+                                        : 'border-transparent text-ink-textMuted hover:text-ink-text'
                                 }`}
                             >
                                 Trang chủ
                             </button>
                             <button
                                 onClick={handleAboutClick}
-                                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                                className={`vd-focusable whitespace-nowrap px-1 py-1.5 border-b-2 text-sm font-medium transition-colors ${
                                     pathname === '/about'
-                                        ? 'bg-ink-accentA text-ink-accent font-semibold'
-                                        : 'text-ink-textMuted hover:text-ink-text hover:bg-ink-page'
+                                        ? 'border-ink-accent text-ink-text font-semibold'
+                                        : 'border-transparent text-ink-textMuted hover:text-ink-text'
                                 }`}
                             >
                                 Về chúng tôi
@@ -115,7 +122,7 @@ export default function Header({ user, onLogout, onJoin }: HeaderProps) {
                                 href={DONATE_URL}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="hidden sm:inline-flex items-center gap-1.5 text-sm font-medium text-ink-textMuted hover:text-ink-accent transition-colors"
+                                className="vd-focusable hidden sm:inline-flex items-center gap-1.5 text-sm font-medium text-ink-textMuted hover:text-ink-accent transition-colors"
                                 aria-label="Ủng hộ dự án"
                             >
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -129,7 +136,7 @@ export default function Header({ user, onLogout, onJoin }: HeaderProps) {
                                 {/* User info chip */}
                                 <button
                                     onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                                    className={`flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-full border border-ink-border hover:border-ink-borderHi hover:bg-ink-page transition-colors focus:outline-none focus:ring-2 focus:ring-ink-accent focus:ring-offset-2`}
+                                    className={`vd-focusable flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-full border border-ink-border hover:border-ink-borderHi hover:bg-ink-page transition-colors`}
                                     aria-haspopup="menu"
                                     aria-expanded={isDropdownOpen}
                                     aria-label="User menu"
@@ -213,7 +220,7 @@ export default function Header({ user, onLogout, onJoin }: HeaderProps) {
                         ) : (
                             <button
                                 onClick={onJoin}
-                                className="bg-ink-accent hover:bg-ink-accent/90 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-ink-accent focus:ring-offset-2"
+                                className="vd-focusable bg-ink-accent hover:bg-ink-accent/90 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
                             >
                                 Tham gia
                             </button>
