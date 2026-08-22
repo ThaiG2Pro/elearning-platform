@@ -1180,23 +1180,40 @@ export default function LearningPage() {
 
                                         {question && (
                                             <>
-                                                <p className="text-sm font-medium text-ink-text mb-3">
-                                                    Câu {quizQIdx + 1}/{total}: {question.text}
-                                                </p>
-                                                <div className="space-y-2">
-                                                    {(question.options || []).map(option => (
-                                                        <label key={option.id} className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${answers[question.id] === option.id ? 'border-ink-accent bg-ink-accentA' : 'border-ink-border hover:bg-ink-page'}`}>
-                                                            <input
-                                                                type="radio"
-                                                                name={`question-${question.id}`}
-                                                                value={option.id}
-                                                                checked={answers[question.id] === option.id}
-                                                                onChange={() => handleAnswerChange(question.id, option.id)}
-                                                                className="text-ink-accent focus:ring-ink-accent"
-                                                            />
-                                                            <span className="text-sm text-ink-text">{option.text}</span>
-                                                        </label>
-                                                    ))}
+                                                {/* Porting motif "trang vở kẻ lề" từ vibe-demo/quiz (renderQuestion):
+                                                    số câu trong cột lề trái, đường kẻ mực dọc liên tục, đáp án đánh
+                                                    chữ A/B/C/D trong lề — thay khung label/radio bo tròn cũ. */}
+                                                <div className="flex items-stretch mb-1">
+                                                    <span style={{ width: MARGIN_W }} className="shrink-0 flex items-start justify-center pt-0.5 font-mono text-[11px] font-semibold text-ink-accent">
+                                                        {String(quizQIdx + 1).padStart(2, '0')}
+                                                    </span>
+                                                    <div className="flex-1 border-l border-ink-marginLn pl-3.5 pb-3 text-sm font-medium text-ink-text leading-[1.5]">
+                                                        {question.text}
+                                                    </div>
+                                                </div>
+
+                                                <div className="pb-2" role="radiogroup" aria-label={`Câu ${quizQIdx + 1}: ${question.text}`}>
+                                                    {(question.options || []).map((option, oi) => {
+                                                        const isPicked = answers[question.id] === option.id;
+                                                        return (
+                                                            <div
+                                                                key={option.id}
+                                                                role="radio"
+                                                                aria-checked={isPicked}
+                                                                tabIndex={0}
+                                                                onClick={() => handleAnswerChange(question.id, option.id)}
+                                                                onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleAnswerChange(question.id, option.id); } }}
+                                                                className={`vd-focusable flex items-stretch cursor-pointer transition-colors ${isPicked ? 'bg-ink-accentA' : 'hover:bg-ink-page'}`}
+                                                            >
+                                                                <span style={{ width: MARGIN_W }} className={`shrink-0 flex items-start justify-center pt-2.5 font-mono text-[11px] ${isPicked ? 'font-semibold text-ink-accent' : 'font-normal text-ink-textDim'}`}>
+                                                                    {String.fromCharCode(65 + oi)}
+                                                                </span>
+                                                                <div className={`flex-1 border-l border-ink-marginLn py-2.5 pr-3 pl-3.5 text-sm ${isPicked ? 'font-medium text-ink-text' : 'text-ink-textMid'}`}>
+                                                                    {option.text}
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
                                                 </div>
 
                                                 {/* Porting logic từ vibe-demo/quiz (renderQuestionMap): lưới
@@ -1343,32 +1360,58 @@ export default function LearningPage() {
                                             <span className="text-xs font-mono font-medium text-ink-textDim">{quizQIdx + 1}/{total}</span>
                                         </div>
 
-                                        <p className="text-sm font-medium text-ink-text mb-3">
-                                            Câu {quizQIdx + 1}: {question.text}
-                                        </p>
-                                        <div className="space-y-1.5 mb-6">
-                                            {(question.options || []).map(option => (
-                                                <div
-                                                    key={option.id}
-                                                    className={`flex items-center gap-2 p-2.5 rounded-lg text-sm ${option.id === question.correctId
-                                                        ? 'bg-ink-correctA text-ink-correct font-medium'
-                                                        : option.id === question.selectedId && option.id !== question.correctId
-                                                            ? 'bg-ink-wrongA text-ink-wrong'
-                                                            : 'text-ink-textMid'
-                                                        }`}
-                                                >
-                                                    {option.id === question.correctId ? (
-                                                        <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7"/></svg>
-                                                    ) : option.id === question.selectedId && option.id !== question.correctId ? (
-                                                        <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/></svg>
-                                                    ) : (
-                                                        <span className="w-4 h-4 flex-shrink-0"/>
-                                                    )}
-                                                    {option.text}
-                                                </div>
-                                            ))}
+                                        {/* Porting motif "trang vở kẻ lề" từ vibe-demo/quiz (renderQuestion,
+                                            graded=true): cùng cột lề đánh chữ A/B/C/D như lúc làm bài, chỉ đổi
+                                            màu mực theo đúng/sai — thay khối icon check/x bo tròn cũ. */}
+                                        <div className="flex items-stretch mb-1">
+                                            <span style={{ width: MARGIN_W }} className="shrink-0 flex items-start justify-center pt-0.5 font-mono text-[11px] font-semibold text-ink-accent">
+                                                {String(quizQIdx + 1).padStart(2, '0')}
+                                            </span>
+                                            <div className="flex-1 border-l border-ink-marginLn pl-3.5 pb-3 text-sm font-medium text-ink-text leading-[1.5]">
+                                                {question.text}
+                                            </div>
+                                        </div>
+
+                                        <div className="pb-2" role="radiogroup" aria-label={`Câu ${quizQIdx + 1}: ${question.text}`}>
+                                            {(question.options || []).map((option, oi) => {
+                                                const isPicked = option.id === question.selectedId;
+                                                const isCorrect = option.id === question.correctId;
+                                                const showRight = isCorrect;
+                                                const showWrong = isPicked && !isCorrect;
+                                                return (
+                                                    <div
+                                                        key={option.id}
+                                                        role="radio"
+                                                        aria-checked={isPicked}
+                                                        aria-disabled
+                                                        className="flex items-stretch"
+                                                        style={{ background: showRight ? 'rgba(33,122,74,0.08)' : showWrong ? 'rgba(168,54,46,0.07)' : 'transparent' }}
+                                                    >
+                                                        <span
+                                                            style={{ width: MARGIN_W }}
+                                                            className={`shrink-0 flex items-start justify-center pt-2.5 font-mono text-[11px] ${(isPicked || showRight) ? 'font-semibold' : 'font-normal'} ${
+                                                                showRight ? 'text-ink-correct' : showWrong ? 'text-ink-wrong' : 'text-ink-textDim'
+                                                            }`}
+                                                        >
+                                                            {String.fromCharCode(65 + oi)}
+                                                        </span>
+                                                        <div className="flex-1 border-l border-ink-marginLn py-2.5 pr-3 pl-3.5 flex items-start gap-2">
+                                                            <span className={`flex-1 text-sm ${(isPicked || showRight) ? 'font-medium' : 'font-normal'} ${
+                                                                showRight ? 'text-ink-correct' : showWrong ? 'text-ink-wrong' : 'text-ink-textMid'
+                                                            }`}>
+                                                                {option.text}
+                                                            </span>
+                                                            {showRight && <svg className="w-4 h-4 flex-shrink-0 text-ink-correct" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7"/></svg>}
+                                                            {showWrong && <svg className="w-4 h-4 flex-shrink-0 text-ink-wrong" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/></svg>}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
                                             {question.selectedId == null && (
-                                                <p className="text-xs text-ink-wrong font-medium pt-1">Chưa trả lời.</p>
+                                                <div className="flex items-stretch">
+                                                    <span style={{ width: MARGIN_W }} className="shrink-0" />
+                                                    <p className="flex-1 border-l border-ink-marginLn pt-2 pl-3.5 text-xs text-ink-wrong font-medium">Chưa trả lời.</p>
+                                                </div>
                                             )}
                                         </div>
 
