@@ -7,6 +7,11 @@ import { cn } from "@/lib/utils"
 
 const Tabs = TabsPrimitive.Root
 
+// Porting motif tab từ vibe-demo/spaces (TABS.map — underline-active): dải
+// tab gạch chân accent thay pill nền xám mặc định của shadcn. Cả 2 consumer
+// hiện tại (my-learning, my-spaces) đều là trang danh sách Space — đúng đối
+// ứng của vibe-demo/spaces, nên đổi tại gốc để cùng nhận một lần. Hành vi
+// Radix (keyboard, aria) giữ nguyên — chỉ đổi lớp trình bày.
 const TabsList = React.forwardRef<
   React.ElementRef<typeof TabsPrimitive.List>,
   React.ComponentPropsWithoutRef<typeof TabsPrimitive.List>
@@ -14,7 +19,7 @@ const TabsList = React.forwardRef<
   <TabsPrimitive.List
     ref={ref}
     className={cn(
-      "inline-flex h-9 items-center justify-center rounded-lg bg-muted p-1 text-muted-foreground",
+      "inline-flex items-end gap-4 border-b border-ink-border",
       className
     )}
     {...props}
@@ -29,7 +34,7 @@ const TabsTrigger = React.forwardRef<
   <TabsPrimitive.Trigger
     ref={ref}
     className={cn(
-      "inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow",
+      "inline-flex items-baseline gap-1.5 whitespace-nowrap px-1.5 py-2.5 -mb-px text-sm font-[450] text-ink-textMuted border-b-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 data-[state=active]:font-semibold data-[state=active]:text-ink-text data-[state=active]:border-ink-accent",
       className
     )}
     {...props}
