@@ -4,7 +4,7 @@ import { getUserIdFromRequest } from '@/shared/middleware/auth';
 import { DeleteAccountDto } from '@/modules/auth/dtos/DeleteAccountDto';
 
 // WP1.5.6 — account deletion. Soft delete only: hard-deleting would violate
-// RESTRICT foreign keys on owned courses/notes for basically any real
+// RESTRICT foreign keys on owned spaces/notes for basically any real
 // account (see UserEntity.markDeleted for the full rationale).
 export async function DELETE(request: NextRequest) {
     try {

@@ -3,7 +3,7 @@ import { PrismaClient } from '@prisma/client';
 /**
  * WP4.2 (Checkpoint 4) — policy dọn dữ liệu (mục 6.4 economics doc): archive
  * `Source`/`AIGeneration` không truy cập lâu ngày (>= `DATA_RETENTION_ARCHIVE_DAYS`,
- * mặc định 180 ngày) và không còn course công khai nào tham chiếu (showcase
+ * mặc định 180 ngày) và không còn space công khai nào tham chiếu (showcase
  * HOẶC có share_token — 2 hình thức "công khai" hiện có trong data model).
  *
  * Archive KHÔNG xoá row — chỉ đánh dấu `archived_at` và null hoá
@@ -40,7 +40,7 @@ async function main() {
             title: true,
             last_accessed_at: true,
             created_at: true,
-            courses: {
+            spaces: {
                 where: { OR: [{ is_showcase: true }, { share_token: { not: null } }] },
                 select: { id: true },
                 take: 1,
@@ -49,7 +49,7 @@ async function main() {
     });
 
     const candidates = sources.filter((s) => {
-        if (s.courses.length > 0) return false; // còn course công khai tham chiếu
+        if (s.spaces.length > 0) return false; // còn space công khai tham chiếu
         const referenceDate = s.last_accessed_at ?? s.created_at;
         if (!referenceDate) return false;
         return now.getTime() - referenceDate.getTime() >= thresholdMs;

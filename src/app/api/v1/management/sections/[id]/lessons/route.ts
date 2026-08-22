@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ManagementController } from '@/modules/course-management/controllers/ManagementController';
+import { ManagementController } from '@/modules/space-management/controllers/ManagementController';
 import { getUserIdFromRequest } from '@/shared/middleware/auth';
-import { CreateLessonDto } from '@/modules/course-management/dtos/ContentDto';
+import { CreateLessonDto } from '@/modules/space-management/dtos/ContentDto';
 
 export async function POST(
     request: NextRequest,
@@ -15,7 +15,7 @@ export async function POST(
 
         const sectionId = BigInt(params.id);
         const rawBody = await request.json();
-        // Editor UI course-management refactor — the frontend has always
+        // Editor UI space-management refactor — the frontend has always
         // posted the video URL under the field name `videoUrl` (matching its
         // own form state), but this route forwarded the raw body straight
         // through to a raw-Prisma create that only reads `contentUrl`. The

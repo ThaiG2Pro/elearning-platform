@@ -4,7 +4,7 @@ import crypto, { randomBytes } from 'crypto';
 
 const prisma = new PrismaClient();
 
-/** Mirrors CourseRepository.ensureShareToken — opaque, not the numeric id. */
+/** Mirrors SpaceRepository.ensureShareToken — opaque, not the numeric id. */
 function generateShareToken(): string {
     return randomBytes(10).toString('base64url');
 }
@@ -79,7 +79,7 @@ async function main() {
 
     // Clear existing data — use TRUNCATE to ensure tables are fully cleared and sequences reset
     console.log('🧹 Truncating tables and resetting sequences...');
-    await prisma.$executeRaw`TRUNCATE TABLE "credit_transactions","ai_generations","questions","learning_progress","notes","lessons","sources","chapters","courses","tokens","user_avatars","users" RESTART IDENTITY CASCADE;`;
+    await prisma.$executeRaw`TRUNCATE TABLE "credit_transactions","ai_generations","questions","learning_progress","notes","lessons","sources","chapters","spaces","tokens","user_avatars","users" RESTART IDENTITY CASCADE;`;
     console.log('✅ Tables truncated and sequences reset');
 
     // 2. USERS (Various profiles & states)
@@ -241,7 +241,7 @@ async function main() {
     });
 
     const tsUrl = 'https://www.youtube.com/watch?v=BwuLxPH8IDs';
-    const tsTranscript = `00:00 Welcome to TypeScript full course.
+    const tsTranscript = `00:00 Welcome to TypeScript full space.
 00:30 TypeScript adds static type definitions to JavaScript.
 02:00 Types, Interfaces, Generics and Type inference explained.
 05:00 Advanced Clean Architecture patterns with TypeScript and Prisma.`;
@@ -251,7 +251,7 @@ async function main() {
     });
 
     const reactUrl = 'https://www.youtube.com/watch?v=w7ejDZ8SWv8';
-    const reactSource = await upsertVideoSource(reactUrl, 'React JS & Next.js Crash Course', {
+    const reactSource = await upsertVideoSource(reactUrl, 'React JS & Next.js Crash Space', {
         transcript: '00:00 React basics and Virtual DOM.\n02:15 Component Lifecycle & Hooks.',
         lastAccessedAt: new Date(),
     });
@@ -375,10 +375,10 @@ async function main() {
 
     console.log('✅ AI generations created (SHARED_FREE, BYOK SHARED, PAID_TIER, FAILED, PENDING)');
 
-    // 7. COURSES, CHAPTERS & LESSONS (With Multi-Chapter & Lineage Cases)
+    // 7. SPACES, CHAPTERS & LESSONS (With Multi-Chapter & Lineage Cases)
 
-    // Course 1: Java (Jack Smith) — Has AI summary and AI quiz attached to lessons
-    const javaCourse = await prisma.courses.create({
+    // Space 1: Java (Jack Smith) — Has AI summary and AI quiz attached to lessons
+    const javaSpace = await prisma.spaces.create({
         data: {
             owner_id: jack.id,
             title: 'Nhập môn Lập trình Java Cơ bản',
@@ -391,7 +391,7 @@ async function main() {
     });
 
     const javaChapter1 = await prisma.chapters.create({
-        data: { course_id: javaCourse.id, title: 'Chương 1: Môi trường & Cú pháp cơ bản', order_index: 1 },
+        data: { space_id: javaSpace.id, title: 'Chương 1: Môi trường & Cú pháp cơ bản', order_index: 1 },
     });
 
     const javaLesson1 = await prisma.lessons.create({
@@ -434,8 +434,8 @@ async function main() {
         ],
     });
 
-    // Course 2: TypeScript Multi-Chapter Space (Alice)
-    const tsCourse = await prisma.courses.create({
+    // Space 2: TypeScript Multi-Chapter Space (Alice)
+    const tsSpace = await prisma.spaces.create({
         data: {
             owner_id: alice.id,
             title: 'Mastering TypeScript & Clean Architecture',
@@ -448,10 +448,10 @@ async function main() {
     });
 
     const tsChapter1 = await prisma.chapters.create({
-        data: { course_id: tsCourse.id, title: 'Phần 1: Nền tảng Type System & Interfaces', order_index: 1 },
+        data: { space_id: tsSpace.id, title: 'Phần 1: Nền tảng Type System & Interfaces', order_index: 1 },
     });
     const tsChapter2 = await prisma.chapters.create({
-        data: { course_id: tsCourse.id, title: 'Phần 2: Design Patterns & Dependency Injection', order_index: 2 },
+        data: { space_id: tsSpace.id, title: 'Phần 2: Design Patterns & Dependency Injection', order_index: 2 },
     });
 
     const tsLesson1 = await prisma.lessons.create({
@@ -475,9 +475,9 @@ async function main() {
         ],
     });
 
-    // Course 3: Multi-tier Lineage Testing (Fork Tree)
-    // Level 1: Jack creates Course A (React Space)
-    const reactCourseA = await prisma.courses.create({
+    // Space 3: Multi-tier Lineage Testing (Fork Tree)
+    // Level 1: Jack creates Space A (React Space)
+    const reactSpaceA = await prisma.spaces.create({
         data: {
             owner_id: jack.id,
             title: 'Lập trình React 19 & Next.js App Router',
@@ -489,54 +489,54 @@ async function main() {
         },
     });
     const rChapterA = await prisma.chapters.create({
-        data: { course_id: reactCourseA.id, title: 'Chương 1: Server Components & Actions', order_index: 1 },
+        data: { space_id: reactSpaceA.id, title: 'Chương 1: Server Components & Actions', order_index: 1 },
     });
     await prisma.lessons.create({
         data: { chapter_id: rChapterA.id, source_id: reactSource.id, title: 'React Server Components căn bản', type: 'VIDEO', content_url: reactUrl, order_index: 1 },
     });
 
-    // Level 2: John clones Course A -> Course B
-    const reactCourseB = await prisma.courses.create({
+    // Level 2: John clones Space A -> Space B
+    const reactSpaceB = await prisma.spaces.create({
         data: {
             owner_id: john.id,
             title: 'Lập trình React 19 & Next.js App Router (John Space)',
             slug: `react-19-john-${randomBytes(2).toString('hex')}`,
             description: 'Không gian học của John (Sao chép từ Jack Smith)',
             status: 'ACTIVE',
-            cloned_from_course_id: reactCourseA.id,
+            cloned_from_space_id: reactSpaceA.id,
             source_id: reactSource.id,
             share_token: generateShareToken(),
         },
     });
     const rChapterB = await prisma.chapters.create({
-        data: { course_id: reactCourseB.id, title: 'Chương 1: Server Components & Actions', order_index: 1 },
+        data: { space_id: reactSpaceB.id, title: 'Chương 1: Server Components & Actions', order_index: 1 },
     });
     const rLessonB = await prisma.lessons.create({
         data: { chapter_id: rChapterB.id, source_id: reactSource.id, title: 'React Server Components căn bản', type: 'VIDEO', content_url: reactUrl, order_index: 1 },
     });
 
-    // Level 3: Alice clones Course B -> Course C (Cloning a Clone)
-    const reactCourseC = await prisma.courses.create({
+    // Level 3: Alice clones Space B -> Space C (Cloning a Clone)
+    const reactSpaceC = await prisma.spaces.create({
         data: {
             owner_id: alice.id,
             title: 'Lập trình React 19 & Next.js App Router (Alice Space)',
             slug: `react-19-alice-${randomBytes(2).toString('hex')}`,
             description: 'Không gian học của Alice (Sao chép từ John Doe)',
             status: 'ACTIVE',
-            cloned_from_course_id: reactCourseB.id,
+            cloned_from_space_id: reactSpaceB.id,
             source_id: reactSource.id,
             share_token: generateShareToken(),
         },
     });
     const rChapterC = await prisma.chapters.create({
-        data: { course_id: reactCourseC.id, title: 'Chương 1: Server Components & Actions', order_index: 1 },
+        data: { space_id: reactSpaceC.id, title: 'Chương 1: Server Components & Actions', order_index: 1 },
     });
     await prisma.lessons.create({
         data: { chapter_id: rChapterC.id, source_id: reactSource.id, title: 'React Server Components căn bản', type: 'VIDEO', content_url: reactUrl, order_index: 1 },
     });
 
-    // Course 4: Empty Draft Course (For testing empty state & draft status)
-    await prisma.courses.create({
+    // Space 4: Empty Draft Space (For testing empty state & draft status)
+    await prisma.spaces.create({
         data: {
             owner_id: jack.id,
             title: 'Khóa học Bản thảo Chưa xuất bản',
@@ -546,35 +546,35 @@ async function main() {
         },
     });
 
-    console.log('✅ Courses & Multi-tier Lineage created (Jack -> John -> Alice)');
+    console.log('✅ Spaces & Multi-tier Lineage created (Jack -> John -> Alice)');
 
     // 8. NOTES WITH TIMESTAMPS (Video seeking testing)
     await prisma.notes.createMany({
         data: [
             {
                 user_id: john.id,
-                course_id: javaCourse.id,
+                space_id: javaSpace.id,
                 lesson_id: javaLesson1.id,
                 content: '📌 Đoạn này giải thích rất rõ về cách JVM biên dịch bytecode sang machine code.',
                 video_timestamp_sec: 15,
             },
             {
                 user_id: john.id,
-                course_id: javaCourse.id,
+                space_id: javaSpace.id,
                 lesson_id: javaLesson1.id,
                 content: '⚠️ Lưu ý: `javac` là compiler, `java` là runtime launcher.',
                 video_timestamp_sec: 90,
             },
             {
                 user_id: john.id,
-                course_id: reactCourseB.id,
+                space_id: reactSpaceB.id,
                 lesson_id: rLessonB.id,
                 content: '💡 Server Actions không cần tạo API route trung gian, gọi trực tiếp từ client form.',
                 video_timestamp_sec: 180,
             },
             {
                 user_id: alice.id,
-                course_id: tsCourse.id,
+                space_id: tsSpace.id,
                 lesson_id: tsLesson1.id,
                 content: '🚀 Dùng `as const` để bảo toàn literal types.',
                 video_timestamp_sec: 45,
@@ -588,7 +588,7 @@ async function main() {
     await prisma.learning_progress.create({
         data: {
             user_id: john.id,
-            course_id: javaCourse.id,
+            space_id: javaSpace.id,
             lesson_id: javaLesson1.id,
             is_finished: true,
             video_last_position: 180,
@@ -599,7 +599,7 @@ async function main() {
     await prisma.learning_progress.create({
         data: {
             user_id: john.id,
-            course_id: javaCourse.id,
+            space_id: javaSpace.id,
             lesson_id: javaLesson2.id,
             is_finished: true,
             quiz_max_score: 100,
@@ -611,7 +611,7 @@ async function main() {
     await prisma.learning_progress.create({
         data: {
             user_id: john.id,
-            course_id: reactCourseB.id,
+            space_id: reactSpaceB.id,
             lesson_id: rLessonB.id,
             is_finished: false,
             video_last_position: 145,
@@ -622,7 +622,7 @@ async function main() {
     await prisma.learning_progress.create({
         data: {
             user_id: alice.id,
-            course_id: tsCourse.id,
+            space_id: tsSpace.id,
             lesson_id: tsLesson1.id,
             is_finished: false,
             video_last_position: 78,
@@ -636,7 +636,7 @@ async function main() {
     console.log('📊 TEST DATA OVERVIEW:');
     console.log('👤 Users:');
     console.log('   - John Doe: john@gmail.com / password123 (50 Credits, Stripe ID, Active progress)');
-    console.log('   - Jack Smith: jack@gmail.com / password123 (Creator, 10 Credits, Course Author)');
+    console.log('   - Jack Smith: jack@gmail.com / password123 (Creator, 10 Credits, Space Author)');
     console.log('   - Alice Johnson: alice@gmail.com / password123 (BYOK User, TypeScript Creator)');
     console.log('   - Bob Newbie: bob@gmail.com / password123 (Status: PENDING, Valid Activation Token)');
     console.log('   - Trọng Tín (Admin): admin1@gmail.com / password123');
@@ -647,9 +647,9 @@ async function main() {
     console.log('   - FAILED Generation: 429 Rate Limit error sample');
     console.log('   - PENDING Generation: Async in-progress sample');
     console.log('\n🔗 Multi-tier Clone Lineage (Fork Tree):');
-    console.log(`   - Root: Jack's React Space (ID: ${reactCourseA.id})`);
-    console.log(`   - Fork Level 1: John's Clone (ID: ${reactCourseB.id})`);
-    console.log(`   - Fork Level 2: Alice's Clone of John's Clone (ID: ${reactCourseC.id})`);
+    console.log(`   - Root: Jack's React Space (ID: ${reactSpaceA.id})`);
+    console.log(`   - Fork Level 1: John's Clone (ID: ${reactSpaceB.id})`);
+    console.log(`   - Fork Level 2: Alice's Clone of John's Clone (ID: ${reactSpaceC.id})`);
     console.log('\n📝 Rich Notes with Video Timestamps:');
     console.log('   - Java lesson (15s, 90s), React lesson (180s), TypeScript lesson (45s)');
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');

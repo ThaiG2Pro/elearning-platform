@@ -3,7 +3,7 @@ import { UserEntity } from '../domain/UserEntity';
 // WP1.5.11 — the last open item from the WP1.5 core-product-debt audit.
 // Account deletion (WP1.5.6) already ships; this is the export half of the
 // GDPR-style pair, covering everything deletion doesn't erase: profile,
-// owned courses (full tree), learning progress, and notes. Every id/date
+// owned spaces (full tree), learning progress, and notes. Every id/date
 // is converted to a plain string here (not left as BigInt/Date) so the
 // route can hand this straight to JSON.stringify without a custom
 // replacer — BigInt has no native JSON representation and throws.
@@ -17,7 +17,7 @@ export class UserDataExportDto {
         role: string;
         avatarUrl: string | null;
     };
-    ownedCourses: Array<{
+    ownedSpaces: Array<{
         id: string;
         title: string;
         slug: string;
@@ -45,7 +45,7 @@ export class UserDataExportDto {
         }>;
     }>;
     learningProgress: Array<{
-        courseId: string | null;
+        spaceId: string | null;
         lessonId: string;
         isFinished: boolean;
         videoLastPosition: number | null;
@@ -55,14 +55,14 @@ export class UserDataExportDto {
     notes: Array<{
         id: string;
         lessonId: string;
-        courseId: string;
+        spaceId: string;
         content: string;
         videoTimestampSec: number | null;
         createdAt: string;
         updatedAt: string;
     }>;
 
-    constructor(user: UserEntity, courses: any[], progress: any[], notes: any[]) {
+    constructor(user: UserEntity, spaces: any[], progress: any[], notes: any[]) {
         this.exportedAt = new Date().toISOString();
 
         this.profile = {
@@ -74,7 +74,7 @@ export class UserDataExportDto {
             avatarUrl: user.avatarUrl ?? null,
         };
 
-        this.ownedCourses = courses.map((c: any) => ({
+        this.ownedSpaces = spaces.map((c: any) => ({
             id: c.id.toString(),
             title: c.title,
             slug: c.slug,
@@ -103,7 +103,7 @@ export class UserDataExportDto {
         }));
 
         this.learningProgress = progress.map((p: any) => ({
-            courseId: p.course_id ? p.course_id.toString() : null,
+            spaceId: p.space_id ? p.space_id.toString() : null,
             lessonId: p.lesson_id.toString(),
             isFinished: p.is_finished,
             videoLastPosition: p.video_last_position ?? null,
@@ -114,7 +114,7 @@ export class UserDataExportDto {
         this.notes = notes.map((n: any) => ({
             id: n.id.toString(),
             lessonId: n.lesson_id.toString(),
-            courseId: n.course_id.toString(),
+            spaceId: n.space_id.toString(),
             content: n.content,
             videoTimestampSec: n.video_timestamp_sec ?? null,
             createdAt: n.created_at.toISOString(),

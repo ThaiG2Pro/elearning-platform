@@ -95,7 +95,7 @@ export class AIGenerationPolicy {
     }
 
     /**
-     * Hệ quả mục 5 — fork/clone course không kế thừa AIGeneration
+     * Hệ quả mục 5 — fork/clone space không kế thừa AIGeneration
      * PAID_TIER: người fork phải tự tạo lại nếu muốn bản tương đương.
      */
     static inheritOnClone(sourceGenerationKeySource: KeySource | null): boolean {

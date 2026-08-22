@@ -309,12 +309,12 @@ export class AuthService {
             throw new Error('USER_NOT_FOUND');
         }
 
-        const [courses, progress, notes] = await Promise.all([
-            this.dataExportRepository.getOwnedCoursesFullTree(userId),
+        const [spaces, progress, notes] = await Promise.all([
+            this.dataExportRepository.getOwnedSpacesFullTree(userId),
             this.dataExportRepository.getLearningProgress(userId),
             this.dataExportRepository.getNotes(userId),
         ]);
 
-        return new UserDataExportDto(user, courses, progress, notes);
+        return new UserDataExportDto(user, spaces, progress, notes);
     }
 }

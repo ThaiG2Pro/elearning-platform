@@ -7,7 +7,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 
 export type AgentContext =
     | 'homepage_guest'
-    | 'homepage_no_courses'
+    | 'homepage_no_spaces'
     | 'join'
     | 'pricing';
 
@@ -35,7 +35,7 @@ const CONTEXT_CONFIG: Record<AgentContext, {
 }> = {
     homepage_guest: {
         greeting: 'Xin chào! 👋',
-        subtitle: 'Tôi có thể giúp bạn tìm khóa học phù hợp.',
+        subtitle: 'Tôi có thể giúp bạn tìm Space phù hợp.',
         proactiveDelay: 8000,
         proactiveBubble: 'Bạn muốn tìm hiểu về nền tảng học trực tuyến này?',
         quickStarters: [
@@ -44,7 +44,7 @@ const CONTEXT_CONFIG: Record<AgentContext, {
             'Có gói dùng thử miễn phí không?',
         ],
     },
-    homepage_no_courses: {
+    homepage_no_spaces: {
         greeting: 'Chào mừng trở lại! 🎯',
         subtitle: 'Hãy để tôi giúp bạn chọn gói học phù hợp.',
         proactiveDelay: 10000,

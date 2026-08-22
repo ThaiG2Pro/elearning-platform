@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { LearnController } from '@/modules/course-management/controllers/LearnController';
+import { LearnController } from '@/modules/space-management/controllers/LearnController';
 import { getUserIdFromRequest } from '@/shared/middleware/auth';
 
 // WP1.5.4/1.5.11: notes previously could never be deleted (no route at any

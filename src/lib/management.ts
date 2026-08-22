@@ -1,16 +1,16 @@
 // src/lib/management.ts
 
 import api from './api';
-import { ManagedCoursesResponse, ManagedCoursesRequest, CourseStructure, LessonPreview, Chapter, Lesson, QuizParseResponse } from '@/types/management.types';
+import { ManagedSpacesResponse, ManagedSpacesRequest, SpaceStructure, LessonPreview, Chapter, Lesson, QuizParseResponse } from '@/types/management.types';
 
-// WP1.6 follow-up (round 2) — renamed from getLecturerCourses: lists the
-// courses the current user owns, for the /my-courses management screen.
-export const getOwnedCourses = async (
-    params?: ManagedCoursesRequest
-): Promise<ManagedCoursesResponse> => {
+// WP1.6 follow-up (round 2) — renamed from getLecturerSpaces: lists the
+// spaces the current user owns, for the /my-spaces management screen.
+export const getOwnedSpaces = async (
+    params?: ManagedSpacesRequest
+): Promise<ManagedSpacesResponse> => {
     try {
-        const response = await api.get<ManagedCoursesResponse>(
-            '/management/courses',
+        const response = await api.get<ManagedSpacesResponse>(
+            '/management/spaces',
             {
                 params,
             }
@@ -24,7 +24,7 @@ export const getOwnedCourses = async (
             } else if (status === 403) {
                 throw new Error('ACCESS_DENIED');
             } else if (status === 404) {
-                throw new Error('COURSE_NOT_FOUND');
+                throw new Error('SPACE_NOT_FOUND');
             } else {
                 throw new Error('SERVER_ERROR');
             }
@@ -34,10 +34,10 @@ export const getOwnedCourses = async (
     }
 };
 
-export const getCourseStructure = async (courseId: number): Promise<CourseStructure> => {
+export const getSpaceStructure = async (spaceId: number): Promise<SpaceStructure> => {
     try {
-        const response = await api.get<CourseStructure>(
-            `/courses/${courseId}`
+        const response = await api.get<SpaceStructure>(
+            `/spaces/${spaceId}`
         );
         return response.data;
     } catch (error: any) {
@@ -48,7 +48,7 @@ export const getCourseStructure = async (courseId: number): Promise<CourseStruct
             } else if (status === 403) {
                 throw new Error('ACCESS_DENIED');
             } else if (status === 404) {
-                throw new Error('COURSE_NOT_FOUND');
+                throw new Error('SPACE_NOT_FOUND');
             } else {
                 throw new Error('SERVER_ERROR');
             }
@@ -58,10 +58,10 @@ export const getCourseStructure = async (courseId: number): Promise<CourseStruct
     }
 };
 
-export const getLessonPreview = async (courseId: number, lessonId: number): Promise<LessonPreview> => {
+export const getLessonPreview = async (spaceId: number, lessonId: number): Promise<LessonPreview> => {
     try {
         const response = await api.get<LessonPreview>(
-            `/management/courses/${courseId}/preview/lessons/${lessonId}`
+            `/management/spaces/${spaceId}/preview/lessons/${lessonId}`
         );
         return response.data;
     } catch (error: any) {
@@ -82,17 +82,17 @@ export const getLessonPreview = async (courseId: number, lessonId: number): Prom
     }
 };
 
-// Create a new course
-export const createCourse = async (data: { title?: string; description?: string; slug?: string } = {}): Promise<{ id: string; courseId: string; message?: string }> => {
+// Create a new space
+export const createSpace = async (data: { title?: string; description?: string; slug?: string } = {}): Promise<{ id: string; spaceId: string; message?: string }> => {
     try {
-        const response = await api.post<{ id?: string | number; courseId?: string | number; message?: string }>(
-            `/management/courses`,
+        const response = await api.post<{ id?: string | number; spaceId?: string | number; message?: string }>(
+            `/management/spaces`,
             data
         );
-        const courseIdStr = String(response.data.courseId || response.data.id || '');
+        const spaceIdStr = String(response.data.spaceId || response.data.id || '');
         return {
-            id: courseIdStr,
-            courseId: courseIdStr,
+            id: spaceIdStr,
+            spaceId: spaceIdStr,
             message: response.data.message
         };
     } catch (error: any) {
@@ -106,39 +106,39 @@ export const createCourse = async (data: { title?: string; description?: string;
     }
 };
 
-// Update course metadata (title, description, status)
-export const updateCourseMetadata = async (courseId: number, data: { title?: string; description?: string; status?: 'ACTIVE' | 'ARCHIVED' }): Promise<void> => {
+// Update space metadata (title, description, status)
+export const updateSpaceMetadata = async (spaceId: number, data: { title?: string; description?: string; status?: 'ACTIVE' | 'ARCHIVED' }): Promise<void> => {
     try {
-        await api.put(`/management/courses/${courseId}`, data);
+        await api.put(`/management/spaces/${spaceId}`, data);
     } catch (error: any) {
         if (error.response?.status === 400) {
             throw new Error(error.response.data?.error || 'Invalid input');
         } else if (error.response?.status === 403) {
             throw new Error('ACCESS_DENIED');
         } else if (error.response?.status === 404) {
-            throw new Error('COURSE_NOT_FOUND');
+            throw new Error('SPACE_NOT_FOUND');
         } else {
             throw new Error('SERVER_ERROR');
         }
     }
 };
 
-// WP1.6 follow-up (round 3) — wires up Course.archive()/unarchive(), which
+// WP1.6 follow-up (round 3) — wires up Space.archive()/unarchive(), which
 // existed in the domain since the ownership pivot but had no route/UI ever
-// calling them, leaving the /my-courses "Archived" filter permanently empty.
-export const archiveCourse = async (courseId: number): Promise<void> => {
-    await updateCourseMetadata(courseId, { status: 'ARCHIVED' });
+// calling them, leaving the /my-spaces "Archived" filter permanently empty.
+export const archiveSpace = async (spaceId: number): Promise<void> => {
+    await updateSpaceMetadata(spaceId, { status: 'ARCHIVED' });
 };
 
-export const unarchiveCourse = async (courseId: number): Promise<void> => {
-    await updateCourseMetadata(courseId, { status: 'ACTIVE' });
+export const unarchiveSpace = async (spaceId: number): Promise<void> => {
+    await updateSpaceMetadata(spaceId, { status: 'ACTIVE' });
 };
 
 // Section (Chapter) CRUD
-export const createSection = async (courseId: number, data: { title: string; orderIndex: number }): Promise<Chapter> => {
+export const createSection = async (spaceId: number, data: { title: string; orderIndex: number }): Promise<Chapter> => {
     try {
         const response = await api.post<Chapter>(
-            `/management/courses/${courseId}/sections`,
+            `/management/spaces/${spaceId}/sections`,
             data
         );
         return response.data;
@@ -187,7 +187,7 @@ export const deleteSection = async (sectionId: number): Promise<void> => {
 };
 
 // Lesson CRUD
-// WP1.6 follow-up (course-editor refactor) — `content` dropped: it was
+// WP1.6 follow-up (space-editor refactor) — `content` dropped: it was
 // posted here and in updateLesson below but never had a home on the
 // backend (no `content`/description column on `lessons`, see
 // prisma/schema.prisma) — CreateLessonDto/UpdateLessonDto never read it.
@@ -349,25 +349,25 @@ export const saveGeneratedQuizQuestions = async (
     }
 };
 
-// Update full course content (sections & lessons)
-export const updateCourseContent = async (courseId: number, payload: any): Promise<void> => {
+// Update full space content (sections & lessons)
+export const updateSpaceContent = async (spaceId: number, payload: any): Promise<void> => {
     try {
-        await api.put(`/management/courses/${courseId}/content`, payload);
+        await api.put(`/management/spaces/${spaceId}/content`, payload);
     } catch (error: any) {
         if (error.response) {
             const { status } = error.response;
             if (status === 401) throw new Error('UNAUTHORIZED');
             else if (status === 403) throw new Error('ACCESS_DENIED');
-            else if (status === 404) throw new Error('COURSE_NOT_FOUND');
+            else if (status === 404) throw new Error('SPACE_NOT_FOUND');
             else throw new Error('SERVER_ERROR');
         } else throw new Error('NETWORK_ERROR');
     }
 };
 
-// WP1.1 — paste a link, get a fully-formed course in one step
-export const createCourseFromLink = async (url: string): Promise<{ courseId: string; title: string; titleIsPlaceholder: boolean }> => {
+// WP1.1 — paste a link, get a fully-formed space in one step
+export const createSpaceFromLink = async (url: string): Promise<{ spaceId: string; title: string; titleIsPlaceholder: boolean }> => {
     try {
-        const response = await api.post('/management/courses/from-link', { url });
+        const response = await api.post('/management/spaces/from-link', { url });
         return response.data;
     } catch (error: any) {
         if (error.response) {
@@ -384,17 +384,17 @@ export const createCourseFromLink = async (url: string): Promise<{ courseId: str
     }
 };
 
-// WP1.4 — owner-only: get (and lazily create) the course's stable share link
-export const getOrCreateShareLink = async (courseId: number): Promise<{ shareToken: string; shareUrl: string }> => {
+// WP1.4 — owner-only: get (and lazily create) the space's stable share link
+export const getOrCreateShareLink = async (spaceId: number): Promise<{ shareToken: string; shareUrl: string }> => {
     try {
-        const response = await api.post(`/management/courses/${courseId}/share`);
+        const response = await api.post(`/management/spaces/${spaceId}/share`);
         return response.data;
     } catch (error: any) {
         if (error.response) {
             const { status } = error.response;
             if (status === 401) throw new Error('UNAUTHORIZED');
             else if (status === 403) throw new Error('ACCESS_DENIED');
-            else if (status === 404) throw new Error('COURSE_NOT_FOUND');
+            else if (status === 404) throw new Error('SPACE_NOT_FOUND');
             else throw new Error('SERVER_ERROR');
         } else throw new Error('NETWORK_ERROR');
     }
@@ -407,21 +407,21 @@ export interface MyShareLink {
     shareUrl: string | null;
 }
 
-// WP1.5.11 — "quản lý share link của tôi": list every owned course with its
+// WP1.5.11 — "quản lý share link của tôi": list every owned space with its
 // current share status (previously the only way to see a link again was the
-// orphaned lecturer/courses/[id]/view page, now /my-courses/[id]/view).
+// orphaned lecturer/spaces/[id]/view page, now /my-spaces/[id]/view).
 export const listMyShareLinks = async (): Promise<MyShareLink[]> => {
     try {
-        const response = await api.get('/management/courses/share');
+        const response = await api.get('/management/spaces/share');
         return response.data;
     } catch (error: any) {
         throw new Error('Không thể tải danh sách link chia sẻ.');
     }
 };
 
-export const revokeShareLink = async (courseId: number): Promise<void> => {
+export const revokeShareLink = async (spaceId: number): Promise<void> => {
     try {
-        await api.delete(`/management/courses/${courseId}/share`);
+        await api.delete(`/management/spaces/${spaceId}/share`);
     } catch (error: any) {
         if (error.response?.status === 403) throw new Error('ACCESS_DENIED');
         throw new Error('Không thể thu hồi link.');

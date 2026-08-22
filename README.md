@@ -87,7 +87,7 @@ src/
 │   ├── api/v1/             # REST API endpoints
 │   └── [pages]/            # UI pages
 ├── modules/                # Domain-driven modules
-│   └── course-management/  # Controllers → Services → Domain → Repos
+│   └── space-management/   # Controllers → Services → Domain → Repos
 ├── components/             # Shared React components
 ├── lib/                    # Client-side API wrappers
 └── types/                  # TypeScript types

@@ -15,7 +15,7 @@ export interface WebPageMetaResult {
  * Cố ý là "bất kỳ URL nào không phải YouTube" — không giữ whitelist domain,
  * vì Vision cho phép dán link blog/web bất kỳ. `AIGenerationService`
  * (`ReadabilityWebContentProvider`) mới là nơi thật sự parse nội dung; adapter
- * này chỉ lo lấy tiêu đề để đặt tên course/lesson lúc tạo, đối xứng với
+ * này chỉ lo lấy tiêu đề để đặt tên space/lesson lúc tạo, đối xứng với
  * `oEmbedAdapter.fetchOEmbed` bên YouTube.
  */
 export class WebPageAdapter {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { LearnController } from '@/modules/course-management/controllers/LearnController';
+import { LearnController } from '@/modules/space-management/controllers/LearnController';
 import { getUserIdFromRequest } from '@/shared/middleware/auth';
 
 // WP1.5.4: a lesson now has many notes (was a single text blob on

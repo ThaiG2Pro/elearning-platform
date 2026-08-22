@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { QuizController } from '../../../../../../../../modules/course-management/controllers/QuizController';
+import { QuizController } from '../../../../../../../../modules/space-management/controllers/QuizController';
 import { getUserFromRequest } from '../../../../../../../../shared/middleware/auth';
 
 const controller = new QuizController();
@@ -27,6 +27,11 @@ export async function POST(
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
+        // BigInt() throw với id không phải số → rơi nhầm vào nhánh 500;
+        // validate trước để trả 400 đúng nghĩa lỗi input.
+        if (!/^\d+$/.test(params.id)) {
+            return NextResponse.json({ error: 'INVALID_LESSON_ID', message: 'id bài học không hợp lệ' }, { status: 400 });
+        }
         const lessonId = BigInt(params.id);
         const body = await request.json();
         const questions = body?.questions;

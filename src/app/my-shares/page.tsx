@@ -11,16 +11,16 @@ import { User } from '@/types/auth.types';
 import { logout as apiLogout, AuthUtils } from '@/lib/auth';
 
 // WP1.5.11 — previously the only way to see a share link again was the
-// orphaned /my-courses/[id]/view page, and there was no way to revoke
+// orphaned /my-spaces/[id]/view page, and there was no way to revoke
 // one at any layer. This is the single place to view/create/revoke every
-// share link across all owned courses.
+// share link across all owned spaces.
 export default function MySharesPage() {
     const router = useRouter();
     const [user, setUser] = useState<User | null>(null);
     const [links, setLinks] = useState<MyShareLink[]>([]);
     const [appState, setAppState] = useState<'loading' | 'idle' | 'error'>('loading');
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
-    const [busyCourseId, setBusyCourseId] = useState<number | null>(null);
+    const [busySpaceId, setBusySpaceId] = useState<number | null>(null);
     const [copiedId, setCopiedId] = useState<number | null>(null);
 
     const load = useCallback(async () => {
@@ -55,28 +55,28 @@ export default function MySharesPage() {
         router.push(`/join?continueUrl=${encodeURIComponent('/my-shares')}`);
     };
 
-    const handleCreate = async (courseId: number) => {
-        setBusyCourseId(courseId);
+    const handleCreate = async (spaceId: number) => {
+        setBusySpaceId(spaceId);
         try {
-            await getOrCreateShareLink(courseId);
+            await getOrCreateShareLink(spaceId);
             await load();
         } catch (error: any) {
             setErrorMessage(error.message);
         } finally {
-            setBusyCourseId(null);
+            setBusySpaceId(null);
         }
     };
 
-    const handleRevoke = async (courseId: number) => {
+    const handleRevoke = async (spaceId: number) => {
         if (!window.confirm('Thu hồi link này? Ai đang giữ link cũ sẽ không truy cập được nữa.')) return;
-        setBusyCourseId(courseId);
+        setBusySpaceId(spaceId);
         try {
-            await revokeShareLink(courseId);
+            await revokeShareLink(spaceId);
             await load();
         } catch (error: any) {
             setErrorMessage(error.message);
         } finally {
-            setBusyCourseId(null);
+            setBusySpaceId(null);
         }
     };
 
@@ -157,7 +157,7 @@ export default function MySharesPage() {
                                                     variant="destructive"
                                                     size="sm"
                                                     className="vd-focusable"
-                                                    disabled={busyCourseId === link.id}
+                                                    disabled={busySpaceId === link.id}
                                                     onClick={() => handleRevoke(link.id)}
                                                 >
                                                     Thu hồi
@@ -167,7 +167,7 @@ export default function MySharesPage() {
                                             <Button
                                                 size="sm"
                                                 className="vd-focusable"
-                                                disabled={busyCourseId === link.id}
+                                                disabled={busySpaceId === link.id}
                                                 onClick={() => handleCreate(link.id)}
                                             >
                                                 Tạo link

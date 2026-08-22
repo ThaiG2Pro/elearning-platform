@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { QuizController } from '../../../../../../modules/course-management/controllers/QuizController';
+import { QuizController } from '../../../../../../modules/space-management/controllers/QuizController';
 import { getUserIdFromRequest } from '../../../../../../shared/middleware/auth';
-import { QuizPolicy } from '../../../../../../modules/course-management/domain/QuizPolicy';
+import { QuizPolicy } from '../../../../../../modules/space-management/domain/QuizPolicy';
 
 export async function POST(request: NextRequest) {
     try {

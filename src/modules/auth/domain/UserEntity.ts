@@ -23,7 +23,7 @@ export class UserEntity {
     }
 
     // WP1.5.6: soft delete only — hard-deleting the row would violate the
-    // RESTRICT foreign keys on courses.owner_id for basically any real
+    // RESTRICT foreign keys on spaces.owner_id for basically any real
     // account. Reusing 'INACTIVE' would collide
     // with the pending-activation meaning that status already has (see
     // RegistrationPolicy / deleteInactiveUsersOlderThan24Hours), so this is

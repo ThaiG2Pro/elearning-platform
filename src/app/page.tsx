@@ -6,14 +6,14 @@ import Image from 'next/image';
 import { Play, ArrowRight } from 'lucide-react';
 import Header from '@/components/Header';
 import SearchBar from '@/components/SearchBar';
-import CourseList from '@/components/CourseList';
+import SpaceList from '@/components/SpaceList';
 import { Button } from '@/components/ui/button';
 import SalesAgentWidget from '@/components/ai/SalesAgentWidget';
-import { Course, MyLearningCourse } from '@/types/course.types';
+import { Space, MyLearningSpace } from '@/types/space.types';
 import { User } from '@/types/auth.types';
-import { getCourses } from '@/lib/courses';
-import { getMyLearningCourses } from '@/lib/course';
-import { createCourseFromLink } from '@/lib/management';
+import { getSpaces } from '@/lib/spaces';
+import { getMyLearningSpaces } from '@/lib/space';
+import { createSpaceFromLink } from '@/lib/management';
 import { logout as apiLogout, AuthUtils } from '@/lib/auth';
 import { formatDuration } from '@/lib/utils';
 
@@ -24,13 +24,13 @@ export default function Home() {
     const router = useRouter();
     const [searchQuery, setSearchQuery] = useState('');
     const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
-    const [courses, setCourses] = useState<Course[]>([]);
+    const [spaces, setSpaces] = useState<Space[]>([]);
     const [user, setUser] = useState<User | null>(null);
     const [appState, setAppState] = useState<AppState>('idle');
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
     // "Học tiếp" (Continue learning) for returning users
-    const [continueCourses, setContinueCourses] = useState<MyLearningCourse[]>([]);
+    const [continueSpaces, setContinueSpaces] = useState<MyLearningSpace[]>([]);
     const [continueState, setContinueState] = useState<ContinueState>('idle');
 
     // Toggles for 2-tier Discovery sections
@@ -41,7 +41,7 @@ export default function Home() {
     const [linkUrl, setLinkUrl] = useState('');
     const [creatingFromLink, setCreatingFromLink] = useState(false);
     const [linkError, setLinkError] = useState<string | null>(null);
-    const [createdSpace, setCreatedSpace] = useState<{ courseId: string; title: string; titleIsPlaceholder: boolean } | null>(null);
+    const [createdSpace, setCreatedSpace] = useState<{ spaceId: string; title: string; titleIsPlaceholder: boolean } | null>(null);
 
     // Debounce search query
     useEffect(() => {
@@ -52,24 +52,24 @@ export default function Home() {
         return () => clearTimeout(timer);
     }, [searchQuery]);
 
-    const fetchCourses = useCallback(async (query: string) => {
+    const fetchSpaces = useCallback(async (query: string) => {
         try {
             setAppState('loading');
             setErrorMessage(null);
-            const data = await getCourses(query || undefined);
-            setCourses(data);
+            const data = await getSpaces(query || undefined);
+            setSpaces(data);
             setAppState('success');
         } catch (error: any) {
             setAppState('error');
             setErrorMessage(error.message);
-            setCourses([]);
+            setSpaces([]);
         }
     }, []);
 
     // Effect for search changes
     useEffect(() => {
-        fetchCourses(debouncedSearchQuery);
-    }, [debouncedSearchQuery, fetchCourses]);
+        fetchSpaces(debouncedSearchQuery);
+    }, [debouncedSearchQuery, fetchSpaces]);
 
     // Load user from token on mount
     useEffect(() => {
@@ -84,9 +84,9 @@ export default function Home() {
         (async () => {
             setContinueState('loading');
             try {
-                const response = await getMyLearningCourses('in_progress');
+                const response = await getMyLearningSpaces('in_progress');
                 if (cancelled) return;
-                setContinueCourses(response.courses);
+                setContinueSpaces(response.spaces);
                 setContinueState('loaded');
             } catch {
                 if (cancelled) return;
@@ -110,7 +110,7 @@ export default function Home() {
         setLinkError(null);
         setCreatingFromLink(true);
         try {
-            const res = await createCourseFromLink(url);
+            const res = await createSpaceFromLink(url);
             setLinkUrl('');
             setCreatedSpace(res);
         } catch (err: any) {
@@ -144,20 +144,20 @@ export default function Home() {
         router.push('/join');
     };
 
-    const handleCourseClick = (courseId: number) => {
-        router.push(`/courses/${courseId}`);
+    const handleSpaceClick = (spaceId: number) => {
+        router.push(`/spaces/${spaceId}`);
     };
 
-    // Filter courses for Tầng 1 (Showcase) and Tầng 2 (Lineage Popularity)
-    const showcaseCourses = courses.filter((c) => c.isShowcase);
-    const popularCourses = [...courses]
+    // Filter spaces for Tầng 1 (Showcase) and Tầng 2 (Lineage Popularity)
+    const showcaseSpaces = spaces.filter((c) => c.isShowcase);
+    const popularSpaces = [...spaces]
         .filter((c) => !c.isShowcase)
         .sort((a, b) => (b.cloneCount || 0) - (a.cloneCount || 0));
 
-    // Fallback if no non-showcase courses exist yet
-    const displayPopularCourses = popularCourses.length > 0
-        ? popularCourses
-        : [...courses].sort((a, b) => (b.cloneCount || 0) - (a.cloneCount || 0));
+    // Fallback if no non-showcase spaces exist yet
+    const displayPopularSpaces = popularSpaces.length > 0
+        ? popularSpaces
+        : [...spaces].sort((a, b) => (b.cloneCount || 0) - (a.cloneCount || 0));
 
     return (
         <div className="min-h-screen bg-ink-page">
@@ -219,7 +219,7 @@ export default function Home() {
                 {/* Card choices after pasting URL */}
                 {createdSpace && (
                     // vd-ink-in — "hạ mực": card vừa xuất hiện ngay sau khi tạo Space
-                    // thành công (đồng bộ motif với my-courses/page.tsx và quiz-result
+                    // thành công (đồng bộ motif với my-spaces/page.tsx và quiz-result
                     // ở learn/page.tsx).
                     <section className="mb-8 bg-ink-panel border border-ink-correct/30 rounded-ink-md p-6 shadow-ink-sm vd-ink-in">
                         <p className="text-xs font-semibold text-ink-correct uppercase tracking-wide mb-1">Đã tạo Space</p>
@@ -230,10 +230,10 @@ export default function Home() {
                             </p>
                         )}
                         <div className="flex flex-col sm:flex-row gap-3 mt-4">
-                            <Button className="vd-focusable" onClick={() => router.push(`/courses/${createdSpace.courseId}/learn`)}>
+                            <Button className="vd-focusable" onClick={() => router.push(`/spaces/${createdSpace.spaceId}/learn`)}>
                                 Học ngay
                             </Button>
-                            <Button variant="outline" onClick={() => router.push(`/my-courses/${createdSpace.courseId}/edit`)}>
+                            <Button variant="outline" onClick={() => router.push(`/my-spaces/${createdSpace.spaceId}/edit`)}>
                                 Thêm quiz/tóm tắt trước khi học
                             </Button>
                             <Button variant="ghost" onClick={() => setCreatedSpace(null)}>
@@ -247,7 +247,7 @@ export default function Home() {
                 {/* Restyle theo "Mực xanh trên giấy trắng" (xem vibe-demo/home) — thẻ
                     bookmark-ribbon thay cho card trắng + progress bar cũ. Cấu trúc dữ
                     liệu/logic (grid nhiều Space, 3 trạng thái loading/loaded/rỗng) giữ
-                    nguyên 100%; model MyLearningCourse không có lessonTitle/chapter meta
+                    nguyên 100%; model MyLearningSpace không có lessonTitle/chapter meta
                     như mock nên phần "Đang học · {lessonTitle}" của mock được thay bằng
                     field thật sẵn có: title + lessonCount. */}
                 {user && continueState !== 'idle' && continueState !== 'error' && (
@@ -262,27 +262,27 @@ export default function Home() {
                                     <div key={i} className="h-20 bg-ink-panel border border-ink-border rounded-ink-md animate-pulse" />
                                 ))}
                             </div>
-                        ) : continueCourses.length > 0 ? (
+                        ) : continueSpaces.length > 0 ? (
                             <div>
-                                {continueCourses.map((course, i) => (
+                                {continueSpaces.map((space, i) => (
                                     <button
-                                        key={course.id}
-                                        onClick={() => router.push(`/courses/${course.id}/learn`)}
+                                        key={space.id}
+                                        onClick={() => router.push(`/spaces/${space.id}/learn`)}
                                         className={`relative flex w-full flex-col sm:flex-row text-left bg-ink-panel border border-ink-border rounded-ink-md overflow-hidden shadow-ink-sm hover:shadow-md hover:-translate-y-0.5 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-ink-accent focus-visible:ring-offset-2 ${i > 0 ? 'mt-4' : ''}`}
                                     >
-                                        {course.completionRate > 0 && (
+                                        {space.completionRate > 0 && (
                                             <div
                                                 className="absolute top-0 right-7 w-[30px] h-11 bg-ink-accent flex items-start justify-center pt-2 z-[2]"
                                                 style={{ clipPath: 'polygon(0 0, 100% 0, 100% 100%, 50% 78%, 0 100%)' }}
                                             >
-                                                <span className="font-mono text-[9.5px] font-bold text-white">{course.completionRate}%</span>
+                                                <span className="font-mono text-[9.5px] font-bold text-white">{space.completionRate}%</span>
                                             </div>
                                         )}
 
                                         <div className="relative flex items-center justify-center bg-ink-room shrink-0 w-full sm:w-[220px] aspect-video sm:aspect-auto">
-                                            {course.thumbnailUrl && (
+                                            {space.thumbnailUrl && (
                                                 <Image
-                                                    src={course.thumbnailUrl}
+                                                    src={space.thumbnailUrl}
                                                     alt=""
                                                     fill
                                                     sizes="220px"
@@ -295,20 +295,20 @@ export default function Home() {
                                             >
                                                 <Play size={18} className="text-ink-accentScreen ml-0.5" fill="currentColor" />
                                             </div>
-                                            {course.completionRate === 0 && (
+                                            {space.completionRate === 0 && (
                                                 <span
                                                     className="absolute bottom-3 left-3.5 font-mono text-[11px]"
                                                     style={{ color: 'rgba(244,246,252,0.55)' }}
                                                 >
-                                                    Đã xem {formatDuration(course.lastWatchedPositionSec || 0)}
+                                                    Đã xem {formatDuration(space.lastWatchedPositionSec || 0)}
                                                 </span>
                                             )}
                                         </div>
 
                                         <div className="flex-1 px-6 py-5 flex flex-col min-w-0">
                                             <div className="text-[12.5px] font-medium text-ink-textMuted mb-1.5">Đang học</div>
-                                            <div className="text-lg font-bold text-ink-text leading-snug line-clamp-2">{course.title}</div>
-                                            <div className="text-[13.5px] text-ink-textMuted mt-2">{course.lessonCount} bài</div>
+                                            <div className="text-lg font-bold text-ink-text leading-snug line-clamp-2">{space.title}</div>
+                                            <div className="text-[13.5px] text-ink-textMuted mt-2">{space.lessonCount} bài</div>
                                             <span className="mt-auto inline-flex items-center gap-2 text-sm font-semibold text-ink-accent pt-4">
                                                 Tiếp tục học <ArrowRight size={15} />
                                             </span>
@@ -332,22 +332,22 @@ export default function Home() {
                             <h2 className="text-lg font-bold text-ink-text">
                                 Kết quả cho &quot;{searchQuery}&quot;
                             </h2>
-                            {appState === 'success' && courses.length > 0 && (
-                                <span className="text-xs text-ink-textDim">{courses.length} Space</span>
+                            {appState === 'success' && spaces.length > 0 && (
+                                <span className="text-xs text-ink-textDim">{spaces.length} Space</span>
                             )}
                         </div>
 
-                        <CourseList
-                            courses={courses}
+                        <SpaceList
+                            spaces={spaces}
                             loading={appState === 'loading'}
-                            onCourseClick={handleCourseClick}
+                            onSpaceClick={handleSpaceClick}
                         />
                     </section>
                 ) : (
                     /* KHU VỰC 2: "Khám phá Space nổi bật" (2 Tầng) */
                     <div className="space-y-10">
                         {/* TẦNG 1: Space Mẫu (Showcase) — 1 dòng + nút xem tất cả */}
-                        {showcaseCourses.length > 0 && (
+                        {showcaseSpaces.length > 0 && (
                             <section>
                                 <div className="mb-4 flex items-center justify-between">
                                     <div className="flex items-center gap-2">
@@ -356,26 +356,26 @@ export default function Home() {
                                             Chất lượng cao
                                         </span>
                                     </div>
-                                    {showcaseCourses.length > 3 && (
+                                    {showcaseSpaces.length > 3 && (
                                         <button
                                             onClick={() => setShowAllShowcase(!showAllShowcase)}
                                             className="text-xs font-semibold text-ink-accent hover:text-ink-accent/80 flex items-center gap-1 transition-colors"
                                         >
-                                            {showAllShowcase ? 'Thu gọn ↑' : `Xem tất cả (${showcaseCourses.length}) →`}
+                                            {showAllShowcase ? 'Thu gọn ↑' : `Xem tất cả (${showcaseSpaces.length}) →`}
                                         </button>
                                     )}
                                 </div>
 
-                                <CourseList
-                                    courses={showAllShowcase ? showcaseCourses : showcaseCourses.slice(0, 3)}
+                                <SpaceList
+                                    spaces={showAllShowcase ? showcaseSpaces : showcaseSpaces.slice(0, 3)}
                                     loading={appState === 'loading'}
-                                    onCourseClick={handleCourseClick}
+                                    onSpaceClick={handleSpaceClick}
                                 />
                             </section>
                         )}
 
                         {/* TẦNG 2: Space Phổ biến nhất (Cộng đồng) — nhiều hơn 1 dòng (2 dòng = 6 cards) + nút xem tất cả */}
-                        {displayPopularCourses.length > 0 && (
+                        {displayPopularSpaces.length > 0 && (
                             <section>
                                 <div className="mb-4 flex items-center justify-between">
                                     <div className="flex items-center gap-2">
@@ -384,20 +384,20 @@ export default function Home() {
                                             Nhiều người học
                                         </span>
                                     </div>
-                                    {displayPopularCourses.length > 6 && (
+                                    {displayPopularSpaces.length > 6 && (
                                         <button
                                             onClick={() => setShowAllPopular(!showAllPopular)}
                                             className="text-xs font-semibold text-ink-accent hover:text-ink-accent/80 flex items-center gap-1 transition-colors"
                                         >
-                                            {showAllPopular ? 'Thu gọn ↑' : `Xem tất cả (${displayPopularCourses.length}) →`}
+                                            {showAllPopular ? 'Thu gọn ↑' : `Xem tất cả (${displayPopularSpaces.length}) →`}
                                         </button>
                                     )}
                                 </div>
 
-                                <CourseList
-                                    courses={showAllPopular ? displayPopularCourses : displayPopularCourses.slice(0, 6)}
+                                <SpaceList
+                                    spaces={showAllPopular ? displayPopularSpaces : displayPopularSpaces.slice(0, 6)}
                                     loading={appState === 'loading'}
-                                    onCourseClick={handleCourseClick}
+                                    onSpaceClick={handleSpaceClick}
                                 />
                             </section>
                         )}
@@ -414,7 +414,7 @@ export default function Home() {
                         <p className="text-sm text-ink-textMid mb-3">{errorMessage}</p>
                         <Button
                             variant="link"
-                            onClick={() => fetchCourses(debouncedSearchQuery)}
+                            onClick={() => fetchSpaces(debouncedSearchQuery)}
                         >
                             Thử lại
                         </Button>
@@ -425,14 +425,14 @@ export default function Home() {
             {/* ── Sales Agent Widget ─────────────────────────────────────────────
                 Appears only in high-intent moments:
                   • Guest viewing homepage → onboarding + intro
-                  • Logged-in user with no courses yet → subscription nudge
+                  • Logged-in user with no spaces yet → subscription nudge
                 Not shown during active search (user is task-focused).
             ──────────────────────────────────────────────────────────────────── */}
             {!searchQuery && (
                 !user
                     ? <SalesAgentWidget context="homepage_guest" />
-                    : continueState === 'loaded' && continueCourses.length === 0
-                        ? <SalesAgentWidget context="homepage_no_courses" userName={user.fullName} />
+                    : continueState === 'loaded' && continueSpaces.length === 0
+                        ? <SalesAgentWidget context="homepage_no_spaces" userName={user.fullName} />
                         : null
             )}
         </div>

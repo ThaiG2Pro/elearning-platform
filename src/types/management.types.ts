@@ -1,9 +1,9 @@
 // src/types/management.types.ts
 
-// WP1.6 follow-up (round 2) — renamed from LecturerCourse: the /my-courses
-// management screen (formerly /lecturer/courses) lists courses by
+// WP1.6 follow-up (round 2) — renamed from LecturerSpace: the /my-spaces
+// management screen (formerly /lecturer/spaces) lists spaces by
 // ownership, not a lecturer role — every user manages their own.
-export interface ManagedCourse {
+export interface ManagedSpace {
     id: number;
     title: string;
     status: 'Active' | 'Archived';
@@ -14,11 +14,11 @@ export interface ManagedCourse {
     lessonCount?: number;
 }
 
-export interface ManagedCoursesResponse {
-    courses: ManagedCourse[];
+export interface ManagedSpacesResponse {
+    spaces: ManagedSpace[];
 }
 
-export interface ManagedCoursesRequest {
+export interface ManagedSpacesRequest {
     status?: 'Active' | 'Archived';
 }
 
@@ -29,11 +29,11 @@ export interface Lesson {
     orderIndex: number;
     content?: string;
     videoUrl?: string;
-    // Đã có sẵn trong response thật của GET /courses/[id] (LessonDto.sourceId,
-    // WP2.3) nhưng chưa từng được khai báo ở type FE này — chỉ dùng ở
-    // courses/[id]/lessons cho AIGenerationPanel trên trang học. Bổ sung để
-    // editor (`/my-courses/[id]/edit`) cũng đọc được, cho phép nút "AI tạo
-    // quiz" hiện đúng chỗ khi lesson VIDEO có nguồn để tóm tắt/tạo quiz.
+    // Đã có sẵn trong response thật của GET /spaces/[id] (LessonDto.sourceId,
+    // WP2.3) nhưng chưa từng được khai báo ở type FE này. Editor
+    // (`/my-spaces/[id]/edit`) đọc field này để biết lesson VIDEO nào có
+    // nguồn cho AI tóm tắt/tạo quiz (AILessonComposer + lesson editor —
+    // từ 2026-08-21 trang edit là nơi duy nhất trigger AI).
     sourceId?: number | null;
 }
 
@@ -44,7 +44,7 @@ export interface Chapter {
     lessons: Lesson[];
 }
 
-export interface CourseStructure {
+export interface SpaceStructure {
     id: number;
     title: string;
     slug: string;
@@ -54,7 +54,7 @@ export interface CourseStructure {
     thumbnailUrl?: string;
     chapters: Chapter[];
     // WP1.5.10: 'Draft'/'Pending' dropped — no route creates that state
-    // anymore, courses are active for their owner immediately.
+    // anymore, spaces are active for their owner immediately.
     status: 'Active';
 }
 

@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { CourseManagementController } from '@/modules/course-management/controllers/CourseManagementController';
-import { ManagementController } from '@/modules/course-management/controllers/ManagementController';
+import { SpaceManagementController } from '@/modules/space-management/controllers/SpaceManagementController';
+import { ManagementController } from '@/modules/space-management/controllers/ManagementController';
 import { getUserIdFromRequest } from '@/shared/middleware/auth';
-import { UpdateSectionDto } from '@/modules/course-management/dtos/ContentDto';
+import { UpdateSectionDto } from '@/modules/space-management/dtos/ContentDto';
 
 export async function PUT(
     request: NextRequest,
@@ -48,7 +48,7 @@ export async function DELETE(
         }
 
         const sectionId = BigInt(params.id);
-        const controller = new CourseManagementController();
+        const controller = new SpaceManagementController();
         await controller.deleteSection(userId, sectionId);
 
         return NextResponse.json({ message: 'Section deleted successfully' });

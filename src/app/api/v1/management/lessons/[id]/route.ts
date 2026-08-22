@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ManagementController } from '@/modules/course-management/controllers/ManagementController';
+import { ManagementController } from '@/modules/space-management/controllers/ManagementController';
 import { getUserIdFromRequest } from '@/shared/middleware/auth';
-import { UpdateLessonDto } from '@/modules/course-management/dtos/ContentDto';
+import { UpdateLessonDto } from '@/modules/space-management/dtos/ContentDto';
 
 export async function PUT(
     request: NextRequest,

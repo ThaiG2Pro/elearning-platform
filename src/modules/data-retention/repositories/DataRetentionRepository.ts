@@ -5,7 +5,7 @@ export interface SourceArchiveCandidate {
     title: string | null;
     lastAccessedAt: Date | null;
     createdAt: Date | null;
-    hasPublicCourseReference: boolean;
+    hasPublicSpaceReference: boolean;
 }
 
 /**
@@ -31,9 +31,9 @@ export class DataRetentionRepository {
     }
 
     /**
-     * Mọi Source chưa archive, kèm cờ "còn course công khai nào tham chiếu
+     * Mọi Source chưa archive, kèm cờ "còn space công khai nào tham chiếu
      * không" (showcase HOẶC có share_token — 2 hình thức "công khai" hiện có
-     * trong data model, xem courses.is_showcase/share_token).
+     * trong data model, xem spaces.is_showcase/share_token).
      */
     async findArchiveCandidates(): Promise<SourceArchiveCandidate[]> {
         const sources = await this.prisma.sources.findMany({
@@ -43,7 +43,7 @@ export class DataRetentionRepository {
                 title: true,
                 last_accessed_at: true,
                 created_at: true,
-                courses: {
+                spaces: {
                     where: { OR: [{ is_showcase: true }, { share_token: { not: null } }] },
                     select: { id: true },
                     take: 1,
@@ -55,7 +55,7 @@ export class DataRetentionRepository {
             title: s.title,
             lastAccessedAt: s.last_accessed_at,
             createdAt: s.created_at,
-            hasPublicCourseReference: s.courses.length > 0,
+            hasPublicSpaceReference: s.spaces.length > 0,
         }));
     }
 

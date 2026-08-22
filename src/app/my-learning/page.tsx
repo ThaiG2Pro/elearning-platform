@@ -4,34 +4,34 @@ import Image from 'next/image';
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
-import { getMyLearningCourses } from '@/lib/course';
+import { getMyLearningSpaces } from '@/lib/space';
 import { Skeleton } from '@/components/ui/skeleton';
 // WP1.5.8: this was the last hand-rolled tab strip in the app — every other
 // page's filter/status tabs already use the shared Tabs component.
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { MyLearningCourse } from '@/types/course.types';
+import { MyLearningSpace } from '@/types/space.types';
 import { User } from '@/types/auth.types';
 import { logout as apiLogout, AuthUtils } from '@/lib/auth';
 
 export default function MyLearningPage() {
     const router = useRouter();
 
-    const [courses, setCourses] = useState<MyLearningCourse[]>([]);
+    const [spaces, setSpaces] = useState<MyLearningSpace[]>([]);
     const [filter, setFilter] = useState<'not_started' | 'in_progress' | 'completed' | undefined>(undefined);
     const [appState, setAppState] = useState<'idle' | 'loading' | 'no_results' | 'error'>('idle');
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [user, setUser] = useState<User | null>(null);
 
-    const loadCourses = useCallback(async () => {
+    const loadSpaces = useCallback(async () => {
         setAppState('loading');
         setErrorMessage(null);
 
         try {
-            const response = await getMyLearningCourses(filter);
-            setCourses(response.courses);
+            const response = await getMyLearningSpaces(filter);
+            setSpaces(response.spaces);
 
-            if (response.courses.length === 0) {
+            if (response.spaces.length === 0) {
                 setAppState('no_results');
             } else {
                 setAppState('idle');
@@ -50,9 +50,9 @@ export default function MyLearningPage() {
     }, []);
 
     useEffect(() => {
-        loadCourses();
+        loadSpaces();
         loadUser();
-    }, [loadCourses, loadUser]);
+    }, [loadSpaces, loadUser]);
 
     const handleLogout = async () => {
         try {
@@ -74,13 +74,13 @@ export default function MyLearningPage() {
         setFilter(newFilter === 'all' ? undefined : (newFilter as 'not_started' | 'in_progress' | 'completed'));
     };
 
-    const handleCourseClick = (courseId: string) => {
+    const handleSpaceClick = (spaceId: string) => {
         // Navigate to learning page - SCR-LRN-01
-        router.push(`/courses/${courseId}/learn`);
+        router.push(`/spaces/${spaceId}/learn`);
     };
 
     const handleRetry = () => {
-        loadCourses();
+        loadSpaces();
     };
 
     const formatDate = (dateString: string) => {
@@ -88,7 +88,7 @@ export default function MyLearningPage() {
         return date.toLocaleDateString('vi-VN');
     };
 
-    // WP1.6.4 — for the "đã xem 3:20" readout on courses that are in_progress
+    // WP1.6.4 — for the "đã xem 3:20" readout on spaces that are in_progress
     // but still 0% (no lesson duration is persisted anywhere, so this only
     // works with the raw saved position, not a percentage).
     const formatWatchedTime = (seconds: number) => {
@@ -103,12 +103,12 @@ export default function MyLearningPage() {
         return `${minutes}:${pad(secs)}`;
     };
 
-    const STATUS_LABEL: Record<MyLearningCourse['status'], string> = {
+    const STATUS_LABEL: Record<MyLearningSpace['status'], string> = {
         not_started: 'Chưa bắt đầu',
         in_progress: 'Đang học',
         completed: 'Hoàn thành',
     };
-    const STATUS_BADGE_CLASS: Record<MyLearningCourse['status'], string> = {
+    const STATUS_BADGE_CLASS: Record<MyLearningSpace['status'], string> = {
         not_started: 'bg-ink-page text-ink-textMid border border-ink-border',
         in_progress: 'bg-ink-page text-ink-textMid border border-ink-border',
         completed: 'bg-ink-page text-ink-textMid border border-ink-border',
@@ -118,7 +118,7 @@ export default function MyLearningPage() {
         <div className="min-h-screen bg-ink-page">
             <Header user={user} onLogout={handleLogout} onJoin={handleJoin} />
 
-            {/* py-7 md:py-10 — cùng nhịp khoảng cách homepage/course-detail/about;
+            {/* py-7 md:py-10 — cùng nhịp khoảng cách homepage/space-detail/about;
                 max-w-7xl giữ nguyên (lưới thumbnail nhiều cột cần rộng, khác cột
                 đơn 900px của vibe-demo/spaces — xem lý do không port "giá sách"
                 màu gáy ở phần Tabs bên dưới). */}
@@ -129,7 +129,7 @@ export default function MyLearningPage() {
                     </h1>
                     {/* Porting logic từ vibe-demo/spaces (đếm số không gian ngay dưới h1). */}
                     <p className="text-sm text-ink-textMuted">
-                        {appState === 'idle' && courses.length > 0 ? `${courses.length} Space — ` : ''}Tiếp tục hành trình học tập của bạn
+                        {appState === 'idle' && spaces.length > 0 ? `${spaces.length} Space — ` : ''}Tiếp tục hành trình học tập của bạn
                     </p>
                 </div>
 
@@ -147,7 +147,7 @@ export default function MyLearningPage() {
 
                 {/* Section 02: Danh sách Space — "giá sách" THẬT từ vibe-demo/spaces
                     (renderRow): danh sách dạng dòng với cột lề trái đánh số, thay lưới
-                    card cũ. KHÔNG dùng "gáy sách" màu trừu tượng của demo — course thật
+                    card cũ. KHÔNG dùng "gáy sách" màu trừu tượng của demo — space thật
                     có thumbnail ảnh do người dùng upload, giàu thông tin hơn một khối
                     màu, nên giữ thumbnail thật ở đúng vị trí gáy sách (ảnh nhỏ 16:9 thay
                     vạch màu). Badge trạng thái + progress bar giữ nguyên logic cũ. */}
@@ -165,14 +165,14 @@ export default function MyLearningPage() {
                         ))
                     )}
 
-                    {appState === 'idle' && courses.map((course, i) => (
+                    {appState === 'idle' && spaces.map((space, i) => (
                         <div
-                            key={course.id}
-                            onClick={() => handleCourseClick(course.id)}
+                            key={space.id}
+                            onClick={() => handleSpaceClick(space.id)}
                             role="button"
                             tabIndex={0}
-                            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleCourseClick(course.id); }}
-                            className={`vd-focusable flex items-stretch cursor-pointer transition-colors hover:bg-ink-page ${i < courses.length - 1 ? 'border-b border-ink-border' : ''}`}
+                            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleSpaceClick(space.id); }}
+                            className={`vd-focusable flex items-stretch cursor-pointer transition-colors hover:bg-ink-page ${i < spaces.length - 1 ? 'border-b border-ink-border' : ''}`}
                         >
                             <span className="hidden sm:flex w-10 shrink-0 items-start justify-center pt-4 font-mono text-[11px] text-ink-textDim">
                                 {String(i + 1).padStart(2, '0')}
@@ -180,10 +180,10 @@ export default function MyLearningPage() {
 
                             {/* Thumbnail thật — thay "gáy sách" màu của vibe-demo */}
                             <div className="w-28 sm:w-32 aspect-video bg-ink-page shrink-0 my-3 ml-3 sm:ml-0 rounded-ink-sm overflow-hidden relative border border-ink-border">
-                                {course.thumbnailUrl ? (
+                                {space.thumbnailUrl ? (
                                     <Image
-                                        src={course.thumbnailUrl}
-                                        alt={course.title}
+                                        src={space.thumbnailUrl}
+                                        alt={space.title}
                                         fill
                                         sizes="140px"
                                         className="object-cover"
@@ -199,16 +199,16 @@ export default function MyLearningPage() {
 
                             <div className="flex-1 min-w-0 py-3.5 px-4 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
                                 <div className="flex-1 min-w-0">
-                                    <h3 title={course.title} className="text-sm font-semibold text-ink-text leading-snug truncate">
-                                        {course.title}
+                                    <h3 title={space.title} className="text-sm font-semibold text-ink-text leading-snug truncate">
+                                        {space.title}
                                     </h3>
                                     <div className="flex items-center gap-2 mt-1">
-                                        <span className="font-mono text-[11px] text-ink-textDim">{course.lessonCount} bài</span>
-                                        <span className="font-mono text-[11px] text-ink-textDim">{formatDate(course.createdAt)}</span>
+                                        <span className="font-mono text-[11px] text-ink-textDim">{space.lessonCount} bài</span>
+                                        <span className="font-mono text-[11px] text-ink-textDim">{formatDate(space.createdAt)}</span>
                                     </div>
                                 </div>
 
-                                {/* Progress — WP1.6.4: a course with very few lessons (e.g. a
+                                {/* Progress — WP1.6.4: a space with very few lessons (e.g. a
                                     single video) can only ever show completionRate 0 or 100, so
                                     a 0% bar while the user is 70% through that one video reads as
                                     untouched. When we have no finished lesson yet but do have a
@@ -216,20 +216,20 @@ export default function MyLearningPage() {
                                     bar — there's no persisted lesson duration to turn that into a
                                     real percentage. */}
                                 <div className="flex items-center gap-2.5 shrink-0 sm:w-[180px]">
-                                    <span className={`px-2 py-0.5 rounded-full text-[11px] font-medium shrink-0 ${STATUS_BADGE_CLASS[course.status]}`}>
-                                        {STATUS_LABEL[course.status]}
+                                    <span className={`px-2 py-0.5 rounded-full text-[11px] font-medium shrink-0 ${STATUS_BADGE_CLASS[space.status]}`}>
+                                        {STATUS_LABEL[space.status]}
                                     </span>
-                                    {course.status !== 'not_started' && (
-                                        course.completionRate > 0 ? (
+                                    {space.status !== 'not_started' && (
+                                        space.completionRate > 0 ? (
                                             <div className="flex-1 flex items-center gap-2 min-w-0">
                                                 <div className="flex-1 h-1 bg-ink-page rounded-full overflow-hidden">
-                                                    <div className="h-full bg-ink-accent rounded-full" style={{ width: `${course.completionRate}%` }} />
+                                                    <div className="h-full bg-ink-accent rounded-full" style={{ width: `${space.completionRate}%` }} />
                                                 </div>
-                                                <span className="font-mono text-[11px] font-semibold text-ink-accent shrink-0">{course.completionRate}%</span>
+                                                <span className="font-mono text-[11px] font-semibold text-ink-accent shrink-0">{space.completionRate}%</span>
                                             </div>
                                         ) : (
                                             <span className="text-[11px] text-ink-accent font-medium truncate">
-                                                Đã xem {formatWatchedTime(course.lastWatchedPositionSec || 0)}
+                                                Đã xem {formatWatchedTime(space.lastWatchedPositionSec || 0)}
                                             </span>
                                         )
                                     )}

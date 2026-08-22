@@ -1,6 +1,6 @@
 export class VideoThumbnailUtil {
     /**
-     * Find the first video URL from course chapters and lessons in order
+     * Find the first video URL from space chapters and lessons in order
      */
     static findFirstVideoUrl(chapters: any[]): string | null {
         // Iterate through chapters in order

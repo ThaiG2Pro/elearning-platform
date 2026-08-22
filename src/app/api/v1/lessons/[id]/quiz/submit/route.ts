@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { QuizController } from '@/modules/course-management/controllers/QuizController';
+import { QuizController } from '@/modules/space-management/controllers/QuizController';
 import { getUserIdFromRequest } from '@/shared/middleware/auth';
-import { SubmitQuizDto } from '@/modules/course-management/dtos/QuizResultDto';
+import { SubmitQuizDto } from '@/modules/space-management/dtos/QuizResultDto';
 
 export async function POST(
     request: NextRequest,

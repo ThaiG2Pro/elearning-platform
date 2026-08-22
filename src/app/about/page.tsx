@@ -33,10 +33,10 @@ export default function AboutPage() {
         <div className="min-h-screen bg-ink-page flex flex-col">
             <Header user={user} onLogout={handleLogout} onJoin={handleJoin} />
 
-            {/* py-7 md:py-10 — cùng nhịp khoảng cách đã áp cho homepage/course-detail
+            {/* py-7 md:py-10 — cùng nhịp khoảng cách đã áp cho homepage/space-detail
                 (thay py-10 cố định); max-w-7xl giữ nguyên vì nội dung trang này là
                 lưới nhiều cột (feature grid) cần rộng hơn, khác cột đơn của
-                homepage/course-detail (đã hẹp về 1180px/4xl). */}
+                homepage/space-detail (đã hẹp về 1180px/4xl). */}
             <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-7 md:py-10 w-full">
                 {/* Hero Section */}
                 <section className="bg-ink-panel border border-ink-border rounded-ink-lg p-8 sm:p-12 shadow-ink-sm text-center max-w-4xl mx-auto mb-12 relative overflow-hidden">
@@ -64,7 +64,7 @@ export default function AboutPage() {
                         </Button>
                         {user ? (
                             <Button
-                                onClick={() => router.push('/my-courses')}
+                                onClick={() => router.push('/my-spaces')}
                                 variant="outline"
                                 className="border-ink-border text-ink-text hover:bg-ink-page font-medium px-6 py-2.5 h-auto text-sm sm:text-base rounded-ink-md transition-all"
                             >

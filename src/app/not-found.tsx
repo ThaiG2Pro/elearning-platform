@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 
-// WP1.5.11: there was no not-found.tsx anywhere in `src/app` — a bad course
+// WP1.5.11: there was no not-found.tsx anywhere in `src/app` — a bad space
 // id, a revoked share link, or any other 404 fell through to Next.js's
 // unbranded default page.
 export default function NotFound() {

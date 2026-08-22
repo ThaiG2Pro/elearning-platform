@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { QuizController } from '../../../../../../../modules/course-management/controllers/QuizController';
+import { QuizController } from '../../../../../../../modules/space-management/controllers/QuizController';
 import { getUserFromRequest } from '../../../../../../../shared/middleware/auth';
 
 const controller = new QuizController();

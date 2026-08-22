@@ -5,7 +5,7 @@ import { getUserIdFromRequest } from '@/shared/middleware/auth';
 // WP1.5.11 — self-service data export. The last item open in the WP1.5
 // core-product-debt audit's "xoá tài khoản/export dữ liệu" pair; account
 // deletion already shipped (WP1.5.6). Returns everything deletion doesn't
-// erase — profile, owned courses (full chapter/lesson/question tree),
+// erase — profile, owned spaces (full chapter/lesson/question tree),
 // learning progress, notes — as a downloadable JSON file. UserDataExportDto
 // already converts every BigInt/Date to a plain string, so this can go
 // straight to JSON.stringify without a custom replacer.

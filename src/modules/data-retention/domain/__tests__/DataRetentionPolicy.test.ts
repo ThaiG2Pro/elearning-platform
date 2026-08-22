@@ -5,12 +5,12 @@ const NOW = new Date('2026-08-18T00:00:00Z');
 const daysAgo = (days: number) => new Date(NOW.getTime() - days * 24 * 60 * 60 * 1000);
 
 describe('DataRetentionPolicy.isEligibleForArchive — mục 6.4', () => {
-    it('never archives while a public course still references the Source', () => {
+    it('never archives while a public space still references the Source', () => {
         expect(
             DataRetentionPolicy.isEligibleForArchive({
                 lastAccessedAt: daysAgo(400),
                 createdAt: daysAgo(400),
-                hasPublicCourseReference: true,
+                hasPublicSpaceReference: true,
                 now: NOW,
                 thresholdDays: 180,
             }),
@@ -22,7 +22,7 @@ describe('DataRetentionPolicy.isEligibleForArchive — mục 6.4', () => {
             DataRetentionPolicy.isEligibleForArchive({
                 lastAccessedAt: daysAgo(200),
                 createdAt: daysAgo(400),
-                hasPublicCourseReference: false,
+                hasPublicSpaceReference: false,
                 now: NOW,
                 thresholdDays: 180,
             }),
@@ -34,7 +34,7 @@ describe('DataRetentionPolicy.isEligibleForArchive — mục 6.4', () => {
             DataRetentionPolicy.isEligibleForArchive({
                 lastAccessedAt: daysAgo(5),
                 createdAt: daysAgo(400),
-                hasPublicCourseReference: false,
+                hasPublicSpaceReference: false,
                 now: NOW,
                 thresholdDays: 180,
             }),
@@ -46,7 +46,7 @@ describe('DataRetentionPolicy.isEligibleForArchive — mục 6.4', () => {
             DataRetentionPolicy.isEligibleForArchive({
                 lastAccessedAt: null,
                 createdAt: daysAgo(200),
-                hasPublicCourseReference: false,
+                hasPublicSpaceReference: false,
                 now: NOW,
                 thresholdDays: 180,
             }),
@@ -58,7 +58,7 @@ describe('DataRetentionPolicy.isEligibleForArchive — mục 6.4', () => {
             DataRetentionPolicy.isEligibleForArchive({
                 lastAccessedAt: daysAgo(180),
                 createdAt: null,
-                hasPublicCourseReference: false,
+                hasPublicSpaceReference: false,
                 now: NOW,
                 thresholdDays: 180,
             }),
@@ -70,7 +70,7 @@ describe('DataRetentionPolicy.isEligibleForArchive — mục 6.4', () => {
             DataRetentionPolicy.isEligibleForArchive({
                 lastAccessedAt: null,
                 createdAt: null,
-                hasPublicCourseReference: false,
+                hasPublicSpaceReference: false,
                 now: NOW,
                 thresholdDays: 180,
             }),
