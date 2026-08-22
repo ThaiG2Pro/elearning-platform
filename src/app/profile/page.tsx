@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { updateProfile, getProfile, updateAvatar, deleteAccount, exportMyData, logout as apiLogout, AuthUtils } from '@/lib/auth';
 import { User } from '@/types/auth.types';
+import { MARGIN_W } from '@/lib/vibe/theme';
 
 const MAX_AVATAR_SOURCE_BYTES = 8 * 1024 * 1024; // 8MB — resized down before upload anyway
 const AVATAR_MAX_DIMENSION = 256;
@@ -237,10 +238,12 @@ export default function EditProfilePage() {
         <div className="min-h-screen bg-ink-page">
             <Header user={user} onLogout={handleLogout} onJoin={handleJoin} />
 
-            <main className="max-w-lg mx-auto px-4 py-10 space-y-6">
+            <main className="max-w-lg mx-auto px-4 py-7 md:py-10 space-y-6">
+                {/* ADAPT theo ngữ pháp "trang vở kẻ lề" (cùng các trang auth/form
+                    khác) — logic avatar/profile/export/delete giữ nguyên 100%. */}
                 <div>
-                    <h1 className="text-xl font-bold text-ink-text">Hồ sơ cá nhân</h1>
-                    <p className="text-sm text-ink-textMuted mt-0.5">Cập nhật thông tin tài khoản của bạn</p>
+                    <h1 className="text-[clamp(20px,2.2vw,26px)] font-bold tracking-[-0.015em] text-ink-text">Hồ sơ cá nhân</h1>
+                    <p className="text-sm text-ink-textMuted mt-0.5">Cập nhật thông tin tài khoản của bạn.</p>
                 </div>
 
                 <div className="bg-ink-panel border border-ink-border rounded-ink-md shadow-ink-sm p-6 space-y-6">
@@ -276,60 +279,81 @@ export default function EditProfilePage() {
                         </div>
                     </div>
 
-                    <form onSubmit={handleSubmit} className="space-y-4 pt-2 border-t border-ink-border">
-                        {/* Email (Read-only) */}
-                        <div className="pt-4">
-                            <label htmlFor="email" className="block text-sm font-medium text-ink-text mb-1.5">Email</label>
-                            <input
-                                id="email" name="email" type="email" value={email} disabled
-                                className="w-full px-3 py-2.5 border border-ink-border rounded-lg text-sm bg-ink-page text-ink-textDim cursor-not-allowed"
-                            />
-                            <p className="mt-1 text-xs text-ink-textDim">Email không thể thay đổi</p>
-                        </div>
-
-                        {/* Full Name */}
-                        <div>
-                            <label htmlFor="fullName" className="block text-sm font-medium text-ink-text mb-1.5">Họ và tên</label>
-                            <input
-                                id="fullName" name="fullName" type="text" required
-                                value={fullName} onChange={(e) => setFullName(e.target.value)}
-                                disabled={appState === 'submitting'}
-                                className="w-full px-3 py-2.5 border border-ink-border rounded-lg text-sm text-ink-text placeholder:text-ink-textDim focus:outline-none focus:ring-2 focus:ring-ink-accent focus:border-transparent disabled:opacity-50 transition-shadow"
-                                placeholder="Nguyễn Văn A"
-                            />
-                        </div>
-
-                        {/* Age */}
-                        <div>
-                            <label htmlFor="age" className="block text-sm font-medium text-ink-text mb-1.5">Tuổi</label>
-                            <input
-                                id="age" name="age" type="number" min="1" required
-                                value={age} onChange={(e) => setAge(e.target.value)}
-                                disabled={appState === 'submitting'}
-                                className="w-full px-3 py-2.5 border border-ink-border rounded-lg text-sm text-ink-text placeholder:text-ink-textDim focus:outline-none focus:ring-2 focus:ring-ink-accent focus:border-transparent disabled:opacity-50 transition-shadow"
-                                placeholder="18"
-                            />
-                            {(appState === 'business_error' || appState === 'system_error') && errorMessage && (
-                                <p className="mt-1 text-xs text-red-600">{errorMessage}</p>
-                            )}
-                        </div>
-
-                        {/* Success inline */}
-                        {appState === 'success' && (
-                            <div className="flex items-center gap-2 p-3 bg-ink-page border border-ink-border rounded-lg">
-                                <svg className="w-4 h-4 text-ink-textMid flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7"/></svg>
-                                <p className="text-sm text-ink-textMid font-medium">Hồ sơ đã được cập nhật!</p>
+                    <form onSubmit={handleSubmit} className="pt-2 border-t border-ink-border -mx-6">
+                        {[
+                            {
+                                n: '—', field: (
+                                    <>
+                                        <label htmlFor="email" className="block text-sm font-medium text-ink-text mb-1.5">Email</label>
+                                        <input
+                                            id="email" name="email" type="email" value={email} disabled
+                                            className="w-full px-3 py-2.5 border border-ink-border rounded-lg text-sm bg-ink-page text-ink-textDim cursor-not-allowed"
+                                        />
+                                        <p className="mt-1 text-xs text-ink-textDim">Email không thể thay đổi</p>
+                                    </>
+                                )
+                            },
+                            {
+                                n: '01', field: (
+                                    <>
+                                        <label htmlFor="fullName" className="block text-sm font-medium text-ink-text mb-1.5">Họ và tên</label>
+                                        <input
+                                            id="fullName" name="fullName" type="text" required
+                                            value={fullName} onChange={(e) => setFullName(e.target.value)}
+                                            disabled={appState === 'submitting'}
+                                            className="w-full px-3 py-2.5 border border-ink-border rounded-lg text-sm text-ink-text placeholder:text-ink-textDim focus:outline-none focus:ring-2 focus:ring-ink-accent focus:border-transparent disabled:opacity-50 transition-shadow"
+                                            placeholder="Nguyễn Văn A"
+                                        />
+                                    </>
+                                )
+                            },
+                            {
+                                n: '02', field: (
+                                    <>
+                                        <label htmlFor="age" className="block text-sm font-medium text-ink-text mb-1.5">Tuổi</label>
+                                        <input
+                                            id="age" name="age" type="number" min="1" required
+                                            value={age} onChange={(e) => setAge(e.target.value)}
+                                            disabled={appState === 'submitting'}
+                                            className="w-full px-3 py-2.5 border border-ink-border rounded-lg text-sm text-ink-text placeholder:text-ink-textDim focus:outline-none focus:ring-2 focus:ring-ink-accent focus:border-transparent disabled:opacity-50 transition-shadow"
+                                            placeholder="18"
+                                        />
+                                        {(appState === 'business_error' || appState === 'system_error') && errorMessage && (
+                                            <p className="mt-1 text-xs text-red-600">{errorMessage}</p>
+                                        )}
+                                    </>
+                                )
+                            },
+                        ].map((row, i) => (
+                            <div key={row.n} className={`flex items-stretch ${i === 0 ? 'pt-4' : ''}`}>
+                                <span style={{ width: MARGIN_W }} className="shrink-0 flex items-start justify-center pt-[3px] font-mono text-[11px] text-ink-textDim">
+                                    {row.n}
+                                </span>
+                                <div className="flex-1 min-w-0 border-l border-ink-marginLn pl-4 pr-6 pb-4">
+                                    {row.field}
+                                </div>
                             </div>
-                        )}
+                        ))}
 
-                        <div className="flex gap-3 pt-1">
-                            <Button type="button" variant="outline" onClick={handleCancel} disabled={appState === 'submitting'} className="flex-1">
-                                Hủy
-                            </Button>
-                            <Button type="submit" disabled={appState === 'submitting'} className="flex-1">
-                                {appState === 'submitting' && <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
-                                {appState === 'submitting' ? 'Đang lưu...' : 'Lưu thay đổi'}
-                            </Button>
+                        <div className="flex items-stretch">
+                            <span style={{ width: MARGIN_W }} className="shrink-0" />
+                            <div className="flex-1 border-l border-ink-marginLn pl-4 pr-6 pb-2">
+                                {appState === 'success' && (
+                                    <div className="vd-ink-in flex items-center gap-2 p-3 mb-3 bg-ink-page border border-ink-border rounded-lg">
+                                        <svg className="w-4 h-4 text-ink-textMid flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7"/></svg>
+                                        <p className="text-sm text-ink-textMid font-medium">Hồ sơ đã được cập nhật!</p>
+                                    </div>
+                                )}
+                                <div className="flex gap-3">
+                                    <Button type="button" variant="outline" onClick={handleCancel} disabled={appState === 'submitting'} className="flex-1">
+                                        Hủy
+                                    </Button>
+                                    <Button type="submit" disabled={appState === 'submitting'} className="flex-1">
+                                        {appState === 'submitting' && <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
+                                        {appState === 'submitting' ? 'Đang lưu...' : 'Lưu thay đổi'}
+                                    </Button>
+                                </div>
+                            </div>
                         </div>
                     </form>
 

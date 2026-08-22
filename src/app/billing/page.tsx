@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Header from '@/components/Header';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { MARGIN_W } from '@/lib/vibe/theme';
 import { getCreditBalance, createCheckoutSession, CREDIT_PACKAGE_OPTIONS } from '@/lib/billing';
 import { User } from '@/types/auth.types';
 import { logout as apiLogout, AuthUtils } from '@/lib/auth';
@@ -72,15 +72,19 @@ export default function BillingPage() {
         <div className="min-h-screen bg-ink-page">
             <Header user={user} onLogout={handleLogout} />
 
-            <main className="max-w-3xl mx-auto px-4 py-8">
-                <h1 className="text-xl font-semibold text-ink-text mb-1">Credit</h1>
+            <main className="max-w-3xl mx-auto px-4 py-7 md:py-10">
+                {/* ADAPT theo ngữ pháp "trang vở kẻ lề" — số liệu nằm trong lề
+                    mono (giống khối thông số bài thi ở vibe-demo/quiz renderIntro),
+                    danh sách gói là các dòng liên tục thay lưới Card rời.
+                    Logic Stripe checkout giữ nguyên 100%. */}
+                <h1 className="text-[clamp(20px,2.2vw,26px)] font-bold tracking-[-0.015em] text-ink-text mb-1">Credit</h1>
                 <p className="text-sm text-ink-textMuted mb-6">
                     Dùng credit để nền tảng tạo tóm tắt/quiz tuỳ biến giúp bạn khi bạn chưa muốn
                     nhập API key riêng (BYOK). Core học tập + AI mặc định miễn phí không cần credit.
                 </p>
 
                 {checkoutStatus === 'success' && (
-                    <div className="mb-4 text-sm text-ink-textMid bg-ink-page border border-ink-border rounded-lg p-3">
+                    <div className="vd-ink-in mb-4 text-sm text-ink-textMid bg-ink-page border border-ink-border rounded-lg p-3">
                         Thanh toán thành công — số dư credit đã được cập nhật.
                     </div>
                 )}
@@ -90,30 +94,38 @@ export default function BillingPage() {
                     </div>
                 )}
 
-                <Card className="mb-6">
-                    <CardContent className="p-4">
-                        <p className="text-sm text-ink-textMuted">Số dư hiện tại</p>
-                        <p className="text-2xl font-semibold text-ink-text">
-                            {balance === null ? '…' : `${balance} credit`}
-                        </p>
-                    </CardContent>
-                </Card>
+                <div className="bg-ink-panel border border-ink-border rounded-ink-md shadow-ink-sm overflow-hidden">
+                    {/* Số dư — con số trong lề, đúng ngữ pháp trang vở */}
+                    <div className="flex items-stretch border-b border-ink-border">
+                        <span style={{ width: MARGIN_W }} className="shrink-0 flex items-center justify-center font-mono text-[13px] font-semibold text-ink-accent">
+                            {balance === null ? '…' : balance}
+                        </span>
+                        <div className="flex-1 border-l border-ink-marginLn py-3.5 pl-4 pr-5">
+                            <p className="text-sm font-medium text-ink-text">Số dư hiện tại</p>
+                            <p className="text-xs text-ink-textMuted mt-0.5">credit khả dụng cho các lần tạo AI tuỳ biến</p>
+                        </div>
+                    </div>
 
-                <div className="grid gap-3 sm:grid-cols-3">
-                    {CREDIT_PACKAGE_OPTIONS.map((pkg) => (
-                        <Card key={pkg.id}>
-                            <CardContent className="p-4 flex flex-col items-start gap-2">
-                                <p className="text-sm font-semibold text-ink-text">{pkg.credits} credit</p>
-                                <p className="text-xs text-ink-textMuted">${(pkg.priceUsdCents / 100).toFixed(2)}</p>
+                    {CREDIT_PACKAGE_OPTIONS.map((pkg, i) => (
+                        <div key={pkg.id} className={`flex items-stretch ${i < CREDIT_PACKAGE_OPTIONS.length - 1 ? 'border-b border-ink-border' : ''}`}>
+                            <span style={{ width: MARGIN_W }} className="shrink-0 flex items-start justify-center pt-4 font-mono text-[11px] text-ink-textDim">
+                                {String(i + 1).padStart(2, '0')}
+                            </span>
+                            <div className="flex-1 min-w-0 border-l border-ink-marginLn py-3 pl-4 pr-5 flex items-center gap-3 justify-between">
+                                <div className="min-w-0">
+                                    <p className="text-sm font-semibold text-ink-text">{pkg.credits} credit</p>
+                                    <p className="font-mono text-[11px] text-ink-textMuted mt-0.5">${(pkg.priceUsdCents / 100).toFixed(2)}</p>
+                                </div>
                                 <Button
-                                    className="w-full mt-1"
+                                    size="sm"
+                                    className="vd-focusable shrink-0"
                                     disabled={busyPackageId !== null}
                                     onClick={() => handleBuy(pkg.id)}
                                 >
                                     {busyPackageId === pkg.id ? 'Đang chuyển hướng…' : 'Mua'}
                                 </Button>
-                            </CardContent>
-                        </Card>
+                            </div>
+                        </div>
                     ))}
                 </div>
 

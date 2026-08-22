@@ -6,6 +6,7 @@ import { registerUser } from '@/lib/auth';
 import { RegisterRequest } from '@/types/auth.types';
 import Header from '@/components/Header';
 import Toast from '@/components/Toast';
+import { MARGIN_W } from '@/lib/vibe/theme';
 
 export default function RegisterPage() {
     const router = useRouter();
@@ -107,80 +108,105 @@ export default function RegisterPage() {
         <div className="min-h-screen bg-ink-page">
             <Header onJoin={() => router.push('/join')} />
 
-            <main className="max-w-md mx-auto px-4 py-12">
-                <div className="text-center mb-8">
-                    <div className="inline-flex items-center justify-center w-12 h-12 rounded-ink-md bg-ink-accent mb-4">
-                        <span className="text-white font-bold text-xl">E</span>
-                    </div>
-                    <h1 className="text-2xl font-bold text-ink-text mb-1">Tạo tài khoản</h1>
-                    <p className="text-sm text-ink-textMuted">Hoàn thành thông tin để bắt đầu học</p>
+            <main className="max-w-md mx-auto px-4 py-7 md:py-10">
+                {/* ADAPT theo ngữ pháp "trang vở kẻ lề" (cùng login/page.tsx) —
+                    vibe-demo không có trang đăng ký, đây là áp dụng ngôn ngữ
+                    thiết kế chứ không phải port nguyên trang. Logic form
+                    (validateForm, fieldErrors, mã lỗi backend) giữ nguyên 100%. */}
+                <div className="mb-6">
+                    <h1 className="text-[clamp(20px,2.2vw,26px)] font-bold tracking-[-0.015em] text-ink-text mb-1">Tạo tài khoản</h1>
+                    <p className="text-sm text-ink-textMuted">Hoàn thành thông tin để bắt đầu học.</p>
                 </div>
 
-                <div className="bg-ink-panel border border-ink-border rounded-ink-md shadow-ink-sm p-8">
-                    <form onSubmit={handleSubmit} className="space-y-4">
-                        {/* Email Display */}
-                        <div>
-                            <label htmlFor="email" className="block text-sm font-medium text-ink-text mb-1.5">Email</label>
-                            <input
-                                id="email" name="email" type="email" value={email} readOnly
-                                className="w-full px-3 py-2.5 border border-ink-border rounded-lg text-sm bg-ink-page text-ink-textMuted"
-                            />
-                        </div>
+                <div className="bg-ink-panel border border-ink-border rounded-ink-md shadow-ink-sm overflow-hidden">
+                    <form onSubmit={handleSubmit}>
+                        {[
+                            {
+                                n: '01', field: (
+                                    <>
+                                        <label htmlFor="email" className="block text-sm font-medium text-ink-text mb-1.5">Email</label>
+                                        <input
+                                            id="email" name="email" type="email" value={email} readOnly
+                                            className="w-full px-3 py-2.5 border border-ink-border rounded-lg text-sm bg-ink-page text-ink-textMuted"
+                                        />
+                                    </>
+                                )
+                            },
+                            {
+                                n: '02', field: (
+                                    <>
+                                        <label htmlFor="fullName" className="block text-sm font-medium text-ink-text mb-1.5">Họ và tên</label>
+                                        <input
+                                            id="fullName" name="fullName" type="text" required
+                                            value={fullName} onChange={(e) => setFullName(e.target.value)}
+                                            disabled={appState === 'submitting'}
+                                            className={`w-full px-3 py-2.5 border rounded-lg text-sm text-ink-text placeholder:text-ink-textMuted focus:outline-none focus:ring-2 focus:ring-ink-accent focus:border-transparent disabled:opacity-50 transition-shadow ${fieldErrors.fullName ? 'border-red-400 bg-red-50' : 'border-ink-border'}`}
+                                            placeholder="Nguyễn Văn A"
+                                        />
+                                        {fieldErrors.fullName && <p className="mt-1 text-xs text-red-600">{fieldErrors.fullName}</p>}
+                                    </>
+                                )
+                            },
+                            {
+                                n: '03', field: (
+                                    <>
+                                        <label htmlFor="age" className="block text-sm font-medium text-ink-text mb-1.5">Tuổi</label>
+                                        <input
+                                            id="age" name="age" type="number" min="1" required
+                                            value={age} onChange={(e) => setAge(e.target.value)}
+                                            disabled={appState === 'submitting'}
+                                            className={`w-full px-3 py-2.5 border rounded-lg text-sm text-ink-text placeholder:text-ink-textMuted focus:outline-none focus:ring-2 focus:ring-ink-accent focus:border-transparent disabled:opacity-50 transition-shadow ${fieldErrors.age ? 'border-red-400 bg-red-50' : 'border-ink-border'}`}
+                                            placeholder="18"
+                                        />
+                                        {fieldErrors.age && <p className="mt-1 text-xs text-red-600">{fieldErrors.age}</p>}
+                                    </>
+                                )
+                            },
+                            {
+                                n: '04', field: (
+                                    <>
+                                        <label htmlFor="password" className="block text-sm font-medium text-ink-text mb-1.5">Mật khẩu</label>
+                                        <input
+                                            id="password" name="password" type="password" autoComplete="new-password" required minLength={6}
+                                            value={password} onChange={(e) => setPassword(e.target.value)}
+                                            disabled={appState === 'submitting'}
+                                            className={`w-full px-3 py-2.5 border rounded-lg text-sm text-ink-text placeholder:text-ink-textMuted focus:outline-none focus:ring-2 focus:ring-ink-accent focus:border-transparent disabled:opacity-50 transition-shadow ${fieldErrors.password ? 'border-red-400 bg-red-50' : 'border-ink-border'}`}
+                                            placeholder="Tối thiểu 6 ký tự"
+                                        />
+                                        {fieldErrors.password && <p className="mt-1 text-xs text-red-600">{fieldErrors.password}</p>}
+                                    </>
+                                )
+                            },
+                        ].map((row, i) => (
+                            <div key={row.n} className={`flex items-stretch ${i === 0 ? 'pt-5' : ''}`}>
+                                <span style={{ width: MARGIN_W }} className="shrink-0 flex items-start justify-center pt-[3px] font-mono text-[11px] text-ink-textDim">
+                                    {row.n}
+                                </span>
+                                <div className="flex-1 min-w-0 border-l border-ink-marginLn pl-4 pr-5 pb-4">
+                                    {row.field}
+                                </div>
+                            </div>
+                        ))}
 
-                        {/* Full Name */}
-                        <div>
-                            <label htmlFor="fullName" className="block text-sm font-medium text-ink-text mb-1.5">Họ và tên</label>
-                            <input
-                                id="fullName" name="fullName" type="text" required
-                                value={fullName} onChange={(e) => setFullName(e.target.value)}
-                                disabled={appState === 'submitting'}
-                                className={`w-full px-3 py-2.5 border rounded-lg text-sm text-ink-text placeholder:text-ink-textMuted focus:outline-none focus:ring-2 focus:ring-ink-accent focus:border-transparent disabled:opacity-50 transition-shadow ${fieldErrors.fullName ? 'border-red-400 bg-red-50' : 'border-ink-border'}`}
-                                placeholder="Nguyễn Văn A"
-                            />
-                            {fieldErrors.fullName && <p className="mt-1 text-xs text-red-600">{fieldErrors.fullName}</p>}
+                        <div className="flex items-stretch border-t border-ink-border">
+                            <span style={{ width: MARGIN_W }} className="shrink-0" />
+                            <div className="flex-1 border-l border-ink-marginLn py-4 pl-4 pr-5">
+                                <button
+                                    type="submit"
+                                    disabled={appState === 'submitting'}
+                                    className="vd-focusable w-full py-2.5 px-4 bg-ink-accent hover:bg-ink-accent/90 text-white text-sm font-semibold rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-ink-accent focus:ring-offset-2 disabled:opacity-50 flex items-center justify-center gap-2"
+                                >
+                                    {appState === 'submitting' && <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
+                                    {appState === 'submitting' ? 'Đang tạo tài khoản...' : 'Đăng ký'}
+                                </button>
+                                <div className="mt-3 text-center">
+                                    <button type="button" onClick={handleBackToIdentify} className="vd-focusable text-sm text-ink-textMuted hover:text-ink-text transition-colors">
+                                        ← Quay lại
+                                    </button>
+                                </div>
+                            </div>
                         </div>
-
-                        {/* Age */}
-                        <div>
-                            <label htmlFor="age" className="block text-sm font-medium text-ink-text mb-1.5">Tuổi</label>
-                            <input
-                                id="age" name="age" type="number" min="1" required
-                                value={age} onChange={(e) => setAge(e.target.value)}
-                                disabled={appState === 'submitting'}
-                                className={`w-full px-3 py-2.5 border rounded-lg text-sm text-ink-text placeholder:text-ink-textMuted focus:outline-none focus:ring-2 focus:ring-ink-accent focus:border-transparent disabled:opacity-50 transition-shadow ${fieldErrors.age ? 'border-red-400 bg-red-50' : 'border-ink-border'}`}
-                                placeholder="18"
-                            />
-                            {fieldErrors.age && <p className="mt-1 text-xs text-red-600">{fieldErrors.age}</p>}
-                        </div>
-
-                        {/* Password */}
-                        <div>
-                            <label htmlFor="password" className="block text-sm font-medium text-ink-text mb-1.5">Mật khẩu</label>
-                            <input
-                                id="password" name="password" type="password" autoComplete="new-password" required minLength={6}
-                                value={password} onChange={(e) => setPassword(e.target.value)}
-                                disabled={appState === 'submitting'}
-                                className={`w-full px-3 py-2.5 border rounded-lg text-sm text-ink-text placeholder:text-ink-textMuted focus:outline-none focus:ring-2 focus:ring-ink-accent focus:border-transparent disabled:opacity-50 transition-shadow ${fieldErrors.password ? 'border-red-400 bg-red-50' : 'border-ink-border'}`}
-                                placeholder="Tối thiểu 6 ký tự"
-                            />
-                            {fieldErrors.password && <p className="mt-1 text-xs text-red-600">{fieldErrors.password}</p>}
-                        </div>
-
-                        <button
-                            type="submit"
-                            disabled={appState === 'submitting'}
-                            className="w-full py-2.5 px-4 bg-ink-accent hover:bg-ink-accent/90 text-white text-sm font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-ink-accent focus:ring-offset-2 disabled:opacity-50 flex items-center justify-center gap-2 mt-2"
-                        >
-                            {appState === 'submitting' && <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
-                            {appState === 'submitting' ? 'Đang tạo tài khoản...' : 'Đăng ký'}
-                        </button>
                     </form>
-
-                    <div className="mt-5 text-center">
-                        <button onClick={handleBackToIdentify} className="text-sm text-ink-textMuted hover:text-ink-text transition-colors">
-                            ← Quay lại
-                        </button>
-                    </div>
                 </div>
 
                 {appState === 'request_sent' && (
