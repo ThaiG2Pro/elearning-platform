@@ -95,10 +95,10 @@ export default function MySharesPage() {
         <div className="min-h-screen bg-ink-page">
             <Header user={user} onLogout={handleLogout} onJoin={handleJoin} />
 
-            <main className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                <h1 className="text-xl font-bold text-ink-text mb-1">Link chia sẻ của tôi</h1>
+            <main className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-7 md:py-10">
+                <h1 className="text-[clamp(20px,2.2vw,26px)] font-bold tracking-[-0.015em] text-ink-text mb-1">Link chia sẻ của tôi</h1>
                 <p className="text-sm text-ink-textMuted mb-6">
-                    Xem lại, tạo mới hoặc thu hồi link chia sẻ cho từng Space bạn sở hữu.
+                    {links.length > 0 ? `${links.length} Space — ` : ''}Xem lại, tạo mới hoặc thu hồi link chia sẻ cho từng Space bạn sở hữu.
                 </p>
 
                 {appState === 'loading' && (
@@ -124,12 +124,16 @@ export default function MySharesPage() {
                 )}
 
                 {appState === 'idle' && links.length > 0 && (
-                    <div className="space-y-3">
-                        {links.map(link => (
-                            // border-l-ink-marginLn — "đường kẻ lề vở": mỗi Space trong danh
-                            // sách chia sẻ là một dòng, cùng motif với playlist/notes ở learn/page.tsx.
-                            <Card key={link.id} className="border-l-2 border-l-ink-marginLn">
-                                <CardContent className="pt-6 flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
+                    // "Giá sách" liên tục từ vibe-demo/spaces (renderRow) — thay chồng
+                    // Card rời từng dòng cũ: một khối panel duy nhất, cột lề trái đánh
+                    // số, đường kẻ mực xanh dọc liên tục, chia dòng bằng border-b.
+                    <div className="bg-ink-panel border border-ink-border rounded-ink-md shadow-ink-sm overflow-hidden">
+                        {links.map((link, i) => (
+                            <div key={link.id} className={`flex items-stretch ${i < links.length - 1 ? 'border-b border-ink-border' : ''}`}>
+                                <span className="hidden sm:flex w-10 shrink-0 items-start justify-center pt-4 font-mono text-[11px] text-ink-textDim">
+                                    {String(i + 1).padStart(2, '0')}
+                                </span>
+                                <div className="flex-1 min-w-0 border-l border-ink-marginLn py-3.5 px-4 flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
                                     <div className="min-w-0">
                                         <p className="text-sm font-medium text-ink-text truncate">{link.title}</p>
                                         {link.shareUrl ? (
@@ -170,8 +174,8 @@ export default function MySharesPage() {
                                             </Button>
                                         )}
                                     </div>
-                                </CardContent>
-                            </Card>
+                                </div>
+                            </div>
                         ))}
                     </div>
                 )}
