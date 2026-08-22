@@ -5,6 +5,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Header from '@/components/Header';
 import { Skeleton } from '@/components/ui/skeleton';
+import { MARGIN_W } from '@/lib/vibe/theme';
 import { PublicSpace } from '@/types/space.types';
 import { User } from '@/types/auth.types';
 import { getSharedSpace, copySharedSpace } from '@/lib/spaces';
@@ -98,7 +99,7 @@ export default function SharedSpacePage() {
         <div className="min-h-screen bg-ink-page">
             <Header user={user} onLogout={handleLogout} onJoin={() => router.push('/join')} />
 
-            <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-7 md:py-10">
                 {/* Navigation Section */}
                 <section className="mb-6">
                     <button
@@ -167,7 +168,7 @@ export default function SharedSpacePage() {
                                         <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium mb-3 ${isOwner ? 'bg-ink-accentA text-ink-accent' : 'bg-ink-page text-ink-textMid'}`}>
                                             {isOwner ? 'Space của bạn (Đang ở chế độ chia sẻ)' : 'Space được chia sẻ'}
                                         </span>
-                                        <h1 className="text-xl font-bold text-ink-text mb-3 leading-snug">{space.title}</h1>
+                                        <h1 className="text-[clamp(19px,2.2vw,24px)] font-bold tracking-[-0.01em] text-ink-text mb-3 leading-snug">{space.title}</h1>
                                         {space.ownerName && (
                                             <p className="text-sm text-ink-textMuted mb-2">
                                                 Tác giả: <span className="font-medium text-ink-text">{isOwner ? 'Bạn' : space.ownerName}</span>
@@ -178,37 +179,48 @@ export default function SharedSpacePage() {
                                         )}
                                     </section>
 
-                                    {/* Content Structure Section */}
-                                    <section className="bg-ink-panel border border-ink-border rounded-ink-md p-6 shadow-ink-sm mb-6">
-                                        <h2 className="text-xs font-semibold text-ink-textMuted uppercase tracking-wide mb-3">
+                                    {/* Content Structure Section — port motif renderPlaylist từ
+                                        vibe-demo/page.tsx (cùng bản với spaces/[id]/page.tsx): số
+                                        bài trong cột lề mono MARGIN_W, đường kẻ mực dọc liên tục,
+                                        tên chương là dòng tiêu đề trong cùng dòng chảy. */}
+                                    <section className="bg-ink-panel border border-ink-border rounded-ink-md shadow-ink-sm mb-6 overflow-hidden">
+                                        <h2 className="text-xs font-semibold text-ink-textMuted uppercase tracking-wide px-6 py-3.5 border-b border-ink-border">
                                             Nội dung Space
                                         </h2>
-                                        {space.chapters.length === 1 ? (
-                                            <ul className="space-y-1">
-                                                {space.chapters[0].lessons.map((lesson) => (
-                                                    <li key={lesson.id} className="text-sm text-ink-text flex items-center justify-between py-1 border-b border-ink-border last:border-0">
-                                                        <span>{lesson.title}</span>
-                                                        <span className="text-ink-textMuted text-xs font-mono uppercase bg-ink-page px-2 py-0.5 rounded">{lesson.type}</span>
-                                                    </li>
-                                                ))}
-                                            </ul>
-                                        ) : (
-                                            <div className="space-y-4">
-                                                {space.chapters.map((chapter) => (
+                                        <div className="py-1.5">
+                                            {space.chapters.map((chapter) => {
+                                                let lessonNum = 0;
+                                                return (
                                                     <div key={chapter.id}>
-                                                        <p className="text-sm font-semibold text-ink-text mb-1.5">{chapter.title}</p>
-                                                        <ul className="pl-4 space-y-1">
-                                                            {chapter.lessons.map((lesson) => (
-                                                                <li key={lesson.id} className="text-sm text-ink-textMid flex items-center justify-between py-0.5">
-                                                                    <span>{lesson.title}</span>
-                                                                    <span className="text-ink-textMuted text-xs font-mono uppercase bg-ink-page px-2 py-0.5 rounded">{lesson.type}</span>
-                                                                </li>
-                                                            ))}
-                                                        </ul>
+                                                        {space.chapters.length > 1 && (
+                                                            <div className="flex items-stretch">
+                                                                <span style={{ width: MARGIN_W }} className="shrink-0" />
+                                                                <p className="flex-1 border-l border-ink-marginLn pt-3 pb-1.5 pl-3.5 pr-4 text-sm font-semibold text-ink-text">
+                                                                    {chapter.title}
+                                                                </p>
+                                                            </div>
+                                                        )}
+                                                        {chapter.lessons.map((lesson) => {
+                                                            lessonNum += 1;
+                                                            return (
+                                                                <div key={lesson.id} className="flex items-stretch">
+                                                                    <span
+                                                                        style={{ width: MARGIN_W }}
+                                                                        className="shrink-0 flex items-start justify-center pt-[11px] font-mono text-[11px] text-ink-textDim"
+                                                                    >
+                                                                        {String(lessonNum).padStart(2, '0')}
+                                                                    </span>
+                                                                    <div className="flex-1 min-w-0 border-l border-ink-marginLn pt-2 pb-2 pl-3.5 pr-4 flex items-start justify-between gap-2">
+                                                                        <span className="text-sm text-ink-textMid leading-[1.4] min-w-0 truncate">{lesson.title}</span>
+                                                                        <span className="shrink-0 text-ink-textDim text-[11px] font-mono uppercase">{lesson.type}</span>
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        })}
                                                     </div>
-                                                ))}
-                                            </div>
-                                        )}
+                                                );
+                                            })}
+                                        </div>
                                     </section>
 
                                     {errorMessage && (
