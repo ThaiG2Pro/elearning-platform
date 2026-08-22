@@ -1,74 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { AIGenerationController } from '@/modules/ai-generation/controllers/AIGenerationController';
 import { getUserIdFromRequest } from '@/shared/middleware/auth';
-import { RecipeType, defaultParamsFor, defaultModel } from '@/modules/ai-generation/domain/Recipes';
-import { RecipeHash } from '@/modules/ai-generation/domain/RecipeHash';
-import { prisma } from '@/shared/config/database';
+import { RecipeType } from '@/modules/ai-generation/domain/Recipes';
 
 const VALID_RECIPE_TYPES: RecipeType[] = ['summary', 'quiz'];
 
 /**
- * GET — đọc cache mặc định đã có, không trigger generate mới (UI poll trạng
- * thái PENDING → READY, hoặc kiểm tra "đã có bản chưa" trước khi hiện nút
- * generate).
- */
-export async function GET(
-    request: NextRequest,
-    { params }: { params: { sourceId: string } },
-) {
-    try {
-        const userId = await getUserIdFromRequest(request);
-        if (!userId) {
-            return NextResponse.json({ error: 'UNAUTHORIZED' }, { status: 401 });
-        }
-
-        if (!params.sourceId || isNaN(Number(params.sourceId))) {
-            return NextResponse.json({ error: 'SOURCE_NOT_FOUND' }, { status: 404 });
-        }
-
-        const type = request.nextUrl.searchParams.get('type');
-        if (!type || !VALID_RECIPE_TYPES.includes(type as RecipeType)) {
-            return NextResponse.json({ error: 'INVALID_RECIPE_TYPE' }, { status: 400 });
-        }
-
-        const params_ = defaultParamsFor(type as RecipeType);
-        const recipeHash = RecipeHash.compute({
-            type,
-            params: params_,
-            segmentRange: null,
-            modelVersion: defaultModel(),
-        });
-
-        const generation = await prisma.ai_generations.findFirst({
-            where: {
-                source_id: BigInt(params.sourceId),
-                recipe_hash: recipeHash,
-                key_source: 'SHARED_FREE',
-            },
-        });
-
-        if (!generation) {
-            return NextResponse.json({ generation: null });
-        }
-
-        return NextResponse.json({
-            generation: {
-                id: generation.id.toString(),
-                status: generation.status,
-                content: generation.content,
-            },
-        });
-    } catch (error) {
-        console.error('Get AI generation error:', error);
-        return NextResponse.json({ error: 'INTERNAL_ERROR' }, { status: 500 });
-    }
-}
-
-/**
  * WP2.2 — lazy-trigger duy nhất cho AI generation (không auto khi thêm
- * Source — mục 6.1 economics doc). Route enqueue nhẹ: `AIGenerationService`
- * đã lưu bản PENDING trước khi gọi LLM, nên ngay cả khi request này timeout/
- * bị huỷ giữa chừng, GET sau vẫn đọc lại được trạng thái thật từ DB.
+ * Source — mục 6.1 economics doc).
+ *
+ * Contract SYNC (hướng a, chốt 2026-08-21): request này await trọn lời gọi
+ * LLM và trả 200 với kết quả cuối (READY hoặc cache hit) — không có 202,
+ * không có polling. Handler GET cũ (poll PENDING → READY) đã xoá vì không
+ * client nào gọi và POST chưa bao giờ thật sự fire-and-forget.
+ *
+ * Hướng (b) để dành sau này — async thật: POST trả 202 + PENDING, thêm lại
+ * GET poll theo (sourceId, recipeHash) tới READY/FAILED. Chi tiết điều kiện
+ * và yêu cầu kèm theo (job queue / PENDING-timeout) xem doc comment đầu
+ * `AIGenerationService.ts`.
  */
 export async function POST(
     request: NextRequest,
@@ -93,6 +42,7 @@ export async function POST(
             byokModel?: string;
             requestedVisibility?: 'PRIVATE' | 'SHARED';
             paymentMethod?: 'CREDITS';
+            force?: boolean;
         } = await request.json();
         if (!body.type || !VALID_RECIPE_TYPES.includes(body.type as RecipeType)) {
             return NextResponse.json({ error: 'INVALID_RECIPE_TYPE' }, { status: 400 });
@@ -118,19 +68,27 @@ export async function POST(
             byokModel: body.byokModel,
             requestedVisibility: body.requestedVisibility,
             paymentMethod: body.paymentMethod,
+            force: body.force === true,
         });
 
+        // Luôn 200: kết quả đã hoàn tất tại thời điểm trả về (contract sync).
+        // 202 cũ là tàn dư của thiết kế async chưa từng chạy — sai ngữ nghĩa.
         return NextResponse.json({
             id: result.generation.id.toString(),
             status: result.generation.status,
             keySource: result.generation.keySource,
             content: result.generation.content,
             servedFromCache: result.servedFromCache,
-        }, { status: result.servedFromCache ? 200 : 202 });
+        });
     } catch (error) {
         const message = error instanceof Error ? error.message : 'INTERNAL_ERROR';
         if (message === 'SOURCE_NOT_FOUND') {
             return NextResponse.json({ error: message }, { status: 404 });
+        }
+        // Dedup: đã có 1 request khác đang generate đúng bản này — 409
+        // Conflict (xung đột với tiến trình đang chạy, không phải lỗi input).
+        if (message === 'AI_GENERATION_IN_PROGRESS') {
+            return NextResponse.json({ error: message }, { status: 409 });
         }
         if (
             message === 'AI_CUSTOM_RECIPE_REQUIRES_BYOK_OR_PAID' ||

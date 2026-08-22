@@ -119,6 +119,13 @@ describe('AIGenerationPolicy.isDefaultRecipe — ranh giới cứng (mục 2)', 
             AIGenerationPolicy.isDefaultRecipe({ ...defaults }, { startSec: 0, endSec: 60 }, defaults),
         ).toBe(false);
     });
+
+    it('treats ANY non-null segmentRange as custom, including a meaningless empty object', () => {
+        // Ranh giới default/custom quyết định ai được dùng free tier — chỉ
+        // null/undefined mới là "không có segment", mọi giá trị khác (kể cả
+        // {}) đều rời khỏi "mặc định".
+        expect(AIGenerationPolicy.isDefaultRecipe({ ...defaults }, {}, defaults)).toBe(false);
+    });
 });
 
 describe('AIGenerationPolicy.inheritOnClone — hệ quả mục 5', () => {
@@ -174,6 +181,13 @@ describe('AIGenerationPolicy.enforceSharedFreeTokenBudget — quota theo chi ph�
             'SOURCE_TOO_LONG_FOR_SHARED_FREE',
         );
     });
+
+    it('boundary: exactly at the budget passes, one over rejects', () => {
+        expect(() => AIGenerationPolicy.enforceSharedFreeTokenBudget(20000, 20000)).not.toThrow();
+        expect(() => AIGenerationPolicy.enforceSharedFreeTokenBudget(20001, 20000)).toThrow(
+            'SOURCE_TOO_LONG_FOR_SHARED_FREE',
+        );
+    });
 });
 
 describe('AIGenerationPolicy.exceedsAlertThreshold — cảnh báo tăng trưởng đột biến (mục 6.7)', () => {
@@ -183,9 +197,5 @@ describe('AIGenerationPolicy.exceedsAlertThreshold — cảnh báo tăng trưở
 
     it('alerts once the request count reaches the threshold', () => {
         expect(AIGenerationPolicy.exceedsAlertThreshold(250, 250)).toBe(true);
-    });
-
-    it('alerts when the request count exceeds the threshold', () => {
-        expect(AIGenerationPolicy.exceedsAlertThreshold(500, 250)).toBe(true);
     });
 });

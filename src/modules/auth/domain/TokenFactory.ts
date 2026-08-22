@@ -49,7 +49,7 @@ export class TokenFactory {
             const secret = this.getJwtSecret();
             const decoded = jwt.verify(token, secret) as any;
             if (decoded.type === 'refresh') {
-                return { userId: BigInt(decoded.userId) };
+                return { userId: BigInt(decoded.id) };
             }
             return null;
         } catch {

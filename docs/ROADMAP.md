@@ -836,6 +836,22 @@ khi mở public — không mở rộng khi tín hiệu ở checkpoint trước c
 
 ---
 
+## Backlog phát sinh (ngoài checkpoint)
+
+Gap/bug nghiệp vụ phát hiện dọc đường, không thuộc WP nào — ghi lại để không
+trôi, đánh dấu khi xử lý xong.
+
+- [x] **Clone Space không copy câu hỏi quiz** (phát hiện 2026-08-21, fix cùng
+  ngày). `CourseRepository.cloneForOwner` copy row lesson (title/type/url +
+  link `ai_generation_id` không-PAID theo luật free-rider WP3.2) nhưng bỏ sót
+  bảng `questions` — người "Sao chép về học" một Space có bài quiz nhận lesson
+  QUIZ rỗng ruột. Gap có từ trước tính năng AI composer, nhưng nghiêm trọng
+  hơn từ khi quiz AI thành lesson thật (2026-08-21). **Fix:** include
+  `questions` khi đọc course nguồn và `createMany` bản sao câu hỏi cho từng
+  lesson mới trong cùng transaction clone. Lưu ý phân tầng: câu hỏi là nội
+  dung đã "vật chất hoá" nên copy nguyên vẹn, không dính luật kế thừa
+  `ai_generation_id` (PAID_TIER vẫn bị cắt link cache như cũ).
+
 ## Bảng tổng quan
 
 | Checkpoint | Ai dùng được | Có AI? | Có thu phí? | Rủi ro chính nếu bỏ qua thứ tự |

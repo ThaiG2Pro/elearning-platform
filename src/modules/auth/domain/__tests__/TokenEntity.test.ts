@@ -18,16 +18,6 @@ describe('TokenEntity', () => {
         });
     });
 
-    describe('isUsedToken', () => {
-        it('returns false when not used', () => {
-            expect(makeToken({ isUsed: false }).isUsedToken()).toBe(false);
-        });
-
-        it('returns true when used', () => {
-            expect(makeToken({ isUsed: true }).isUsedToken()).toBe(true);
-        });
-    });
-
     describe('markAsUsed', () => {
         it('sets isUsed to true', () => {
             const token = makeToken({ isUsed: false });

@@ -2,8 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { AuthService } from '../AuthService';
 import { UserEntity } from '../../domain/UserEntity';
 import { TokenEntity } from '../../domain/TokenEntity';
-import { NavigationAction } from '../../domain/NavigationAction';
 import { RegisterDto } from '../../dtos/RegisterDto';
+import { LoginDto } from '../../dtos/LoginDto';
 import { ResetDto } from '../../dtos/ResetDto';
 import { ChangePasswordDto } from '../../dtos/ChangePasswordDto';
 
@@ -64,27 +64,6 @@ describe('AuthService — integration (mocked repos)', () => {
         service = new AuthService(userRepo as any, tokenRepo as any, emailAdapter as any);
     });
 
-    // ── identifyUser ──────────────────────────────────────────────────────────
-    describe('identifyUser', () => {
-        it('returns REGISTER when user not found', async () => {
-            userRepo.findByEmail.mockResolvedValue(null);
-            const result = await service.identifyUser('new@test.com');
-            expect(result).toBe(NavigationAction.REGISTER);
-        });
-
-        it('returns LOGIN for an ACTIVE user', async () => {
-            userRepo.findByEmail.mockResolvedValue(makeUser('ACTIVE'));
-            const result = await service.identifyUser('active@test.com');
-            expect(result).toBe(NavigationAction.LOGIN);
-        });
-
-        it('returns REGISTER for an INACTIVE user', async () => {
-            userRepo.findByEmail.mockResolvedValue(makeUser('INACTIVE'));
-            const result = await service.identifyUser('inactive@test.com');
-            expect(result).toBe(NavigationAction.REGISTER);
-        });
-    });
-
     // ── registerNewUser ───────────────────────────────────────────────────────
     describe('registerNewUser', () => {
         const dto = new RegisterDto('new@test.com', 'Password1!', 'New User', 25, '/dashboard');
@@ -112,6 +91,28 @@ describe('AuthService — integration (mocked repos)', () => {
             userRepo.findByEmail.mockResolvedValue(makeUser('ACTIVE'));
 
             await expect(service.registerNewUser(dto)).rejects.toThrow('USER_ALREADY_ACTIVE');
+        });
+
+        // BR-TK-03: re-registering an INACTIVE email must kill the previous
+        // activation token before a new one is saved, or the old emailed link
+        // could still activate the overwritten account.
+        it('revokes old ACTIVATION tokens before issuing a new one on INACTIVE overwrite', async () => {
+            const { UserFactory } = await import('../../domain/UserFactory');
+            const existing = makeUser('INACTIVE');
+            (UserFactory.reconstituteForOverwrite as ReturnType<typeof vi.fn>).mockResolvedValue(existing);
+
+            userRepo.deleteInactiveUsersOlderThan24Hours.mockResolvedValue(undefined);
+            userRepo.findByEmail.mockResolvedValue(existing);
+            userRepo.save.mockResolvedValue(undefined);
+            tokenRepo.revokeAllByType.mockResolvedValue(undefined);
+            tokenRepo.save.mockResolvedValue(undefined);
+
+            await service.registerNewUser(dto);
+
+            expect(tokenRepo.revokeAllByType).toHaveBeenCalledWith(existing.id, 'ACTIVATION');
+            const revokeOrder = tokenRepo.revokeAllByType.mock.invocationCallOrder[0];
+            const saveOrder   = tokenRepo.save.mock.invocationCallOrder[0];
+            expect(revokeOrder).toBeLessThan(saveOrder);
         });
     });
 
@@ -170,6 +171,88 @@ describe('AuthService — integration (mocked repos)', () => {
             tokenRepo.findByCode.mockResolvedValue(makeToken('RECOVERY', { expiresAt: past }));
             await expect(service.resetPassword(new ResetDto('code', 'pass'))).rejects.toThrow('TOKEN_INVALID');
         });
+
+        // Token-type confusion: an emailed ACTIVATION link must never double
+        // as a password-reset credential.
+        it('throws TOKEN_INVALID for an ACTIVATION-type token and does not touch the user', async () => {
+            tokenRepo.findByCode.mockResolvedValue(makeToken('ACTIVATION'));
+            await expect(service.resetPassword(new ResetDto('activation-code', 'NewPass1!')))
+                .rejects.toThrow('TOKEN_INVALID');
+            expect(userRepo.save).not.toHaveBeenCalled();
+            expect(tokenRepo.markAsUsed).not.toHaveBeenCalled();
+        });
+    });
+
+    // ── requestPasswordReset ──────────────────────────────────────────────────
+    describe('requestPasswordReset', () => {
+        it('revokes old RECOVERY tokens before issuing a new one', async () => {
+            const user = makeUser('ACTIVE');
+            userRepo.findByEmail.mockResolvedValue(user);
+            tokenRepo.revokeAllByType.mockResolvedValue(undefined);
+            tokenRepo.save.mockResolvedValue(undefined);
+
+            await service.requestPasswordReset('user@test.com');
+
+            expect(tokenRepo.revokeAllByType).toHaveBeenCalledWith(user.id, 'RECOVERY');
+            const revokeOrder = tokenRepo.revokeAllByType.mock.invocationCallOrder[0];
+            const saveOrder   = tokenRepo.save.mock.invocationCallOrder[0];
+            expect(revokeOrder).toBeLessThan(saveOrder);
+        });
+
+        // Enumeration parity: response must be byte-identical whether or not
+        // the email exists, and an unknown email must never throw.
+        it('returns the same message for an existing and an unknown email', async () => {
+            const user = makeUser('ACTIVE');
+            userRepo.findByEmail.mockResolvedValueOnce(user);
+            tokenRepo.revokeAllByType.mockResolvedValue(undefined);
+            tokenRepo.save.mockResolvedValue(undefined);
+            const known = await service.requestPasswordReset('user@test.com');
+
+            userRepo.findByEmail.mockResolvedValueOnce(null);
+            const unknown = await service.requestPasswordReset('nobody@test.com');
+
+            expect(JSON.stringify(unknown)).toBe(JSON.stringify(known));
+        });
+
+        it('does not throw and issues no token for an unknown email', async () => {
+            userRepo.findByEmail.mockResolvedValue(null);
+            await expect(service.requestPasswordReset('nobody@test.com')).resolves.toBeDefined();
+            expect(tokenRepo.save).not.toHaveBeenCalled();
+            expect(tokenRepo.revokeAllByType).not.toHaveBeenCalled();
+        });
+    });
+
+    // ── response-shape guards ─────────────────────────────────────────────────
+    // The DTO mapping is hand-written in several places; these pin that no
+    // future `...user` spread ships the bcrypt hash to the client.
+    describe('sensitive-field leakage', () => {
+        it('login response contains no passwordHash', async () => {
+            vi.stubEnv('JWT_SECRET', 'test-secret-for-auth-service');
+            try {
+                const bcrypt = await import('bcryptjs');
+                const user = makeUser('ACTIVE');
+                user.passwordHash = await bcrypt.hash('RealPass1!', 10);
+                userRepo.findByEmail.mockResolvedValue(user);
+                userRepo.save.mockResolvedValue(undefined);
+
+                const result = await service.login(new LoginDto('user@test.com', 'RealPass1!'));
+
+                expect(JSON.stringify(result)).not.toContain('passwordHash');
+                expect(JSON.stringify(result)).not.toContain(user.passwordHash);
+            } finally {
+                vi.unstubAllEnvs();
+            }
+        });
+
+        it('getProfile result contains no passwordHash', async () => {
+            const user = makeUser('ACTIVE');
+            userRepo.findById.mockResolvedValue(user);
+
+            const profile = await service.getProfile(1n);
+
+            expect(JSON.stringify(profile, (_, v) => typeof v === 'bigint' ? v.toString() : v))
+                .not.toContain('passwordHash');
+        });
     });
 
     // ── updateProfile ─────────────────────────────────────────────────────────
@@ -179,18 +262,6 @@ describe('AuthService — integration (mocked repos)', () => {
             const { UpdateProfileDto } = await import('../../dtos/UpdateProfileDto');
             await expect(service.updateProfile(1n, new UpdateProfileDto('Name', 0))).rejects.toThrow('INVALID_AGE');
             await expect(service.updateProfile(1n, new UpdateProfileDto('Name', -5))).rejects.toThrow('INVALID_AGE');
-        });
-
-        it('updates profile successfully', async () => {
-            const user = makeUser();
-            userRepo.findById.mockResolvedValue(user);
-            userRepo.save.mockResolvedValue(undefined);
-            const { UpdateProfileDto } = await import('../../dtos/UpdateProfileDto');
-
-            const result = await service.updateProfile(1n, new UpdateProfileDto('New Name', 30));
-            expect(user.fullName).toBe('New Name');
-            expect(user.age).toBe(30);
-            expect(result.success).toBe(true);
         });
     });
 

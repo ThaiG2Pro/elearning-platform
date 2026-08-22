@@ -447,11 +447,20 @@ setCount(c => c + 1); // 2 → 3`} />
             : 'bg-ink-panel border-b border-ink-border text-ink-textMuted'
         }`}
       >
-        <span>Spaces</span>
-        <ChevronRight size={11} className={focusMode ? 'text-[rgba(244,246,252,0.25)]' : 'text-ink-textDim'} />
-        <span>Lập trình web</span>
-        <ChevronRight size={11} className={focusMode ? 'text-[rgba(244,246,252,0.25)]' : 'text-ink-textDim'} />
-        <span className={`font-medium ${focusMode ? 'text-[rgba(244,246,252,0.85)]' : 'text-ink-text'}`}>{active.chapter}</span>
+        {/* Mục 2 — bug thật do user test trên iPhone SE: các span breadcrumb
+            không có shrink-0/whitespace-nowrap nên bị flex ép co lại, chữ
+            wrap xuống nhiều dòng làm cả thanh "phình" cao hơn TOP_BAR_H cố
+            định. Ẩn hẳn crumb giữa ("Lập trình web") ở màn hẹp thay vì cố
+            nhồi 3 crumb vào 1 dòng — chỉ giữ Spaces › chương hiện tại. */}
+        <span className="shrink-0 whitespace-nowrap">Spaces</span>
+        {!isCompact && (
+          <>
+            <ChevronRight size={11} className={`shrink-0 ${focusMode ? 'text-[rgba(244,246,252,0.25)]' : 'text-ink-textDim'}`} />
+            <span className="shrink-0 whitespace-nowrap">Lập trình web</span>
+          </>
+        )}
+        <ChevronRight size={11} className={`shrink-0 ${focusMode ? 'text-[rgba(244,246,252,0.25)]' : 'text-ink-textDim'}`} />
+        <span className={`min-w-0 flex-1 truncate font-medium ${focusMode ? 'text-[rgba(244,246,252,0.85)]' : 'text-ink-text'}`}>{active.chapter}</span>
 
         <div className="ml-auto flex items-center gap-4">
           <div className="flex items-center gap-2">

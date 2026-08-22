@@ -37,14 +37,32 @@ export function findCreditPackage(packageId: string): CreditPackage | undefined 
 // thực ở mục 6.3 chỉ áp dụng cho SHARED_FREE). Đọc từ env để chỉnh giá không
 // cần deploy lại code.
 export function aiGenerationCreditCost(): number {
-    return Number(process.env.AI_GENERATION_CREDIT_COST ?? 10);
+    // Env sai/thiếu (rỗng, chữ, số âm, số lẻ) không được phép biến generate
+    // thành miễn phí (0/NaN) hay "in" credit (âm) — rơi về mặc định 10.
+    const parsed = Number(process.env.AI_GENERATION_CREDIT_COST ?? 10);
+    if (!Number.isInteger(parsed) || parsed <= 0) {
+        return 10;
+    }
+    return parsed;
 }
 
 export type CreditTransactionReason = 'PURCHASE' | 'AI_GENERATION_SPEND' | 'REFUND';
 
 export class CreditLedger {
+    /**
+     * Mọi biến động credit phải là số nguyên dương hữu hạn — chặn tuyệt đối
+     * số âm/NaN/số lẻ lọt vào ledger (spend số âm = in credit, purchase số âm
+     * = âm thầm trừ tiền user).
+     */
+    private static assertValidAmount(amount: number): void {
+        if (!Number.isInteger(amount) || amount <= 0) {
+            throw new Error('INVALID_CREDIT_AMOUNT');
+        }
+    }
+
     /** Mua credit — luôn cộng, không bao giờ âm. */
     static balanceAfterPurchase(currentBalance: number, packageCredits: number): number {
+        CreditLedger.assertValidAmount(packageCredits);
         return currentBalance + packageCredits;
     }
 
@@ -54,6 +72,7 @@ export class CreditLedger {
      * transaction trước khi gọi hàm này (chống race 2 request đồng thời).
      */
     static balanceAfterSpend(currentBalance: number, cost: number): number {
+        CreditLedger.assertValidAmount(cost);
         if (currentBalance < cost) {
             throw new Error('AI_INSUFFICIENT_CREDITS');
         }
@@ -62,6 +81,7 @@ export class CreditLedger {
 
     /** Hoàn credit khi generate PAID_TIER thất bại sau khi đã trừ tiền. */
     static balanceAfterRefund(currentBalance: number, refundAmount: number): number {
+        CreditLedger.assertValidAmount(refundAmount);
         return currentBalance + refundAmount;
     }
 

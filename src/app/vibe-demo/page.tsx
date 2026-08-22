@@ -279,10 +279,18 @@ export default function VibeDemoPage() {
           focusMode ? 'bg-ink-room border-[rgba(244,246,252,0.10)] text-[rgba(244,246,252,0.45)]' : 'bg-ink-panel border-ink-border text-ink-textMuted'
         }`}
       >
-        <span>Spaces</span>
-        <ChevronRight size={11} className={focusMode ? 'text-[rgba(244,246,252,0.25)]' : 'text-ink-textDim'} />
-        <span>Lập trình web</span>
-        <ChevronRight size={11} className={focusMode ? 'text-[rgba(244,246,252,0.25)]' : 'text-ink-textDim'} />
+        {/* Mục 2 — cùng lỗi phát hiện ở article/quiz: span breadcrumb không
+            shrink-0/whitespace-nowrap bị flex ép co lại và wrap chữ ở màn
+            hẹp. Hạ cứng trước ở đây luôn, dù chưa thấy báo lỗi trực tiếp
+            trên trang này. */}
+        <span className="shrink-0 whitespace-nowrap">Spaces</span>
+        {!isCompact && (
+          <>
+            <ChevronRight size={11} className={`shrink-0 ${focusMode ? 'text-[rgba(244,246,252,0.25)]' : 'text-ink-textDim'}`} />
+            <span className="shrink-0 whitespace-nowrap">Lập trình web</span>
+          </>
+        )}
+        <ChevronRight size={11} className={`shrink-0 ${focusMode ? 'text-[rgba(244,246,252,0.25)]' : 'text-ink-textDim'}`} />
         <span
           title={active.chapter}
           className={`flex-1 min-w-0 truncate font-medium ${focusMode ? 'text-[rgba(244,246,252,0.85)]' : 'text-ink-text'}`}

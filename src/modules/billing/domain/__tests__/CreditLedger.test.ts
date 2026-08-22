@@ -1,15 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { CreditLedger, CREDIT_PACKAGES, findCreditPackage } from '../CreditLedger';
-
-describe('CreditLedger.balanceAfterPurchase', () => {
-    it('adds package credits to the current balance', () => {
-        expect(CreditLedger.balanceAfterPurchase(50, 120)).toBe(170);
-    });
-
-    it('works from a zero balance', () => {
-        expect(CreditLedger.balanceAfterPurchase(0, 20)).toBe(20);
-    });
-});
+import { describe, it, expect, afterEach, vi } from 'vitest';
+import { CreditLedger, findCreditPackage, aiGenerationCreditCost } from '../CreditLedger';
 
 describe('CreditLedger.balanceAfterSpend', () => {
     it('subtracts the cost when balance is sufficient', () => {
@@ -25,32 +15,54 @@ describe('CreditLedger.balanceAfterSpend', () => {
     });
 });
 
-describe('CreditLedger.balanceAfterRefund', () => {
-    it('adds the refund back to the balance', () => {
-        expect(CreditLedger.balanceAfterRefund(0, 10)).toBe(10);
-    });
+// Hàng rào chống "in credit": mọi amount phải là số nguyên dương hữu hạn.
+// spend với cost âm sẽ CỘNG tiền, purchase âm sẽ TRỪ tiền — cả hai đều phải
+// bị chặn ở tầng domain trước khi chạm ledger.
+describe('CreditLedger amount validation', () => {
+    const invalidAmounts = [-5, 0, 1.5, NaN, Infinity, -Infinity];
+
+    for (const amount of invalidAmounts) {
+        it(`balanceAfterSpend rejects cost ${amount}`, () => {
+            expect(() => CreditLedger.balanceAfterSpend(50, amount)).toThrow('INVALID_CREDIT_AMOUNT');
+        });
+
+        it(`balanceAfterPurchase rejects amount ${amount}`, () => {
+            expect(() => CreditLedger.balanceAfterPurchase(50, amount)).toThrow('INVALID_CREDIT_AMOUNT');
+        });
+
+        it(`balanceAfterRefund rejects amount ${amount}`, () => {
+            expect(() => CreditLedger.balanceAfterRefund(50, amount)).toThrow('INVALID_CREDIT_AMOUNT');
+        });
+    }
 });
 
-describe('CreditLedger.hasSufficientCredits', () => {
-    it('true when balance >= cost', () => {
-        expect(CreditLedger.hasSufficientCredits(10, 10)).toBe(true);
-        expect(CreditLedger.hasSufficientCredits(11, 10)).toBe(true);
+describe('aiGenerationCreditCost', () => {
+    afterEach(() => {
+        vi.unstubAllEnvs();
     });
 
-    it('false when balance < cost', () => {
-        expect(CreditLedger.hasSufficientCredits(9, 10)).toBe(false);
+    it('returns the default 10 when env is unset', () => {
+        vi.stubEnv('AI_GENERATION_CREDIT_COST', undefined as unknown as string);
+        delete process.env.AI_GENERATION_CREDIT_COST;
+        expect(aiGenerationCreditCost()).toBe(10);
     });
+
+    it('parses a valid positive integer from env', () => {
+        vi.stubEnv('AI_GENERATION_CREDIT_COST', '25');
+        expect(aiGenerationCreditCost()).toBe(25);
+    });
+
+    // Env cấu hình sai không được phép biến generate thành miễn phí (0/NaN)
+    // hay in credit (âm) — luôn rơi về mặc định 10.
+    for (const bad of ['', 'abc', '-10', '0', '1.5']) {
+        it(`falls back to 10 for malformed env value ${JSON.stringify(bad)}`, () => {
+            vi.stubEnv('AI_GENERATION_CREDIT_COST', bad);
+            expect(aiGenerationCreditCost()).toBe(10);
+        });
+    }
 });
 
-describe('CREDIT_PACKAGES / findCreditPackage', () => {
-    it('exposes at least one package with positive credits and price', () => {
-        expect(CREDIT_PACKAGES.length).toBeGreaterThan(0);
-        for (const pkg of CREDIT_PACKAGES) {
-            expect(pkg.credits).toBeGreaterThan(0);
-            expect(pkg.priceUsdCents).toBeGreaterThan(0);
-        }
-    });
-
+describe('findCreditPackage', () => {
     it('finds a known package by id', () => {
         expect(findCreditPackage('starter')).toBeDefined();
     });

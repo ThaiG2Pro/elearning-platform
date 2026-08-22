@@ -26,21 +26,43 @@ export interface AccessTracker {
  * theo (sourceId, recipeHash); rate-limit theo user/ngày; quota theo token
  * thực ước lượng, không theo lượt.
  *
- * Route POST nên enqueue nhẹ (ai-integration-plan.md mục 4): trả 202 ngay
- * với status PENDING, xử lý trong cùng process (không cần queue engine
- * riêng vì đích deploy là Docker/self-host, không bị áp lực timeout
- * serverless), rồi update — UI poll đơn giản qua GET.
+ * Contract SYNC (hướng a, chốt 2026-08-21): `generate()` await trọn lời gọi
+ * LLM rồi mới trả READY (hoặc throw) — route POST trả 200 với kết quả cuối,
+ * không có poll. Chấp nhận được vì đích deploy là Docker/self-host (không áp
+ * lực timeout serverless) và transcript SHARED_FREE đã bị chặn độ dài.
+ *
+ * Hướng (b) để dành sau này — async thật (theo ai-integration-plan.md mục 4):
+ * tách generate() thành "tạo record PENDING + kick off không await", route
+ * trả 202 + PENDING, UI poll GET theo (sourceId, recipeHash) tới READY/FAILED.
+ * Chỉ cần khi deploy serverless timeout ngắn hoặc bỏ giới hạn transcript;
+ * lúc đó phải kèm job queue (hoặc tối thiểu PENDING-timeout → coi như FAILED)
+ * vì fire-and-forget trần trong serverless có thể bị kill sau khi trả response.
+ * Row PENDING + findInFlight ở repository đã sẵn sàng tái dùng cho hướng này.
  */
 
 // Đọc lại mỗi lần gọi (không cache ở module scope) để đổi config qua env
 // không cần restart process trong dev/test, và để test có thể chỉnh động.
+//
+// Env sai định dạng ("", "abc", số âm) KHÔNG được âm thầm vô hiệu hoá guard
+// chi phí: `Number()` trả NaN và mọi so sánh `count >= NaN` đều false — tức
+// limit biến mất. Giá trị không phải số dương hữu hạn rơi về default.
+function positiveNumberFromEnv(raw: string | undefined, fallback: number): number {
+    const parsed = Number(raw);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
 function dailyActivationLimit(): number {
-    return Number(process.env.AI_DAILY_ACTIVATION_LIMIT ?? 20);
+    return positiveNumberFromEnv(process.env.AI_DAILY_ACTIVATION_LIMIT, 20);
 }
 // Ước lượng thô: ~4 ký tự/token. Ngưỡng an toàn cho SHARED_FREE — video quá
 // dài bị từ chối tạo bản mặc định miễn phí (mục 6.3), bắt buộc BYOK/trả phí.
 function sharedFreeMaxTranscriptChars(): number {
-    return Number(process.env.AI_SHARED_FREE_MAX_TRANSCRIPT_CHARS ?? 60_000);
+    return positiveNumberFromEnv(process.env.AI_SHARED_FREE_MAX_TRANSCRIPT_CHARS, 60_000);
+}
+// Cửa sổ coi 1 row PENDING là "đang chạy thật" (dedup generate trùng). Phải
+// dài hơn thời gian 1 lời gọi LLM chậm nhất còn chấp nhận được — quá cửa sổ
+// này, PENDING bị coi là mồ côi (process chết giữa chừng) và cho generate lại.
+function inFlightWindowMs(): number {
+    return positiveNumberFromEnv(process.env.AI_IN_FLIGHT_WINDOW_MS, 5 * 60_000);
 }
 
 export interface GenerateRequest {
@@ -75,6 +97,13 @@ export interface GenerateRequest {
      * không override BYOK/SHARED_FREE (những nhánh rẻ hơn luôn thắng).
      */
     paymentMethod?: 'CREDITS';
+    /**
+     * Bỏ qua cache READY hiện có để generate bản mới đè lên (nút "Tạo lại" ở
+     * UI — trước đây nút này luôn ăn lại đúng bản cache cũ, không tạo lại gì).
+     * Với SHARED_FREE, partial unique index đảm bảo bản mới ghi đè đúng row
+     * cũ qua đường update trong `repo.create` — không sinh row trùng.
+     */
+    force?: boolean;
 }
 
 export interface GenerateResult {
@@ -134,8 +163,14 @@ export class AIGenerationService {
             throw new Error('BYOK_CONFIG_INCOMPLETE');
         }
         const hasByokKey = byokStatus === 'COMPLETE';
-        const defaultCache = isDefaultRecipe ? await this.repo.findDefaultCache(req.sourceId, recipeHash) : null;
-        const sharedByokMatch = !isDefaultRecipe
+        // force = user chủ động "Tạo lại": coi như chưa có cache để routing
+        // rơi vào nhánh GENERATE (vẫn qua đủ rate-limit/quota/credit như 1
+        // lần generate mới — force không phải đường lách chi phí).
+        const skipCache = req.force === true;
+        const defaultCache = isDefaultRecipe && !skipCache
+            ? await this.repo.findDefaultCache(req.sourceId, recipeHash)
+            : null;
+        const sharedByokMatch = !isDefaultRecipe && !skipCache
             ? await this.repo.findSharedByokMatch(req.sourceId, recipeHash)
             : null;
 
@@ -164,6 +199,22 @@ export class AIGenerationService {
 
         if (decision.action === 'CHOICE_REQUIRED') {
             throw new Error('AI_CUSTOM_RECIPE_REQUIRES_BYOK_OR_PAID');
+        }
+
+        // Dedup in-flight: 1 bản PENDING mới (đang await LLM ở request khác)
+        // cho đúng recipe này → chặn generate trùng — bấm đúp/2 tab/2 user
+        // cùng source không được đốt 2 lần quota-lượt/credits cho cùng nội
+        // dung. Check TRƯỚC rate-limit và spendCredits để fail nhanh, chưa
+        // tốn gì. PENDING quá cửa sổ này coi như mồ côi, không chặn.
+        const inFlight = await this.repo.findInFlight(
+            req.sourceId,
+            recipeHash,
+            decision.keySource,
+            decision.keySource === 'SHARED_FREE' ? null : req.userId,
+            new Date(Date.now() - inFlightWindowMs()),
+        );
+        if (inFlight) {
+            throw new Error('AI_GENERATION_IN_PROGRESS');
         }
 
         // decision.action === 'GENERATE' from here — SHARED_FREE or BYOK.
@@ -204,11 +255,12 @@ export class AIGenerationService {
             modelVersion: defaultModel(),
         });
 
-        // Enqueue nhẹ: record đã lưu ở trạng thái PENDING (giá trị mặc định
-        // của cột status), trả về ngay cho route trả 202. Xử lý tiếp trong
-        // cùng process — không await ở đây trong route thật, nhưng service
-        // này expose generate() đồng bộ để đơn giản hoá test; route gọi
-        // .catch() nếu muốn fire-and-forget thật (xem controller/route).
+        // Contract SYNC: record lưu PENDING rồi await LLM ngay bên dưới trong
+        // cùng call stack — caller (route POST) nhận thẳng READY hoặc lỗi.
+        // Row PENDING vẫn có giá trị: là khoá dedup cho findInFlight ở trên,
+        // và là dấu vết chẩn đoán nếu process chết giữa chừng. Nếu sau này
+        // chuyển hướng (b) — async thật — thì tách từ đây trở xuống thành
+        // phần chạy nền (xem doc comment đầu file).
         try {
             // Mục 6.2 — lỗi BYOK không bao giờ tự fallback ngầm sang
             // SHARED_FREE: 2 nhánh key_source dùng cùng code path ở đây vì
@@ -310,6 +362,16 @@ export class AIGenerationService {
     ): string {
         const language = (params.language as string) ?? 'vi';
         const languageInstruction = language === 'en' ? 'in English' : 'bằng tiếng Việt';
+        // "Chủ đề focus" (editor AI composer): param tuỳ biến — không có trong
+        // DEFAULT_RECIPE_PARAMS nên tự động là recipe custom (đi qua nhánh
+        // BYOK/PAID của decideRouting), và tự nằm trong recipeHash như mọi
+        // param khác — không cần xử lý cache riêng.
+        const focusTopic = typeof params.focusTopic === 'string' ? params.focusTopic.trim() : '';
+        const focusInstruction = focusTopic
+            ? language === 'en'
+                ? ` Focus specifically on the topic: "${focusTopic}".`
+                : ` Tập trung đặc biệt vào chủ đề: "${focusTopic}".`
+            : '';
         const segmentInstruction = segmentRange
             ? language === 'en'
                 ? ` Focus only on the part of the content between ${segmentRange.startSec}s and ${segmentRange.endSec}s (best-effort, no exact timestamps available).`
@@ -319,7 +381,7 @@ export class AIGenerationService {
         if (recipeType === 'summary') {
             const length = (params.length as string) ?? 'standard';
             const lengthInstruction = { short: '2-3 đoạn', standard: '5-8 đoạn', long: '10-15 đoạn' }[length] ?? '5-8 đoạn';
-            return `Tóm tắt nội dung sau ${languageInstruction}, độ dài ${lengthInstruction}, rõ ràng, dễ hiểu.${segmentInstruction}\n\n${transcript}`;
+            return `Tóm tắt nội dung sau ${languageInstruction}, độ dài ${lengthInstruction}, rõ ràng, dễ hiểu.${focusInstruction}${segmentInstruction}\n\n${transcript}`;
         }
 
         const questionCount = Number(params.questionCount) || 10;
@@ -331,6 +393,6 @@ export class AIGenerationService {
         // "AI tạo quiz" trong editor lưu thẳng thành 1 bài quiz mới, thay vì
         // chỉ hiển thị văn bản thô như trước. Không có schema field cố định
         // trước đây — model tự chọn shape tuỳ ý, không parse được.
-        return `Tạo đúng ${questionCount} câu hỏi trắc nghiệm (2-4 đáp án, 1 đáp án đúng) độ khó ${difficulty} ${languageInstruction} dựa trên nội dung sau. Trả về DUY NHẤT 1 JSON array hợp lệ, không kèm giải thích hay markdown, đúng schema: [{"content": string, "options": string[], "correctAnswer": string (phải là text của 1 phần tử trong options)}].${segmentInstruction}\n\n${transcript}`;
+        return `Tạo đúng ${questionCount} câu hỏi trắc nghiệm (2-4 đáp án, 1 đáp án đúng) độ khó ${difficulty} ${languageInstruction} dựa trên nội dung sau. Trả về DUY NHẤT 1 JSON array hợp lệ, không kèm giải thích hay markdown, đúng schema: [{"content": string, "options": string[], "correctAnswer": string (phải là text của 1 phần tử trong options)}].${focusInstruction}${segmentInstruction}\n\n${transcript}`;
     }
 }

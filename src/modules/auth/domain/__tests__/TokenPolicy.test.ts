@@ -5,8 +5,8 @@ import { TokenEntity } from '../TokenEntity';
 const future = new Date(Date.now() + 60_000);
 const past   = new Date(Date.now() - 60_000);
 
-const makeToken = (overrides: Partial<{ expiresAt: Date; isUsed: boolean }> = {}) =>
-    new TokenEntity(1n, 1n, 'code', 'ACTIVATION', overrides.expiresAt ?? future, overrides.isUsed ?? false);
+const makeToken = (overrides: Partial<{ expiresAt: Date; isUsed: boolean; type: string }> = {}) =>
+    new TokenEntity(1n, 1n, 'code', overrides.type ?? 'ACTIVATION', overrides.expiresAt ?? future, overrides.isUsed ?? false);
 
 describe('TokenPolicy', () => {
     describe('validateActivationToken', () => {
@@ -29,8 +29,8 @@ describe('TokenPolicy', () => {
             expect(() => TokenPolicy.validateActivationToken(token)).toThrow('TOKEN_INVALID');
         });
 
-        it('throws TOKEN_INVALID when token is both used and expired', () => {
-            const token = makeToken({ isUsed: true, expiresAt: past });
+        it('throws TOKEN_INVALID for a RECOVERY-type token — reset codes must not activate accounts', () => {
+            const token = makeToken({ type: 'RECOVERY' });
             expect(() => TokenPolicy.validateActivationToken(token)).toThrow('TOKEN_INVALID');
         });
     });

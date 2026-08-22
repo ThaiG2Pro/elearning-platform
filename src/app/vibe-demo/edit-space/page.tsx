@@ -143,74 +143,131 @@ export default function VibeEditSpaceDemoPage() {
       </span>
 
       <div
-        className={`flex-1 min-w-0 flex items-center gap-2 pt-[9px] pb-[9px] pr-2 pl-3.5 ${lesson.published ? 'border-l border-ink-marginLn' : 'border-l-[1.5px] border-dashed border-ink-pencil'}`}
+        className={`flex-1 min-w-0 flex ${isCompact ? 'flex-col gap-1.5' : 'items-center gap-2'} pt-[9px] pb-[9px] pr-2 pl-3.5 ${lesson.published ? 'border-l border-ink-marginLn' : 'border-l-[1.5px] border-dashed border-ink-pencil'}`}
       >
-        {/* Loại bài — bấm để đổi vòng vòng video → quiz → article */}
-        <button
-          onClick={() => updateLesson(chapter.id, lesson.id, {
-            type: lesson.type === 'video' ? 'quiz' : lesson.type === 'quiz' ? 'article' : 'video',
-          })}
-          title={`Loại: ${TYPE_META[lesson.type].label} — bấm để đổi`}
-          className="vd-focusable shrink-0 flex items-center gap-[5px] bg-ink-accentA border-none py-1.5 px-[9px] cursor-pointer text-ink-accent text-[11.5px] font-medium"
-          style={{ borderRadius: R.sm }}
-        >
-          {TYPE_META[lesson.type].icon}
-          {!isCompact && TYPE_META[lesson.type].label}
-        </button>
+        {/* Mục 2 — bug thật do user test trên iPhone SE: dù đã ẩn nhãn chữ +
+            ô thời lượng khi isCompact, TỔNG các nút shrink-0 còn lại (loại
+            bài, trạng thái, lên/xuống, xóa) vẫn vượt quá phần còn lại sau
+            MARGIN_W — nút xóa (cuối cùng trong hàng) bị đẩy khỏi viewport,
+            MẤT HOÀN TOÀN không cách nào bấm được. Cùng nguyên nhân + cùng
+            cách sửa như dòng tiêu đề chương: gãy 2 dòng ở màn hẹp thay vì
+            nhồi 1 dòng. Dòng 1 = loại bài + tên bài (cần rộng để đọc/sửa
+            tên); dòng 2 = trạng thái + lên/xuống + xóa, canh phải. */}
+        <div className={`flex items-center gap-2 ${isCompact ? '' : 'flex-1 min-w-0'}`}>
+          <button
+            onClick={() => updateLesson(chapter.id, lesson.id, {
+              type: lesson.type === 'video' ? 'quiz' : lesson.type === 'quiz' ? 'article' : 'video',
+            })}
+            title={`Loại: ${TYPE_META[lesson.type].label} — bấm để đổi`}
+            className="vd-focusable shrink-0 flex items-center gap-[5px] bg-ink-accentA border-none py-1.5 px-[9px] cursor-pointer text-ink-accent text-[11.5px] font-medium"
+            style={{ borderRadius: R.sm }}
+          >
+            {TYPE_META[lesson.type].icon}
+            {!isCompact && TYPE_META[lesson.type].label}
+          </button>
 
-        <input
-          value={lesson.title}
-          onChange={e => updateLesson(chapter.id, lesson.id, { title: e.target.value })}
-          placeholder="Tên bài học…"
-          className="vd-focusable flex-1 min-w-0 bg-transparent border-none outline-none text-[14.5px] font-medium text-ink-text py-1.5 px-1 caret-ink-accent"
-        />
-
-        {!isCompact && (
           <input
-            value={lesson.duration}
-            onChange={e => updateLesson(chapter.id, lesson.id, { duration: e.target.value })}
-            placeholder="thời lượng"
-            className="vd-focusable w-[76px] shrink-0 bg-transparent border-none outline-none font-mono text-[11.5px] text-ink-textMuted text-right py-1.5 px-0.5 caret-ink-accent"
+            value={lesson.title}
+            onChange={e => updateLesson(chapter.id, lesson.id, { title: e.target.value })}
+            placeholder="Tên bài học…"
+            className="vd-focusable flex-1 min-w-0 bg-transparent border-none outline-none text-[14.5px] font-medium text-ink-text py-1.5 px-1 caret-ink-accent"
           />
-        )}
 
-        {/* Trạng thái: bản thảo (chì) ↔ đã đăng (mực) */}
-        <button
-          onClick={() => updateLesson(chapter.id, lesson.id, { published: !lesson.published })}
-          title={lesson.published ? 'Đã đăng — bấm để chuyển về bản thảo' : 'Bản thảo — bấm để hạ mực, đăng bài'}
-          className={`vd-focusable shrink-0 flex items-center gap-[5px] bg-transparent border py-1.5 px-[9px] cursor-pointer text-[11.5px] font-medium ${lesson.published ? 'border-ink-accent text-ink-accent' : 'border-ink-pencil text-ink-textMuted'}`}
-          style={{ borderRadius: R.sm }}
-        >
-          {lesson.published ? <Check size={12} /> : <Pencil size={12} />}
-          {!isCompact && (lesson.published ? 'Đã đăng' : 'Bản thảo')}
-        </button>
+          {!isCompact && (
+            <input
+              value={lesson.duration}
+              onChange={e => updateLesson(chapter.id, lesson.id, { duration: e.target.value })}
+              placeholder="thời lượng"
+              className="vd-focusable w-[76px] shrink-0 bg-transparent border-none outline-none font-mono text-[11.5px] text-ink-textMuted text-right py-1.5 px-0.5 caret-ink-accent"
+            />
+          )}
 
-        <div className="flex flex-col shrink-0">
-          <button
-            onClick={() => moveLesson(chapter.id, lesson.id, -1)}
-            disabled={idx === 0}
-            aria-label="Di chuyển lên"
-            className={`vd-focusable bg-transparent border-none p-0 leading-none ${idx === 0 ? 'cursor-default text-ink-textDim' : 'cursor-pointer text-ink-textMuted'}`}
-          >
-            <ChevronUp size={13} />
-          </button>
-          <button
-            onClick={() => moveLesson(chapter.id, lesson.id, 1)}
-            disabled={idx === total - 1}
-            aria-label="Di chuyển xuống"
-            className={`vd-focusable bg-transparent border-none p-0 leading-none ${idx === total - 1 ? 'cursor-default text-ink-textDim' : 'cursor-pointer text-ink-textMuted'}`}
-          >
-            <ChevronDown size={13} />
-          </button>
+          {/* Trạng thái: bản thảo (chì) ↔ đã đăng (mực) — ở màn rộng vẫn
+              cùng dòng với tên bài như trước. */}
+          {!isCompact && (
+            <button
+              onClick={() => updateLesson(chapter.id, lesson.id, { published: !lesson.published })}
+              title={lesson.published ? 'Đã đăng — bấm để chuyển về bản thảo' : 'Bản thảo — bấm để hạ mực, đăng bài'}
+              className={`vd-focusable shrink-0 flex items-center gap-[5px] bg-transparent border py-1.5 px-[9px] cursor-pointer text-[11.5px] font-medium ${lesson.published ? 'border-ink-accent text-ink-accent' : 'border-ink-pencil text-ink-textMuted'}`}
+              style={{ borderRadius: R.sm }}
+            >
+              {lesson.published ? <Check size={12} /> : <Pencil size={12} />}
+              {lesson.published ? 'Đã đăng' : 'Bản thảo'}
+            </button>
+          )}
+
+          {!isCompact && (
+            <div className="flex flex-col shrink-0">
+              <button
+                onClick={() => moveLesson(chapter.id, lesson.id, -1)}
+                disabled={idx === 0}
+                aria-label="Di chuyển lên"
+                className={`vd-focusable bg-transparent border-none p-0 leading-none ${idx === 0 ? 'cursor-default text-ink-textDim' : 'cursor-pointer text-ink-textMuted'}`}
+              >
+                <ChevronUp size={13} />
+              </button>
+              <button
+                onClick={() => moveLesson(chapter.id, lesson.id, 1)}
+                disabled={idx === total - 1}
+                aria-label="Di chuyển xuống"
+                className={`vd-focusable bg-transparent border-none p-0 leading-none ${idx === total - 1 ? 'cursor-default text-ink-textDim' : 'cursor-pointer text-ink-textMuted'}`}
+              >
+                <ChevronDown size={13} />
+              </button>
+            </div>
+          )}
+
+          {!isCompact && (
+            <button
+              onClick={() => removeLesson(chapter.id, lesson.id)}
+              aria-label="Xóa bài học"
+              className="vd-focusable shrink-0 bg-transparent border-none cursor-pointer text-ink-textDim hover:text-ink-textMuted p-1"
+            >
+              <Trash2 size={13} />
+            </button>
+          )}
         </div>
 
-        <button
-          onClick={() => removeLesson(chapter.id, lesson.id)}
-          aria-label="Xóa bài học"
-          className="vd-focusable shrink-0 bg-transparent border-none cursor-pointer text-ink-textDim hover:text-ink-textMuted p-1"
-        >
-          <Trash2 size={13} />
-        </button>
+        {isCompact && (
+          <div className="flex items-center gap-2 justify-end">
+            <button
+              onClick={() => updateLesson(chapter.id, lesson.id, { published: !lesson.published })}
+              title={lesson.published ? 'Đã đăng — bấm để chuyển về bản thảo' : 'Bản thảo — bấm để hạ mực, đăng bài'}
+              className={`vd-focusable mr-auto shrink-0 flex items-center gap-[5px] bg-transparent border py-1.5 px-[9px] cursor-pointer text-[11.5px] font-medium ${lesson.published ? 'border-ink-accent text-ink-accent' : 'border-ink-pencil text-ink-textMuted'}`}
+              style={{ borderRadius: R.sm }}
+            >
+              {lesson.published ? <Check size={12} /> : <Pencil size={12} />}
+              {lesson.published ? 'Đã đăng' : 'Bản thảo'}
+            </button>
+
+            <div className="flex flex-col shrink-0">
+              <button
+                onClick={() => moveLesson(chapter.id, lesson.id, -1)}
+                disabled={idx === 0}
+                aria-label="Di chuyển lên"
+                className={`vd-focusable bg-transparent border-none p-0 leading-none ${idx === 0 ? 'cursor-default text-ink-textDim' : 'cursor-pointer text-ink-textMuted'}`}
+              >
+                <ChevronUp size={13} />
+              </button>
+              <button
+                onClick={() => moveLesson(chapter.id, lesson.id, 1)}
+                disabled={idx === total - 1}
+                aria-label="Di chuyển xuống"
+                className={`vd-focusable bg-transparent border-none p-0 leading-none ${idx === total - 1 ? 'cursor-default text-ink-textDim' : 'cursor-pointer text-ink-textMuted'}`}
+              >
+                <ChevronDown size={13} />
+              </button>
+            </div>
+
+            <button
+              onClick={() => removeLesson(chapter.id, lesson.id)}
+              aria-label="Xóa bài học"
+              className="vd-focusable shrink-0 bg-transparent border-none cursor-pointer text-ink-textDim hover:text-ink-textMuted p-1"
+            >
+              <Trash2 size={13} />
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -222,46 +279,95 @@ export default function VibeEditSpaceDemoPage() {
       className="bg-ink-panel border border-ink-border overflow-hidden mb-5"
       style={{ borderRadius: R.md, boxShadow: T_SHADOW_SM }}
     >
-      <div className="flex items-center gap-2.5 py-3.5 px-4 border-b border-ink-border">
-        <GripVertical size={14} className="text-ink-textDim shrink-0" />
-        <span className="font-mono text-[11px] text-ink-textDim shrink-0">
-          Chương {String(ci + 1).padStart(2, '0')}
-        </span>
-        <input
-          value={chapter.title}
-          onChange={e => updateChapter(chapter.id, { title: e.target.value })}
-          placeholder="Tên chương…"
-          className="vd-focusable flex-1 min-w-0 bg-transparent border-none outline-none text-base font-bold text-ink-text p-1 caret-ink-accent"
-        />
-        <span className="font-mono text-[11px] text-ink-textDim shrink-0">
-          {chapter.lessons.length} bài
-        </span>
-        {/* shrink-0: tên chương dài (input flex-1 min-w-0 co lại trước) không
-            được phép bóp các nút hành động này — cùng nguyên tắc đã áp dụng
-            cho nhóm nút của dòng bài học bên dưới (renderLessonRow). */}
-        <button
-          onClick={() => moveChapter(chapter.id, -1)}
-          disabled={ci === 0}
-          aria-label="Chương lên"
-          className={`vd-focusable shrink-0 bg-transparent border-none p-0.5 leading-none ${ci === 0 ? 'cursor-default text-ink-textDim' : 'cursor-pointer text-ink-textMuted'}`}
-        >
-          <ChevronUp size={14} />
-        </button>
-        <button
-          onClick={() => moveChapter(chapter.id, 1)}
-          disabled={ci === chapters.length - 1}
-          aria-label="Chương xuống"
-          className={`vd-focusable shrink-0 bg-transparent border-none p-0.5 leading-none ${ci === chapters.length - 1 ? 'cursor-default text-ink-textDim' : 'cursor-pointer text-ink-textMuted'}`}
-        >
-          <ChevronDown size={14} />
-        </button>
-        <button
-          onClick={() => removeChapter(chapter.id)}
-          aria-label="Xóa chương"
-          className="vd-focusable shrink-0 bg-transparent border-none cursor-pointer text-ink-textDim p-1"
-        >
-          <Trash2 size={14} />
-        </button>
+      {/* Mục 2 — bug thật do user test trên iPhone SE: 1 dòng dồn quá nhiều
+          shrink-0 (icon kéo, "Chương 0X", input tên, "N bài", 3 nút hành
+          động) — ở màn hẹp, input co về 0 vẫn không đủ, các nút cuối (xuống,
+          xóa) bị đẩy ra ngoài viewport, MẤT HẲN không nút nào cứu (không
+          scroll ngang, không dấu hiệu còn nội dung). GripVertical không có
+          drag thật (chỉ decorative) — 2 nút lên/xuống là cách reorder DUY
+          NHẤT, không được ẩn. Giải pháp: gãy thành 2 dòng ở màn hẹp — dòng 1
+          chỉ tên chương, dòng 2 "N bài" + 3 nút hành động canh phải — thay
+          vì nhồi 1 dòng rồi mất nút. */}
+      <div className={`border-b border-ink-border py-3 px-4 ${isCompact ? 'flex flex-col gap-2' : 'flex items-center gap-2.5 py-3.5'}`}>
+        <div className="flex items-center gap-2.5">
+          <GripVertical size={14} className="text-ink-textDim shrink-0" />
+          {!isCompact && (
+            <span className="font-mono text-[11px] text-ink-textDim shrink-0">
+              Chương {String(ci + 1).padStart(2, '0')}
+            </span>
+          )}
+          <input
+            value={chapter.title}
+            onChange={e => updateChapter(chapter.id, { title: e.target.value })}
+            placeholder="Tên chương…"
+            className="vd-focusable flex-1 min-w-0 bg-transparent border-none outline-none text-base font-bold text-ink-text p-1 caret-ink-accent"
+          />
+          {/* shrink-0: tên chương dài (input flex-1 min-w-0 co lại trước) không
+              được phép bóp các nút hành động này — cùng nguyên tắc đã áp dụng
+              cho nhóm nút của dòng bài học bên dưới (renderLessonRow). Ở màn
+              rộng, nhóm nút này vẫn nằm cùng dòng với tên chương. */}
+          {!isCompact && (
+            <>
+              <span className="font-mono text-[11px] text-ink-textDim shrink-0">
+                {chapter.lessons.length} bài
+              </span>
+              <button
+                onClick={() => moveChapter(chapter.id, -1)}
+                disabled={ci === 0}
+                aria-label="Chương lên"
+                className={`vd-focusable shrink-0 bg-transparent border-none p-0.5 leading-none ${ci === 0 ? 'cursor-default text-ink-textDim' : 'cursor-pointer text-ink-textMuted'}`}
+              >
+                <ChevronUp size={14} />
+              </button>
+              <button
+                onClick={() => moveChapter(chapter.id, 1)}
+                disabled={ci === chapters.length - 1}
+                aria-label="Chương xuống"
+                className={`vd-focusable shrink-0 bg-transparent border-none p-0.5 leading-none ${ci === chapters.length - 1 ? 'cursor-default text-ink-textDim' : 'cursor-pointer text-ink-textMuted'}`}
+              >
+                <ChevronDown size={14} />
+              </button>
+              <button
+                onClick={() => removeChapter(chapter.id)}
+                aria-label="Xóa chương"
+                className="vd-focusable shrink-0 bg-transparent border-none cursor-pointer text-ink-textDim p-1"
+              >
+                <Trash2 size={14} />
+              </button>
+            </>
+          )}
+        </div>
+
+        {isCompact && (
+          <div className="flex items-center gap-2.5 justify-end">
+            <span className="font-mono text-[11px] text-ink-textDim shrink-0 mr-auto">
+              {chapter.lessons.length} bài
+            </span>
+            <button
+              onClick={() => moveChapter(chapter.id, -1)}
+              disabled={ci === 0}
+              aria-label="Chương lên"
+              className={`vd-focusable shrink-0 bg-transparent border-none p-0.5 leading-none ${ci === 0 ? 'cursor-default text-ink-textDim' : 'cursor-pointer text-ink-textMuted'}`}
+            >
+              <ChevronUp size={14} />
+            </button>
+            <button
+              onClick={() => moveChapter(chapter.id, 1)}
+              disabled={ci === chapters.length - 1}
+              aria-label="Chương xuống"
+              className={`vd-focusable shrink-0 bg-transparent border-none p-0.5 leading-none ${ci === chapters.length - 1 ? 'cursor-default text-ink-textDim' : 'cursor-pointer text-ink-textMuted'}`}
+            >
+              <ChevronDown size={14} />
+            </button>
+            <button
+              onClick={() => removeChapter(chapter.id)}
+              aria-label="Xóa chương"
+              className="vd-focusable shrink-0 bg-transparent border-none cursor-pointer text-ink-textDim p-1"
+            >
+              <Trash2 size={14} />
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="py-1">
@@ -399,8 +505,20 @@ export default function VibeEditSpaceDemoPage() {
         className="fixed top-0 left-0 right-0 z-50 bg-ink-panel border-b border-ink-border flex items-center px-7 gap-2 text-[12.5px] text-ink-textMuted"
       >
         <span className="shrink-0">Spaces</span>
-        <ChevronRight size={11} className="text-ink-textDim shrink-0" />
-        <span className="shrink-0">Soạn không gian học tập</span>
+        {/* Mục 2 — bug thật do user test trên iPhone SE: cả 2 crumb
+            "Spaces"/"Soạn không gian học tập" đã `shrink-0` (đúng, không
+            wrap chữ) nhưng CỘNG DỒN với nút "Lưu bản thảo" ở cuối thì tổng
+            bề rộng không-co-được đã vượt quá 375px → phần thừa bị đẩy ra
+            ngoài viewport bên phải, cắt mất nút lưu (không phải wrap như ở
+            article/quiz, mà là tràn ngang vô hình). Ẩn crumb giữa ở màn hẹp
+            + rút gọn label nút để tổng chiều rộng cố định luôn nhỏ hơn màn
+            hẹp nhất còn hỗ trợ. */}
+        {!isCompact && (
+          <>
+            <ChevronRight size={11} className="text-ink-textDim shrink-0" />
+            <span className="shrink-0">Soạn không gian học tập</span>
+          </>
+        )}
         <ChevronRight size={11} className="text-ink-textDim shrink-0" />
         {/* spaceTitle hiển thị thật (không phải input) — tên dài phải co lại
             và cắt bớt, không được đẩy nút "Lưu bản thảo" ra ngoài thanh trên. */}
@@ -412,7 +530,7 @@ export default function VibeEditSpaceDemoPage() {
         </span>
 
         <div className="ml-auto flex items-center gap-4 shrink-0">
-          {savedTick && (
+          {savedTick && !isCompact && (
             <span key={savedTick} className="vd-ink-in font-mono text-[11.5px] text-ink-accent">
               đã lưu
             </span>
@@ -422,7 +540,7 @@ export default function VibeEditSpaceDemoPage() {
             className="vd-focusable flex items-center gap-[7px] py-[7px] px-4 bg-ink-accent text-ink-onAccent border-none cursor-pointer text-[13px] font-semibold"
             style={{ borderRadius: R.sm }}
           >
-            Lưu bản thảo
+            {isCompact ? 'Lưu' : 'Lưu bản thảo'}
           </button>
         </div>
       </div>

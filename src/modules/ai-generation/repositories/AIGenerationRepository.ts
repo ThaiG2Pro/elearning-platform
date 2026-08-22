@@ -94,6 +94,38 @@ export class AIGenerationRepository {
         return row ? toRecord(row) : null;
     }
 
+    /**
+     * Dedup bản đang generate (contract sync — xem AIGenerationService.generate):
+     * 1 row PENDING có updated_at đủ mới nghĩa là 1 request khác đang await LLM
+     * cho đúng recipe này — request mới không được generate trùng (tốn thêm
+     * quota/credits cho cùng 1 nội dung). PENDING cũ hơn `since` coi như mồ côi
+     * (process chết giữa chừng trước khi markReady/markFailed) — không chặn,
+     * để `create()` reset row đó về PENDING và generate lại.
+     *
+     * `userId = null` (SHARED_FREE): bản dùng chung, dedup toàn cục. Có userId
+     * (BYOK/PAID_TIER): chỉ dedup double-click của chính user đó — không chặn
+     * user khác tạo bản riêng của họ.
+     */
+    async findInFlight(
+        sourceId: bigint,
+        recipeHash: string,
+        keySource: string,
+        userId: bigint | null,
+        since: Date,
+    ): Promise<AIGenerationRecord | null> {
+        const row = await this.prisma.ai_generations.findFirst({
+            where: {
+                source_id: sourceId,
+                recipe_hash: recipeHash,
+                key_source: keySource as 'SHARED_FREE' | 'BYOK' | 'PAID_TIER',
+                status: 'PENDING',
+                updated_at: { gte: since },
+                ...(userId !== null ? { generated_by_user_id: userId } : {}),
+            },
+        });
+        return row ? toRecord(row) : null;
+    }
+
     async create(input: CreateAIGenerationInput): Promise<AIGenerationRecord> {
         // Ràng buộc 1 (partial unique index viết tay ở migration
         // 20260814180000, không biểu diễn được bằng Prisma schema syntax)

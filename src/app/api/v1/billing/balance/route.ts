@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { BillingController } from '@/modules/billing/controllers/BillingController';
 import { getUserIdFromRequest } from '@/shared/middleware/auth';
 
-/** WP4.1 — số dư credit hiện tại, hiển thị ở /billing và AIGenerationPanel. */
+/** WP4.1 — số dư credit hiện tại, hiển thị ở /billing (và các UI AI trả phí). */
 export async function GET(request: NextRequest) {
     try {
         const userId = await getUserIdFromRequest(request);

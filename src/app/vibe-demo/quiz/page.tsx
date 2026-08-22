@@ -849,11 +849,19 @@ const [timerAnnouncement, setTimerAnnouncement] = useState('');
         }}
         className="fixed left-0 right-0 z-50 flex items-center px-7 gap-2 text-[12.5px] transition-[background,border-color,color] duration-[600ms] ease-in-out"
       >
-        <span>Spaces</span>
-        <ChevronRight size={11} style={{ color: focusMode ? 'rgba(244,246,252,0.25)' : 'rgba(33,38,51,0.28)' }} />
-        <span>Lập trình web</span>
-        <ChevronRight size={11} style={{ color: focusMode ? 'rgba(244,246,252,0.25)' : 'rgba(33,38,51,0.28)' }} />
-        <span className="font-medium" style={{ color: focusMode ? 'rgba(244,246,252,0.85)' : '#212633' }}>{active.chapter}</span>
+        {/* Mục 2 — bug thật do user test trên iPhone SE (cùng lỗi ở
+            article/page.tsx): span breadcrumb không shrink-0/whitespace-nowrap
+            bị flex ép co lại, chữ wrap nhiều dòng, thanh "phình" cao hơn
+            TOP_BAR_H cố định. Ẩn crumb giữa ở màn hẹp, giữ Spaces › chương. */}
+        <span className="shrink-0 whitespace-nowrap">Spaces</span>
+        {!isCompact && (
+          <>
+            <ChevronRight size={11} className="shrink-0" style={{ color: focusMode ? 'rgba(244,246,252,0.25)' : 'rgba(33,38,51,0.28)' }} />
+            <span className="shrink-0 whitespace-nowrap">Lập trình web</span>
+          </>
+        )}
+        <ChevronRight size={11} className="shrink-0" style={{ color: focusMode ? 'rgba(244,246,252,0.25)' : 'rgba(33,38,51,0.28)' }} />
+        <span className="min-w-0 flex-1 truncate font-medium" style={{ color: focusMode ? 'rgba(244,246,252,0.85)' : '#212633' }}>{active.chapter}</span>
 
         <div className="ml-auto flex items-center gap-4">
           {taking ? (

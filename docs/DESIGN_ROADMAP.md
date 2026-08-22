@@ -117,14 +117,41 @@ là khoảng cách lớn nhất cần giải quyết trước khi tích hợp.
 
 ## 2. Responsive / đa thiết bị
 
-- [ ] Toàn bộ 7 trang mới build & test ở desktop rộng, **chưa test
-      mobile/tablet**. Các layout dễ vỡ trên màn hẹp:
-  - Margin-lề 56px (`MARGIN_W`) trên article/about
-  - 2 cột article (nội dung + note rail)
-  - Grid câu hỏi quiz (question map)
-  - Edit-space 2 panel (outline + chi tiết)
-- [ ] Học viên thực tế học nhiều trên điện thoại → đây là rủi ro lớn,
-      cần ưu tiên test sớm.
+- [x] Test thật trên iPhone SE (375px) do user tự làm, không phải
+      code-review/screenshot ảo — tìm ra 1 HỌ LỖI lặp lại ở nhiều
+      trang: **quá nhiều phần tử `shrink-0` nhồi trong 1 hàng ngang**,
+      khi tổng chiều rộng không-co-được vượt quá viewport hẹp, phần
+      cuối hàng bị đẩy khỏi màn hình — MẤT HẲN, không có scroll bù,
+      không dấu hiệu còn nội dung. 2 biến thể của cùng lỗi:
+  - **Wrap dọc**: span không có `whitespace-nowrap` bị flex ép co lại,
+    chữ tự word-wrap xuống nhiều dòng, thanh có chiều cao cố định nên
+    chỉ dòng giữa lọt vào khung nhìn (`article/page.tsx`,
+    `quiz/page.tsx` breadcrumb; `TopNav.tsx` — ảnh hưởng CẢ 3 trang
+    home/spaces/about vì dùng chung component, đây là lỗi nặng nhất
+    tìm được vì không có xử lý mobile nào từ đầu).
+  - **Tràn ngang vô hình**: các phần tử đã `shrink-0` đúng (không
+    wrap chữ) nhưng tổng cộng vẫn vượt viewport → phần cuối (thường là
+    nút hành động) bị đẩy ra ngoài, vô hình hoàn toàn
+    (`edit-space/page.tsx`: top bar nút "Lưu bản thảo", header chương
+    mất nút xuống/xóa, dòng bài học mất nút xóa).
+  - Sửa theo 1 trong 2 cách tuỳ tình huống: (a) `whiteSpace: nowrap` +
+    ẩn crumb/nhãn phụ khi `isCompact` (breadcrumb, TopNav), hoặc (b)
+    gãy 1 hàng thành 2 dòng ở màn hẹp — dòng chính (tên/nội dung cần
+    đọc/sửa) + dòng phụ (nút hành động canh phải) — khi các nút đều
+    thiết yếu, không thể ẩn (header chương, dòng bài học ở
+    `edit-space`, vì `GripVertical` chỉ trang trí, 2 nút lên/xuống là
+    cách sắp xếp lại DUY NHẤT, không có drag thật).
+  - Đã kiểm tra riêng panel "Thông tin không gian" (properties panel,
+    `edit-space`) và margin-lề (`MARGIN_W`) trên article/about — cả 2
+    AN TOÀN vì dùng `w-full`/`flex-1` chia đều nội dung, không có tổ
+    hợp `shrink-0` cộng dồn kiểu trên. Đây có thể coi là 1 quy tắc nên
+    áp dụng chung: ưu tiên `flex-1`/`w-full` hơn `shrink-0` hàng loạt
+    khi thiết kế 1 hàng ngang có nhiều phần tử.
+  - Verify từng fix: `tsc --noEmit` sạch (2 lỗi tiền tồn tại), route
+    liên quan trả 200.
+- [ ] Còn chưa test trực tiếp: grid câu hỏi quiz (question map) ở màn
+      hẹp, và cuộn dài (50+ chương/bài) trên `edit-space` sau khi sửa.
+      Cần user tiếp tục test tay các phần còn lại của 7 trang.
 
 ## 3. Nội dung thật, không phải nội dung mẫu
 
@@ -252,11 +279,139 @@ guard cho animation `vd-ink-in`.
 
 ## 6. Vận hành / kỹ thuật khác
 
-- [ ] SEO/meta cho các trang public (home, about) — vibe-demo chưa có
-      `export const metadata`.
-- [ ] Chưa quyết định app tổng thể có theo dark mode hệ điều hành
-      không — hiện tại "focus mode" chỉ là trạng thái cục bộ của
-      từng bài học/quiz, không phải theme toàn app.
+- [x] SEO/meta cho các trang public (home, about) — `home/page.tsx` và
+      `about/page.tsx` đều là `'use client'`, mà Next.js không cho export
+      `metadata` từ file có `'use client'` — nên thêm
+      `home/layout.tsx`/`about/layout.tsx` (server component riêng,
+      đứng ngoài client boundary của page) để đặt `export const
+      metadata: Metadata` (title + description tiếng Việt cho từng
+      trang), theo đúng field `Metadata` type có sẵn ở
+      `src/app/layout.tsx` (root). Verify: `tsc --noEmit` sạch, curl cả
+      hai route thấy `<title>`/`<meta name="description">` đúng nội
+      dung đã đặt.
+- [x] Quyết định dark mode: KHÔNG theo dark mode hệ điều hành ở mức
+      toàn app. Giữ nguyên ý niệm gốc trong `theme.ts` — "phòng tắt đèn"
+      (`T.room`, focus mode video/quiz) là một TRẠNG THÁI CỤC BỘ của
+      từng bài học/quiz (người học tự bật khi muốn tập trung), không
+      phải theme toàn cục do OS quyết định. Lý do: cả hệ thống chỉ có 1
+      accent (mực xanh) + 1 nền giấy trắng làm nền tảng nhận diện
+      ("không gian học tập sạch, ngăn nắp"); một dark theme toàn app
+      theo `prefers-color-scheme` sẽ cần thiết kế lại toàn bộ bảng màu
+      ink.\* (không chỉ invert) để giữ được cùng cảm giác "mực trên
+      giấy", việc đó nằm ngoài phạm vi vibe-demo hiện tại. Không cần
+      code thêm cho mục này — quyết định được ghi lại để không còn là
+      câu hỏi mở khi tích hợp app thật.
+
+---
+
+## 7. `vibe-demo/home` vs `/` thật — lệch cấu trúc thông tin, chưa quyết định hướng
+
+So trực tiếp `src/app/vibe-demo/home/page.tsx` (245 dòng) với
+`src/app/page.tsx` (394 dòng, trang "/" thật đang chạy) phát hiện: đây
+**không phải 1 trang được style lại**, mà là 2 khái niệm "home" khác
+nhau —
+
+- **`/` thật** = trang **khám phá/marketplace**, phục vụ cả khách chưa
+  đăng nhập: tìm kiếm Space, dán link YouTube tạo Space mới, lướt
+  Space nổi bật/phổ biến.
+- **`vibe-demo/home`** = **dashboard cá nhân của người đã có dữ liệu**
+  — giả định luôn đăng nhập, luôn có ít nhất 1 Space đang học, không
+  có khái niệm "khách" hay "tạo Space mới" nào cả.
+
+### Có ở `/` nhưng THIẾU hoàn toàn ở demo
+
+- `SearchBar` — tìm Space theo tên (`page.tsx:166-176`).
+- **Paste-link box** — dán link YouTube → tự tạo Space
+  (`page.tsx:179-210`) — đây là luồng **tạo Space cốt lõi** của sản
+  phẩm, không tồn tại ở bất kỳ trang nào trong 7 trang vibe-demo.
+- Card lựa chọn sau khi tạo: "Học ngay / Thêm quiz / Dán link khác"
+  (`page.tsx:213-234`).
+- Khám phá công khai 2 tầng: "Space Tuyển Chọn" + "Space Phổ biến
+  nhất" (`page.tsx:301-358`) — chưa có trang vibe-demo nào đóng vai
+  trò này.
+- Nhánh khách chưa đăng nhập (`!user`) — demo hardcode
+  "Chào buổi tối, Thái" + 1 Space 38%, không có nhánh rỗng/khách nào.
+- Loading skeleton, error + nút "Thử lại" khi gọi API thật thất bại
+  (`page.tsx:243-248, 361-376`).
+- `SalesAgentWidget` theo context (khách mới / user chưa có course,
+  `page.tsx:385-391`).
+
+### Có ở demo nhưng `/` CHƯA có (ý tưởng mới, chưa lên production)
+
+- Lời chào theo giờ trong ngày + ngày tháng (`home/page.tsx:48-55`).
+- Lịch mực 7 ngày "Tuần này" — thay cho biểu tượng streak-lửa thường
+  gặp (`home/page.tsx:189-211`).
+- "Mục tiêu tuần" (VD: 3/5 bài + progress, `home/page.tsx:213-236`).
+- Thẻ "Đang học" dạng bookmark-ribbon nổi bật, thay cho lưới card đơn
+  giản hiện tại (`home/page.tsx:67-134` vs `page.tsx:250-272`) — nhưng
+  chỉ hiển thị **1 Space** đang học, mất khả năng hiển thị khi user
+  học song song nhiều Space (bản `/` thật hiển thị dạng lưới nhiều
+  card).
+
+### Rủi ro nếu tích hợp thật theo đúng demo hiện tại
+
+Nếu thay `/` bằng đúng thiết kế `home/page.tsx`, sản phẩm sẽ **mất
+luồng tạo Space** (paste-link — có thể là growth loop quan trọng
+nhất) và **mất toàn bộ trải nghiệm khách chưa đăng nhập**. Đây là lỗ
+hổng nghiêm trọng hơn các bug hiển thị đã sửa ở Mục 2 — không phải bug
+render, mà là **thiếu tính năng** khi chuyển đổi thật.
+
+- [x] **Đã chốt hướng (c)**: `vibe-demo/home` chỉ là bản phác cho
+      **1 phần** của "/" — khối "Tiếp tục học" cá nhân hoá (bookmark-
+      ribbon + lời chào). Phần khám phá công khai (search, paste-link
+      tạo Space, showcase/phổ biến, trạng thái khách/loading/error,
+      SalesAgentWidget) **giữ nguyên thiết kế cũ**, không đụng vào —
+      lý do: những khối đó đã hoạt động tốt ở "/" thật, và gộp cả 2
+      việc (marketplace + dashboard cá nhân) vào 1 lần redesign là quá
+      nhiều rủi ro so với lợi ích. Không chọn (a) vì sẽ phải thiết kế
+      lại paste-link + khám phá công khai (tốn công, rủi ro mất tính
+      năng) chỉ để đổi giao diện 1 khối; không chọn (b) mở "/dashboard"
+      riêng vì tạo thêm 1 "nhà" gây nhầm điều hướng và trùng dữ liệu.
+- [x] **Đã code mẫu trong `vibe-demo/home/page.tsx`** để sau này áp
+      lại đúng logic khi ghép vào "/": đổi thẻ "Đang học" từ 1 object
+      cố định (giả định chỉ 1 Space đang học — đúng lỗ hổng đã ghi ở
+      trên) sang mảng `CONTINUE_LEARNING`, `.map()` xếp DỌC nhiều thẻ
+      bookmark-ribbon (không xếp lưới ngang — mỗi thẻ đã đủ rộng cho
+      layout ảnh+chữ ngang, 2 thẻ cạnh nhau sẽ bóp ảnh quá hẹp). Khi
+      áp vào "/" thật: thay khối "Tiếp tục học" hiện tại
+      (`page.tsx:236-279`, dạng lưới card đơn giản) bằng
+      `.map(continueCourses)` theo đúng mẫu này; nhánh rỗng/khách vẫn
+      giữ logic `user`/`continueState` hiện có ở "/" (không cần vẽ lại
+      — `StateScreens.tsx` ở Mục 4 chỉ dự phòng cho auth/paywall, "/"
+      tự xử lý nhánh khách tốt rồi). "Lịch mực tuần"/"Mục tiêu tuần" để
+      SAU — cần dữ liệu backend (streak, weekly goal) chưa chắc đã có,
+      ngoài phạm vi "chỉ đổi giao diện". Verify: `tsc --noEmit` sạch (2
+      lỗi tiền tồn tại), curl `/vibe-demo/home` xác nhận cả 2 thẻ mẫu
+      (Nền tảng React 18 — 38%, Tư duy hệ thống & Kiến trúc — 71%) đều
+      render đúng, xếp dọc.
+- [x] **Đã áp vào trang "/" thật — phạm vi TOÀN TRANG** (người dùng
+      chọn mở rộng phạm vi hơn hướng (c) ban đầu, không chỉ khối "Tiếp
+      tục học"): đổi toàn bộ class Tailwind slate-*/blue-*/emerald-*
+      sang namespace `ink.*` (đã có sẵn, đồng bộ 1-1 với `T` trong
+      `src/lib/vibe/theme.ts`) ở `Header.tsx`, `SearchBar.tsx`,
+      `CourseCard.tsx`, `CourseList.tsx`, và `page.tsx` (hero/search,
+      paste-link box, card sau khi tạo, khám phá 2 tầng, error state).
+      Khối "Tiếp tục học" (`page.tsx:236-...`) được vẽ lại theo đúng
+      thẻ bookmark-ribbon của mẫu — vì `MyLearningCourse` (dữ liệu
+      thật) không có `lessonTitle`/chapter meta như mock, phần đó được
+      thay bằng field thật sẵn có (`title`, `lessonCount`); logic 3
+      trạng thái loading/loaded/rỗng và điều hướng `router.push` giữ
+      nguyên 100%, không đổi. Cố ý **không đổi**:
+      - `logout` (đỏ) và error state (đỏ) — ink system không định nghĩa
+        token "destructive"/"error" chung, và comment trong
+        `theme.ts` nói rõ `correct`/`wrong` CHỈ dùng trong quiz sau khi
+        chấm điểm, không tái dùng cho ngữ nghĩa khác.
+      - Font chữ (Inter, khai báo ở `layout.tsx`) — vibe-demo dùng
+        riêng Be Vietnam Pro qua `next/font`; đổi font toàn app là thay
+        đổi tách biệt, rủi ro cao hơn (ảnh hưởng mọi trang, không chỉ
+        "/"), không nằm trong yêu cầu "áp style".
+      - Nhãn 2 badge tầng khám phá đổi sang chip trung tính (ink-border/
+        ink-textMid) thay vì giữ 2 màu blue/emerald khác nhau — đúng
+        nguyên tắc "MỘT accent duy nhất" của hệ thống này.
+      Verify: `tsc --noEmit` sạch (2 lỗi tiền tồn tại, không liên
+      quan); dev server + `curl /` trả 200, HTML chứa class `ink-*` mới
+      (xác nhận build/SSR không lỗi). Branch riêng
+      `feature/homepage-ink-theme`, chưa commit/merge.
 
 ---
 
@@ -343,3 +498,67 @@ guard cho animation `vd-ink-in`.
   đúng ngữ nghĩa; ô lưới câu hỏi thêm `aria-label` báo trạng thái đã
   chọn/đúng/sai thay vì chỉ số thứ tự. Verify: `tsc --noEmit` sạch (2
   lỗi tiền tồn tại), route `/vibe-demo/quiz` 200. Mục 5 coi như xong.
+- **2026-08-21**: Xử lý Mục 6 (vận hành/kỹ thuật khác). SEO/meta: thêm
+  `home/layout.tsx` và `about/layout.tsx` (server component đặt
+  `export const metadata`, vì 2 page.tsx tương ứng là `'use client'`
+  nên không tự export metadata được) — title + description tiếng Việt
+  riêng cho mỗi trang. Dark mode: quyết định KHÔNG theo hệ điều hành ở
+  mức toàn app — "phòng tắt đèn" giữ là trạng thái cục bộ của bài
+  học/quiz (focus mode), không phải theme toàn cục, vì bảng màu ink.*
+  hiện chỉ thiết kế cho 1 chế độ sáng và invert đơn giản sẽ phá vỡ cảm
+  giác "mực trên giấy" — việc thiết kế lại bảng màu cho dark theme
+  toàn app nằm ngoài phạm vi vibe-demo, không code thêm, chỉ ghi nhận
+  quyết định. Verify: `tsc --noEmit` sạch (2 lỗi tiền tồn tại), curl
+  `/vibe-demo/home` và `/vibe-demo/about` đều 200 và trả đúng
+  `<title>`/`<meta name="description">` mới. Mục 6 coi như xong — cả 6
+  mục của roadmap đã xử lý.
+- **2026-08-21**: User tự test Mục 2 thật trên iPhone SE (375px), tìm
+  ra 1 họ lỗi lặp lại (quá nhiều `shrink-0` nhồi 1 hàng ngang → phần
+  cuối bị đẩy khỏi viewport, mất hẳn) qua 4 lượt báo lỗi liên tiếp:
+  breadcrumb `article`/`quiz` wrap dọc phình top bar, `TopNav.tsx` wrap
+  dọc (ảnh hưởng cả home/spaces/about — lỗi nặng nhất vì chưa từng có
+  xử lý mobile), `edit-space` mất nút "Lưu bản thảo" + mất nút xuống/
+  xóa ở header chương + mất nút xóa ở dòng bài học (tràn ngang vô
+  hình, không wrap). Sửa từng chỗ theo 2 mẫu: `whiteSpace:nowrap` + ẩn
+  crumb/nhãn phụ khi hẹp (breadcrumb, TopNav), hoặc gãy 1 hàng thành 2
+  dòng khi các nút đều thiết yếu không thể ẩn (edit-space). Kiểm tra
+  riêng panel "Thông tin không gian" và margin-lề article/about — an
+  toàn, không cần sửa (đã dùng đúng `flex-1`/`w-full` từ đầu). Verify
+  mỗi fix: `tsc --noEmit` sạch (2 lỗi tiền tồn tại), route liên quan
+  200. Còn lại: grid quiz và cuộn dài edit-space chưa test tay.
+- **2026-08-21**: So cấu trúc `vibe-demo/home` với trang "/" thật theo
+  yêu cầu — phát hiện đây là 2 khái niệm "home" khác nhau (marketplace/
+  khám phá có tìm kiếm + tạo Space từ link + duyệt công khai, so với
+  dashboard cá nhân giả định luôn có Space đang học), không phải cùng
+  1 trang style lại. Ghi chi tiết vào Mục 7 mới: danh sách khối thiếu
+  ở demo so với `/` (search, paste-link tạo Space, khám phá 2 tầng,
+  nhánh khách, loading/error, SalesAgentWidget) và khối demo có mà `/`
+  chưa có (lời chào, lịch mực tuần, mục tiêu tuần). Chưa quyết định
+  hướng tích hợp (thay thế "/" hoàn toàn / trang riêng "/dashboard" /
+  chỉ 1 phần của "/") — theo đúng yêu cầu, chỉ ghi nhận, chờ chỉ đạo.
+- **2026-08-21**: Chốt hướng cho Mục 7 — hướng (c): demo chỉ thay khối
+  "Tiếp tục học" của "/", phần khám phá/tạo Space giữ nguyên. Code mẫu
+  ngay trong `vibe-demo/home/page.tsx`: đổi thẻ "Đang học" từ 1 object
+  cố định sang mảng `CONTINUE_LEARNING`, `.map()` xếp dọc nhiều thẻ
+  bookmark-ribbon — sửa đúng lỗ hổng "chỉ hiển thị 1 Space đang học"
+  đã ghi nhận, để sau này áp thẳng logic này vào "/" (thay
+  `page.tsx:236-279`) khi tới lượt tích hợp thật. Lịch mực tuần/mục
+  tiêu tuần để sau (cần dữ liệu backend chưa chắc có). Verify:
+  `tsc --noEmit` sạch (2 lỗi tiền tồn tại), curl `/vibe-demo/home` xác
+  nhận cả 2 thẻ mẫu render đúng, xếp dọc.
+- **2026-08-21**: Áp style vào trang "/" thật — người dùng chọn mở
+  rộng phạm vi ra TOÀN TRANG (không chỉ khối "Tiếp tục học" như hướng
+  (c) ban đầu). Đổi `Header.tsx`, `SearchBar.tsx`, `CourseCard.tsx`,
+  `CourseList.tsx`, `page.tsx` từ class Tailwind slate-*/blue-*/
+  emerald-* sang namespace `ink.*`; vẽ lại khối "Tiếp tục học" theo
+  đúng thẻ bookmark-ribbon của mẫu (dùng field thật `title`/
+  `lessonCount` thay cho `lessonTitle`/chapter meta không tồn tại ở
+  `MyLearningCourse`), giữ nguyên 100% logic/luồng dữ liệu. Cố ý không
+  đổi: màu đỏ của logout/error state (ink system không có token
+  destructive, và `correct`/`wrong` chỉ dành cho quiz theo comment gốc
+  trong `theme.ts`), font chữ toàn app (đổi riêng, rủi ro cao hơn phạm
+  vi yêu cầu). 2 badge tầng khám phá đổi sang chip trung tính theo
+  nguyên tắc "một accent duy nhất". Verify: `tsc --noEmit` sạch (2 lỗi
+  tiền tồn tại), dev server + curl `/` trả 200 với class `ink-*` trong
+  HTML. Làm trên branch riêng `feature/homepage-ink-theme`, chưa
+  commit.

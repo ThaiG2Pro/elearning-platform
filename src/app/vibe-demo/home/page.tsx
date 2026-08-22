@@ -15,6 +15,25 @@ const SPACES: SpacePreview[] = [
   { id: 's3', title: 'Thiết kế UI cho lập trình viên', chapters: 6, pct: 12, color: '#2E7A5C' },
 ];
 
+// Mục 7 — mẫu cho khi áp vào trang "/" thật: bản demo cũ hardcode ĐÚNG 1
+// Space "đang học", trong khi `/` thật hiển thị LƯỚI nhiều Space đang học
+// song song (page.tsx:250-272, `continueSpaces.map`). Đổi từ 1 object cố
+// định sang 1 mảng — khi map, xuống 0/1/nhiều Space đều render đúng, không
+// cần sửa lại layout khi số lượng thay đổi (giống nguyên tắc đã áp dụng ở
+// SPACES/PILLARS/NUMBERS). Xếp DỌC (không phải lưới ngang) vì mỗi thẻ đã
+// đủ rộng cho layout ảnh+chữ ngang — 2 thẻ cạnh nhau sẽ bóp ảnh quá hẹp,
+// ngược lại xu hướng "gọn nhưng đọc được" của cả hệ thống.
+interface ContinueItem {
+  id: string; spaceTitle: string; lessonTitle: string; meta: string;
+  pct: number; timeLeft: string;
+}
+const CONTINUE_LEARNING: ContinueItem[] = [
+  { id: 'c1', spaceTitle: 'Nền tảng React 18', lessonTitle: 'App Router, JSX & Component Model',
+    meta: 'Lập trình web hiện đại — chương 1/3, bài 2/8', pct: 38, timeLeft: 'còn 12 phút' },
+  { id: 'c2', spaceTitle: 'Tư duy hệ thống & Kiến trúc', lessonTitle: 'Trade-off khi chọn giữa monolith và microservice',
+    meta: 'Tư duy hệ thống & Kiến trúc — chương 3/5, bài 1/4', pct: 71, timeLeft: 'còn 6 phút' },
+];
+
 // Lịch mực 7 ngày — mỗi ô là một ngày, đặc = có học, nhạt = không.
 // Thay cho biểu tượng lửa streak thường gặp: nét mực đều đặn nói đúng
 // hơn về một thói quen học tập "gọn gàng", không phải một chuỗi cần giữ.
@@ -63,75 +82,82 @@ export default function VibeHomeDemoPage() {
           >
             {/* ══ CỘT TRÁI: trang sổ đang mở ══ */}
             <div>
-              {/* Thẻ "Đang học" — dải bookmark ở góc thay cho nhãn "tiếp tục" thường gặp */}
-              <div
-                className={`relative flex ${isCompact ? 'flex-col' : 'flex-row'} bg-ink-panel border border-ink-border overflow-hidden`}
-                style={{ borderRadius: R.lg, boxShadow: '0 1px 2px rgba(33,38,51,0.04), 0 4px 12px -6px rgba(33,38,51,0.08)' }}
-              >
-                {/* Dải bookmark — nhô ra góc trên phải như dấu trang thật.
-                    Width left as fixed w-[30px] (not min-w): the clipPath below draws
-                    the ribbon's pointed tip as percentages of this element's own box,
-                    so a variable width would distort the bookmark shape. "100%" (3
-                    digits) still fits at 9.5px font-mono in 30px, so this is fine. */}
+              {/* "Đang học" — mẫu để áp vào "/" thật: xếp DỌC nhiều thẻ,
+                  không phải đúng 1 thẻ cố định (xem ghi chú ở CONTINUE_LEARNING
+                  phía trên). Rỗng (0 Space đang học) không vẽ khối này ở đây —
+                  StateScreens.tsx (Mục 4) đã có mẫu cho trạng thái rỗng/khách
+                  chung, tái dùng khi áp vào "/" thay vì vẽ lại. */}
+              {CONTINUE_LEARNING.map((c, i) => (
                 <div
-                  className="absolute top-0 right-7 w-[30px] h-11 bg-ink-accent flex items-start justify-center pt-2 z-[2]"
-                  style={{ clipPath: 'polygon(0 0, 100% 0, 100% 100%, 50% 78%, 0 100%)' }}
+                  key={c.id}
+                  className={`relative flex ${isCompact ? 'flex-col' : 'flex-row'} bg-ink-panel border border-ink-border overflow-hidden ${i > 0 ? 'mt-5' : ''}`}
+                  style={{ borderRadius: R.lg, boxShadow: '0 1px 2px rgba(33,38,51,0.04), 0 4px 12px -6px rgba(33,38,51,0.08)' }}
                 >
-                  <span className="font-mono text-[9.5px] font-bold text-ink-onAccent">
-                    38%
-                  </span>
-                </div>
+                  {/* Dải bookmark — nhô ra góc trên phải như dấu trang thật.
+                      Width left as fixed w-[30px] (not min-w): the clipPath below draws
+                      the ribbon's pointed tip as percentages of this element's own box,
+                      so a variable width would distort the bookmark shape. "100%" (3
+                      digits) still fits at 9.5px font-mono in 30px, so this is fine. */}
+                  <div
+                    className="absolute top-0 right-7 w-[30px] h-11 bg-ink-accent flex items-start justify-center pt-2 z-[2]"
+                    style={{ clipPath: 'polygon(0 0, 100% 0, 100% 100%, 50% 78%, 0 100%)' }}
+                  >
+                    <span className="font-mono text-[9.5px] font-bold text-ink-onAccent">
+                      {c.pct}%
+                    </span>
+                  </div>
 
-                <div
-                  className="flex items-center justify-center relative bg-ink-room"
-                  style={{
-                    flex: isCompact ? undefined : '0 0 42%',
-                    aspectRatio: isCompact ? '16/9' : undefined,
-                    minHeight: isCompact ? undefined : 220,
-                  }}
-                >
-                  <button
-                    aria-label="Tiếp tục học"
-                    className="vd-focusable w-[52px] h-[52px] rounded-full border-[1.5px] border-ink-accentScreen flex items-center justify-center cursor-pointer"
-                    style={{ background: 'rgba(244,246,252,0.12)' }}
+                  <div
+                    className="flex items-center justify-center relative bg-ink-room"
+                    style={{
+                      flex: isCompact ? undefined : '0 0 42%',
+                      aspectRatio: isCompact ? '16/9' : undefined,
+                      minHeight: isCompact ? undefined : 220,
+                    }}
                   >
-                    <Play size={18} className="text-ink-accentScreen ml-0.5" fill="currentColor" />
-                  </button>
-                  <span
-                    className="absolute bottom-3 left-3.5 font-mono text-[11px]"
-                    style={{ color: 'rgba(244,246,252,0.55)' }}
-                  >
-                    còn 12 phút
-                  </span>
-                </div>
+                    <button
+                      aria-label="Tiếp tục học"
+                      className="vd-focusable w-[52px] h-[52px] rounded-full border-[1.5px] border-ink-accentScreen flex items-center justify-center cursor-pointer"
+                      style={{ background: 'rgba(244,246,252,0.12)' }}
+                    >
+                      <Play size={18} className="text-ink-accentScreen ml-0.5" fill="currentColor" />
+                    </button>
+                    <span
+                      className="absolute bottom-3 left-3.5 font-mono text-[11px]"
+                      style={{ color: 'rgba(244,246,252,0.55)' }}
+                    >
+                      {c.timeLeft}
+                    </span>
+                  </div>
 
-                <div className="flex-1 px-[26px] py-[22px] flex flex-col min-w-0">
-                  <div
-                    title="Đang học · Nền tảng React 18"
-                    className="text-[12.5px] font-medium text-ink-textMuted mb-1.5 truncate"
-                  >
-                    Đang học · Nền tảng React 18
+                  <div className="flex-1 px-[26px] py-[22px] flex flex-col min-w-0">
+                    <div
+                      title={`Đang học · ${c.spaceTitle}`}
+                      className="text-[12.5px] font-medium text-ink-textMuted mb-1.5 truncate"
+                    >
+                      Đang học · {c.spaceTitle}
+                    </div>
+                    <div
+                      title={c.lessonTitle}
+                      className="text-xl font-bold text-ink-text leading-[1.35] line-clamp-2"
+                    >
+                      {c.lessonTitle}
+                    </div>
+                    <div
+                      title={c.meta}
+                      className="text-[13.5px] text-ink-textMuted mt-2 leading-[1.6] line-clamp-2"
+                    >
+                      {c.meta}
+                    </div>
+                    <a
+                      href="/vibe-demo"
+                      className="vd-focusable mt-auto inline-flex items-center gap-2 text-sm font-semibold text-ink-accent no-underline pt-4"
+                    >
+                      Tiếp tục học <ArrowRight size={15} />
+                    </a>
                   </div>
-                  <div
-                    title="App Router, JSX & Component Model"
-                    className="text-xl font-bold text-ink-text leading-[1.35] line-clamp-2"
-                  >
-                    App Router, JSX &amp; Component Model
-                  </div>
-                  <div
-                    title="Lập trình web hiện đại — chương 1/3, bài 2/8"
-                    className="text-[13.5px] text-ink-textMuted mt-2 leading-[1.6] line-clamp-2"
-                  >
-                    Lập trình web hiện đại — chương 1/3, bài 2/8
-                  </div>
-                  <a
-                    href="/vibe-demo"
-                    className="vd-focusable mt-auto inline-flex items-center gap-2 text-sm font-semibold text-ink-accent no-underline pt-4"
-                  >
-                    Tiếp tục học <ArrowRight size={15} />
-                  </a>
                 </div>
-              </div>
+              ))}
 
               {/* ── Không gian của bạn — xem trước 3 dòng, dẫn sang trang danh sách ── */}
               <div className="mt-8">

@@ -25,6 +25,8 @@ export interface AIGenerationOptions {
     requestedVisibility?: 'PRIVATE' | 'SHARED';
     /** WP4.1 — "Trả phí để nền tảng tạo giúp" (nửa thứ 2 của nhánh UX #4). */
     paymentMethod?: 'CREDITS';
+    /** Nút "Tạo lại": bỏ qua cache READY, generate bản mới đè lên. */
+    force?: boolean;
 }
 
 /**
@@ -41,9 +43,10 @@ export class AIGenerationError extends Error {
 }
 
 /**
- * WP2.3 — trigger tạo tóm tắt/quiz bằng AI cho 1 Source. Luôn optional: lỗi
- * ở đây không được phép chặn việc học, chỉ hiện thông báo trong panel gọi
- * hàm này (xem AIGenerationPanel).
+ * WP2.3 — trigger tạo tóm tắt/quiz bằng AI cho 1 Source. Từ 2026-08-21 mọi
+ * trigger sống ở trang edit (AILessonComposer + lesson editor trong
+ * my-spaces/[id]/edit) — trang học chỉ điều hướng, không gọi hàm này nữa.
+ * Luôn optional: lỗi chỉ hiện trong panel gọi hàm, không chặn luồng chính.
  */
 export const generateAIContent = async (
     sourceId: number,
@@ -57,6 +60,11 @@ export const generateAIContent = async (
         const code = error.response?.data?.error;
         // WP2.3 (ticket 06) — nhánh UX quota-cạn: hiện rõ "thêm key miễn phí
         // của bạn hoặc chờ ngày mai", không âm thầm chặn, không tự fallback.
+        // Dedup phía server (409): 1 request khác đang generate đúng bản này
+        // — kết quả sẽ có sẵn trong cache khi request kia xong, chỉ cần chờ.
+        if (code === 'AI_GENERATION_IN_PROGRESS') {
+            throw new AIGenerationError('Nội dung này đang được tạo bởi một yêu cầu khác — chờ chút rồi bấm lại.', code);
+        }
         if (code === 'AI_DAILY_RATE_LIMIT_EXCEEDED') {
             throw new AIGenerationError('Đã dùng hết lượt tạo AI miễn phí hôm nay — thử lại vào ngày mai.', code);
         }
