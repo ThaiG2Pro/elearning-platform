@@ -2,15 +2,14 @@
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import Header from '@/components/Header';
+import { ChevronRight, Maximize2, Minimize2, SquarePen } from 'lucide-react';
 import YoutubePlayer, { VideoPlayerHandle } from '@/components/YoutubePlayer';
 import VimeoPlayer from '@/components/VimeoPlayer';
 import { Skeleton } from '@/components/ui/skeleton';
-import { MARGIN_W } from '@/lib/vibe/theme';
+import { MARGIN_W, TOP_BAR_H, HEADER_H, BREATH, VIDEO_FLOOR_VH, PANEL_PEEK, COMPACT_FLOOR_VH, useIsCompact } from '@/lib/vibe/theme';
 import { getLessons, getLessonProgress, updateLessonProgress, flushLessonProgress, startQuiz, submitQuiz, addLessonNote, getLessonNotes, deleteLessonNote } from '@/lib/space';
+import { getSpaceDetail } from '@/lib/spaces';
 import { Lesson, LessonProgress, QuizSession, QuizResult, LessonNote } from '@/types/space.types';
-import { User } from '@/types/auth.types';
-import { logout as apiLogout, AuthUtils } from '@/lib/auth';
 
 // Porting logic từ vibe-demo/quiz (savedQuizKey/loadSavedQuiz/...): bản nháp
 // cục bộ cho lượt làm bài ĐANG DIỄN RA, để mất mạng/đóng tab/reload giữa lúc
@@ -60,7 +59,10 @@ export default function LearningPage() {
     const [lessonProgress, setLessonProgress] = useState<LessonProgress | null>(null);
     const [appState, setAppState] = useState<'loading' | 'idle' | 'quiz_ready' | 'quiz_doing' | 'quiz_result' | 'quiz_review' | 'error'>('loading');
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
-    const [user, setUser] = useState<User | null>(null);
+    // Tên space cho breadcrumb của title bar (Spaces › {space} › {chương}) —
+    // getLessons không trả về, lấy riêng qua getSpaceDetail; fail thì
+    // breadcrumb chỉ rút gọn lại, không chặn trang.
+    const [spaceTitle, setSpaceTitle] = useState<string>('');
 
     // Quiz states
     const [quizSession, setQuizSession] = useState<QuizSession | null>(null);
@@ -233,28 +235,24 @@ export default function LearningPage() {
         setVideoDuration(duration);
     }, []);
 
-    const handleLogout = async () => {
-        try {
-            await apiLogout();
-            setUser(null);
-            router.push('/');
-        } catch (error: any) {
-            setUser(null);
-            router.push('/');
-        }
-    };
-
-    const handleJoin = () => {
-        const currentUrl = window.location.pathname;
-        router.push(`/join?continueUrl=${encodeURIComponent(currentUrl)}`);
-    };
-
-    const loadUser = useCallback(() => {
-        if (AuthUtils.isAuthenticated()) {
-            const userData = AuthUtils.getCurrentUser();
-            setUser(userData);
-        }
+    // Porting logic từ vibe-demo/page.tsx: trang là "app cố định toàn
+    // viewport" — khóa cuộn html/body, chỉ những vùng chủ đích (cột trái khi
+    // quiz/compact, list playlist/note) mới cuộn. Cleanup trả lại overflow
+    // cũ khi rời trang nên không rò sang route khác.
+    useEffect(() => {
+        const html = document.documentElement.style;
+        const body = document.body.style;
+        const prevHtml = html.overflow;
+        const prevBody = body.overflow;
+        html.overflow = 'hidden';
+        body.overflow = 'hidden';
+        return () => { html.overflow = prevHtml; body.overflow = prevBody; };
     }, []);
+
+    // Porting logic từ vibe-demo/page.tsx: matchMedia 900px thay breakpoint
+    // lg: — phản ứng đúng với cả browser zoom lẫn resize thật (zoom thu nhỏ
+    // viewport CSS hiệu dụng).
+    const isCompact = useIsCompact(900);
 
     const loadLessonData = useCallback(async (lessonId: string, lessonType: string) => {
         // console.log('loadLessonData called with:', { lessonId, lessonType });
@@ -292,6 +290,11 @@ export default function LearningPage() {
     }, []);
 
     const loadSpaceData = useCallback(async () => {
+        // Tên space chỉ phục vụ breadcrumb — chạy song song, nuốt lỗi để
+        // không bao giờ chặn nội dung học.
+        getSpaceDetail(Number(spaceId))
+            .then(detail => setSpaceTitle(detail.title))
+            .catch(() => {});
         try {
             const spaceLessons = await getLessons(spaceId);
             // console.log('Loaded lessons:', spaceLessons);
@@ -316,9 +319,8 @@ export default function LearningPage() {
 
     useEffect(() => {
         loadSpaceData();
-        loadUser();
         setFocusMode(localStorage.getItem('focusMode') === '1');
-    }, [loadSpaceData, loadUser]);
+    }, [loadSpaceData]);
 
     const toggleFocusMode = () => {
         setFocusMode(prev => {
@@ -680,40 +682,41 @@ export default function LearningPage() {
     const hasNotesTab = currentLesson?.type?.toLowerCase() === 'video';
     const renderSidebarPanel = () => (
         <>
-            <div className="flex items-center border-b border-ink-border">
-                <button
-                    onClick={() => setSidebarTab('playlist')}
-                    className={`vd-focusable flex-1 text-center px-2 py-2.5 text-xs font-bold uppercase tracking-wider border-b-2 transition-colors ${
-                        sidebarTab === 'playlist' || !hasNotesTab
-                            ? 'border-ink-accent text-ink-text'
-                            : 'border-transparent text-ink-textDim hover:text-ink-textMid'
-                    }`}
-                >
-                    Nội dung ({lessons.filter(l => l.isCompleted).length}/{lessons.length})
-                </button>
-                {hasNotesTab && (
-                    <button
-                        onClick={() => setSidebarTab('notes')}
-                        className={`vd-focusable flex-1 text-center px-2 py-2.5 text-xs font-bold uppercase tracking-wider border-b-2 transition-colors ${
-                            sidebarTab === 'notes'
-                                ? 'border-ink-accent text-ink-text'
-                                : 'border-transparent text-ink-textDim hover:text-ink-textMid'
-                        }`}
-                    >
-                        Ghi chú ({notes.length})
-                    </button>
-                )}
+            {/* Tabs — motif renderTabs của vibe-demo/page.tsx: label thường +
+                count mono nhỏ, underline 2px, thay kiểu uppercase-bold cũ. */}
+            <div className="shrink-0 flex border-b border-ink-border">
+                {([
+                    { key: 'playlist' as const, label: 'Bài học', count: `${lessons.filter(l => l.isCompleted).length}/${lessons.length}` },
+                    ...(hasNotesTab ? [{ key: 'notes' as const, label: 'Ghi chú', count: String(notes.length) }] : []),
+                ]).map(tab => {
+                    const isActive = sidebarTab === tab.key || (!hasNotesTab && tab.key === 'playlist');
+                    return (
+                        <button
+                            key={tab.key}
+                            onClick={() => setSidebarTab(tab.key)}
+                            className={`vd-focusable flex-1 flex items-baseline justify-center gap-1.5 py-3 px-2 bg-transparent cursor-pointer border-0 border-b-2 text-sm transition-colors duration-[120ms] ${
+                                isActive ? 'border-ink-accent font-semibold text-ink-text' : 'border-transparent font-normal text-ink-textMuted'
+                            }`}
+                        >
+                            <span>{tab.label}</span>
+                            <span className={`font-mono text-[11px] ${isActive ? 'text-ink-accent' : 'text-ink-textDim'}`}>{tab.count}</span>
+                        </button>
+                    );
+                })}
             </div>
 
             {(sidebarTab === 'playlist' || !hasNotesTab) ? (
                 <>
-                    <div className="space-y-4 max-h-[calc(100vh-280px)] overflow-y-auto pr-1 pt-3">
+                    {/* flex-1 trong cha có chiều cao bị chặn (rail desktop
+                        h-[calc(100%-30px)], overlay focus max-h, compact cuộn
+                        nguyên cột) — thay hack max-h-[calc(100vh-280px)] cũ. */}
+                    <div className="flex-1 min-h-0 space-y-4 overflow-y-auto cs-scrollbar py-1.5">
                         {groupedChapters.map((chapterGroup, cIdx) => (
                             <div key={chapterGroup.chapterId || cIdx} className="space-y-1.5">
                                 {/* Chapter Header — WP1.10.5: space có đúng 1 chương thì ẩn
                                     tầng chương, in phẳng danh sách bài (khớp luật ở share/editor). */}
                                 {groupedChapters.length > 1 && (
-                                    <div className="flex items-center gap-2 px-1 py-1">
+                                    <div className="flex items-center gap-2 px-3 py-1">
                                         <span className="text-[11px] font-bold text-ink-accent bg-ink-accentA px-2 py-0.5 rounded-md flex-shrink-0">
                                             Chương {chapterGroup.chapterOrder || (cIdx + 1)}
                                         </span>
@@ -779,6 +782,8 @@ export default function LearningPage() {
                         ))}
                     </div>
 
+                    {/* Footer rail — shrink-0 để cue/nút không bị vùng cuộn nuốt. */}
+                    <div className="shrink-0 px-3 pb-3">
                     {/* WP1.10.4 — cue theo thời điểm: hiện ngay sau khi 1 lesson
                         vừa được đánh dấu hoàn thành, không phụ thuộc 1 lần bấm đúng
                         lúc tạo space. */}
@@ -810,9 +815,10 @@ export default function LearningPage() {
                     >
                         + Thêm quiz/tóm tắt cho bài này
                     </button>
+                    </div>
                 </>
             ) : (
-                <div className="max-h-[calc(100vh-280px)] overflow-y-auto pr-1 pt-3">
+                <div className="flex-1 min-h-0 overflow-y-auto cs-scrollbar px-3 pt-3 pb-3">
                     {/* Danh sách ghi chú — cùng motif "lề vở" THẬT như playlist ở trên
                         (cột lề trái MARGIN_W + đường kẻ dọc liên tục), thay khối
                         card-viền-bo-góc-riêng-từng-note cũ. Nút xoá chỉ hiện khi hover,
@@ -903,96 +909,131 @@ export default function LearningPage() {
         </>
     );
 
-    return (
-        // "Phòng tắt đèn" — room/screen (theme.ts) áp cho NỀN NGOÀI khi
-        // focusMode: bg-ink-room thay bg-ink-page. Các card nội dung bên
-        // trong (video/quiz/notes) vẫn giữ bg-ink-panel trắng riêng của
-        // chúng — "trang giấy vẫn sáng giữa phòng tối", nên không đổi màu
-        // chữ/border của bất kỳ card con nào, tránh rủi ro vỡ contrast.
-        // roomBgClass — porting logic từ vibe-demo/page.tsx: ngoài focusMode
-        // (người bật tay), đèn phòng còn tự dịu (bg-ink-pageDim) khi video
-        // đang chạy, dù chưa bật tập trung — "phòng tối lại một chút để mắt
-        // nhìn màn hình dễ hơn", tinh tế hơn on/off nhị phân trước đây.
-        <div className={`min-h-screen transition-colors duration-500 ${focusMode ? 'bg-ink-room' : isVideoPlaying ? 'bg-ink-pageDim' : 'bg-ink-page'}`}>
-            {!focusMode && <Header user={user} onLogout={handleLogout} onJoin={handleJoin} />}
+    // Cột trái chỉ khóa cuộn khi là bài video trên desktop (video đã tự vừa
+    // khít viewport theo công thức stage); quiz/error dài phải cuộn được,
+    // compact cuộn nguyên khối như vibe-demo.
+    const isVideoLesson = hasNotesTab;
+    const leftScrolls = !isVideoLesson || (isCompact && !focusMode);
+    // Công thức kích thước video liên tục — nguyên văn vibe-demo/page.tsx
+    // (stage 16:9): xem chú thích HEADER_H/BREATH/VIDEO_FLOOR_VH ở theme.ts.
+    const stageWidth = focusMode
+        ? 'min(100%, calc(82vh * 16 / 9))' // rạp chiếu: viền tối tỉ lệ thuận là chủ đích
+        : isCompact
+            ? `min(100%, max(calc(${COMPACT_FLOOR_VH}vh * 16 / 9), calc((100vh - ${TOP_BAR_H + HEADER_H + PANEL_PEEK}px) * 16 / 9)))`
+            : `min(100%, max(calc(${VIDEO_FLOOR_VH}vh * 16 / 9), calc((100vh - ${TOP_BAR_H + HEADER_H + BREATH}px) * 16 / 9)))`;
 
-            {/* Lesson Sub-Header — "tắt đèn" cùng phòng khi focusMode: nền/chữ
-                chuyển sang cặp màu tối (ink.room + trắng mờ), progress bar
-                chuyển sang ink-accentScreen, cùng công thức với vibe-demo/page.tsx. */}
-            {/* top-14 (56px) = APP_TOP_BAR_H của Header phía trên khi !focusMode
-                (Header trước đây cao h-16/64px — top-16 cũ đã lệch sau khi Header
-                đổi sang APP_TOP_BAR_H trong bước "Header→TopNav motif"). */}
-            <div className={`border-b sticky z-10 transition-colors duration-500 ${focusMode ? 'top-0 bg-ink-room border-b-[rgba(244,246,252,0.10)]' : 'top-14 bg-ink-panel border-ink-border'}`}>
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex items-center justify-between h-14">
-                        <div className="flex items-center gap-4 min-w-0">
-                            <button
-                                onClick={() => router.push('/my-learning')}
-                                className={`flex-shrink-0 text-sm transition-colors flex items-center gap-1 ${focusMode ? 'text-[rgba(244,246,252,0.45)] hover:text-[rgba(244,246,252,0.85)]' : 'text-ink-textMuted hover:text-ink-text'}`}
-                            >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7"/>
-                                </svg>
-                                Quay lại
-                            </button>
-                            <div className={`hidden sm:block w-px h-5 ${focusMode ? 'bg-[rgba(244,246,252,0.16)]' : 'bg-ink-border'}`}/>
-                            <p className={`text-sm font-medium truncate ${focusMode ? 'text-[rgba(244,246,252,0.85)]' : 'text-ink-text'}`}>
-                                {currentLesson ? `Bài ${currentLesson.order}: ${currentLesson.title}` : 'Đang tải...'}
-                            </p>
+    return (
+        <div>
+            {/* ══ TITLE BAR — chrome phẳng 52px, một hairline (porting nguyên
+                ngữ pháp vibe-demo/page.tsx): breadcrumb thay nút "Quay lại",
+                progress hairline + % mono, nút edit/focus icon-only 26px.
+                Tên bài KHÔNG nằm ở đây — "Header = MỘT dòng h1" dưới kia.
+                Trong focus mode bar "tắt đèn" cùng căn phòng: nền chuyển màu
+                phòng tối, chữ thành mực sáng mờ — cùng nhịp transition 600ms. ══ */}
+            <div
+                style={{ height: TOP_BAR_H }}
+                className={`fixed top-0 left-0 right-0 z-50 flex items-center gap-2 px-7 text-[12.5px] border-b transition-[background,border-color,color] duration-[600ms] ease-in-out ${
+                    focusMode ? 'bg-ink-room border-[rgba(244,246,252,0.10)] text-[rgba(244,246,252,0.45)]' : 'bg-ink-panel border-ink-border text-ink-textMuted'
+                }`}
+            >
+                <button
+                    onClick={() => router.push('/my-learning')}
+                    className="vd-focusable shrink-0 whitespace-nowrap bg-transparent border-none p-0 cursor-pointer text-inherit hover:underline"
+                >
+                    Spaces
+                </button>
+                {!isCompact && spaceTitle && (
+                    <>
+                        <ChevronRight size={11} className={`shrink-0 ${focusMode ? 'text-[rgba(244,246,252,0.25)]' : 'text-ink-textDim'}`} />
+                        <span title={spaceTitle} className="shrink-0 whitespace-nowrap max-w-[240px] truncate">{spaceTitle}</span>
+                    </>
+                )}
+                <ChevronRight size={11} className={`shrink-0 ${focusMode ? 'text-[rgba(244,246,252,0.25)]' : 'text-ink-textDim'}`} />
+                <span
+                    title={currentLesson?.chapterTitle || spaceTitle}
+                    className={`flex-1 min-w-0 truncate font-medium ${focusMode ? 'text-[rgba(244,246,252,0.85)]' : 'text-ink-text'}`}
+                >
+                    {currentLesson?.chapterTitle || spaceTitle || 'Đang tải…'}
+                </span>
+
+                <div className="ml-auto flex items-center gap-4">
+                    <div className="flex items-center gap-2">
+                        <div className={`w-20 h-0.5 overflow-hidden rounded-[1px] ${focusMode ? 'bg-[rgba(244,246,252,0.16)]' : 'bg-[rgba(33,38,51,0.14)]'}`}>
+                            <div
+                                style={{ width: `${calculateSpaceProgress()}%` }}
+                                className={`h-full transition-[width] duration-[400ms] ease-in-out ${focusMode ? 'bg-ink-accentScreen' : 'bg-ink-accent'}`}
+                            />
                         </div>
-                        <div className="flex items-center gap-3 flex-shrink-0">
-                            {/* WP1.10.4 — trang học trước đây không có link nào về editor;
-                                đây là owner đang xem space của mình (route này không public). */}
-                            {!focusMode && (
-                                <button
-                                    onClick={() => router.push(`/my-spaces/${spaceId}/edit`)}
-                                    title="Thêm quiz/tóm tắt cho Space này"
-                                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-ink-textMuted hover:bg-ink-page transition-colors"
-                                >
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                                    </svg>
-                                    Chỉnh sửa
-                                </button>
-                            )}
-                            <button
-                                onClick={toggleFocusMode}
-                                title={focusMode ? 'Thoát chế độ tập trung' : 'Bật chế độ tập trung'}
-                                className={`vd-focusable inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${focusMode ? 'bg-[rgba(143,166,238,0.14)] text-ink-accentScreen' : 'text-ink-textMuted hover:bg-ink-page'}`}
-                            >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    {focusMode ? (
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 9V4.5M9 9H4.5M9 9L3.5 3.5M15 9h4.5M15 9V4.5M15 9l5.5-5.5M9 15v4.5M9 15H4.5M9 15l-5.5 5.5M15 15h4.5M15 15v4.5m0-4.5l5.5 5.5"/>
-                                    ) : (
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-5h-4m4 0v4m0-4l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5h-4m4 0v-4"/>
-                                    )}
-                                </svg>
-                                {focusMode ? 'Thoát tập trung' : 'Tập trung'}
-                            </button>
-                            <div className={`flex items-center gap-2 text-xs ${focusMode ? 'text-[rgba(244,246,252,0.45)]' : 'text-ink-textMuted'}`}>
-                                <div className={`w-24 rounded-full h-1.5 ${focusMode ? 'bg-[rgba(244,246,252,0.16)]' : 'bg-ink-page'}`}>
-                                    <div
-                                        className={`h-1.5 rounded-full transition-all ${focusMode ? 'bg-ink-accentScreen' : 'bg-ink-accent'}`}
-                                        style={{ width: `${calculateSpaceProgress()}%` }}
-                                    />
-                                </div>
-                                <span className={`font-medium ${focusMode ? 'text-ink-accentScreen' : 'text-ink-accent'}`}>{calculateSpaceProgress()}%</span>
-                            </div>
-                        </div>
+                        <span className={`font-mono text-[11px] ${focusMode ? 'text-ink-accentScreen' : 'text-ink-accent'}`}>{calculateSpaceProgress()}%</span>
                     </div>
+
+                    {/* WP1.10.4 — lối vào editor giữ nguyên, chỉ hạ xuống icon-only
+                        cho khớp ngữ pháp chrome 1 hairline (route này owner-only). */}
+                    {!focusMode && (
+                        <button
+                            onClick={() => router.push(`/my-spaces/${spaceId}/edit`)}
+                            aria-label="Chỉnh sửa Space"
+                            title="Thêm quiz/tóm tắt cho Space này"
+                            className="vd-focusable flex items-center justify-center w-[26px] h-[26px] rounded-ink-sm cursor-pointer shrink-0 border bg-transparent border-ink-border text-ink-textMid"
+                        >
+                            <SquarePen size={12} />
+                        </button>
+                    )}
+                    <button
+                        onClick={toggleFocusMode}
+                        aria-label={focusMode ? 'Thoát chế độ tập trung' : 'Bật chế độ tập trung'}
+                        title={focusMode ? 'Thoát chế độ tập trung' : 'Chế độ tập trung — tắt đèn phòng, chỉ còn bài học'}
+                        className={`vd-focusable flex items-center justify-center w-[26px] h-[26px] rounded-ink-sm cursor-pointer shrink-0 border ${
+                            focusMode ? 'bg-[rgba(143,166,238,0.14)] border-ink-accentScreen text-ink-accentScreen' : 'bg-transparent border-ink-border text-ink-textMid'
+                        }`}
+                    >
+                        {focusMode ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
+                    </button>
                 </div>
             </div>
 
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-                {/* lg:grid-cols-[1fr_340px] — sidebar giữ chiều rộng cố định 340px
-                    khớp lưới của vibe-demo/quiz (1fr/340px), thay tỉ lệ 3:1 co dãn
-                    theo % cũ: playlist đọc tên bài dài không bị bóp hẹp dần trên
-                    màn rộng, và không quá rộng lãng phí trên màn hẹp hơn. */}
-                <div className={`grid grid-cols-1 gap-6 ${focusMode ? '' : 'lg:grid-cols-[1fr_340px]'}`}>
-                    {/* Main Content Area */}
-                    <div className="space-y-4 min-w-0">
-                        {/* Video Player or Quiz Area */}
-                        <div className="bg-ink-panel rounded-ink-md border border-ink-border shadow-ink-sm p-6">
+            {/* ══ WORKSPACE — căn phòng: fixed toàn viewport dưới title bar,
+                nền đổi theo trạng thái (page/dim/room) — roomBg porting từ
+                vibe-demo/page.tsx: ngoài focusMode (người bật tay), đèn phòng
+                còn tự dịu (bg-ink-pageDim) khi video đang chạy. Card nội dung
+                bên trong vẫn giữ bg-ink-panel trắng riêng — "trang giấy vẫn
+                sáng giữa phòng tối". ══ */}
+            <div
+                style={{ top: TOP_BAR_H }}
+                className={`fixed left-0 right-0 bottom-0 z-[1] flex justify-center transition-[background] duration-[600ms] ease-in-out ${focusMode ? 'bg-ink-room' : isVideoPlaying ? 'bg-ink-pageDim' : 'bg-ink-page'}`}
+            >
+                {/* Container FLUID — không còn maxWidth cố định: gutter trái/phải
+                    luôn nhỏ, nội dung lớn dần theo bề ngang màn hình, video tự
+                    DỪNG khi chiều cao chạm trần theo công thức stage. */}
+                <div
+                    className="w-full h-full grid"
+                    style={{
+                        padding: isCompact ? '0 16px' : '0 32px',
+                        gridTemplateColumns: (focusMode || isCompact) ? '1fr' : '1fr 340px',
+                        gap: isCompact ? 16 : 36,
+                    }}
+                >
+                    {/* ══ LEFT COLUMN — video/quiz ══ */}
+                    <div className={`relative flex flex-col h-full min-w-0 ${leftScrolls ? 'overflow-auto cs-scrollbar' : 'overflow-hidden'} ${(focusMode && isVideoLesson) ? 'justify-center' : 'justify-start'}`}>
+                        {/* Header = MỘT dòng h1 (vibe-demo/page.tsx:349): mọi meta khác
+                            đã có chỗ riêng — chương → breadcrumb, số bài/thời lượng →
+                            playlist, thời gian phát → thanh trạng thái của video. */}
+                        {!focusMode && currentLesson && (
+                            <div className="shrink-0 pt-[18px] pb-3.5">
+                                <h1
+                                    title={currentLesson.title}
+                                    className="truncate text-[clamp(19px,2.1vw,26px)] font-bold tracking-[-0.015em] leading-[1.25] m-0 text-ink-text"
+                                >
+                                    {currentLesson.title}
+                                </h1>
+                            </div>
+                        )}
+                        {/* Video hiển thị TRẦN trên nền phòng (stage tự vẽ khung
+                            "màn hình rạp"); quiz/kết quả/lỗi vẫn là "trang giấy" —
+                            card trắng bề rộng đọc được, cột trái cuộn được khi dài. */}
+                        <div className={(appState === 'idle' || appState === 'loading')
+                            ? ''
+                            : 'w-full max-w-3xl mx-auto mb-6 shrink-0 bg-ink-panel rounded-ink-md border border-ink-border shadow-ink-sm p-6'}>
                             {/* WP1.5.7: switching lessons (or the very first load) used to
                                 unmount the whole page — header, sidebar, progress bar — behind
                                 a bare centered spinner. Now only this card swaps to a skeleton;
@@ -1008,31 +1049,23 @@ export default function LearningPage() {
                             {/* Keep the video DOM mounted to avoid re-mounts caused by transient appState changes */}
                             <div className={appState === 'idle' ? 'block' : 'hidden'}>
                                 {currentLesson?.type?.toLowerCase() === 'video' && (
-                                    <div>
-                                        {/* Porting logic từ vibe-demo/page.tsx: tên bài học là H1 rõ nét
-                                            ngay trên video (breadcrumb phía trên chỉ giữ vai trò điều
-                                            hướng, chữ nhỏ) — ẩn khi focusMode giống vibe-demo, vì lúc đó
-                                            chỉ còn video là trọng tâm duy nhất. */}
-                                        {!focusMode && (
-                                            <h1
-                                                title={currentLesson.title}
-                                                className="truncate text-[clamp(19px,2.1vw,26px)] font-bold tracking-[-0.015em] leading-tight text-ink-text mb-4"
-                                            >
-                                                {currentLesson.title}
-                                            </h1>
-                                        )}
-                                        {/* "Màn hình rạp" — porting logic từ vibe-demo/page.tsx: player +
-                                            thanh trạng thái hợp thành MỘT khối tối liền mạch (bg-ink-screen),
-                                            thay vì video card trắng với dòng "Tiến độ: mm:ss / mm:ss" tách
-                                            rời phía dưới như cũ. YoutubePlayer/VimeoPlayer bỏ border/rounding/
-                                            shadow riêng (chỉ dùng ở đây) để khung ngoài này là viền duy nhất. */}
+                                    // Stage 16:9 — hệ quy chiếu kích thước video: desktop dùng công
+                                    // thức liên tục "vh trừ phần bị chiếm thật + sàn vh" (stageWidth,
+                                    // xem theme.ts), focus/compact giữ trần vh riêng. Căn giữa cột
+                                    // để cân đối khi chiều cao chặn trước bề ngang.
+                                    <div className="relative aspect-video mx-auto" style={{ width: stageWidth }}>
+                                        {/* "Màn hình rạp" — player + thanh trạng thái hợp thành MỘT
+                                            khối tối liền mạch (bg-ink-screen) lấp trọn stage;
+                                            YoutubePlayer/VimeoPlayer dùng fill (flex-1) vì stage đã
+                                            ấn định tỉ lệ và dành 36px đáy cho thanh trạng thái. */}
                                         <div
-                                            className={`bg-ink-screen border rounded-ink-md overflow-hidden shadow-ink-sm flex flex-col ${focusMode ? 'border-[rgba(255,255,255,0.10)]' : 'border-ink-borderHi'}`}
+                                            className={`w-full h-full bg-ink-screen border rounded-ink-md overflow-hidden shadow-ink-md flex flex-col ${focusMode ? 'border-[rgba(255,255,255,0.10)]' : 'border-ink-borderHi'}`}
                                         >
                                             {currentLesson.videoUrl && isYouTubeUrl(currentLesson.videoUrl) ? (
                                                 <YoutubePlayer
                                                     key={currentLesson.id}
                                                     ref={playerHandleRef}
+                                                    fill
                                                     videoId={youtubeVideoId || ''}
                                                     initialPos={lessonProgress?.currentPosition || 0}
                                                     onProgress={handleProgressUpdate}
@@ -1046,6 +1079,7 @@ export default function LearningPage() {
                                                 <VimeoPlayer
                                                     key={currentLesson.id}
                                                     ref={playerHandleRef}
+                                                    fill
                                                     videoId={vimeoVideoId || ''}
                                                     initialPos={lessonProgress?.currentPosition || 0}
                                                     onProgress={handleProgressUpdate}
@@ -1060,7 +1094,7 @@ export default function LearningPage() {
                                                     key={currentLesson.id}
                                                     ref={videoRef}
                                                     controls
-                                                    className="w-full aspect-video"
+                                                    className="w-full flex-1 min-h-0 object-contain"
                                                     onTimeUpdate={handleVideoProgress}
                                                     onEnded={() => { handleVideoProgress(); handleVideoEnded(); }}
                                                     onPlay={() => setIsVideoPlaying(true)}
@@ -1478,80 +1512,55 @@ export default function LearningPage() {
                             )}
                         </div>
 
-                        {/* Quyết định UX 2026-08-21: trang học KHÔNG trigger AI trực
-                            tiếp nữa (AIGenerationPanel cũ đã gỡ) — mọi tính năng AI
-                            (tạo quiz thành bài học thật, tóm tắt, tuỳ biến/BYOK) sống
-                            ở trang chỉnh sửa. Ở đây chỉ điều hướng — route này
-                            owner-only nên nút edit luôn hợp lệ. */}
-                        {!focusMode && (
-                            <div className="bg-ink-panel rounded-ink-md border border-ink-border shadow-ink-sm p-5 flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
-                                <div>
-                                    <h3 className="text-sm font-semibold text-ink-text flex items-center gap-1.5">
-                                        <svg className="w-4 h-4 text-ink-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z"/>
-                                        </svg>
-                                        Tóm tắt &amp; quiz bằng AI
-                                    </h3>
-                                    <p className="text-xs text-ink-textMuted mt-1">
-                                        Tạo bài quiz từ video trong Space này — quiz sẽ thành bài học thật, ngay trong trình chỉnh sửa.
-                                    </p>
-                                </div>
-                                <button
-                                    onClick={() => router.push(`/my-spaces/${spaceId}/edit`)}
-                                    className="flex-shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-medium bg-ink-accent text-white hover:bg-ink-accent/90 transition-colors"
-                                >
-                                    Mở trình chỉnh sửa
-                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7"/>
-                                    </svg>
-                                </button>
+                        {/* Compact & không focus: panel Bài học/Ghi chú xếp dưới nội
+                            dung (porting vibe-demo/page.tsx) — cột trái đang cuộn
+                            nguyên khối, phần ló PANEL_PEEK đã được công thức stage
+                            chừa sẵn trên fold để user biết có gì bên dưới. */}
+                        {isCompact && !focusMode && (
+                            <div className="shrink-0 mt-4 mb-4 min-h-[360px] flex flex-col bg-ink-panel border border-ink-border rounded-ink-md shadow-ink-sm overflow-hidden">
+                                {renderSidebarPanel()}
                             </div>
                         )}
                     </div>
 
-                    {/* Sidebar - playlist + ghi chú hợp nhất qua tab (renderSidebarPanel).
-                        Ẩn ở focusMode để không phân tâm — nhưng vẫn mở lại được qua nút
-                        nổi bên dưới (porting logic overlayOpen của vibe-demo/page.tsx),
-                        nên tập trung không đồng nghĩa mất quyền xem playlist/ghi chú. */}
-                    {!focusMode && (
-                    <div className="min-w-0">
-                        <div className="bg-ink-panel rounded-ink-lg border border-ink-border shadow-ink-sm p-4 sticky top-28">
+                    {/* ══ RIGHT — rail cố định (playlist/ghi chú hợp nhất qua tab),
+                        chỉ khi đủ chỗ ngang: cao bằng workspace trừ 30px thở trên,
+                        cuộn BÊN TRONG (flex-1 của renderSidebarPanel) chứ không
+                        kéo dài trang. Ẩn ở focusMode — mở lại qua overlay dưới. */}
+                    {!focusMode && !isCompact && (
+                        <div className="flex flex-col h-[calc(100%-30px)] mt-[30px] min-w-0 overflow-hidden bg-ink-panel border border-ink-border rounded-ink-md shadow-ink-sm">
                             {renderSidebarPanel()}
                         </div>
-                    </div>
                     )}
                 </div>
             </div>
 
-            {/* Nút nổi + overlay panel khi focusMode — porting logic từ
-                vibe-demo/page.tsx (floating toggle mở overlay playlist/notes
-                trong lúc vẫn giữ layout tập trung một cột). */}
+            {/* Focus mode: scrim + panel "đèn bàn" trượt từ phải (porting
+                vibe-demo/page.tsx overlayOpen) — fixed ở tầng trang, không neo
+                vào stage, để dùng được cho cả bài quiz vốn không có stage video.
+                Tập trung không đồng nghĩa mất quyền xem playlist/ghi chú. */}
             {focusMode && (
                 <>
+                    <div
+                        onClick={() => setFocusOverlayOpen(false)}
+                        className={`fixed inset-0 z-30 bg-[rgba(10,12,16,0.45)] transition-opacity duration-200 ease-in-out ${focusOverlayOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
+                    />
+                    <div
+                        style={{ top: TOP_BAR_H + 16, bottom: 16 }}
+                        className={`fixed right-5 z-40 w-[min(440px,92vw)] flex flex-col bg-ink-panel border border-ink-border rounded-ink-lg shadow-ink-md overflow-hidden transition-[opacity,transform] duration-200 ease-in-out ${
+                            focusOverlayOpen ? 'opacity-100 translate-x-0 pointer-events-auto' : 'opacity-0 translate-x-3 pointer-events-none'
+                        }`}
+                    >
+                        {renderSidebarPanel()}
+                    </div>
                     <button
                         onClick={() => setFocusOverlayOpen(v => !v)}
-                        className="vd-focusable fixed bottom-6 right-6 z-20 inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-[rgba(244,246,252,0.10)] border border-[rgba(244,246,252,0.16)] text-[rgba(244,246,252,0.85)] text-xs font-medium shadow-lg backdrop-blur-sm hover:bg-[rgba(244,246,252,0.16)] transition-colors"
+                        className={`vd-focusable fixed right-5 bottom-5 z-20 flex items-center gap-2 py-[9px] px-4 bg-ink-panel border-none cursor-pointer text-[12.5px] font-medium text-ink-textMid rounded-ink-sm shadow-ink-md transition-opacity duration-150 ease-in-out ${
+                            focusOverlayOpen ? 'opacity-0 pointer-events-none' : 'opacity-100 pointer-events-auto'
+                        }`}
                     >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7"/>
-                        </svg>
-                        {lessons.filter(l => l.isCompleted).length}/{lessons.length} bài{hasNotesTab ? ` · ${notes.length} ghi chú` : ''}
+                        <span>{lessons.filter(l => l.isCompleted).length}/{lessons.length} bài{hasNotesTab ? ` · ${notes.length} ghi chú` : ''}</span>
                     </button>
-
-                    {focusOverlayOpen && (
-                        <div className="fixed inset-0 z-30 flex items-end sm:items-center justify-end sm:pr-6 pb-24 sm:pb-0" onClick={() => setFocusOverlayOpen(false)}>
-                            <div
-                                onClick={(e) => e.stopPropagation()}
-                                className="vd-ink-in w-full sm:w-[340px] max-h-[70vh] sm:max-h-[calc(100vh-120px)] mx-4 sm:mx-0 bg-ink-panel rounded-ink-lg border border-ink-border shadow-lg p-4 overflow-hidden flex flex-col"
-                            >
-                                <div className="flex items-center justify-between mb-1">
-                                    <span className="text-xs font-bold text-ink-textDim uppercase tracking-wider">Nội dung Space</span>
-                                    <button onClick={() => setFocusOverlayOpen(false)} className="text-ink-textMuted hover:text-ink-text" title="Đóng">✕</button>
-                                </div>
-                                {renderSidebarPanel()}
-                            </div>
-                        </div>
-                    )}
                 </>
             )}
         </div>
