@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { ChevronRight, Maximize2, Minimize2, SquarePen } from 'lucide-react';
+import TopBar from '@/components/vibe/TopBar';
 import YoutubePlayer, { VideoPlayerHandle } from '@/components/YoutubePlayer';
 import VimeoPlayer from '@/components/VimeoPlayer';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -930,12 +931,7 @@ export default function LearningPage() {
                 Tên bài KHÔNG nằm ở đây — "Header = MỘT dòng h1" dưới kia.
                 Trong focus mode bar "tắt đèn" cùng căn phòng: nền chuyển màu
                 phòng tối, chữ thành mực sáng mờ — cùng nhịp transition 600ms. ══ */}
-            <div
-                style={{ height: TOP_BAR_H }}
-                className={`fixed top-0 left-0 right-0 z-50 flex items-center gap-2 px-7 text-[12.5px] border-b transition-[background,border-color,color] duration-[600ms] ease-in-out ${
-                    focusMode ? 'bg-ink-room border-[rgba(244,246,252,0.10)] text-[rgba(244,246,252,0.45)]' : 'bg-ink-panel border-ink-border text-ink-textMuted'
-                }`}
-            >
+            <TopBar variant="workspace" focusMode={focusMode}>
                 <button
                     onClick={() => router.push('/my-learning')}
                     className="vd-focusable shrink-0 whitespace-nowrap bg-transparent border-none p-0 cursor-pointer text-inherit hover:underline"
@@ -990,7 +986,7 @@ export default function LearningPage() {
                         {focusMode ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
                     </button>
                 </div>
-            </div>
+            </TopBar>
 
             {/* ══ WORKSPACE — căn phòng: fixed toàn viewport dưới title bar,
                 nền đổi theo trạng thái (page/dim/room) — roomBg porting từ

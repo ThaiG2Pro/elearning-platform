@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { User } from '@/types/auth.types';
-import { APP_TOP_BAR_H } from '@/lib/vibe/theme';
+import TopBar from '@/components/vibe/TopBar';
 
 interface HeaderProps {
     user?: User | null;
@@ -69,16 +69,11 @@ export default function Header({ user, onLogout, onJoin }: HeaderProps) {
     };
 
     return (
-        <header className="bg-ink-panel border-b border-ink-border sticky top-0 z-30 shadow-ink-sm">
-            {/* Giữ sticky (không đổi sang position:fixed như TopNav vibe-demo) —
-                fixed sẽ đẩy header ra khỏi flow và bắt buộc mọi trang thật phải
-                thêm padding-top thủ công để bù, rủi ro vỡ layout cao hơn nhiều
-                so với lợi ích. Chiều cao đồng bộ APP_TOP_BAR_H (56px = h-14,
-                trước là h-16/64px) + nav dùng motif "gạch chân accent khi active"
-                giống TopNav, thay pill nền — 2 điểm khớp trực quan an toàn nhất. */}
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="flex justify-between items-center" style={{ height: APP_TOP_BAR_H }}>
-                    {/* Logo & Main Nav */}
+        // Vỏ bar (sticky, chiều cao APP_TOP_BAR_H, border, căn giữa max-w-7xl)
+        // giờ nằm trong <TopBar variant="site"> dùng chung với breadcrumb bar
+        // trang học — nav vẫn dùng motif "gạch chân accent khi active".
+        <TopBar variant="site">
+            {/* Logo & Main Nav */}
                     <div className="flex items-center gap-6 sm:gap-8">
                         <button
                             onClick={() => router.push('/')}
@@ -226,8 +221,6 @@ export default function Header({ user, onLogout, onJoin }: HeaderProps) {
                             </button>
                         )}
                     </div>
-                </div>
-            </div>
-        </header>
+        </TopBar>
     );
 }
