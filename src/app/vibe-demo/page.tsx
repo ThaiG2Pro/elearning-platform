@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { CheckCircle2, Circle, Plus, ChevronRight, StickyNote, X, Maximize2, Minimize2, ListVideo } from 'lucide-react';
-import { T, R, TOP_BAR_H, MARGIN_W, useIsCompact, VIBE_GLOBAL_CSS, beVietnam } from '@/lib/vibe/theme';
+import { T, R, TOP_BAR_H, MARGIN_W, HEADER_H, BREATH, VIDEO_FLOOR_VH, PANEL_PEEK, COMPACT_FLOOR_VH, useIsCompact, VIBE_GLOBAL_CSS, beVietnam } from '@/lib/vibe/theme';
 
 /*
  * PILOT chuyển sang Tailwind (namespace `ink-*`, tailwind.config.js) — cùng
@@ -48,21 +48,9 @@ const INITIAL_NOTES: Note[] = [
 
 type PanelTab = 'playlist' | 'notes';
 
-// Chiều cao video theo TỈ LỆ LIÊN TỤC: video ăn toàn bộ chiều cao viewport
-// trừ đi đúng phần bị chiếm thật (topbar + header) và một dải thở CỐ ĐỊNH.
-// Nhờ vậy khoảng trống dưới video là hằng số ~BREATH px ở mọi cỡ màn, không
-// phình theo màn to (nhược điểm của trần vh hằng số) và không nhảy bậc
-// (nhược điểm của tier matchMedia). Chống bug "video tí hon khi zoom cao"
-// (viewport CSS bị bóp lùn → phép trừ px ăn quá sâu) bằng SÀN 52vh: video
-// không bao giờ thấp hơn nửa viewport.
-const HEADER_H = 64; // paddingTop 18 + h1 một dòng ~32 + paddingBottom 14
-const BREATH   = 96; // dải thở cố định dưới video
-const VIDEO_FLOOR_VH = 52;
-// Compact: thay dải thở bằng "phần ló" của panel tab — video chỉ cần chừa
-// đủ chỗ cho thanh tab + nửa dòng đầu hiện trên fold để user biết có gì
-// bên dưới (cột này cuộn được). Sàn thấp hơn desktop vì màn nhỏ.
-const PANEL_PEEK = 110; // margin 16 + tab bar ~45 + nửa dòng playlist ~50
-const COMPACT_FLOOR_VH = 38;
+// Công thức kích thước video liên tục (HEADER_H/BREATH/VIDEO_FLOOR_VH/
+// PANEL_PEEK/COMPACT_FLOOR_VH) đã chuyển vào theme.ts — dùng chung với
+// spaces/[id]/learn, xem chú thích đầy đủ tại đó.
 
 /* ─── Page ───────────────────────────────────────────────────────────────── */
 export default function VibeDemoPage() {
