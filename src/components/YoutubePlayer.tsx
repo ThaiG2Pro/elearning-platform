@@ -13,6 +13,10 @@ interface Props {
     // video đang chạy — cha (learn/page.tsx) cần biết trạng thái play/pause.
     onPlay?: () => void;
     onPause?: () => void;
+    // Stage 16:9 của learn/page.tsx đã ấn định tỉ lệ ở khung ngoài và dành
+    // 36px đáy cho thanh trạng thái — player khi đó phải LẤP phần còn lại
+    // (flex-1) thay vì tự giữ aspect-video (sẽ cao hơn stage đúng 36px).
+    fill?: boolean;
 }
 
 export interface VideoPlayerHandle {
@@ -20,7 +24,7 @@ export interface VideoPlayerHandle {
     getCurrentTime: () => number;
 }
 
-const YoutubePlayer = forwardRef<VideoPlayerHandle, Props>(({ videoId, initialPos, onProgress, onDuration, onFlush, onEnded, onPlay, onPause }, ref) => {
+const YoutubePlayer = forwardRef<VideoPlayerHandle, Props>(({ videoId, initialPos, onProgress, onDuration, onFlush, onEnded, onPlay, onPause, fill }, ref) => {
     const playerRef = useRef<any>(null);
     const intervalRef = useRef<NodeJS.Timeout | null>(null);
     const isInitialSeekDone = useRef(false);
@@ -109,7 +113,7 @@ const YoutubePlayer = forwardRef<VideoPlayerHandle, Props>(({ videoId, initialPo
     return (
         // Không còn viền/bo góc/shadow riêng — khung "màn hình rạp" ở learn/page.tsx
         // (bg-ink-screen, border-ink-borderHi) giờ là viền duy nhất bọc quanh player.
-        <div className="youtube-player-wrapper w-full aspect-video overflow-hidden">
+        <div className={`youtube-player-wrapper w-full overflow-hidden ${fill ? 'flex-1 min-h-0 [&_iframe]:h-full [&>div]:h-full' : 'aspect-video'}`}>
             <YouTube
                 videoId={videoId}
                 opts={opts}

@@ -12,6 +12,10 @@ interface Props {
     // video đang chạy — cha (learn/page.tsx) cần biết trạng thái play/pause.
     onPlay?: () => void;
     onPause?: () => void;
+    // Cùng hợp đồng với YoutubePlayer: khi nằm trong stage 16:9 của
+    // learn/page.tsx, player lấp phần còn lại (flex-1) thay vì tự giữ
+    // aspect-video — xem chú thích ở YoutubePlayer.
+    fill?: boolean;
 }
 
 /**
@@ -21,7 +25,7 @@ interface Props {
  * Vimeo player iframe via its postMessage protocol (no extra dependency —
  * every Vimeo embed responds to this without needing the player.js SDK).
  */
-const VimeoPlayer = forwardRef<VideoPlayerHandle, Props>(({ videoId, initialPos, onProgress, onDuration, onFlush, onEnded, onPlay, onPause }, ref) => {
+const VimeoPlayer = forwardRef<VideoPlayerHandle, Props>(({ videoId, initialPos, onProgress, onDuration, onFlush, onEnded, onPlay, onPause, fill }, ref) => {
     const iframeRef = useRef<HTMLIFrameElement>(null);
     const readyRef = useRef(false);
     const lastKnownTimeRef = useRef(0);
@@ -97,7 +101,7 @@ const VimeoPlayer = forwardRef<VideoPlayerHandle, Props>(({ videoId, initialPos,
     return (
         // Không còn viền/bo góc/shadow riêng — khung "màn hình rạp" ở learn/page.tsx
         // (bg-ink-screen, border-ink-borderHi) giờ là viền duy nhất bọc quanh player.
-        <div className="vimeo-player-wrapper w-full aspect-video overflow-hidden">
+        <div className={`vimeo-player-wrapper w-full overflow-hidden ${fill ? 'flex-1 min-h-0' : 'aspect-video'}`}>
             <iframe
                 ref={iframeRef}
                 src={embedUrl}
