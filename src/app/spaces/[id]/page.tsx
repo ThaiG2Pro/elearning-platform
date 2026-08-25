@@ -1,12 +1,10 @@
 'use client';
 
-import Image from 'next/image';
 import { useState, useEffect } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useRef, useCallback } from 'react';
 import Header from '@/components/Header';
-import { Skeleton } from '@/components/ui/skeleton';
-import { MARGIN_W } from '@/lib/vibe/theme';
+import SpacePreview from '@/components/space/SpacePreview';
 import { SpaceDetail, Companion } from '@/types/space.types';
 import { User } from '@/types/auth.types';
 import { getSpaceDetail, copySharedSpace, getCompanions } from '@/lib/spaces';
@@ -125,249 +123,135 @@ export default function SpaceDetailPage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [user, appState, space]);
 
+    // appState (5 trạng thái nội bộ) → 3 state trình bày của SpacePreview.
+    const previewState: 'loading' | 'error' | 'ready' =
+        appState === 'loading' ? 'loading'
+        : appState === 'error' && errorMessage ? 'error'
+        : 'ready';
+
     return (
         <div className="min-h-screen bg-ink-page">
             <Header user={user} onLogout={handleLogout} onJoin={handleJoin} />
 
-            <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-7 md:py-10">
-                {/* Navigation Section */}
-                <section className="mb-6">
-                    <button
-                        onClick={handleBack}
-                        className="inline-flex items-center gap-1.5 text-sm text-ink-textMuted hover:text-ink-text transition-colors focus:outline-none"
-                    >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                        </svg>
-                        Quay lại danh sách
-                    </button>
-                </section>
-
-                {appState === 'loading' ? (
-                    <div className="space-y-4">
-                        <Skeleton className="h-64 rounded-ink-md bg-ink-page" />
-                        <Skeleton className="h-6 w-2/3 bg-ink-page" />
-                        <Skeleton className="h-4 w-1/3 bg-ink-page" />
-                        <Skeleton className="h-4 w-full bg-ink-page" />
-                        <Skeleton className="h-4 w-5/6 bg-ink-page" />
-                        <Skeleton className="h-10 w-32 mt-2 bg-ink-page" />
+            <SpacePreview
+                state={previewState}
+                errorMessage={errorMessage}
+                onBack={handleBack}
+                data={space ?? undefined}
+                badge={space && (
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium mb-3 border border-ink-border ${space.isOwner ? 'bg-ink-page text-ink-textMid' : 'bg-ink-accentA text-ink-accent'}`}>
+                        {space.isOwner ? 'Space của bạn' : 'Space của người dùng khác'}
+                    </span>
+                )}
+                infoExtra={space?.isOwner && typeof space.completionRate === 'number' && (
+                    <div className="mt-4">
+                        <div className="flex items-center justify-between text-xs text-ink-textMuted mb-1">
+                            <span>Tiến độ học của bạn</span>
+                            <span className="font-medium text-ink-textMid">{space.completionRate}%</span>
+                        </div>
+                        <div className="w-full h-2 bg-ink-page rounded-full overflow-hidden">
+                            <div
+                                className="h-full bg-ink-accent rounded-full transition-all"
+                                style={{ width: `${space.completionRate}%` }}
+                            />
+                        </div>
                     </div>
-                ) : space ? (
-                    <>
-                        {/* Visual Content Section */}
-                        <section className="mb-6">
-                            <div className="w-full aspect-video bg-ink-page rounded-ink-md overflow-hidden border border-ink-border relative">
-                                {space.thumbnailUrl ? (
-                                    <Image
-                                        src={space.thumbnailUrl}
-                                        alt={space.title}
-                                        fill
-                                        sizes="(max-width: 768px) 100vw, 800px"
-                                        className="object-cover"
-                                    />
-                                ) : (
-                                    <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-ink-textDim">
-                                        <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 10l4.553-2.069A1 1 0 0121 8.868V15.13a1 1 0 01-1.447.897L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
-                                        </svg>
-                                        <span className="text-sm">Chưa có ảnh</span>
-                                    </div>
-                                )}
-                            </div>
-                        </section>
-
-                        {/* Information Section */}
-                        <section className="bg-ink-panel border border-ink-border rounded-ink-md p-6 shadow-ink-sm mb-6">
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium mb-3 border border-ink-border ${space.isOwner ? 'bg-ink-page text-ink-textMid' : 'bg-ink-accentA text-ink-accent'}`}>
-                                {space.isOwner ? 'Space của bạn' : 'Space của người dùng khác'}
-                            </span>
-                            <h1 className="text-[clamp(19px,2.2vw,24px)] font-bold tracking-[-0.01em] text-ink-text mb-3 leading-snug">{space.title}</h1>
-                            <div className="flex flex-wrap items-center gap-4 mb-4">
-                                {space.ownerName && (
-                                    <p className="text-sm text-ink-textMuted">
-                                        Tác giả: <span className="font-medium text-ink-text">{space.isOwner ? 'Bạn' : space.ownerName}</span>
-                                    </p>
-                                )}
-                            </div>
-                            {space.description && (
-                                <p className="text-sm text-ink-textMuted leading-relaxed">{space.description}</p>
-                            )}
-                            {space.isOwner && typeof space.completionRate === 'number' && (
-                                <div className="mt-4">
-                                    <div className="flex items-center justify-between text-xs text-ink-textMuted mb-1">
-                                        <span>Tiến độ học của bạn</span>
-                                        <span className="font-medium text-ink-textMid">{space.completionRate}%</span>
-                                    </div>
-                                    <div className="w-full h-2 bg-ink-page rounded-full overflow-hidden">
+                )}
+                aside={companions.length > 0 && (
+                    // WP1.7 — Companions: who else is learning this space's clone
+                    // lineage, read-only, lineage-scoped.
+                    <section className="bg-ink-panel border border-ink-border rounded-ink-md p-6 shadow-ink-sm mb-6">
+                        <h2 className="text-sm font-semibold text-ink-text mb-3">Cùng học</h2>
+                        <ul className="space-y-3">
+                            {companions.map((companion) => (
+                                <li key={companion.spaceId} className="flex items-center gap-3">
+                                    <span className="flex-1 text-sm text-ink-text truncate">
+                                        {companion.name}
+                                        {companion.isSelf && (
+                                            <span className="text-ink-textMuted"> (Bạn)</span>
+                                        )}
+                                    </span>
+                                    <div className="w-28 h-1.5 bg-ink-page rounded-full overflow-hidden">
                                         <div
                                             className="h-full bg-ink-accent rounded-full transition-all"
-                                            style={{ width: `${space.completionRate}%` }}
+                                            style={{ width: `${companion.completionRate}%` }}
                                         />
                                     </div>
-                                </div>
-                            )}
-                        </section>
-
-                        {/* Content Structure Section — port đầy đủ motif renderPlaylist
-                            từ vibe-demo/page.tsx (thay bản border-l-2 từng dòng rút gọn
-                            trước đây): số bài trong cột lề mono MARGIN_W, đường kẻ mực
-                            dọc LIÊN TỤC, tên chương là dòng tiêu đề trong cùng dòng chảy. */}
-                        {space.chapters && space.chapters.length > 0 && (
-                            <section className="bg-ink-panel border border-ink-border rounded-ink-md shadow-ink-sm mb-6 overflow-hidden">
-                                <h2 className="text-xs font-semibold text-ink-textMuted uppercase tracking-wide px-6 py-3.5 border-b border-ink-border">
-                                    Nội dung Space
-                                </h2>
-                                <div className="py-1.5">
-                                    {space.chapters.map((chapter: any) => {
-                                        let lessonNum = 0;
-                                        // Đánh số bài liên tục trong từng chương (reset mỗi chương,
-                                        // giống lesson number theo chương ở learn/page.tsx).
-                                        return (
-                                            <div key={chapter.id}>
-                                                {space.chapters.length > 1 && (
-                                                    <div className="flex items-stretch">
-                                                        <span style={{ width: MARGIN_W }} className="shrink-0" />
-                                                        <p className="flex-1 border-l border-ink-marginLn pt-3 pb-1.5 pl-3.5 pr-4 text-sm font-semibold text-ink-text">
-                                                            {chapter.title}
-                                                        </p>
-                                                    </div>
-                                                )}
-                                                {chapter.lessons.map((lesson: any) => {
-                                                    lessonNum += 1;
-                                                    return (
-                                                        <div key={lesson.id} className="flex items-stretch">
-                                                            <span
-                                                                style={{ width: MARGIN_W }}
-                                                                className="shrink-0 flex items-start justify-center pt-[11px] font-mono text-[11px] text-ink-textDim"
-                                                            >
-                                                                {String(lessonNum).padStart(2, '0')}
-                                                            </span>
-                                                            <div className="flex-1 min-w-0 border-l border-ink-marginLn pt-2 pb-2 pl-3.5 pr-4 flex items-start justify-between gap-2">
-                                                                <span className="text-sm text-ink-textMid leading-[1.4] min-w-0 truncate">{lesson.title}</span>
-                                                                <span className="shrink-0 text-ink-textDim text-[11px] font-mono uppercase">{lesson.type}</span>
-                                                            </div>
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </section>
-                        )}
-
-                        {/* WP1.7 — Companions Section: who else is learning this
-                            space's clone lineage, read-only, lineage-scoped. */}
-                        {companions.length > 0 && (
-                            <section className="bg-ink-panel border border-ink-border rounded-ink-md p-6 shadow-ink-sm mb-6">
-                                <h2 className="text-sm font-semibold text-ink-text mb-3">Cùng học</h2>
-                                <ul className="space-y-3">
-                                    {companions.map((companion) => (
-                                        <li key={companion.spaceId} className="flex items-center gap-3">
-                                            <span className="flex-1 text-sm text-ink-text truncate">
-                                                {companion.name}
-                                                {companion.isSelf && (
-                                                    <span className="text-ink-textMuted"> (Bạn)</span>
-                                                )}
-                                            </span>
-                                            <div className="w-28 h-1.5 bg-ink-page rounded-full overflow-hidden">
-                                                <div
-                                                    className="h-full bg-ink-accent rounded-full transition-all"
-                                                    style={{ width: `${companion.completionRate}%` }}
-                                                />
-                                            </div>
-                                            <span className="w-10 text-right text-xs font-medium text-ink-textMuted">
-                                                {companion.completionRate}%
-                                            </span>
-                                        </li>
-                                    ))}
-                                </ul>
-                            </section>
-                        )}
-
-                        {/* Interaction Section */}
-                        <section>
-                            {!user ? (
+                                    <span className="w-10 text-right text-xs font-medium text-ink-textMuted">
+                                        {companion.completionRate}%
+                                    </span>
+                                </li>
+                            ))}
+                        </ul>
+                    </section>
+                )}
+                cta={space && (
+                    <section>
+                        {!user ? (
+                            <button
+                                onClick={handleJoin}
+                                className="inline-flex items-center gap-2 px-6 py-3 vd-focusable bg-ink-accent hover:bg-ink-accent/90 text-white font-medium rounded-lg transition-colors shadow-ink-sm"
+                            >
+                                Tham gia để học
+                            </button>
+                        ) : space.isOwner ? (
+                            <div className="flex flex-wrap items-center gap-3">
                                 <button
-                                    onClick={handleJoin}
+                                    onClick={handleLearn}
                                     className="inline-flex items-center gap-2 px-6 py-3 vd-focusable bg-ink-accent hover:bg-ink-accent/90 text-white font-medium rounded-lg transition-colors shadow-ink-sm"
                                 >
-                                    Tham gia để học
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                    {typeof space.completionRate === 'number' && space.completionRate > 0 ? 'Tiếp tục học' : 'Bắt đầu học'}
                                 </button>
-                            ) : space.isOwner ? (
-                                <div className="flex flex-wrap items-center gap-3">
-                                    <button
-                                        onClick={handleLearn}
-                                        className="inline-flex items-center gap-2 px-6 py-3 vd-focusable bg-ink-accent hover:bg-ink-accent/90 text-white font-medium rounded-lg transition-colors shadow-ink-sm"
-                                    >
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                        </svg>
-                                        {typeof space.completionRate === 'number' && space.completionRate > 0 ? 'Tiếp tục học' : 'Bắt đầu học'}
-                                    </button>
-                                    <button
-                                        onClick={handleEdit}
-                                        className="inline-flex items-center gap-2 px-6 py-3 border border-ink-border bg-ink-panel hover:bg-ink-page text-ink-text font-medium rounded-lg transition-colors shadow-ink-sm"
-                                    >
-                                        <svg className="w-4 h-4 text-ink-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                        </svg>
-                                        Chỉnh sửa Space
-                                    </button>
-                                </div>
-                            ) : space.shareToken ? (
                                 <button
-                                    onClick={handleCopy}
-                                    disabled={copying}
-                                    className="inline-flex items-center gap-2 px-6 py-3 vd-focusable bg-ink-accent hover:bg-ink-accent/90 disabled:opacity-60 text-white font-medium rounded-lg transition-colors shadow-ink-sm"
+                                    onClick={handleEdit}
+                                    className="inline-flex items-center gap-2 px-6 py-3 border border-ink-border bg-ink-panel hover:bg-ink-page text-ink-text font-medium rounded-lg transition-colors shadow-ink-sm"
                                 >
-                                    {copying ? (
-                                        <>
-                                            <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"/>
-                                            Đang sao chép…
-                                        </>
-                                    ) : (
-                                        <>
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
-                                            </svg>
-                                            Sao chép về học
-                                        </>
-                                    )}
+                                    <svg className="w-4 h-4 text-ink-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                    </svg>
+                                    Chỉnh sửa Space
                                 </button>
-                            ) : (
-                                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-                                    <p className="text-sm text-ink-textMuted bg-ink-page rounded-lg px-4 py-3">
-                                        Đây là Space của người dùng khác.
-                                    </p>
-                                    <button
-                                        onClick={handleBack}
-                                        className="px-4 py-2 border border-ink-border bg-ink-panel hover:bg-ink-page text-ink-text text-sm font-medium rounded-lg transition-colors"
-                                    >
-                                        Khám phá Space khác
-                                    </button>
-                                </div>
-                            )}
-                        </section>
-                    </>
-                ) : appState === 'error' && errorMessage ? (
-                    <div className="flex flex-col items-center py-16 text-center">
-                        <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mb-3">
-                            <svg className="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                            </svg>
-                        </div>
-                        <p className="text-sm text-ink-textMid mb-4">{errorMessage}</p>
-                        <button
-                            onClick={handleBack}
-                            className="px-4 py-2 bg-ink-accent hover:bg-ink-accent/90 text-white text-sm font-medium rounded-lg transition-colors"
-                        >
-                            Quay lại
-                        </button>
-                    </div>
-                ) : null}
-            </main>
+                            </div>
+                        ) : space.shareToken ? (
+                            <button
+                                onClick={handleCopy}
+                                disabled={copying}
+                                className="inline-flex items-center gap-2 px-6 py-3 vd-focusable bg-ink-accent hover:bg-ink-accent/90 disabled:opacity-60 text-white font-medium rounded-lg transition-colors shadow-ink-sm"
+                            >
+                                {copying ? (
+                                    <>
+                                        <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"/>
+                                        Đang sao chép…
+                                    </>
+                                ) : (
+                                    <>
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                                        </svg>
+                                        Sao chép về học
+                                    </>
+                                )}
+                            </button>
+                        ) : (
+                            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                                <p className="text-sm text-ink-textMuted bg-ink-page rounded-lg px-4 py-3">
+                                    Đây là Space của người dùng khác.
+                                </p>
+                                <button
+                                    onClick={handleBack}
+                                    className="px-4 py-2 border border-ink-border bg-ink-panel hover:bg-ink-page text-ink-text text-sm font-medium rounded-lg transition-colors"
+                                >
+                                    Khám phá Space khác
+                                </button>
+                            </div>
+                        )}
+                    </section>
+                )}
+            />
         </div>
     );
 }
