@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Play, HelpCircle } from 'lucide-react';
 import {
@@ -86,6 +86,78 @@ const extractYoutubeId = (url: string): string | null => {
     const match = url.match(/(?:v=|youtu\.be\/)([^&\s?/]+)/);
     return match ? match[1] : null;
 };
+
+// 2026-09-04 — dropdown chọn video nguồn cho AI quiz trước đây là <select>
+// gốc: khung ngoài đổi style được, nhưng danh sách option xổ xuống thì KHÔNG
+// (đó là chrome của trình duyệt, CSS không chạm vào được) nên vẫn xấu mặc
+// định như trước khi "làm đẹp". Tự vẽ 1 listbox đơn giản (button + panel
+// tuyệt đối) để style được cả phần đang mở, kèm click-outside để đóng.
+type VideoSourceOption = Lesson & { sourceId: number; chapterTitle: string };
+
+function VideoSourceDropdown({
+    options,
+    selectedSourceId,
+    onChange,
+    multiChapter,
+}: {
+    options: VideoSourceOption[];
+    selectedSourceId: number;
+    onChange: (sourceId: number) => void;
+    multiChapter: boolean;
+}) {
+    const [open, setOpen] = useState(false);
+    const rootRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (!open) return;
+        const handleClickOutside = (e: MouseEvent) => {
+            if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false);
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [open]);
+
+    const label = (l: VideoSourceOption) => multiChapter ? `${l.chapterTitle} › ${l.title}` : l.title;
+    const selected = options.find(l => l.sourceId === selectedSourceId) ?? options[0];
+
+    return (
+        <div ref={rootRef} className="relative">
+            <button
+                type="button"
+                onClick={() => setOpen(o => !o)}
+                title={label(selected)}
+                className="w-full flex items-center justify-between gap-2 pl-3 pr-3 py-2.5 text-xs font-medium border border-ink-borderHi rounded-ink-md bg-ink-panel text-ink-text hover:border-ink-accent focus:outline-none focus:ring-2 focus:ring-ink-accent transition-colors"
+            >
+                <span className="truncate">{label(selected)}</span>
+                <svg
+                    className={`w-3.5 h-3.5 text-ink-textDim shrink-0 transition-transform ${open ? 'rotate-180' : ''}`}
+                    fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7"/>
+                </svg>
+            </button>
+            {open && (
+                <div className="absolute z-20 mt-1.5 w-full max-h-56 overflow-y-auto rounded-ink-md border border-ink-border bg-ink-panel shadow-ink-md py-1">
+                    {options.map((l) => (
+                        <button
+                            key={l.id}
+                            type="button"
+                            title={label(l)}
+                            onClick={() => { onChange(l.sourceId); setOpen(false); }}
+                            className={`w-full text-left px-3 py-2 text-xs truncate transition-colors ${
+                                l.sourceId === selectedSourceId
+                                    ? 'bg-ink-accentA text-ink-accent font-semibold'
+                                    : 'text-ink-text hover:bg-ink-page'
+                            }`}
+                        >
+                            {label(l)}
+                        </button>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
 
 export default function SpaceEditPage() {
     const params = useParams();
@@ -1697,24 +1769,13 @@ export default function SpaceEditPage() {
                                                                 nháp trong khu vực “Câu hỏi” bên dưới — bấm “Lưu vào bài quiz này” mới
                                                                 thật sự thay thế câu hỏi hiện có, <strong>không đụng tới video hay bài quiz nào khác</strong>.
                                                             </p>
-                                                            <div className="relative mb-2">
-                                                                <select
-                                                                    value={selectedSourceId}
-                                                                    onChange={(e) => setAiQuizSourceLessonId(Number(e.target.value))}
-                                                                    className="w-full appearance-none pl-3 pr-9 py-2.5 text-xs font-medium border border-ink-borderHi rounded-ink-md bg-ink-panel text-ink-text hover:border-ink-accent focus:outline-none focus:ring-2 focus:ring-ink-accent focus:border-ink-accent transition-colors cursor-pointer"
-                                                                >
-                                                                    {videoCandidates.map((l) => (
-                                                                        <option key={l.id} value={l.sourceId}>
-                                                                            {multiChapter ? `${l.chapterTitle} › ${l.title}` : l.title}
-                                                                        </option>
-                                                                    ))}
-                                                                </select>
-                                                                <svg
-                                                                    className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-ink-textDim"
-                                                                    fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                                                                >
-                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7"/>
-                                                                </svg>
+                                                            <div className="mb-2">
+                                                                <VideoSourceDropdown
+                                                                    options={videoCandidates}
+                                                                    selectedSourceId={selectedSourceId}
+                                                                    onChange={setAiQuizSourceLessonId}
+                                                                    multiChapter={multiChapter}
+                                                                />
                                                             </div>
                                                             <p className="text-[11px] text-ink-textMuted mb-2">
                                                                 Nguồn hiện chọn: <span className="font-semibold text-ink-text">{selectedVideo.title}</span>
