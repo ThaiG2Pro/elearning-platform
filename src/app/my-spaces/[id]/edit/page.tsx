@@ -385,11 +385,12 @@ export default function SpaceEditPage() {
                 type: newLessonType
             });
             const newLesson: Lesson = {
-                id: Number((res as any).lessonId ?? (res as any).id),
+                id: res.lessonId,
                 title: titleToUse,
                 type: newLessonType,
                 orderIndex: nextIndex,
                 videoUrl: '',
+                sourceId: res.sourceId,
             };
             setSpace(prev => prev ? {
                 ...prev,
@@ -537,11 +538,17 @@ export default function SpaceEditPage() {
         if (!lessonForm.id) return;
         try {
             setSavingLesson(true);
-            await updateLesson(lessonForm.id, {
+            const result = await updateLesson(lessonForm.id, {
                 title: lessonForm.title,
                 videoUrl: lessonForm.videoUrl,
                 orderIndex: lessonForm.orderIndex,
             });
+            // 2026-09-04 — dán/đổi videoUrl giờ server tự tạo Source (nếu
+            // chưa có) và trả lại sourceId; phải ghi lại vào cả lessonForm
+            // (bật panel AI ngay, không cần thoát-vào-lại lesson) lẫn cây
+            // `space` (để lần chọn lesson tiếp theo không mất, vì selectLesson
+            // đọc sourceId từ đúng object này chứ không refetch).
+            setLessonForm(prev => prev.id === lessonForm.id ? { ...prev, sourceId: result.sourceId } : prev);
             setSpace(prev => prev ? {
                 ...prev,
                 chapters: prev.chapters.map(ch => ({
@@ -550,6 +557,7 @@ export default function SpaceEditPage() {
                         ...l,
                         title: lessonForm.title,
                         videoUrl: lessonForm.videoUrl,
+                        sourceId: result.sourceId,
                     } : l)
                 }))
             } : null);

@@ -28,9 +28,12 @@ export async function PUT(
         );
 
         const controller = new ManagementController();
-        await controller.updateLesson(userId, lessonId, dto);
+        const result = await controller.updateLesson(userId, lessonId, dto);
 
-        return NextResponse.json({ message: 'Lesson updated successfully' });
+        return NextResponse.json({
+            message: 'Lesson updated successfully',
+            sourceId: result.sourceId !== null ? Number(result.sourceId) : null,
+        });
     } catch (error) {
         console.error('Update lesson error:', error);
         const message = error instanceof Error ? error.message : 'Internal server error';

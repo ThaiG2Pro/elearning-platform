@@ -55,12 +55,12 @@ export class ManagementController {
     }
 
     // Lesson Management
-    async createLesson(userId: bigint, sectionId: bigint, dto: CreateLessonDto): Promise<bigint> {
+    async createLesson(userId: bigint, sectionId: bigint, dto: CreateLessonDto): Promise<{ id: bigint; sourceId: bigint | null }> {
         return await this.contentService.createLesson(userId, sectionId, dto);
     }
 
-    async updateLesson(userId: bigint, lessonId: bigint, dto: UpdateLessonDto): Promise<void> {
-        await this.contentService.updateLesson(userId, lessonId, dto);
+    async updateLesson(userId: bigint, lessonId: bigint, dto: UpdateLessonDto): Promise<{ sourceId: bigint | null }> {
+        return await this.contentService.updateLesson(userId, lessonId, dto);
     }
 
     async deleteLesson(userId: bigint, lessonId: bigint): Promise<void> {

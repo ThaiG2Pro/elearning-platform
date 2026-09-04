@@ -30,9 +30,12 @@ export async function POST(
         };
 
         const controller = new ManagementController();
-        const lessonId = await controller.createLesson(userId, sectionId, body);
+        const lesson = await controller.createLesson(userId, sectionId, body);
 
-        return NextResponse.json({ lessonId: Number(lessonId) }, { status: 201 });
+        return NextResponse.json(
+            { lessonId: Number(lesson.id), sourceId: lesson.sourceId !== null ? Number(lesson.sourceId) : null },
+            { status: 201 }
+        );
     } catch (error) {
         console.error('Create lesson error:', error);
         const message = error instanceof Error ? error.message : 'Internal server error';

@@ -1,7 +1,7 @@
 // src/lib/management.ts
 
 import api from './api';
-import { ManagedSpacesResponse, ManagedSpacesRequest, SpaceStructure, LessonPreview, Chapter, Lesson, QuizParseResponse } from '@/types/management.types';
+import { ManagedSpacesResponse, ManagedSpacesRequest, SpaceStructure, LessonPreview, Chapter, QuizParseResponse } from '@/types/management.types';
 
 // WP1.6 follow-up (round 2) — renamed from getLecturerSpaces: lists the
 // spaces the current user owns, for the /my-spaces management screen.
@@ -193,9 +193,13 @@ export const deleteSection = async (sectionId: number): Promise<void> => {
 // prisma/schema.prisma) — CreateLessonDto/UpdateLessonDto never read it.
 // The "Mô tả nội dung" textarea that fed it always silently discarded
 // whatever the user typed.
-export const createLesson = async (sectionId: number, data: { title: string; videoUrl?: string; orderIndex: number; type: 'VIDEO' | 'QUIZ' }): Promise<Lesson> => {
+// 2026-09-04 — response thật là { lessonId, sourceId }, không phải Lesson
+// đầy đủ (route chỉ trả lại 2 field này, xem
+// app/api/v1/management/sections/[id]/lessons/route.ts). `sourceId` cần cho
+// editor biết lesson VIDEO vừa tạo có nguồn cho AI hay chưa.
+export const createLesson = async (sectionId: number, data: { title: string; videoUrl?: string; orderIndex: number; type: 'VIDEO' | 'QUIZ' }): Promise<{ lessonId: number; sourceId: number | null }> => {
     try {
-        const response = await api.post<Lesson>(
+        const response = await api.post<{ lessonId: number; sourceId: number | null }>(
             `/management/sections/${sectionId}/lessons`,
             data
         );
@@ -210,9 +214,10 @@ export const createLesson = async (sectionId: number, data: { title: string; vid
     }
 };
 
-export const updateLesson = async (lessonId: number, data: { title: string; videoUrl?: string; orderIndex?: number }): Promise<Lesson> => {
+// Cùng lý do với createLesson ở trên — route trả { message, sourceId }.
+export const updateLesson = async (lessonId: number, data: { title: string; videoUrl?: string; orderIndex?: number }): Promise<{ message: string; sourceId: number | null }> => {
     try {
-        const response = await api.put<Lesson>(
+        const response = await api.put<{ message: string; sourceId: number | null }>(
             `/management/lessons/${lessonId}`,
             data
         );

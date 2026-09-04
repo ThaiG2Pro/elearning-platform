@@ -128,31 +128,25 @@ export class ContentManagementService {
     }
 
     /**
-     * WP1.1 — "dán link → tự parse metadata → tự tạo space". Creates a
-     * `Source` (deduped by normalized URL), then a space with one default
-     * chapter and one lesson pointing at it, in a single step.
+     * Find-or-create a `Source` row for a URL (dedup theo normalized_url) —
+     * tách ra từ `createSpaceFromLink` (2026-09-04) để `createLesson`/
+     * `updateLesson` cũng gọi được: trước đó chỉ có luồng "dán link → tự tạo
+     * space" mới sinh Source, nên bất kỳ lesson VIDEO nào thêm/sửa video URL
+     * ngay trong editor (`/my-spaces/[id]/edit`) đều không có `source_id` —
+     * 2 nút "AI tóm tắt"/"AI tạo quiz" chỉ hiện khi `lessonForm.sourceId`
+     * có giá trị nên biến mất hoàn toàn với lesson tạo/sửa theo đường này.
      *
-     * WP3.3 — mở rộng ngoài YouTube: URL không phải YouTube (và không phải
-     * playlist YouTube) được coi là web/blog (mục 6.8 economics doc) thay vì
-     * bị chặn `UNSUPPORTED_URL` như Checkpoint 2. Nội dung trang chỉ thật sự
-     * được fetch/parse lazy khi user bấm dùng AI (`ReadabilityWebContentProvider`
-     * qua `AIGenerationService`) — ở đây chỉ lấy `<title>` để đặt tên space/
-     * lesson, đối xứng oEmbed bên YouTube, không tốn thêm request nào khác.
+     * Trả `undefined` (không throw) khi URL không hỗ trợ hoặc rỗng — set
+     * source cho lesson luôn là best-effort, không được chặn việc lưu
+     * title/videoUrl chỉ vì URL lạ.
      */
-    async createSpaceFromLink(ownerId: bigint, url: string): Promise<{ spaceId: bigint; title: string; titleIsPlaceholder: boolean }> {
-        const trimmedUrl = url.trim();
-        if (!trimmedUrl) throw new Error('URL_REQUIRED');
-        // WP1.10.2 — reject playlist URLs at the validate layer with a clear,
-        // distinct error instead of creating an empty space to wait for an
-        // import that doesn't exist yet (playlist import is out of scope).
-        if (YouTubeOEmbedAdapter.isPlaylistUrl(trimmedUrl)) {
-            throw new Error('PLAYLIST_URL_NOT_SUPPORTED');
-        }
+    private async findOrCreateSourceForUrl(url: string | undefined): Promise<bigint | undefined> {
+        const trimmedUrl = url?.trim();
+        if (!trimmedUrl) return undefined;
+        if (YouTubeOEmbedAdapter.isPlaylistUrl(trimmedUrl)) return undefined;
 
         const isYouTube = YouTubeOEmbedAdapter.isYouTubeUrl(trimmedUrl);
-        if (!isYouTube && !WebPageAdapter.isWebUrl(trimmedUrl)) {
-            throw new Error('UNSUPPORTED_URL');
-        }
+        if (!isYouTube && !WebPageAdapter.isWebUrl(trimmedUrl)) return undefined;
 
         const normalizedUrl = isYouTube
             ? YouTubeOEmbedAdapter.normalize(trimmedUrl)
@@ -168,7 +162,7 @@ export class ContentManagementService {
                 const videoId = YouTubeOEmbedAdapter.extractVideoId(trimmedUrl);
                 // WP1.10.2 — oEmbed failing (private/deleted/region-locked video,
                 // transient network error…) used to 422 and block creation
-                // entirely. Now it still creates the space, with a placeholder
+                // entirely. Now it still creates the source, with a placeholder
                 // title the owner can rename — only an invalid/non-YouTube URL
                 // blocks creation.
                 title = `Video YouTube (${videoId})`;
@@ -202,6 +196,41 @@ export class ContentManagementService {
                 },
             });
         }
+        return source.id;
+    }
+
+    /**
+     * WP1.1 — "dán link → tự parse metadata → tự tạo space". Creates a
+     * `Source` (deduped by normalized URL), then a space with one default
+     * chapter and one lesson pointing at it, in a single step.
+     *
+     * WP3.3 — mở rộng ngoài YouTube: URL không phải YouTube (và không phải
+     * playlist YouTube) được coi là web/blog (mục 6.8 economics doc) thay vì
+     * bị chặn `UNSUPPORTED_URL` như Checkpoint 2. Nội dung trang chỉ thật sự
+     * được fetch/parse lazy khi user bấm dùng AI (`ReadabilityWebContentProvider`
+     * qua `AIGenerationService`) — ở đây chỉ lấy `<title>` để đặt tên space/
+     * lesson, đối xứng oEmbed bên YouTube, không tốn thêm request nào khác.
+     */
+    async createSpaceFromLink(ownerId: bigint, url: string): Promise<{ spaceId: bigint; title: string; titleIsPlaceholder: boolean }> {
+        const trimmedUrl = url.trim();
+        if (!trimmedUrl) throw new Error('URL_REQUIRED');
+        // WP1.10.2 — reject playlist URLs at the validate layer with a clear,
+        // distinct error instead of creating an empty space to wait for an
+        // import that doesn't exist yet (playlist import is out of scope).
+        if (YouTubeOEmbedAdapter.isPlaylistUrl(trimmedUrl)) {
+            throw new Error('PLAYLIST_URL_NOT_SUPPORTED');
+        }
+
+        const isYouTube = YouTubeOEmbedAdapter.isYouTubeUrl(trimmedUrl);
+        if (!isYouTube && !WebPageAdapter.isWebUrl(trimmedUrl)) {
+            throw new Error('UNSUPPORTED_URL');
+        }
+
+        const sourceId = await this.findOrCreateSourceForUrl(trimmedUrl);
+        // Không thể undefined tới đây — 2 check UNSUPPORTED_URL/PLAYLIST ở
+        // trên đã lọc hết các trường hợp findOrCreateSourceForUrl trả về
+        // undefined; source vừa tạo/tìm lại để lấy title đặt tên space/lesson.
+        const source = await this.prisma.sources.findUniqueOrThrow({ where: { id: sourceId! } });
 
         const baseSlug = (source.title || 'khoa-hoc-moi').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
         const suffix = Math.random().toString(36).slice(2, 7);
@@ -430,7 +459,7 @@ export class ContentManagementService {
         });
     }
 
-    async createLesson(userId: bigint, sectionId: bigint, dto: CreateLessonDto): Promise<bigint> {
+    async createLesson(userId: bigint, sectionId: bigint, dto: CreateLessonDto): Promise<{ id: bigint; sourceId: bigint | null }> {
         AccessControlPolicy.validateOwnership(userId, await this.getOwnerIdForSection(sectionId));
 
         // DB giờ enforce lesson_type bằng enum — validate ở đây để trả lỗi
@@ -438,6 +467,11 @@ export class ContentManagementService {
         if (!['VIDEO', 'QUIZ', 'ARTICLE'].includes(dto.type)) {
             throw new Error('INVALID_LESSON_TYPE');
         }
+        // 2026-09-04 — trước đó lesson tạo tay trong editor (khác luồng "dán
+        // link → tự tạo space") không bao giờ có source_id dù có videoUrl,
+        // nên 2 nút AI (tóm tắt/tạo quiz) không hiện. Best-effort: URL không
+        // hỗ trợ/rỗng thì bỏ qua, không chặn việc tạo lesson.
+        const sourceId = await this.findOrCreateSourceForUrl(dto.contentUrl);
         const lesson = await this.prisma.lessons.create({
             data: {
                 chapter_id: sectionId,
@@ -445,22 +479,32 @@ export class ContentManagementService {
                 type: dto.type as lesson_type,
                 content_url: dto.contentUrl,
                 order_index: dto.orderIndex,
+                ...(sourceId !== undefined && { source_id: sourceId }),
             },
         });
-        return lesson.id;
+        return { id: lesson.id, sourceId: lesson.source_id ?? null };
     }
 
-    async updateLesson(userId: bigint, lessonId: bigint, dto: UpdateLessonDto): Promise<void> {
+    async updateLesson(userId: bigint, lessonId: bigint, dto: UpdateLessonDto): Promise<{ sourceId: bigint | null }> {
         AccessControlPolicy.validateOwnership(userId, await this.getOwnerIdForLesson(lessonId));
 
-        await this.prisma.lessons.update({
+        // Cùng lý do với createLesson ở trên — sửa/dán videoUrl vào 1 lesson
+        // đã tồn tại (vd tạo lesson rỗng rồi mới dán link sau) cũng phải gán
+        // source_id thì mới bật được panel AI, không chỉ lúc tạo mới.
+        const sourceId = dto.contentUrl !== undefined
+            ? await this.findOrCreateSourceForUrl(dto.contentUrl)
+            : undefined;
+
+        const lesson = await this.prisma.lessons.update({
             where: { id: lessonId },
             data: {
                 ...(dto.title && { title: dto.title }),
                 ...(dto.contentUrl !== undefined && { content_url: dto.contentUrl }),
                 ...(dto.orderIndex !== undefined && { order_index: dto.orderIndex }),
+                ...(sourceId !== undefined && { source_id: sourceId }),
             },
         });
+        return { sourceId: lesson.source_id ?? null };
     }
 
     async deleteLesson(userId: bigint, lessonId: bigint): Promise<void> {
