@@ -37,6 +37,7 @@ import {
 import { Button } from '@/components/ui/button';
 import TopBar from '@/components/vibe/TopBar';
 import Toast from '@/components/Toast';
+import MarkdownText from '@/components/MarkdownText';
 import AILessonComposer, { AIVideoSourceOption } from '@/components/AILessonComposer';
 import {
     Dialog,
@@ -1493,7 +1494,7 @@ export default function SpaceEditPage() {
                                                 {aiSummary && (
                                                     <div className="mt-3 p-3 rounded-lg bg-ink-page border border-ink-pageDim">
                                                         <p className="text-xs font-semibold text-ink-textMuted mb-1.5">Tóm tắt</p>
-                                                        <p className="text-sm text-ink-text whitespace-pre-line">{aiSummary}</p>
+                                                        <MarkdownText text={aiSummary} className="text-sm text-ink-text" />
                                                     </div>
                                                 )}
 

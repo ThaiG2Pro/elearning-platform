@@ -16,6 +16,7 @@ import {
     DialogTitle,
     DialogDescription,
 } from '@/components/ui/dialog';
+import MarkdownText from '@/components/MarkdownText';
 
 /**
  * 1 lesson VIDEO có Source trong space — ứng viên làm "video nguồn" cho AI.
@@ -374,7 +375,7 @@ export default function AILessonComposer({
                                         {summaryCopied ? 'Đã sao chép ✓' : 'Sao chép'}
                                     </button>
                                 </div>
-                                <p className="text-sm text-ink-text whitespace-pre-line max-h-60 overflow-y-auto">{summaryResult}</p>
+                                <MarkdownText text={summaryResult} className="text-sm text-ink-text max-h-60 overflow-y-auto" />
                             </div>
                         )}
                     </div>

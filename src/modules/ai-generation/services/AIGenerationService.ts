@@ -381,7 +381,17 @@ export class AIGenerationService {
         if (recipeType === 'summary') {
             const length = (params.length as string) ?? 'standard';
             const lengthInstruction = { short: '2-3 đoạn', standard: '5-8 đoạn', long: '10-15 đoạn' }[length] ?? '5-8 đoạn';
-            return `Tóm tắt nội dung sau ${languageInstruction}, độ dài ${lengthInstruction}, rõ ràng, dễ hiểu.${focusInstruction}${segmentInstruction}\n\n${transcript}`;
+            // 2026-09-04 — không ràng buộc gì về văn phong trước đây khiến
+            // model tự do dùng markdown (heading/bullet rời rạc/tô đậm tràn
+            // lan/xuống dòng vô tổ chức) — UI hiển thị plain text lẫn cả
+            // <MarkdownText> lẫn văn xuôi thật, đọc rối. Yêu cầu rõ: văn xuôi
+            // liền mạch, câu có chủ ngữ-vị ngữ, hạn chế markdown — không cấm
+            // tuyệt đối (UI vẫn render <MarkdownText>) nhưng chỉ nên dùng khi
+            // thật sự cần liệt kê, không phải mặc định.
+            const styleInstruction = language === 'en'
+                ? ' Write in flowing, coherent prose — complete sentences with clear subject and predicate, logically connected. Avoid unnecessary markdown formatting (bold, headings, colons-as-labels, disorganized line breaks); use bullet points only when the content is genuinely a list.'
+                : ' Viết bằng văn xuôi mạch lạc, liền mạch — câu có chủ ngữ vị ngữ rõ ràng, các ý nối logic với nhau. Hạn chế định dạng markdown thừa (tô đậm, tiêu đề, dấu hai chấm dùng như nhãn, xuống dòng vô tổ chức); chỉ dùng gạch đầu dòng khi nội dung thật sự là 1 danh sách.';
+            return `Tóm tắt nội dung sau ${languageInstruction}, độ dài ${lengthInstruction}, rõ ràng, dễ hiểu.${styleInstruction}${focusInstruction}${segmentInstruction}\n\n${transcript}`;
         }
 
         const questionCount = Number(params.questionCount) || 10;
