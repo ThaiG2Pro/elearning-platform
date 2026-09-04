@@ -1641,55 +1641,54 @@ export default function SpaceEditPage() {
                                             </div>
                                         </div>
 
-                                        <div className="space-y-4">
-                                            {/* Trước đó cả khối (kể cả danh sách câu hỏi + lưới đáp án 2 cột bên
-                                                dưới) bị nhốt trong max-w-xl (~576px) dù panel cha rộng hơn nhiều
-                                                — 2026-09-04, bỏ trần này (giống panel VIDEO không hề giới hạn),
-                                                chỉ giữ max-w-lg riêng cho ô tên bài học vì input text không cần
-                                                rộng hết panel. */}
-                                            <div className="max-w-lg">
-                                                <label className="block text-xs font-semibold text-ink-text mb-1.5">
-                                                    Tên bài học
-                                                </label>
-                                                <input
-                                                    type="text"
-                                                    value={lessonForm.title}
-                                                    onChange={(e) => setLessonForm(prev => ({ ...prev, title: e.target.value }))}
-                                                    placeholder="Nhập tên bài học Quiz…"
-                                                    className="w-full px-3.5 py-2.5 border border-ink-borderHi rounded-ink-md text-sm focus:outline-none focus:ring-2 focus:ring-ink-accent"
-                                                />
-                                            </div>
+                                        <div className="space-y-6">
+                                            {/* 2 zone cạnh nhau thay vì xếp trên-dưới (quyết định 2026-09-04):
+                                                "Tên bài học + Lưu" bên trái, "Dùng AI tạo quiz" bên phải — 2 việc
+                                                độc lập nhau (đổi tên vs sinh quiz), không có lý do phải đọc xong
+                                                cái này mới thấy cái kia. Cùng pattern grid xl:grid-cols-2 panel
+                                                VIDEO đang dùng (input trái, preview phải). */}
+                                            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                                                <div className="space-y-4">
+                                                    <div>
+                                                        <label className="block text-xs font-semibold text-ink-text mb-1.5">
+                                                            Tên bài học
+                                                        </label>
+                                                        <input
+                                                            type="text"
+                                                            value={lessonForm.title}
+                                                            onChange={(e) => setLessonForm(prev => ({ ...prev, title: e.target.value }))}
+                                                            placeholder="Nhập tên bài học Quiz…"
+                                                            className="w-full px-3.5 py-2.5 border border-ink-borderHi rounded-ink-md text-sm focus:outline-none focus:ring-2 focus:ring-ink-accent"
+                                                        />
+                                                    </div>
 
-                                            <Button
-                                                onClick={handleSaveLesson}
-                                                disabled={savingLesson || !lessonForm.title.trim()}
-                                                className="bg-ink-accent hover:bg-ink-accent text-white"
-                                            >
-                                                {savingLesson ? 'Đang lưu…' : 'Lưu tên bài học'}
-                                            </Button>
+                                                    <Button
+                                                        onClick={handleSaveLesson}
+                                                        disabled={savingLesson || !lessonForm.title.trim()}
+                                                        className="bg-ink-accent hover:bg-ink-accent text-white"
+                                                    >
+                                                        {savingLesson ? 'Đang lưu…' : 'Lưu tên bài học'}
+                                                    </Button>
+                                                </div>
 
-                                            {/* Bổ sung: lesson QUIZ tự nó không có sourceId (tạo tay hoặc rỗng),
-                                                nên cho chọn 1 video làm nguồn để AI sinh quiz — trước đây chỉ có
-                                                mỗi đường upload Excel thủ công ở đây. Nguồn lấy từ TOÀN BỘ space
-                                                (không chỉ chương hiện tại) vì user có thể muốn dùng video ở chương
-                                                khác làm nguồn cho quiz này — luôn hiện dropdown (kể cả khi chỉ có
-                                                1 video) để rõ ràng là chọn được, không phải cố định. */}
-                                            {(() => {
-                                                const videoCandidates = space.chapters
-                                                    .flatMap(ch => ch.lessons.map(l => ({ ...l, chapterTitle: ch.title })))
-                                                    .filter((l): l is Lesson & { sourceId: number; chapterTitle: string } => l.type === 'VIDEO' && !!l.sourceId);
-                                                if (videoCandidates.length === 0) return null;
-                                                const inSameChapter = videoCandidates.filter(l => l.chapterTitle === parentChapterOfSelected?.title);
-                                                const defaultSourceId = inSameChapter[0]?.sourceId ?? videoCandidates[0].sourceId;
-                                                const selectedSourceId = aiQuizSourceLessonId ?? defaultSourceId;
-                                                const selectedVideo = videoCandidates.find(l => l.sourceId === selectedSourceId) ?? videoCandidates[0];
-                                                const multiChapter = new Set(videoCandidates.map(l => l.chapterTitle)).size > 1;
-                                                return (
-                                                    <div className="border-t border-ink-pageDim pt-4">
-                                                        {/* Nhốt riêng controls (dropdown/nút) trong max-w-lg — dropdown
-                                                            chọn 1 video và nút bấm không cần rộng hết panel như danh
-                                                            sách câu hỏi bên dưới. */}
-                                                        <div className="max-w-lg">
+                                                {/* Bổ sung: lesson QUIZ tự nó không có sourceId (tạo tay hoặc rỗng),
+                                                    nên cho chọn 1 video làm nguồn để AI sinh quiz — trước đây chỉ có
+                                                    mỗi đường upload Excel thủ công ở đây. Nguồn lấy từ TOÀN BỘ space
+                                                    (không chỉ chương hiện tại) vì user có thể muốn dùng video ở chương
+                                                    khác làm nguồn cho quiz này — luôn hiện dropdown (kể cả khi chỉ có
+                                                    1 video) để rõ ràng là chọn được, không phải cố định. */}
+                                                {(() => {
+                                                    const videoCandidates = space.chapters
+                                                        .flatMap(ch => ch.lessons.map(l => ({ ...l, chapterTitle: ch.title })))
+                                                        .filter((l): l is Lesson & { sourceId: number; chapterTitle: string } => l.type === 'VIDEO' && !!l.sourceId);
+                                                    if (videoCandidates.length === 0) return null;
+                                                    const inSameChapter = videoCandidates.filter(l => l.chapterTitle === parentChapterOfSelected?.title);
+                                                    const defaultSourceId = inSameChapter[0]?.sourceId ?? videoCandidates[0].sourceId;
+                                                    const selectedSourceId = aiQuizSourceLessonId ?? defaultSourceId;
+                                                    const selectedVideo = videoCandidates.find(l => l.sourceId === selectedSourceId) ?? videoCandidates[0];
+                                                    const multiChapter = new Set(videoCandidates.map(l => l.chapterTitle)).size > 1;
+                                                    return (
+                                                        <div>
                                                             <h4 className="text-xs font-bold text-ink-text uppercase tracking-wider mb-2">
                                                                 Dùng AI tạo quiz cho bài “{lessonForm.title || 'chưa đặt tên'}”
                                                             </h4>
@@ -1749,9 +1748,9 @@ export default function SpaceEditPage() {
                                                                 </p>
                                                             )}
                                                         </div>
-                                                    </div>
-                                                );
-                                            })()}
+                                                    );
+                                                })()}
+                                            </div>
 
                                             {/* Câu hỏi — gộp làm 1 khu vực duy nhất (quyết định 2026-09-04): trước
                                                 đó "Câu hỏi hiện có" (đã lưu) và "Xem trước quiz AI" (bản nháp chưa
