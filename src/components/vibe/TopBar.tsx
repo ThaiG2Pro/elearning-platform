@@ -15,6 +15,13 @@ interface TopBarProps {
     variant: 'site' | 'workspace';
     /** Chỉ 'workspace': bật nền "phòng tắt đèn" + chữ mực sáng mờ, nhịp 600ms. */
     focusMode?: boolean;
+    /**
+     * Chỉ 'site': hàng phụ tuỳ chọn render NGAY DƯỚI hàng chính, vẫn trong
+     * cùng container max-w-7xl và cùng vỏ sticky/border — dùng cho sub-nav/tab
+     * strip của các trang quản trị 1 space (vd. my-spaces/[id]/edit) thay vì
+     * mỗi trang tự viết lại header rời có nguy cơ lệch z-index/height.
+     */
+    subRow?: ReactNode;
     children: ReactNode;
 }
 
@@ -26,7 +33,7 @@ interface TopBarProps {
  * giữa hai ngữ cảnh điều hướng khác bản chất (đổi focus-mode không đụng dropdown
  * account, và ngược lại). Một import, một chỗ duy nhất giữ hợp đồng của thanh bar.
  */
-export default function TopBar({ variant, focusMode = false, children }: TopBarProps) {
+export default function TopBar({ variant, focusMode = false, subRow, children }: TopBarProps) {
     if (variant === 'workspace') {
         return (
             <div
@@ -51,6 +58,7 @@ export default function TopBar({ variant, focusMode = false, children }: TopBarP
                 <div className="flex justify-between items-center" style={{ height: APP_TOP_BAR_H }}>
                     {children}
                 </div>
+                {subRow}
             </div>
         </header>
     );

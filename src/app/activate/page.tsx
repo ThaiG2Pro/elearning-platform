@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { activateUser } from '@/lib/auth';
 import { ActivateRequest } from '@/types/auth.types';
+import TopBar from '@/components/vibe/TopBar';
 
 export default function ActivatePage() {
     const router = useRouter();
@@ -50,20 +51,17 @@ export default function ActivatePage() {
 
     return (
         <div className="min-h-screen bg-ink-page">
-            {/* Minimal header for activation page — h-14 (56px) khớp APP_TOP_BAR_H,
-                cùng chiều cao Header/TopNav đã chuẩn hoá ở các trang khác. */}
-            <header className="bg-ink-panel border-b border-ink-border shadow-ink-sm">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex justify-center items-center h-14">
-                        <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 rounded-lg bg-ink-accent flex items-center justify-center">
-                                <span className="text-white font-bold text-sm">E</span>
-                            </div>
-                            <span className="font-semibold text-ink-text">E-Learning</span>
-                        </div>
+            {/* Vỏ dùng chung TopBar (site variant) — chỉ logo, không nav/account vì
+                trang này là bước chuyển tiếp chưa đăng nhập, không cần điều hướng
+                site. justify-center thay cho justify-between mặc định của Header. */}
+            <TopBar variant="site">
+                <div className="flex-1 flex justify-center items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-ink-accent flex items-center justify-center">
+                        <span className="text-white font-bold text-sm">E</span>
                     </div>
+                    <span className="font-semibold text-ink-text">E-Learning</span>
                 </div>
-            </header>
+            </TopBar>
 
             <main className="max-w-md mx-auto px-4 py-16 text-center">
                 <div className="bg-ink-panel border border-ink-border rounded-ink-md shadow-ink-sm p-10">
