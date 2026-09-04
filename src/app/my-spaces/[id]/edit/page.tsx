@@ -17,6 +17,9 @@ import {
     downloadQuizTemplate,
     updateSpaceMetadata,
     getOrCreateShareLink,
+    revokeShareLink,
+    archiveSpace,
+    unarchiveSpace,
     saveGeneratedQuizQuestions,
 } from '@/lib/management';
 import {
@@ -36,6 +39,9 @@ import {
 } from '@/types/management.types';
 import { Button } from '@/components/ui/button';
 import TopBar from '@/components/vibe/TopBar';
+import AccountMenu from '@/components/AccountMenu';
+import { AuthUtils, logout as apiLogout } from '@/lib/auth';
+import { User } from '@/types/auth.types';
 import Toast from '@/components/Toast';
 import MarkdownText from '@/components/MarkdownText';
 import AILessonComposer, { AIVideoSourceOption } from '@/components/AILessonComposer';
@@ -101,6 +107,10 @@ export default function SpaceEditPage() {
     const [savingLesson, setSavingLesson] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+    // 2026-09-05 — AccountMenu ở header: đồng bộ với Learn/Home, trước đây
+    // trang edit không hiện avatar/account gì ở TopBar (xem audit "ngôn ngữ
+    // thiết kế header" 2026-09-04).
+    const [user, setUser] = useState<User | null>(null);
 
     // Selection & Edit States
     const [editState, setEditState] = useState<EditState>('idle');
@@ -123,6 +133,7 @@ export default function SpaceEditPage() {
     // Share & Metadata States
     const [shareUrl, setShareUrl] = useState<string | null>(null);
     const [generatingShare, setGeneratingShare] = useState(false);
+    const [archiving, setArchiving] = useState(false);
     const [metaTitle, setMetaTitle] = useState('');
     const [metaDesc, setMetaDesc] = useState('');
     const [savingMeta, setSavingMeta] = useState(false);
@@ -205,8 +216,17 @@ export default function SpaceEditPage() {
 
     useEffect(() => {
         fetchSpaceStructure();
+        setUser(AuthUtils.getCurrentUser());
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [fetchSpaceStructure]);
+
+    const handleLogout = async () => {
+        try {
+            await apiLogout();
+        } finally {
+            router.push('/');
+        }
+    };
 
     // Share Link Handler
     const handleCopyShareLink = async () => {
@@ -220,6 +240,46 @@ export default function SpaceEditPage() {
             setToast({ message: 'Không thể tạo link chia sẻ: ' + err.message, type: 'error' });
         } finally {
             setGeneratingShare(false);
+        }
+    };
+
+    // 2026-09-05 — cơ cấu lại: trước đây chỉ /my-shares (qua AccountMenu) mới
+    // thu hồi được link, dù trang edit là nơi TẠO link — chủ space phải rời
+    // trang đang sửa để tắt chia sẻ chính space mình vừa tạo link. Gộp về
+    // đây, cùng card với "Sao chép Link".
+    const handleRevokeShareLink = async () => {
+        if (!window.confirm('Thu hồi link chia sẻ? Ai đang giữ link cũ sẽ không truy cập được nữa.')) return;
+        try {
+            setGeneratingShare(true);
+            await revokeShareLink(spaceId);
+            setShareUrl(null);
+            setToast({ message: 'Đã thu hồi link chia sẻ.', type: 'success' });
+        } catch (err: any) {
+            setToast({ message: 'Không thể thu hồi link: ' + err.message, type: 'error' });
+        } finally {
+            setGeneratingShare(false);
+        }
+    };
+
+    // 2026-09-05 — cơ cấu lại: trước đây chỉ /my-spaces (trang list) mới bấm
+    // lưu trữ được, trang edit chỉ hiển thị badge trạng thái (đọc, không
+    // sửa) — đang sửa 1 space muốn lưu trữ phải thoát ra list mới làm được.
+    const handleToggleArchive = async () => {
+        if (!space) return;
+        const isActive = space.status === 'Active';
+        setArchiving(true);
+        try {
+            if (isActive) {
+                await archiveSpace(spaceId);
+            } else {
+                await unarchiveSpace(spaceId);
+            }
+            setSpace(prev => prev ? { ...prev, status: isActive ? 'Archived' : 'Active' } : null);
+            setToast({ message: isActive ? 'Đã lưu trữ Space.' : 'Đã khôi phục Space.', type: 'success' });
+        } catch (err: any) {
+            setToast({ message: 'Không thể đổi trạng thái: ' + err.message, type: 'error' });
+        } finally {
+            setArchiving(false);
         }
     };
 
@@ -1034,8 +1094,8 @@ export default function SpaceEditPage() {
                             </h1>
                             <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold border ${
                                 space.status === 'Active'
-                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                                    : 'bg-amber-50 text-amber-700 border-amber-200'
+                                    ? 'bg-ink-successA text-ink-success border-ink-successBorder'
+                                    : 'bg-ink-warningA text-ink-warning border-ink-warningBorder'
                             }`}>
                                 {space.status === 'Active' ? 'Đang hoạt động' : 'Đã lưu trữ'}
                             </span>
@@ -1048,24 +1108,11 @@ export default function SpaceEditPage() {
 
                 {/* Right: Actions */}
                 <div className="flex items-center gap-2">
-                    {/* Copy Share Link */}
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleCopyShareLink}
-                        disabled={generatingShare}
-                        className="hidden sm:inline-flex items-center gap-1.5"
-                        title="Sao chép link chia sẻ Space"
-                    >
-                        {generatingShare ? (
-                            <span className="w-3.5 h-3.5 border-2 border-ink-textDim border-t-transparent rounded-full animate-spin"/>
-                        ) : (
-                            <svg className="w-4 h-4 text-ink-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/>
-                            </svg>
-                        )}
-                        <span>Chia sẻ</span>
-                    </Button>
+                    {/* 2026-09-05 — nút "Chia sẻ" rời khỏi đây, gộp vào card "Chia sẻ &
+                        Lưu trữ" trong tab Cài đặt & Chia sẻ (trước đây có 2 control làm
+                        y hệt 1 việc: nút này + 1 card riêng ở tab settings — xem audit
+                        "cơ cấu lại" 2026-09-05). Tab đã tên sẵn "Cài đặt & Chia sẻ" nên
+                        không mất lối vào, chỉ gom về đúng 1 chỗ. */}
 
                     {/* View Learning Page */}
                     <Button
@@ -1080,6 +1127,13 @@ export default function SpaceEditPage() {
                         </svg>
                         <span>Vào học</span>
                     </Button>
+
+                    {user && (
+                        <>
+                            <div className="w-px h-5 bg-ink-border hidden sm:block" />
+                            <AccountMenu user={user} onLogout={handleLogout} variant="icon" />
+                        </>
+                    )}
                 </div>
             </TopBar>
 
@@ -2026,13 +2080,16 @@ export default function SpaceEditPage() {
                             </div>
                         </div>
 
-                        {/* Share Link Card */}
+                        {/* Chia sẻ & Lưu trữ — gộp từ 2 card/control rời trước đây (nút
+                            "Chia sẻ" ở TopBar + card "Link chia sẻ Space" riêng, cùng làm
+                            1 việc) cộng thêm hành động Lưu trữ vốn chỉ bấm được ở trang
+                            list /my-spaces, không có ở đây (xem audit "cơ cấu lại" 2026-09-05). */}
                         <div className="bg-ink-panel rounded-ink-lg border border-ink-border shadow-ink-sm p-6">
                             <h2 className="text-base font-bold text-ink-text mb-2 flex items-center gap-2">
                                 <svg className="w-5 h-5 text-ink-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/>
                                 </svg>
-                                Link chia sẻ Space (Public Share)
+                                Chia sẻ & Lưu trữ
                             </h2>
                             <p className="text-xs text-ink-textMuted mb-4 leading-relaxed">
                                 Tạo đường dẫn ổn định cho Space. Bất kỳ ai có link này đều có thể xem trước nội dung và bấm &quot;Sao chép về học&quot; để lưu Space vào tài khoản cá nhân của họ.
@@ -2048,9 +2105,49 @@ export default function SpaceEditPage() {
                                 <Button
                                     onClick={handleCopyShareLink}
                                     disabled={generatingShare}
-                                    className="bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center gap-1.5"
+                                    className="bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center gap-1.5 shrink-0"
                                 >
                                     {generatingShare ? 'Đang tạo…' : 'Sao chép Link'}
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    onClick={handleRevokeShareLink}
+                                    disabled={generatingShare || !shareUrl}
+                                    className="text-red-600 border-red-200 hover:bg-red-50 shrink-0"
+                                    title={!shareUrl ? 'Lấy link chia sẻ trước để có gì mà thu hồi' : undefined}
+                                >
+                                    Thu hồi
+                                </Button>
+                            </div>
+
+                            <div className="flex items-center justify-between mt-2">
+                                <p className="text-[11px] text-ink-textDim">
+                                    Space khác cũng đang chia sẻ? Xem tất cả tại 1 chỗ.
+                                </p>
+                                <button
+                                    onClick={() => router.push('/my-shares')}
+                                    className="text-[11px] font-medium text-ink-accent hover:text-ink-accent/80 underline underline-offset-2 shrink-0"
+                                >
+                                    Xem tất cả link chia sẻ của tôi →
+                                </button>
+                            </div>
+
+                            <div className="mt-5 pt-5 border-t border-ink-pageDim flex items-center justify-between">
+                                <div>
+                                    <p className="text-xs font-semibold text-ink-text">Trạng thái Space</p>
+                                    <p className="text-[11px] text-ink-textDim mt-0.5">
+                                        {space.status === 'Active'
+                                            ? 'Đang hoạt động — hiện trong danh sách "Space đã tạo" của bạn.'
+                                            : 'Đã lưu trữ — vẫn giữ nguyên dữ liệu, chỉ ẩn khỏi danh sách mặc định.'}
+                                    </p>
+                                </div>
+                                <Button
+                                    variant="outline"
+                                    onClick={handleToggleArchive}
+                                    disabled={archiving}
+                                    className="shrink-0"
+                                >
+                                    {archiving ? '...' : space.status === 'Active' ? 'Lưu trữ' : 'Khôi phục'}
                                 </Button>
                             </div>
                         </div>

@@ -55,7 +55,13 @@ export interface SpaceStructure {
     chapters: Chapter[];
     // WP1.5.10: 'Draft'/'Pending' dropped — no route creates that state
     // anymore, spaces are active for their owner immediately.
-    status: 'Active';
+    // 2026-09-05 — type trước đây chỉ khai 'Active', dù badge trạng thái ở
+    // trang edit (my-spaces/[id]/edit) đã luôn xử lý cả 2 nhánh runtime thật
+    // (space có thể ARCHIVED — xem ContentManagementService.updateSpaceMetadata)
+    // — chỉ là TS chưa từng bắt lỗi vì trước đó không có chỗ nào GÁN giá trị
+    // 'Archived' vào field này, chỉ so sánh `===`. Giờ trang edit tự toggle
+    // archive tại chỗ (cơ cấu lại 2026-09-05) nên cần khai đúng cả 2 giá trị.
+    status: 'Active' | 'Archived';
 }
 
 export interface QuizQuestion {
