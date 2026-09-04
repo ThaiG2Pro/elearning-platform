@@ -4,6 +4,9 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { ChevronRight, Maximize2, Minimize2, SquarePen } from 'lucide-react';
 import TopBar from '@/components/vibe/TopBar';
+import AccountMenu from '@/components/AccountMenu';
+import { AuthUtils, logout as apiLogout } from '@/lib/auth';
+import { User } from '@/types/auth.types';
 import YoutubePlayer, { VideoPlayerHandle } from '@/components/YoutubePlayer';
 import VimeoPlayer from '@/components/VimeoPlayer';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -102,6 +105,11 @@ export default function LearningPage() {
     // WP1.2 — focus mode: hides the site header + lesson sidebar so the
     // learner sees only the video/quiz, no nav/recommendation distractions.
     const [focusMode, setFocusMode] = useState(false);
+    // 2026-09-04 — trước đây trang học không có lối vào profile/đổi mật
+    // khẩu/đăng xuất một khi đã vào xem lesson (chỉ có link chữ "Spaces" quay
+    // lại danh sách) — audit "ngôn ngữ thiết kế" 2026-09-04. Dùng lại
+    // AccountMenu (đã tách khỏi Header.tsx) thay vì viết dropdown riêng.
+    const [user, setUser] = useState<User | null>(null);
     // Porting logic từ vibe-demo/page.tsx (roomBgClass): nền phòng dịu xuống
     // (bg-ink-pageDim) khi video đang chạy, dù không ở chế độ tập trung —
     // "đèn phòng tự mờ khi xem", khác với focusMode (người dùng bật tay).
@@ -321,7 +329,16 @@ export default function LearningPage() {
     useEffect(() => {
         loadSpaceData();
         setFocusMode(localStorage.getItem('focusMode') === '1');
+        setUser(AuthUtils.getCurrentUser());
     }, [loadSpaceData]);
+
+    const handleLogout = async () => {
+        try {
+            await apiLogout();
+        } finally {
+            router.push('/');
+        }
+    };
 
     const toggleFocusMode = () => {
         setFocusMode(prev => {
@@ -985,6 +1002,12 @@ export default function LearningPage() {
                     >
                         {focusMode ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
                     </button>
+                    {/* 2026-09-04 — lối vào profile/đổi mật khẩu/đăng xuất, ẩn ở
+                        focusMode như nút "Chỉnh sửa" (cùng nhóm chrome phụ, không
+                        cần thiết khi đang tập trung xem video). */}
+                    {!focusMode && user && (
+                        <AccountMenu user={user} onLogout={handleLogout} variant="icon" />
+                    )}
                 </div>
             </TopBar>
 

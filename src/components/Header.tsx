@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { User } from '@/types/auth.types';
 import TopBar from '@/components/vibe/TopBar';
+import AccountMenu from '@/components/AccountMenu';
 
 interface HeaderProps {
     user?: User | null;
@@ -21,52 +21,8 @@ const DONATE_URL = process.env.NEXT_PUBLIC_DONATE_URL;
 export default function Header({ user, onLogout, onJoin }: HeaderProps) {
     const router = useRouter();
     const pathname = usePathname();
-    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-
-    const getInitial = (fullName: string) => fullName.charAt(0).toUpperCase();
-    const avatarColor = 'bg-ink-accent hover:bg-ink-accent/90';
-
-    const handleHomeClick = () => {
-        setIsDropdownOpen(false);
-        router.push('/');
-    };
-
-    const handleAboutClick = () => {
-        setIsDropdownOpen(false);
-        router.push('/about');
-    };
-
-    const handleProfileClick = () => {
-        setIsDropdownOpen(false);
-        router.push('/profile');
-    };
-
-    const handleChangePasswordClick = () => {
-        setIsDropdownOpen(false);
-        router.push('/change-password');
-    };
-
-    const handleMyLearningClick = () => {
-        setIsDropdownOpen(false);
-        router.push('/my-learning');
-    };
-
-    const handleMySpacesClick = () => {
-        setIsDropdownOpen(false);
-        router.push('/my-spaces');
-    };
-
-    const handleMySharesClick = () => {
-        setIsDropdownOpen(false);
-        router.push('/my-shares');
-    };
-
-
-
-    const handleLogoutClick = () => {
-        setIsDropdownOpen(false);
-        onLogout?.();
-    };
+    const handleHomeClick = () => router.push('/');
+    const handleAboutClick = () => router.push('/about');
 
     return (
         // Vỏ bar (sticky, chiều cao APP_TOP_BAR_H, border, căn giữa max-w-7xl)
@@ -127,91 +83,7 @@ export default function Header({ user, onLogout, onJoin }: HeaderProps) {
                             </a>
                         )}
                         {user ? (
-                            <div className="relative">
-                                {/* User info chip */}
-                                <button
-                                    onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                                    className={`vd-focusable flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-full border border-ink-border hover:border-ink-borderHi hover:bg-ink-page transition-colors`}
-                                    aria-haspopup="menu"
-                                    aria-expanded={isDropdownOpen}
-                                    aria-label="User menu"
-                                >
-                                    {user.avatarUrl ? (
-                                        // eslint-disable-next-line @next/next/no-img-element -- data: URL, next/image doesn't support it
-                                        <img src={user.avatarUrl} alt="" className="w-7 h-7 rounded-full object-cover" />
-                                    ) : (
-                                        <div className={`flex items-center justify-center w-7 h-7 rounded-full text-white text-xs font-semibold ${avatarColor.split(' ')[0]}`}>
-                                            {getInitial(user.fullName)}
-                                        </div>
-                                    )}
-                                    <span className="text-sm font-medium text-ink-text hidden sm:block max-w-[120px] truncate">{user.fullName}</span>
-                                    <svg className="w-3.5 h-3.5 text-ink-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                    </svg>
-                                </button>
-
-                                {/* Dropdown Menu */}
-                                {isDropdownOpen && (
-                                    <>
-                                        {/* Backdrop */}
-                                        <div className="fixed inset-0 z-10" onClick={() => setIsDropdownOpen(false)} />
-                                        <div className="absolute right-0 mt-2 w-52 bg-ink-panel rounded-ink-md shadow-lg border border-ink-border z-20 overflow-hidden">
-                                            {/* User info header */}
-                                            <div className="px-4 py-3 border-b border-ink-border bg-ink-page">
-                                                <p className="text-xs font-medium text-ink-textMuted uppercase tracking-wide">
-                                                    Tài khoản cá nhân
-                                                </p>
-                                                <p className="text-sm font-semibold text-ink-text truncate mt-0.5">{user.fullName}</p>
-                                            </div>
-
-                                            <div className="py-1.5" role="menu">
-                                                <button onClick={handleHomeClick} role="menuitem"
-                                                    className="flex items-center gap-2.5 px-4 py-2 text-sm text-ink-text hover:bg-ink-page w-full text-left transition-colors">
-                                                    <svg className="w-4 h-4 text-ink-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
-                                                    Trang chủ
-                                                </button>
-                                                <button onClick={handleAboutClick} role="menuitem"
-                                                    className="flex items-center gap-2.5 px-4 py-2 text-sm text-ink-text hover:bg-ink-page w-full text-left transition-colors">
-                                                    <svg className="w-4 h-4 text-ink-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                                    Về chúng tôi
-                                                </button>
-                                                <button onClick={handleMyLearningClick} role="menuitem"
-                                                    className="flex items-center gap-2.5 px-4 py-2 text-sm text-ink-text hover:bg-ink-page w-full text-left transition-colors">
-                                                    <svg className="w-4 h-4 text-ink-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
-                                                    Space đang học
-                                                </button>
-                                                <button onClick={handleMySpacesClick} role="menuitem"
-                                                    className="flex items-center gap-2.5 px-4 py-2 text-sm text-ink-text hover:bg-ink-page w-full text-left transition-colors">
-                                                    <svg className="w-4 h-4 text-ink-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
-                                                    Space đã tạo
-                                                </button>
-                                                <button onClick={handleMySharesClick} role="menuitem"
-                                                    className="flex items-center gap-2.5 px-4 py-2 text-sm text-ink-text hover:bg-ink-page w-full text-left transition-colors">
-                                                    <svg className="w-4 h-4 text-ink-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8.684 13.342a4 4 0 010-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684zm0-9.316a3 3 0 105.368-2.684 3 3 0 00-5.368 2.684z"/></svg>
-                                                    Link chia sẻ của tôi
-                                                </button>
-                                                <div className="mx-4 my-1 border-t border-ink-border" />
-                                                <button onClick={handleProfileClick} role="menuitem"
-                                                    className="flex items-center gap-2.5 px-4 py-2 text-sm text-ink-text hover:bg-ink-page w-full text-left transition-colors">
-                                                    <svg className="w-4 h-4 text-ink-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
-                                                    Sửa hồ sơ
-                                                </button>
-                                                <button onClick={handleChangePasswordClick} role="menuitem"
-                                                    className="flex items-center gap-2.5 px-4 py-2 text-sm text-ink-text hover:bg-ink-page w-full text-left transition-colors">
-                                                    <svg className="w-4 h-4 text-ink-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
-                                                    Đổi mật khẩu
-                                                </button>
-                                                <div className="mx-4 my-1 border-t border-ink-border" />
-                                                <button onClick={handleLogoutClick} role="menuitem"
-                                                    className="flex items-center gap-2.5 px-4 py-2 text-sm text-red-600 hover:bg-red-50 w-full text-left transition-colors">
-                                                    <svg className="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
-                                                    Đăng xuất
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </>
-                                )}
-                            </div>
+                            <AccountMenu user={user} onLogout={() => onLogout?.()} variant="chip" />
                         ) : (
                             <button
                                 onClick={onJoin}
