@@ -672,6 +672,70 @@ export default function SpaceEditPage() {
         }
     };
 
+    // Gộp generate + tạo lesson làm 1 bước (quyết định 2026-09-04): trước đó
+    // nút "AI tạo quiz 10 câu" ở panel sửa VIDEO chỉ sinh ra bản xem trước,
+    // phải bấm thêm "Tạo bài quiz mới từ đây" mới thật sự ra 1 lesson QUIZ —
+    // 2 bước cho cùng 1 ý định (đang sửa video, muốn có ngay bài quiz mới),
+    // giống hệt luồng composer cấp-space (AILessonComposer.handleGenerate)
+    // vốn đã tự ráp lesson ngay sau khi parse xong. Dùng `draft` cục bộ thay
+    // vì đọc lại aiQuizDraft từ state — setState không đồng bộ nên gọi tạo
+    // lesson ngay sau khi set draft có thể vẫn thấy giá trị cũ.
+    const handleGenerateAndCreateAIQuizLesson = async (sourceId: number, paymentMethod?: 'CREDITS') => {
+        const targetChapter = space?.chapters.find(ch => ch.lessons.some(l => l.id === lessonForm.id));
+        setAiLoading('quiz');
+        setAiError(null);
+        setAiErrorCode(null);
+        setAiQuizDraft(null);
+        setAiQuizServedFromCache(false);
+        try {
+            const result = await generateAIContent(sourceId, 'quiz', paymentMethod ? { paymentMethod } : undefined);
+            if (!result.content) {
+                setAiError('Tạo quiz AI thất bại, thử lại sau.');
+                return;
+            }
+            const draft = parseAIQuizContent(result.content);
+            if (!targetChapter) {
+                // Hiếm gặp: không xác định được chương chứa lesson đang mở — vẫn
+                // hiện bản xem trước để không mất công AI vừa sinh ra.
+                setAiQuizDraft(draft);
+                setAiQuizServedFromCache(result.servedFromCache);
+                return;
+            }
+            try {
+                setCreatingAIQuizLesson(true);
+                const chapterId = targetChapter.id;
+                const nextIndex = targetChapter.lessons.length + 1;
+                const title = `Quiz (AI) — ${lessonForm.title || 'bài học'}`;
+                const res = await createLesson(chapterId, { title, videoUrl: '', orderIndex: nextIndex, type: 'QUIZ' });
+                const newLessonId = Number((res as any).lessonId ?? (res as any).id);
+
+                await saveGeneratedQuizQuestions(newLessonId, draft);
+
+                const newLesson: Lesson = { id: newLessonId, title, type: 'QUIZ', orderIndex: nextIndex };
+                setSpace(prev => prev ? {
+                    ...prev,
+                    chapters: prev.chapters.map(ch => ch.id === chapterId ? { ...ch, lessons: [...ch.lessons, newLesson] } : ch)
+                } : null);
+                setToast({ message: `Đã tạo bài quiz mới với ${draft.length} câu hỏi!`, type: 'success' });
+                selectLesson(newLesson);
+            } catch (err: any) {
+                // AI đã sinh thành công, chỉ bước tạo lesson lỗi (vd mất mạng) —
+                // giữ lại bản xem trước để user bấm "Tạo bài quiz mới từ đây" thử
+                // lại, không bắt gọi AI thêm 1 lần nữa (tốn credit/lượt).
+                setAiQuizDraft(draft);
+                setAiQuizServedFromCache(result.servedFromCache);
+                setToast({ message: 'Không thể tạo bài quiz từ AI: ' + getErrorMessage(err.message), type: 'error' });
+            } finally {
+                setCreatingAIQuizLesson(false);
+            }
+        } catch (err: any) {
+            setAiError(err.message || 'Có lỗi xảy ra khi tạo quiz bằng AI.');
+            if (err instanceof AIGenerationError) setAiErrorCode(err.code);
+        } finally {
+            setAiLoading(null);
+        }
+    };
+
     // "Tạo bài quiz mới": biến bản nháp AI đã xem trước thành 1 lesson QUIZ
     // thật trong cùng chương — đúng hình dung ban đầu (dán link → vào editor
     // → AI sinh quiz ngay → thêm video khác → vào học 1 space chỉnh chu),
@@ -1449,7 +1513,7 @@ export default function SpaceEditPage() {
                                                 </h4>
                                                 <p className="text-[11px] text-ink-textDim mb-3">
                                                     AI đọc nội dung video này để tóm tắt hoặc tạo sẵn 1 bài quiz — chỉ chạy khi bạn bấm,
-                                                    kết quả quiz có thể lưu ngay thành 1 bài học mới trong chương này.
+                                                    kết quả quiz sẽ tự tạo ngay thành 1 bài học mới trong chương này.
                                                 </p>
 
                                                 <div className="flex gap-2">
@@ -1463,7 +1527,7 @@ export default function SpaceEditPage() {
                                                     </Button>
                                                     <Button
                                                         variant="outline"
-                                                        onClick={() => lessonForm.sourceId && handleGenerateAIQuiz(lessonForm.sourceId)}
+                                                        onClick={() => lessonForm.sourceId && handleGenerateAndCreateAIQuizLesson(lessonForm.sourceId)}
                                                         disabled={aiLoading !== null}
                                                         className="flex-1"
                                                     >
@@ -1476,7 +1540,7 @@ export default function SpaceEditPage() {
                                                         {aiError}
                                                         {aiErrorCode === 'AI_CUSTOM_RECIPE_REQUIRES_BYOK_OR_PAID' && (
                                                             <button
-                                                                onClick={() => lessonForm.sourceId && handleGenerateAIQuiz(lessonForm.sourceId, 'CREDITS')}
+                                                                onClick={() => lessonForm.sourceId && handleGenerateAndCreateAIQuizLesson(lessonForm.sourceId, 'CREDITS')}
                                                                 disabled={aiLoading !== null}
                                                                 className="mt-2 block px-2.5 py-1.5 rounded-lg text-[11px] font-medium bg-amber-600 text-white hover:bg-amber-700 disabled:opacity-50"
                                                             >
