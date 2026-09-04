@@ -38,7 +38,12 @@ export default function TopBar({ variant, focusMode = false, subRow, children }:
         return (
             <div
                 style={{ height: TOP_BAR_H }}
-                className={`fixed top-0 left-0 right-0 z-50 flex items-center gap-2 px-7 text-[12.5px] border-b transition-[background,border-color,color] duration-[600ms] ease-in-out ${
+                // 2026-09-04 — cỡ chữ đồng bộ với TopBar variant="site" (14px):
+                // trước đây workspace tự chốt 12.5px riêng, khiến breadcrumb bar
+                // của trang học nhìn "nhỏ hơn hẳn" so với "/" và edit dù cùng
+                // dùng chung vỏ TopBar — không có lý do ngữ nghĩa nào cho việc
+                // lệch scale này (xem audit "ngôn ngữ thiết kế" 2026-09-04).
+                className={`fixed top-0 left-0 right-0 z-50 flex items-center gap-2 px-7 text-sm border-b transition-[background,border-color,color] duration-[600ms] ease-in-out ${
                     focusMode
                         ? 'bg-ink-room border-[rgba(244,246,252,0.10)] text-[rgba(244,246,252,0.45)]'
                         : 'bg-ink-panel border-ink-border text-ink-textMuted'

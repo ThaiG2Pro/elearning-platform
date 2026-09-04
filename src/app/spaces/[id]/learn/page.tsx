@@ -940,11 +940,11 @@ export default function LearningPage() {
                 </button>
                 {!isCompact && spaceTitle && (
                     <>
-                        <ChevronRight size={11} className={`shrink-0 ${focusMode ? 'text-[rgba(244,246,252,0.25)]' : 'text-ink-textDim'}`} />
+                        <ChevronRight size={14} className={`shrink-0 ${focusMode ? 'text-[rgba(244,246,252,0.25)]' : 'text-ink-textDim'}`} />
                         <span title={spaceTitle} className="shrink-0 whitespace-nowrap max-w-[240px] truncate">{spaceTitle}</span>
                     </>
                 )}
-                <ChevronRight size={11} className={`shrink-0 ${focusMode ? 'text-[rgba(244,246,252,0.25)]' : 'text-ink-textDim'}`} />
+                <ChevronRight size={14} className={`shrink-0 ${focusMode ? 'text-[rgba(244,246,252,0.25)]' : 'text-ink-textDim'}`} />
                 <span
                     title={currentLesson?.chapterTitle || spaceTitle}
                     className={`flex-1 min-w-0 truncate font-medium ${focusMode ? 'text-[rgba(244,246,252,0.85)]' : 'text-ink-text'}`}
@@ -972,7 +972,7 @@ export default function LearningPage() {
                             title="Thêm quiz/tóm tắt cho Space này"
                             className="vd-focusable flex items-center justify-center w-[26px] h-[26px] rounded-ink-sm cursor-pointer shrink-0 border bg-transparent border-ink-border text-ink-textMid"
                         >
-                            <SquarePen size={12} />
+                            <SquarePen size={14} />
                         </button>
                     )}
                     <button
@@ -983,7 +983,7 @@ export default function LearningPage() {
                             focusMode ? 'bg-[rgba(143,166,238,0.14)] border-ink-accentScreen text-ink-accentScreen' : 'bg-transparent border-ink-border text-ink-textMid'
                         }`}
                     >
-                        {focusMode ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
+                        {focusMode ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
                     </button>
                 </div>
             </TopBar>
