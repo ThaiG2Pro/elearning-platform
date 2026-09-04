@@ -2,7 +2,7 @@ import { PrismaClient } from '@prisma/client';
 import { AIGenerationPolicy } from '../domain/AIGenerationPolicy';
 import { RecipeHash, SegmentRange } from '../domain/RecipeHash';
 import { RecipeType, defaultParamsFor, defaultModel } from '../domain/Recipes';
-import { AIGenerationRecord, AIGenerationRepository } from '../repositories/AIGenerationRepository';
+import { AIGenerationRecord, AIGenerationRepository, SharedAIGenerationSummary } from '../repositories/AIGenerationRepository';
 import { TranscriptProvider } from './TranscriptProvider';
 import { LLMProvider } from './LLMProvider';
 import { WebContentProvider } from './WebContentProvider';
@@ -194,6 +194,13 @@ export class AIGenerationService {
             // above found something, so this is unreachable in practice —
             // narrows the type for TS rather than masking a real bug.
             if (!cached) throw new Error('AI_GENERATION_CACHE_INCONSISTENT');
+            // 2026-09-05 — nguồn cho trang "/my-ai-shares" ("bản của bạn đã
+            // được dùng lại N lần"). Best-effort: không await/không chặn
+            // response nếu lỗi — 1 lượt đếm bị mất không đáng để user chờ
+            // thêm hay coi cả request là fail.
+            this.repo.incrementReuseCount(cached.id).catch((err) => {
+                console.error('incrementReuseCount failed (non-fatal):', err);
+            });
             return { generation: cached, servedFromCache: true };
         }
 
@@ -404,5 +411,20 @@ export class AIGenerationService {
         // chỉ hiển thị văn bản thô như trước. Không có schema field cố định
         // trước đây — model tự chọn shape tuỳ ý, không parse được.
         return `Tạo đúng ${questionCount} câu hỏi trắc nghiệm (2-4 đáp án, 1 đáp án đúng) độ khó ${difficulty} ${languageInstruction} dựa trên nội dung sau. Trả về DUY NHẤT 1 JSON array hợp lệ, không kèm giải thích hay markdown, đúng schema: [{"content": string, "options": string[], "correctAnswer": string (phải là text của 1 phần tử trong options)}].${focusInstruction}${segmentInstruction}\n\n${transcript}`;
+    }
+
+    /** Trang "/my-ai-shares" — danh sách bản BYOK đang SHARED của chính user này. */
+    async listMySharedGenerations(userId: bigint): Promise<SharedAIGenerationSummary[]> {
+        return this.repo.listSharedByUser(userId);
+    }
+
+    /**
+     * Thu hồi 1 bản BYOK đang share (chuyển về PRIVATE) — chỉ chính chủ.
+     * Ownership + "đúng là BYOK đang SHARED" được check trong repo, service
+     * chỉ truyền tiếp lỗi (ACCESS_DENIED/AI_GENERATION_NOT_FOUND/
+     * AI_GENERATION_NOT_SHARED) để route map ra đúng status code.
+     */
+    async revokeSharedGeneration(userId: bigint, generationId: bigint): Promise<void> {
+        await this.repo.revokeShare(generationId, userId);
     }
 }

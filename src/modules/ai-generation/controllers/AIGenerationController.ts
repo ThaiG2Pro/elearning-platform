@@ -1,6 +1,6 @@
 import { prisma } from '../../../shared/config/database';
 import { AIGenerationService, GenerateRequest, GenerateResult } from '../services/AIGenerationService';
-import { AIGenerationRepository } from '../repositories/AIGenerationRepository';
+import { AIGenerationRepository, SharedAIGenerationSummary } from '../repositories/AIGenerationRepository';
 import { YoutubeTranscriptPlusProvider } from '../services/YoutubeTranscriptPlusProvider';
 import { LiteLLMProvider } from '../services/LiteLLMProvider';
 import { ReadabilityWebContentProvider } from '../services/ReadabilityWebContentProvider';
@@ -28,5 +28,13 @@ export class AIGenerationController {
 
     async generate(req: GenerateRequest): Promise<GenerateResult> {
         return this.service.generate(req);
+    }
+
+    async listMySharedGenerations(userId: bigint): Promise<SharedAIGenerationSummary[]> {
+        return this.service.listMySharedGenerations(userId);
+    }
+
+    async revokeSharedGeneration(userId: bigint, generationId: bigint): Promise<void> {
+        return this.service.revokeSharedGeneration(userId, generationId);
     }
 }

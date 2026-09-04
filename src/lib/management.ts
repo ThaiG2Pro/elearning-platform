@@ -432,3 +432,35 @@ export const revokeShareLink = async (spaceId: number): Promise<void> => {
         throw new Error('Không thể thu hồi link.');
     }
 };
+
+export interface MySharedAIGeneration {
+    id: string;
+    recipeType: 'summary' | 'quiz';
+    createdAt: string;
+    reuseCount: number;
+    sourceId: string;
+    sourceTitle: string | null;
+    sourceUrl: string;
+}
+
+// 2026-09-05 — "/my-ai-shares": danh sách bản AI (quiz/tóm tắt) đã tạo bằng
+// BYOK và đang SHARED — điểm chạm quản lý còn thiếu sau khi feature share
+// BYOK ra mắt (chỉ có checkbox lúc generate, không có nơi xem/thu hồi lại).
+export const listMySharedAIGenerations = async (): Promise<MySharedAIGeneration[]> => {
+    try {
+        const response = await api.get('/management/ai-generations');
+        return response.data.items;
+    } catch (error: any) {
+        throw new Error('Không thể tải danh sách AI đã chia sẻ.');
+    }
+};
+
+export const revokeAIGenerationShare = async (generationId: string): Promise<void> => {
+    try {
+        await api.delete(`/management/ai-generations/${generationId}/share`);
+    } catch (error: any) {
+        if (error.response?.status === 403) throw new Error('ACCESS_DENIED');
+        if (error.response?.status === 404) throw new Error('AI_GENERATION_NOT_FOUND');
+        throw new Error('Không thể thu hồi chia sẻ.');
+    }
+};

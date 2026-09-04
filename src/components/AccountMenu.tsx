@@ -119,6 +119,14 @@ export default function AccountMenu({ user, onLogout, variant = 'chip' }: Accoun
                                 <svg className="w-4 h-4 text-ink-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8.684 13.342a4 4 0 010-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684zm0-9.316a3 3 0 105.368-2.684 3 3 0 00-5.368 2.684z"/></svg>
                                 Link chia sẻ của tôi
                             </button>
+                            {/* 2026-09-05 — điểm chạm quản lý cho checkbox "Chia sẻ bản này cho
+                                người khác dùng miễn phí" ở panel Tuỳ biến (AILessonComposer) —
+                                trước đây tick xong là không có nơi nào xem/thu hồi lại. */}
+                            <button onClick={() => go('/my-ai-shares')} role="menuitem"
+                                className="flex items-center gap-2.5 px-4 py-2 text-sm text-ink-text hover:bg-ink-page w-full text-left transition-colors">
+                                <svg className="w-4 h-4 text-ink-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                                AI đã chia sẻ
+                            </button>
                             <div className="mx-4 my-1 border-t border-ink-border" />
                             <button onClick={() => go('/profile')} role="menuitem"
                                 className="flex items-center gap-2.5 px-4 py-2 text-sm text-ink-text hover:bg-ink-page w-full text-left transition-colors">

@@ -213,6 +213,12 @@ model ai_generations {
   // Output đã xử lý — KHÔNG chứa lại transcript gốc (mục 6.5 economics doc).
   content              String?        @map("content") @db.Text
   error                String?        @map("error") @db.Text
+  // 2026-09-05 — "bản này đã được ai dùng lại (cache hit) bao nhiêu lần",
+  // cho trang quản lý "/my-ai-shares" của người share BYOK. Chỉ tăng khi
+  // AIGenerationService.generate() trả USE_CACHE cho đúng row này (cả
+  // SHARED_FREE lẫn SHARED-BYOK) — KHÔNG phải số lesson đang gắn (đó chỉ
+  // đếm liên kết hiện tại, không phải lịch sử tái dùng).
+  reuse_count          Int            @default(0) @map("reuse_count")
   created_at           DateTime       @default(now()) @map("created_at")
   updated_at           DateTime       @default(now()) @updatedAt @map("updated_at")
   // WP4.2 — content bị null hoá ở tầng application khi archive, không xoá

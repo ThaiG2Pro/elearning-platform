@@ -18,6 +18,7 @@ const makeRepo = () => ({
     markReady: vi.fn(),
     markFailed: vi.fn(),
     countActivationsToday: vi.fn().mockResolvedValue(0),
+    incrementReuseCount: vi.fn().mockResolvedValue(undefined),
 });
 
 const makeTranscriptProvider = () => ({
@@ -68,6 +69,7 @@ describe('AIGenerationService.generate', () => {
             modelVersion: 'default',
             content: null,
             error: null,
+            reuseCount: 0,
         });
         process.env.LITELLM_MASTER_KEY = 'test-shared-key';
         service = new AIGenerationService(prisma as any, repo as any, transcriptProvider as any, llmProvider as any);
@@ -89,12 +91,15 @@ describe('AIGenerationService.generate', () => {
             id: 42n, sourceId: 1n, recipeHash: 'h', recipeType: 'summary', isDefaultRecipe: true,
             keySource: 'SHARED_FREE' as const, generatedByUserId: null, visibility: 'SHARED' as const,
             status: 'READY' as const, modelVersion: 'default', content: 'bản tóm tắt đã cache', error: null,
+            reuseCount: 0,
         };
         repo.findDefaultCache.mockResolvedValue(cached);
 
         const result = await service.generate({ sourceId: 1n, recipeType: 'summary', userId: 5n });
 
         expect(result).toEqual({ generation: cached, servedFromCache: true });
+        // 2026-09-05 — nguồn cho trang "/my-ai-shares" ("đã dùng lại N lần").
+        expect(repo.incrementReuseCount).toHaveBeenCalledWith(42n);
         expect(llmProvider.generate).not.toHaveBeenCalled();
         expect(repo.create).not.toHaveBeenCalled();
     });
@@ -137,6 +142,9 @@ describe('AIGenerationService.generate', () => {
             prompt: expect.stringContaining('nội dung transcript giả lập'),
         });
         expect(repo.markReady).toHaveBeenCalledWith(100n, 'output AI giả lập');
+        // Fresh generate (không phải cache hit) — không tăng reuse_count của
+        // ai — sai ngữ nghĩa "đã dùng lại" nếu tính luôn lần tạo gốc.
+        expect(repo.incrementReuseCount).not.toHaveBeenCalled();
     });
 
     it('reuses an already-fetched transcript instead of calling the provider again', async () => {
@@ -454,6 +462,7 @@ describe('AIGenerationService.generate', () => {
                 id: 42n, sourceId: 1n, recipeHash: 'h', recipeType: 'summary', isDefaultRecipe: true,
                 keySource: 'SHARED_FREE' as const, generatedByUserId: null, visibility: 'SHARED' as const,
                 status: 'READY' as const, modelVersion: 'default', content: 'cached', error: null,
+                reuseCount: 0,
             });
             const creditSpender = makeCreditSpender();
             service = new AIGenerationService(

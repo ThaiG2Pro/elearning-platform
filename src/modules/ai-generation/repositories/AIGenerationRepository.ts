@@ -14,6 +14,19 @@ export interface AIGenerationRecord {
     modelVersion: string;
     content: string | null;
     error: string | null;
+    /** Số lần row này được trả qua USE_CACHE (SHARED_FREE hoặc SHARED-BYOK) — xem incrementReuseCount. */
+    reuseCount: number;
+}
+
+/** Dòng cho trang "/my-ai-shares" — bản BYOK đang SHARED của 1 user, kèm thông tin video nguồn để hiển thị. */
+export interface SharedAIGenerationSummary {
+    id: bigint;
+    recipeType: 'summary' | 'quiz';
+    createdAt: Date;
+    reuseCount: number;
+    sourceId: bigint;
+    sourceTitle: string | null;
+    sourceUrl: string;
 }
 
 export interface CreateAIGenerationInput {
@@ -40,6 +53,7 @@ function toRecord(row: {
     model_version: string;
     content: string | null;
     error: string | null;
+    reuse_count?: number;
 }): AIGenerationRecord {
     return {
         id: row.id,
@@ -54,6 +68,9 @@ function toRecord(row: {
         modelVersion: row.model_version,
         content: row.content,
         error: row.error,
+        // Optional ở type input vì vài caller (findInFlight trên row PENDING
+        // tối giản) không cần cột này — cột DB luôn có giá trị thật (default 0).
+        reuseCount: row.reuse_count ?? 0,
     };
 }
 
@@ -92,6 +109,20 @@ export class AIGenerationRepository {
             },
         });
         return row ? toRecord(row) : null;
+    }
+
+    /**
+     * 2026-09-05 — gọi khi `decideRouting` trả `USE_CACHE` (SHARED_FREE hoặc
+     * SHARED-BYOK) cho đúng row này — nguồn dữ liệu cho trang "/my-ai-shares"
+     * ("bản của bạn đã được dùng lại N lần"). `increment` ở tầng SQL, không
+     * đọc-sửa-ghi ở app, nên nhiều request đồng thời cộng dồn đúng, không
+     * mất lượt (race an toàn).
+     */
+    async incrementReuseCount(id: bigint): Promise<void> {
+        await this.prisma.ai_generations.update({
+            where: { id },
+            data: { reuse_count: { increment: 1 } },
+        });
     }
 
     /**
@@ -197,4 +228,46 @@ export class AIGenerationRepository {
     // scripts/aiUsageReport.ts, không lặp lại ở đây — script đó không thể
     // import từ src/ (ràng buộc ts-node ESM, xem comment trong file đó), nên
     // để 1 nơi giữ query thay vì 2 bản dễ lệch nhau.
+
+    /**
+     * 2026-09-05 — nguồn cho trang "/my-ai-shares": chỉ liệt kê bản BYOK
+     * đang thực sự `SHARED` của đúng user này (không phải mọi bản BYOK họ
+     * từng tạo — bản PRIVATE không có gì để "quản lý share"). Đã thu hồi
+     * (PRIVATE) thì rơi khỏi danh sách này ở lần load sau, không hiện lại
+     * dạng "đã thu hồi" — giữ trang đơn giản như "link chia sẻ của tôi".
+     */
+    async listSharedByUser(userId: bigint): Promise<SharedAIGenerationSummary[]> {
+        const rows = await this.prisma.ai_generations.findMany({
+            where: { generated_by_user_id: userId, key_source: 'BYOK', visibility: 'SHARED' },
+            include: { source: true },
+            orderBy: { created_at: 'desc' },
+        });
+        return rows.map((row) => ({
+            id: row.id,
+            recipeType: row.recipe_type as 'summary' | 'quiz',
+            createdAt: row.created_at,
+            reuseCount: row.reuse_count,
+            sourceId: row.source_id,
+            sourceTitle: row.source.title,
+            sourceUrl: row.source.url,
+        }));
+    }
+
+    /**
+     * Thu hồi 1 bản BYOK đang SHARED (chuyển PRIVATE) — chỉ chính chủ mới
+     * làm được, và chỉ áp dụng cho BYOK (SHARED_FREE/PAID_TIER không có
+     * khái niệm "chủ sở hữu tự thu hồi" ở đây — xem AIGenerationPolicy).
+     */
+    async revokeShare(id: bigint, userId: bigint): Promise<void> {
+        const row = await this.prisma.ai_generations.findUnique({ where: { id } });
+        if (!row) throw new Error('AI_GENERATION_NOT_FOUND');
+        if (row.generated_by_user_id !== userId) throw new Error('ACCESS_DENIED');
+        if (row.key_source !== 'BYOK' || row.visibility !== 'SHARED') {
+            throw new Error('AI_GENERATION_NOT_SHARED');
+        }
+        await this.prisma.ai_generations.update({
+            where: { id },
+            data: { visibility: 'PRIVATE' },
+        });
+    }
 }
