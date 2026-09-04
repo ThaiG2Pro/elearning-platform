@@ -293,6 +293,11 @@ export default function AILessonComposer({
                                     value={focusTopic}
                                     onChange={(e) => setFocusTopic(e.target.value)}
                                     placeholder="Chủ đề muốn tập trung (tuỳ chọn, vd: phần useEffect)"
+                                    // 2026-09-04 — trình duyệt tự autofill email/địa chỉ đã lưu vào ô text
+                                    // trống này (không liên quan gì tới "chủ đề"), khiến params tự nhiên
+                                    // lệch khỏi DEFAULT_RECIPE_PARAMS ngoài ý muốn user → rơi vào nhánh
+                                    // "cần BYOK hoặc trả phí" dù họ chỉ định dùng bản mặc định.
+                                    autoComplete="off"
                                     className="w-full px-2.5 py-1.5 text-xs border border-ink-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ink-accent"
                                 />
 
@@ -305,6 +310,7 @@ export default function AILessonComposer({
                                     value={byokApiKey}
                                     onChange={(e) => setByokApiKey(e.target.value)}
                                     placeholder="API key"
+                                    autoComplete="off"
                                     className="w-full px-2.5 py-1.5 text-xs border border-ink-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ink-accent"
                                 />
                                 <input
@@ -312,6 +318,7 @@ export default function AILessonComposer({
                                     value={byokBaseUrl}
                                     onChange={(e) => setByokBaseUrl(e.target.value)}
                                     placeholder="Endpoint (vd: https://api.groq.com/openai/v1)"
+                                    autoComplete="off"
                                     className="w-full px-2.5 py-1.5 text-xs border border-ink-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ink-accent"
                                 />
                                 <input
@@ -319,6 +326,7 @@ export default function AILessonComposer({
                                     value={byokModel}
                                     onChange={(e) => setByokModel(e.target.value)}
                                     placeholder="Tên model (vd: llama-3.3-70b-versatile)"
+                                    autoComplete="off"
                                     className="w-full px-2.5 py-1.5 text-xs border border-ink-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ink-accent"
                                 />
                                 <label className="flex items-center gap-1.5 text-[11px] text-ink-textMid">
