@@ -67,7 +67,14 @@ export async function POST(
         const controller = new LearnController();
         const result = await controller.trackVideoProgress(userId, lessonId, position, duration, isPreview);
 
-        return NextResponse.json(result, { status: 200 });
+        // 2026-09-04 — controller trả về ProgressResult { isFinished }, nhưng
+        // GET ở trên và LessonProgress phía frontend đều dùng field
+        // `isCompleted`. Sự lệch tên field này khiến `progress?.isCompleted`
+        // trong learn/page.tsx luôn undefined sau mỗi lần POST, nên checkmark
+        // sidebar + progress bar không tự cập nhật — phải reload trang mới
+        // thấy đúng (vì GET lúc đó mới trả `isCompleted` thật). Map lại tên
+        // field ở đây để response của POST/GET đồng nhất.
+        return NextResponse.json({ isCompleted: result.isFinished }, { status: 200 });
     } catch (error) {
         console.error('Error tracking video progress:', error);
         const message = error instanceof Error ? error.message : 'Internal server error';
