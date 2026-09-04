@@ -12,9 +12,19 @@ model_list:
   # theo thời gian — nếu lại gặp lỗi 404 model_not_found, kiểm tra lại danh
   # sách model đang có bằng chính URL trên rồi cập nhật 2 dòng model bên dưới,
   # không phải lỗi ở LiteLLMProvider/AIGenerationService.
+  #
+  # 2026-09-04 — `default` từng trỏ `qwen/qwen3.6-27b` (reasoning model): nó
+  # in cả chuỗi <think>...</think> ra thẳng `message.content` (không tách
+  # field `reasoning_content` riêng), khiến AILessonComposer/parseAIQuizContent
+  # (client) không bao giờ cắt ra được JSON hợp lệ (AI_QUIZ_UNPARSEABLE), và
+  # đôi khi finish_reason=length cắt cụt trước khi model kịp in JSON — tính
+  # năng "tạo quiz bằng AI" luôn lỗi. Đổi `default` sang `gpt-oss-120b`
+  # (non-reasoning, trả thẳng JSON theo đúng schema yêu cầu, đã verify) —
+  # `groq-qwen-27b` bên dưới GIỮ NGUYÊN model cũ cho ai cố tình muốn chọn
+  # thẳng Qwen, không xoá lựa chọn khỏi hệ thống.
   - model_name: default
     litellm_params:
-      model: groq/qwen/qwen3.6-27b
+      model: groq/openai/gpt-oss-120b
       api_key: os.environ/GROQ_API_KEY
   - model_name: groq-qwen-27b
     litellm_params:
