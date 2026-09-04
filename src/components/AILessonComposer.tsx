@@ -80,7 +80,12 @@ export default function AILessonComposer({
 }: AILessonComposerProps) {
     const [type, setType] = useState<AIRecipeType>(initialType);
     const [selectedLessonId, setSelectedLessonId] = useState<number | null>(null);
-    const [customMode, setCustomMode] = useState(false);
+    // 2026-09-04 — bỏ toggle "bật/tắt tuỳ biến": panel tuỳ biến giờ LUÔN hiện
+    // sẵn (pill chọn số câu/độ khó, ô chủ đề), badge trạng thái cập nhật
+    // SỐNG theo giá trị đang chọn thay vì 1 dòng chữ tĩnh nói "tuỳ biến = cần
+    // trả phí" ngay khi vừa mở panel (sai — để nguyên mặc định vẫn miễn phí).
+    // Chỉ khối BYOK (ít dùng, nhiều ô) gấp lại mặc định.
+    const [byokOpen, setByokOpen] = useState(false);
 
     // Tham số tuỳ biến — chỉ gửi lên khi customMode bật. Nếu user bật tuỳ
     // biến nhưng để nguyên mặc định và không nhập chủ đề, params gửi lên
@@ -120,6 +125,16 @@ export default function AILessonComposer({
 
     const selected = videoOptions.find(v => v.lessonId === selectedLessonId) ?? videoOptions[0] ?? null;
 
+    // Params đang chọn có TRÙNG recipe mặc định của server không (Recipes.ts
+    // DEFAULT_RECIPE_PARAMS) — quyết định badge hiện "Miễn phí" hay "Cần BYOK
+    // hoặc trả phí". Luôn gửi params lên (không còn nhánh customMode ẩn/hiện
+    // params nữa) — khi trùng mặc định, server tự đi đường miễn phí y hệt
+    // trước đây dù params có mặt trong request hay không.
+    const trimmedTopic = focusTopic.trim();
+    const isDefaultParams = trimmedTopic === '' && (type === 'summary' ? length === 'standard' : questionCount === 10 && difficulty === 'medium');
+    const hasFullByok = byokApiKey.trim() !== '' && byokBaseUrl.trim() !== '' && byokModel.trim() !== '';
+    const isFree = isDefaultParams || hasFullByok;
+
     const handleGenerate = async (paymentMethod?: 'CREDITS') => {
         if (!selected) return;
         setLoading(true);
@@ -128,19 +143,14 @@ export default function AILessonComposer({
         setSummaryResult(null);
         setSummaryCopied(false);
         try {
-            const trimmedTopic = focusTopic.trim();
             const options = {
-                ...(customMode
-                    ? {
-                        params: type === 'summary'
-                            ? { length, language: 'vi', ...(trimmedTopic ? { focusTopic: trimmedTopic } : {}) }
-                            : { questionCount, difficulty, language: 'vi', ...(trimmedTopic ? { focusTopic: trimmedTopic } : {}) },
-                        byokApiKey: byokApiKey.trim() || undefined,
-                        byokBaseUrl: byokBaseUrl.trim() || undefined,
-                        byokModel: byokModel.trim() || undefined,
-                        requestedVisibility: (shareWithOthers ? 'SHARED' : 'PRIVATE') as 'SHARED' | 'PRIVATE',
-                    }
-                    : {}),
+                params: type === 'summary'
+                    ? { length, language: 'vi', ...(trimmedTopic ? { focusTopic: trimmedTopic } : {}) }
+                    : { questionCount, difficulty, language: 'vi', ...(trimmedTopic ? { focusTopic: trimmedTopic } : {}) },
+                byokApiKey: byokApiKey.trim() || undefined,
+                byokBaseUrl: byokBaseUrl.trim() || undefined,
+                byokModel: byokModel.trim() || undefined,
+                requestedVisibility: (shareWithOthers ? 'SHARED' : 'PRIVATE') as 'SHARED' | 'PRIVATE',
                 paymentMethod,
                 force: type === 'quiz' && quizGeneratedSourceIds.has(selected.sourceId) ? true : undefined,
             };
@@ -238,61 +248,96 @@ export default function AILessonComposer({
                             />
                         </div>
 
-                        <div className="flex items-center justify-between">
-                            <span className="text-[11px] text-ink-textDim">
-                                {customMode ? 'Tuỳ biến — cần key riêng hoặc trả phí' : 'Bản mặc định, miễn phí'}
-                            </span>
-                            <button
-                                onClick={() => setCustomMode(v => !v)}
-                                className="text-[11px] font-medium text-ink-accent hover:text-ink-accent/80 underline underline-offset-2"
-                            >
-                                {customMode ? 'Dùng bản mặc định' : 'Tuỳ biến (độ khó, số câu, chủ đề…)'}
-                            </button>
-                        </div>
+                        <div className="p-3 rounded-lg bg-ink-accentA border border-ink-border space-y-2.5">
+                            <div className="flex items-center justify-between">
+                                <span className="text-xs font-semibold text-ink-textMid">
+                                    Tuỳ biến {type === 'quiz' ? 'quiz' : 'tóm tắt'}
+                                </span>
+                                {/* Badge sống — cập nhật ngay theo giá trị đang chọn, thay vì 1
+                                    dòng chữ tĩnh coi "mở panel tuỳ biến" = "sẽ tốn phí" (sai: để
+                                    nguyên mặc định vẫn miễn phí, xem isDefaultParams/isFree phía trên). */}
+                                <span
+                                    className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium border ${
+                                        isFree
+                                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                            : 'bg-amber-50 text-amber-700 border-amber-100'
+                                    }`}
+                                >
+                                    <span className={`w-1.5 h-1.5 rounded-full ${isFree ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                                    {isFree ? (hasFullByok && !isDefaultParams ? 'Miễn phí — dùng key riêng' : 'Miễn phí') : 'Cần BYOK hoặc trả phí'}
+                                </span>
+                            </div>
 
-                        {customMode && (
-                            <div className="p-3 rounded-lg bg-ink-accentA border border-ink-border space-y-2.5">
-                                <div className="flex gap-2">
-                                    {type === 'quiz' ? (
-                                        <>
-                                            <select
-                                                value={questionCount}
-                                                onChange={(e) => setQuestionCount(Number(e.target.value))}
-                                                className="flex-1 px-2 py-1.5 text-xs border border-ink-border rounded-lg bg-ink-panel"
+                            {type === 'quiz' ? (
+                                <>
+                                    <div>
+                                        <label className="block text-[11px] font-medium text-ink-textDim mb-1">Số câu</label>
+                                        <div className="flex gap-1.5">
+                                            {[5, 10, 15, 20].map((n) => (
+                                                <button
+                                                    key={n}
+                                                    type="button"
+                                                    onClick={() => setQuestionCount(n)}
+                                                    className={`px-2.5 py-1 rounded-md text-xs font-medium border transition-colors ${
+                                                        questionCount === n
+                                                            ? 'bg-ink-accent text-white border-ink-accent'
+                                                            : 'bg-ink-panel text-ink-text border-ink-border hover:border-ink-accent'
+                                                    }`}
+                                                >
+                                                    {n} câu
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-[11px] font-medium text-ink-textDim mb-1">Độ khó</label>
+                                        <div className="flex gap-1.5">
+                                            {[{ v: 'easy', l: 'Dễ' }, { v: 'medium', l: 'Trung bình' }, { v: 'hard', l: 'Khó' }].map((opt) => (
+                                                <button
+                                                    key={opt.v}
+                                                    type="button"
+                                                    onClick={() => setDifficulty(opt.v)}
+                                                    className={`px-2.5 py-1 rounded-md text-xs font-medium border transition-colors ${
+                                                        difficulty === opt.v
+                                                            ? 'bg-ink-accent text-white border-ink-accent'
+                                                            : 'bg-ink-panel text-ink-text border-ink-border hover:border-ink-accent'
+                                                    }`}
+                                                >
+                                                    {opt.l}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </>
+                            ) : (
+                                <div>
+                                    <label className="block text-[11px] font-medium text-ink-textDim mb-1">Độ dài</label>
+                                    <div className="flex gap-1.5">
+                                        {[{ v: 'short', l: 'Ngắn' }, { v: 'standard', l: 'Chuẩn' }, { v: 'long', l: 'Dài' }].map((opt) => (
+                                            <button
+                                                key={opt.v}
+                                                type="button"
+                                                onClick={() => setLength(opt.v)}
+                                                className={`px-2.5 py-1 rounded-md text-xs font-medium border transition-colors ${
+                                                    length === opt.v
+                                                        ? 'bg-ink-accent text-white border-ink-accent'
+                                                        : 'bg-ink-panel text-ink-text border-ink-border hover:border-ink-accent'
+                                                }`}
                                             >
-                                                <option value={5}>5 câu</option>
-                                                <option value={10}>10 câu</option>
-                                                <option value={15}>15 câu</option>
-                                                <option value={20}>20 câu</option>
-                                            </select>
-                                            <select
-                                                value={difficulty}
-                                                onChange={(e) => setDifficulty(e.target.value)}
-                                                className="flex-1 px-2 py-1.5 text-xs border border-ink-border rounded-lg bg-ink-panel"
-                                            >
-                                                <option value="easy">Dễ</option>
-                                                <option value="medium">Trung bình</option>
-                                                <option value="hard">Khó</option>
-                                            </select>
-                                        </>
-                                    ) : (
-                                        <select
-                                            value={length}
-                                            onChange={(e) => setLength(e.target.value)}
-                                            className="flex-1 px-2 py-1.5 text-xs border border-ink-border rounded-lg bg-ink-panel"
-                                        >
-                                            <option value="short">Tóm tắt ngắn</option>
-                                            <option value="standard">Tóm tắt chuẩn</option>
-                                            <option value="long">Tóm tắt dài</option>
-                                        </select>
-                                    )}
+                                                {opt.l}
+                                            </button>
+                                        ))}
+                                    </div>
                                 </div>
+                            )}
 
+                            <div>
+                                <label className="block text-[11px] font-medium text-ink-textDim mb-1">Chủ đề muốn tập trung (tuỳ chọn)</label>
                                 <input
                                     type="text"
                                     value={focusTopic}
                                     onChange={(e) => setFocusTopic(e.target.value)}
-                                    placeholder="Chủ đề muốn tập trung (tuỳ chọn, vd: phần useEffect)"
+                                    placeholder="vd: phần useEffect"
                                     // 2026-09-04 — trình duyệt tự autofill email/địa chỉ đã lưu vào ô text
                                     // trống này (không liên quan gì tới "chủ đề"), khiến params tự nhiên
                                     // lệch khỏi DEFAULT_RECIPE_PARAMS ngoài ý muốn user → rơi vào nhánh
@@ -300,46 +345,78 @@ export default function AILessonComposer({
                                     autoComplete="off"
                                     className="w-full px-2.5 py-1.5 text-xs border border-ink-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ink-accent"
                                 />
-
-                                <p className="text-[11px] text-ink-textMuted pt-1">
-                                    Key riêng (BYOK) — điền đủ 3 ô để tuỳ biến không tốn phí. Bỏ trống thì
-                                    bản tuỳ biến sẽ cần trả phí bằng credit.
-                                </p>
-                                <input
-                                    type="password"
-                                    value={byokApiKey}
-                                    onChange={(e) => setByokApiKey(e.target.value)}
-                                    placeholder="API key"
-                                    autoComplete="off"
-                                    className="w-full px-2.5 py-1.5 text-xs border border-ink-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ink-accent"
-                                />
-                                <input
-                                    type="text"
-                                    value={byokBaseUrl}
-                                    onChange={(e) => setByokBaseUrl(e.target.value)}
-                                    placeholder="Endpoint (vd: https://api.groq.com/openai/v1)"
-                                    autoComplete="off"
-                                    className="w-full px-2.5 py-1.5 text-xs border border-ink-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ink-accent"
-                                />
-                                <input
-                                    type="text"
-                                    value={byokModel}
-                                    onChange={(e) => setByokModel(e.target.value)}
-                                    placeholder="Tên model (vd: llama-3.3-70b-versatile)"
-                                    autoComplete="off"
-                                    className="w-full px-2.5 py-1.5 text-xs border border-ink-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ink-accent"
-                                />
-                                <label className="flex items-center gap-1.5 text-[11px] text-ink-textMid">
-                                    <input
-                                        type="checkbox"
-                                        checked={shareWithOthers}
-                                        onChange={(e) => setShareWithOthers(e.target.checked)}
-                                        className="rounded text-ink-accent focus:ring-ink-accent"
-                                    />
-                                    Chia sẻ bản này cho người khác dùng miễn phí (chỉ áp dụng khi dùng key riêng)
-                                </label>
                             </div>
-                        )}
+
+                            {/* BYOK gấp lại mặc định (ít dùng, 3 ô + checkbox) — mở ra khi cần
+                                thay vì luôn chiếm chỗ, giảm cảm giác "tường input" cho người chỉ
+                                muốn đổi số câu/độ khó rồi trả phí bằng credit. */}
+                            <div className="border-t border-ink-border/60 pt-2.5">
+                                <button
+                                    type="button"
+                                    onClick={() => setByokOpen((o) => !o)}
+                                    className="flex items-center gap-1.5 text-[11px] font-medium text-ink-accent hover:text-ink-accent/80"
+                                    aria-expanded={byokOpen}
+                                >
+                                    <svg
+                                        className={`w-3 h-3 shrink-0 transition-transform ${byokOpen ? 'rotate-90' : ''}`}
+                                        fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                                    >
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7"/>
+                                    </svg>
+                                    Dùng key riêng (BYOK) để tuỳ biến miễn phí
+                                </button>
+
+                                {byokOpen && (
+                                    <div className="mt-2 space-y-2">
+                                        <p className="text-[11px] text-ink-textMuted">
+                                            Điền đủ 3 ô để tuỳ biến không tốn phí. Bỏ trống thì bản tuỳ biến sẽ cần trả phí bằng credit.
+                                        </p>
+                                        <div>
+                                            <label className="block text-[11px] font-medium text-ink-textDim mb-1">API key</label>
+                                            <input
+                                                type="password"
+                                                value={byokApiKey}
+                                                onChange={(e) => setByokApiKey(e.target.value)}
+                                                placeholder="API key"
+                                                autoComplete="off"
+                                                className="w-full px-2.5 py-1.5 text-xs border border-ink-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ink-accent"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-[11px] font-medium text-ink-textDim mb-1">Endpoint</label>
+                                            <input
+                                                type="text"
+                                                value={byokBaseUrl}
+                                                onChange={(e) => setByokBaseUrl(e.target.value)}
+                                                placeholder="vd: https://api.groq.com/openai/v1"
+                                                autoComplete="off"
+                                                className="w-full px-2.5 py-1.5 text-xs border border-ink-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ink-accent"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-[11px] font-medium text-ink-textDim mb-1">Tên model</label>
+                                            <input
+                                                type="text"
+                                                value={byokModel}
+                                                onChange={(e) => setByokModel(e.target.value)}
+                                                placeholder="vd: llama-3.3-70b-versatile"
+                                                autoComplete="off"
+                                                className="w-full px-2.5 py-1.5 text-xs border border-ink-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ink-accent"
+                                            />
+                                        </div>
+                                        <label className="flex items-center gap-1.5 text-[11px] text-ink-textMid">
+                                            <input
+                                                type="checkbox"
+                                                checked={shareWithOthers}
+                                                onChange={(e) => setShareWithOthers(e.target.checked)}
+                                                className="rounded text-ink-accent focus:ring-ink-accent"
+                                            />
+                                            Chia sẻ bản này cho người khác dùng miễn phí (chỉ áp dụng khi dùng key riêng)
+                                        </label>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
 
                         <button
                             onClick={() => handleGenerate()}
