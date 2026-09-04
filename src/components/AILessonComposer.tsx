@@ -264,7 +264,11 @@ export default function AILessonComposer({
                                     }`}
                                 >
                                     <span className={`w-1.5 h-1.5 rounded-full ${isFree ? 'bg-emerald-500' : 'bg-amber-500'}`} />
-                                    {isFree ? (hasFullByok && !isDefaultParams ? 'Miễn phí — dùng key riêng' : 'Miễn phí') : 'Cần BYOK hoặc trả phí'}
+                                    {/* Server (AIGenerationPolicy.decideRouting) luôn xét BYOK TRƯỚC —
+                                        điền đủ 3 ô là dùng key riêng, bất kể tham số có đang trùng mặc
+                                        định hay không. Badge phải khớp đúng thứ tự ưu tiên đó, không chỉ
+                                        gắn nhãn "dùng key riêng" khi params khác mặc định. */}
+                                    {isFree ? (hasFullByok ? 'Miễn phí — dùng key riêng' : 'Miễn phí') : 'Cần BYOK hoặc trả phí'}
                                 </span>
                             </div>
 
