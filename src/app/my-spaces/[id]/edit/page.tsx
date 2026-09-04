@@ -1697,17 +1697,25 @@ export default function SpaceEditPage() {
                                                                 nháp trong khu vực “Câu hỏi” bên dưới — bấm “Lưu vào bài quiz này” mới
                                                                 thật sự thay thế câu hỏi hiện có, <strong>không đụng tới video hay bài quiz nào khác</strong>.
                                                             </p>
-                                                            <select
-                                                                value={selectedSourceId}
-                                                                onChange={(e) => setAiQuizSourceLessonId(Number(e.target.value))}
-                                                                className="w-full mb-2 px-2.5 py-1.5 text-xs border border-ink-borderHi rounded-lg bg-ink-panel"
-                                                            >
-                                                                {videoCandidates.map((l) => (
-                                                                    <option key={l.id} value={l.sourceId}>
-                                                                        {multiChapter ? `${l.chapterTitle} › ${l.title}` : l.title}
-                                                                    </option>
-                                                                ))}
-                                                            </select>
+                                                            <div className="relative mb-2">
+                                                                <select
+                                                                    value={selectedSourceId}
+                                                                    onChange={(e) => setAiQuizSourceLessonId(Number(e.target.value))}
+                                                                    className="w-full appearance-none pl-3 pr-9 py-2.5 text-xs font-medium border border-ink-borderHi rounded-ink-md bg-ink-panel text-ink-text hover:border-ink-accent focus:outline-none focus:ring-2 focus:ring-ink-accent focus:border-ink-accent transition-colors cursor-pointer"
+                                                                >
+                                                                    {videoCandidates.map((l) => (
+                                                                        <option key={l.id} value={l.sourceId}>
+                                                                            {multiChapter ? `${l.chapterTitle} › ${l.title}` : l.title}
+                                                                        </option>
+                                                                    ))}
+                                                                </select>
+                                                                <svg
+                                                                    className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-ink-textDim"
+                                                                    fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                                                                >
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7"/>
+                                                                </svg>
+                                                            </div>
                                                             <p className="text-[11px] text-ink-textMuted mb-2">
                                                                 Nguồn hiện chọn: <span className="font-semibold text-ink-text">{selectedVideo.title}</span>
                                                             </p>
