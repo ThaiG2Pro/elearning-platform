@@ -125,7 +125,7 @@ export default function AccountMenu({ user, onLogout, variant = 'chip' }: Accoun
                             <button onClick={() => go('/my-ai-shares')} role="menuitem"
                                 className="flex items-center gap-2.5 px-4 py-2 text-sm text-ink-text hover:bg-ink-page w-full text-left transition-colors">
                                 <svg className="w-4 h-4 text-ink-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-                                AI đã chia sẻ
+                                AI đã chia sẻ của tôi
                             </button>
                             <div className="mx-4 my-1 border-t border-ink-border" />
                             <button onClick={() => go('/profile')} role="menuitem"

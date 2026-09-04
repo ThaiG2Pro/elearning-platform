@@ -77,9 +77,18 @@ export default function MyAISharesPage() {
 
             <main className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-7 md:py-10">
                 <h1 className="text-[clamp(20px,2.2vw,26px)] font-bold tracking-[-0.015em] text-ink-text mb-1">AI đã chia sẻ của tôi</h1>
-                <p className="text-sm text-ink-textMuted mb-6">
+                <p className="text-sm text-ink-textMuted mb-2">
                     {items.length > 0 ? `${items.length} bản — ` : ''}Các bản quiz/tóm tắt bạn tạo bằng key riêng (BYOK) và đã chọn chia sẻ cho người khác dùng lại miễn phí.
                 </p>
+                {/* 2026-09-05 — trang này quản lý bản AI/quiz share bằng BYOK, khác
+                    hẳn /my-shares (link chia sẻ CẤP SPACE) — 2 trang trước đây không
+                    biết nhau tồn tại dù cùng chủ đề "chia sẻ của tôi". */}
+                <button
+                    onClick={() => router.push('/my-shares')}
+                    className="block text-xs font-medium text-ink-accent hover:text-ink-accent/80 underline underline-offset-2 mb-6"
+                >
+                    Đang tìm link chia sẻ Space? Xem tại đây →
+                </button>
 
                 {appState === 'loading' && (
                     <div className="space-y-3">

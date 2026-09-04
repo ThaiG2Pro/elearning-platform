@@ -417,6 +417,16 @@ export default function AILessonComposer({
                                             />
                                             Chia sẻ bản này cho người khác dùng miễn phí (chỉ áp dụng khi dùng key riêng)
                                         </label>
+                                        {/* 2026-09-05 — cùng gap với "Chia sẻ & Lưu trữ" ở trang edit
+                                            (audit "cơ cấu lại"): tick xong không có lối nào xem/thu hồi
+                                            lại. /my-ai-shares đã có sẵn cho việc đó, chỉ thiếu lối tắt
+                                            từ đúng chỗ tick checkbox. */}
+                                        <Link
+                                            href="/my-ai-shares"
+                                            className="block text-[11px] font-medium text-ink-accent hover:text-ink-accent/80 underline underline-offset-2"
+                                        >
+                                            Xem AI đã chia sẻ của tôi →
+                                        </Link>
                                     </div>
                                 )}
                             </div>
