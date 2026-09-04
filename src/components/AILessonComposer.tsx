@@ -17,6 +17,7 @@ import {
     DialogDescription,
 } from '@/components/ui/dialog';
 import MarkdownText from '@/components/MarkdownText';
+import VideoSourceDropdown from '@/components/VideoSourceDropdown';
 
 /**
  * 1 lesson VIDEO có Source trong space — ứng viên làm "video nguồn" cho AI.
@@ -220,17 +221,21 @@ export default function AILessonComposer({
                     <div className="space-y-3">
                         <div>
                             <label className="block text-xs font-semibold text-ink-textMid mb-1">Video nguồn</label>
-                            <select
-                                value={selected?.lessonId ?? ''}
-                                onChange={(e) => setSelectedLessonId(Number(e.target.value))}
-                                className="w-full px-2.5 py-2 text-sm border border-ink-border rounded-lg bg-ink-panel focus:outline-none focus:ring-2 focus:ring-ink-accent"
-                            >
-                                {videoOptions.map((v) => (
-                                    <option key={v.lessonId} value={v.lessonId}>
-                                        {v.chapterTitle} — {v.lessonTitle}
-                                    </option>
-                                ))}
-                            </select>
+                            {/* 2026-09-04 — trước đây là <select> gốc: list xổ xuống không style
+                                được (chrome trình duyệt), xấu mặc định trong khi dropdown "Video
+                                nguồn" ở panel sửa lesson QUIZ đã được thay bằng listbox tự vẽ từ
+                                trước (commit 7d6fe68) — dùng lại đúng component đó cho đồng nhất. */}
+                            <VideoSourceDropdown
+                                options={videoOptions.map((v) => ({
+                                    sourceId: v.sourceId,
+                                    label: `${v.chapterTitle} — ${v.lessonTitle}`,
+                                }))}
+                                selectedSourceId={selected?.sourceId ?? videoOptions[0].sourceId}
+                                onChange={(sourceId) => {
+                                    const match = videoOptions.find(v => v.sourceId === sourceId);
+                                    if (match) setSelectedLessonId(match.lessonId);
+                                }}
+                            />
                         </div>
 
                         <div className="flex items-center justify-between">
