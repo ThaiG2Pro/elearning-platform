@@ -1663,51 +1663,6 @@ export default function SpaceEditPage() {
                                                 {savingLesson ? 'Đang lưu…' : 'Lưu tên bài học'}
                                             </Button>
 
-                                            {/* Existing Questions — shown so the owner never re-uploads blind into
-                                                a destructive replace-all (BR-UPLOAD-01) without seeing what's there. */}
-                                            {loadingLessonDetail ? (
-                                                <p className="text-xs text-ink-textDim">Đang tải câu hỏi hiện có…</p>
-                                            ) : existingQuizQuestions && existingQuizQuestions.length > 0 ? (
-                                                <div className="border-t border-ink-pageDim pt-4">
-                                                    <h4 className="text-xs font-bold text-ink-text uppercase tracking-wider mb-3">
-                                                        Câu hỏi hiện có ({existingQuizQuestions.length})
-                                                    </h4>
-                                                    <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
-                                                        {existingQuizQuestions.map((q, idx) => {
-                                                            const correctIdx = getCorrectOptionIndex(q);
-                                                            return (
-                                                                <div key={q.id ?? idx} className="border border-ink-border rounded-ink-md p-4 bg-ink-page/50">
-                                                                    <p className="text-xs font-bold text-ink-text mb-2">
-                                                                        Câu {idx + 1}: {getQuestionText(q)}
-                                                                    </p>
-                                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                                                        {q.options.map((opt, optIdx) => (
-                                                                            <div
-                                                                                key={optIdx}
-                                                                                className={`px-3 py-1.5 rounded-lg text-xs flex items-center justify-between ${
-                                                                                    optIdx === correctIdx
-                                                                                        ? 'bg-emerald-100/70 text-emerald-800 font-semibold border border-emerald-300'
-                                                                                        : 'bg-ink-panel text-ink-textMid border border-ink-border'
-                                                                                }`}
-                                                                            >
-                                                                                <span>{opt}</span>
-                                                                                {optIdx === correctIdx && (
-                                                                                    <span className="text-[10px] bg-emerald-600 text-white px-1.5 py-0.2 rounded font-bold">
-                                                                                        ĐÚNG
-                                                                                    </span>
-                                                                                )}
-                                                                            </div>
-                                                                        ))}
-                                                                    </div>
-                                                                </div>
-                                                            );
-                                                        })}
-                                                    </div>
-                                                </div>
-                                            ) : (
-                                                <p className="text-xs text-ink-textDim">Chưa có câu hỏi nào trong bài học này.</p>
-                                            )}
-
                                             {/* Bổ sung: lesson QUIZ tự nó không có sourceId (tạo tay hoặc rỗng),
                                                 nên cho chọn 1 video làm nguồn để AI sinh quiz — trước đây chỉ có
                                                 mỗi đường upload Excel thủ công ở đây. Nguồn lấy từ TOÀN BỘ space
@@ -1730,9 +1685,9 @@ export default function SpaceEditPage() {
                                                             Dùng AI tạo quiz cho bài “{lessonForm.title || 'chưa đặt tên'}”
                                                         </h4>
                                                         <p className="text-[11px] text-ink-textDim mb-2">
-                                                            Chọn 1 video làm nguồn để AI đọc và sinh quiz. Kết quả lưu thẳng vào bài
-                                                            học đang mở (“{lessonForm.title || 'chưa đặt tên'}”, thay thế toàn bộ câu
-                                                            hỏi hiện có nếu có) — <strong>không đụng tới video hay bài quiz nào khác</strong>.
+                                                            Chọn 1 video làm nguồn để AI đọc và sinh quiz. Kết quả hiện ra thành bản
+                                                            nháp trong khu vực “Câu hỏi” bên dưới — bấm “Lưu vào bài quiz này” mới
+                                                            thật sự thay thế câu hỏi hiện có, <strong>không đụng tới video hay bài quiz nào khác</strong>.
                                                         </p>
                                                         <select
                                                             value={selectedSourceId}
@@ -1777,55 +1732,116 @@ export default function SpaceEditPage() {
                                                             </div>
                                                         )}
 
-                                                        {aiQuizDraft && (
-                                                            <div className="mt-3">
-                                                                {aiQuizServedFromCache && (
-                                                                    <p className="text-[11px] text-ink-accent mb-1.5">
-                                                                        ℹ️ Video “{selectedVideo.title}” đã có bản quiz AI tạo trước đó
-                                                                        (dùng lại, không tốn thêm lượt gọi AI) — nếu bài quiz khác trong
-                                                                        chương cũng chọn video này, câu hỏi sẽ giống hệt nhau.
-                                                                    </p>
-                                                                )}
-                                                                <div className="flex items-center justify-between mb-2">
-                                                                    <p className="text-xs font-semibold text-ink-textMuted">
-                                                                        Xem trước quiz do AI tạo ({aiQuizDraft.length} câu)
-                                                                    </p>
-                                                                    <Button
-                                                                        onClick={handleSaveAIQuizDraftIntoCurrentLesson}
-                                                                        disabled={savingAIQuizIntoCurrentLesson}
-                                                                        className="vd-focusable bg-emerald-600 hover:bg-emerald-700 text-white"
-                                                                    >
-                                                                        {savingAIQuizIntoCurrentLesson ? 'Đang lưu…' : 'Lưu vào bài quiz này'}
-                                                                    </Button>
-                                                                </div>
-                                                                <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
-                                                                    {aiQuizDraft.map((q, idx) => (
-                                                                        <div key={idx} className="border border-dashed border-ink-pencil rounded-ink-md p-4 bg-ink-page/50">
-                                                                            <p className="text-xs font-bold text-ink-text mb-2">
-                                                                                Câu {idx + 1}: {q.content}
-                                                                            </p>
-                                                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                                                                {q.options.map((opt, optIdx) => (
-                                                                                    <div
-                                                                                        key={optIdx}
-                                                                                        className={`px-3 py-1.5 rounded-lg text-xs flex items-center justify-between ${
-                                                                                            opt.trim().toUpperCase() === q.correctAnswer.trim().toUpperCase()
-                                                                                                ? 'bg-emerald-100/70 text-emerald-800 font-semibold border border-emerald-300'
-                                                                                                : 'bg-ink-panel text-ink-textMid border border-ink-border'
-                                                                                        }`}
-                                                                                    >
-                                                                                        <span>{opt}</span>
-                                                                                    </div>
-                                                                                ))}
-                                                                            </div>
-                                                                        </div>
-                                                                    ))}
-                                                                </div>
-                                                            </div>
+                                                        {aiQuizDraft && aiQuizServedFromCache && (
+                                                            <p className="mt-2 text-[11px] text-ink-accent">
+                                                                ℹ️ Video “{selectedVideo.title}” đã có bản quiz AI tạo trước đó
+                                                                (dùng lại, không tốn thêm lượt gọi AI) — nếu bài quiz khác trong
+                                                                chương cũng chọn video này, câu hỏi sẽ giống hệt nhau.
+                                                            </p>
                                                         )}
                                                     </div>
                                                 );
                                             })()}
+
+                                            {/* Câu hỏi — gộp làm 1 khu vực duy nhất (quyết định 2026-09-04): trước
+                                                đó "Câu hỏi hiện có" (đã lưu) và "Xem trước quiz AI" (bản nháp chưa
+                                                lưu) là 2 danh sách gần giống hệt nhau xếp chồng lên nhau, dễ nhầm
+                                                cái nào mới là dữ liệu thật — đặc biệt rối khi vừa tạo quiz từ nút
+                                                "AI tạo quiz 10 câu" ở panel video rồi nhảy thẳng vào đây, câu hỏi
+                                                AI vừa tạo hiện sẵn ở "Câu hỏi hiện có" phía trên. Giờ chỉ hiện 1
+                                                trong 2: có bản nháp thì ưu tiên hiện bản nháp (viền nét đứt, có nút
+                                                Lưu/Hủy); không thì hiện câu hỏi đã lưu. */}
+                                            <div className="border-t border-ink-pageDim pt-4">
+                                                {aiQuizDraft ? (
+                                                    <>
+                                                        <div className="flex items-center justify-between mb-3 gap-2">
+                                                            <h4 className="text-xs font-bold text-ink-text uppercase tracking-wider">
+                                                                Bản nháp quiz AI ({aiQuizDraft.length} câu) — chưa lưu
+                                                            </h4>
+                                                            <div className="flex items-center gap-3 shrink-0">
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => { setAiQuizDraft(null); setAiQuizServedFromCache(false); }}
+                                                                    className="text-xs font-semibold text-ink-textDim hover:text-ink-text hover:underline"
+                                                                >
+                                                                    Hủy bản nháp
+                                                                </button>
+                                                                <Button
+                                                                    onClick={handleSaveAIQuizDraftIntoCurrentLesson}
+                                                                    disabled={savingAIQuizIntoCurrentLesson}
+                                                                    className="vd-focusable bg-emerald-600 hover:bg-emerald-700 text-white"
+                                                                >
+                                                                    {savingAIQuizIntoCurrentLesson ? 'Đang lưu…' : 'Lưu vào bài quiz này'}
+                                                                </Button>
+                                                            </div>
+                                                        </div>
+                                                        <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
+                                                            {aiQuizDraft.map((q, idx) => (
+                                                                <div key={idx} className="border border-dashed border-ink-pencil rounded-ink-md p-4 bg-ink-page/50">
+                                                                    <p className="text-xs font-bold text-ink-text mb-2">
+                                                                        Câu {idx + 1}: {q.content}
+                                                                    </p>
+                                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                                                        {q.options.map((opt, optIdx) => (
+                                                                            <div
+                                                                                key={optIdx}
+                                                                                className={`px-3 py-1.5 rounded-lg text-xs flex items-center justify-between ${
+                                                                                    opt.trim().toUpperCase() === q.correctAnswer.trim().toUpperCase()
+                                                                                        ? 'bg-emerald-100/70 text-emerald-800 font-semibold border border-emerald-300'
+                                                                                        : 'bg-ink-panel text-ink-textMid border border-ink-border'
+                                                                                }`}
+                                                                            >
+                                                                                <span>{opt}</span>
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </>
+                                                ) : loadingLessonDetail ? (
+                                                    <p className="text-xs text-ink-textDim">Đang tải câu hỏi hiện có…</p>
+                                                ) : existingQuizQuestions && existingQuizQuestions.length > 0 ? (
+                                                    <>
+                                                        <h4 className="text-xs font-bold text-ink-text uppercase tracking-wider mb-3">
+                                                            Câu hỏi hiện có ({existingQuizQuestions.length})
+                                                        </h4>
+                                                        <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
+                                                            {existingQuizQuestions.map((q, idx) => {
+                                                                const correctIdx = getCorrectOptionIndex(q);
+                                                                return (
+                                                                    <div key={q.id ?? idx} className="border border-ink-border rounded-ink-md p-4 bg-ink-page/50">
+                                                                        <p className="text-xs font-bold text-ink-text mb-2">
+                                                                            Câu {idx + 1}: {getQuestionText(q)}
+                                                                        </p>
+                                                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                                                            {q.options.map((opt, optIdx) => (
+                                                                                <div
+                                                                                    key={optIdx}
+                                                                                    className={`px-3 py-1.5 rounded-lg text-xs flex items-center justify-between ${
+                                                                                        optIdx === correctIdx
+                                                                                            ? 'bg-emerald-100/70 text-emerald-800 font-semibold border border-emerald-300'
+                                                                                            : 'bg-ink-panel text-ink-textMid border border-ink-border'
+                                                                                    }`}
+                                                                                >
+                                                                                    <span>{opt}</span>
+                                                                                    {optIdx === correctIdx && (
+                                                                                        <span className="text-[10px] bg-emerald-600 text-white px-1.5 py-0.2 rounded font-bold">
+                                                                                            ĐÚNG
+                                                                                        </span>
+                                                                                    )}
+                                                                                </div>
+                                                                            ))}
+                                                                        </div>
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    </>
+                                                ) : (
+                                                    <p className="text-xs text-ink-textDim">Chưa có câu hỏi nào trong bài học này.</p>
+                                                )}
+                                            </div>
 
                                             <div>
                                                 <div className="flex items-center justify-between mb-1.5 gap-2">
