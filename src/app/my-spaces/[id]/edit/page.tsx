@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Play, HelpCircle } from 'lucide-react';
+import { Play, HelpCircle, ChevronRight, Share2 } from 'lucide-react';
 import {
     getSpaceStructure,
     getLessonPreview,
@@ -16,10 +16,6 @@ import {
     uploadQuizFile,
     downloadQuizTemplate,
     updateSpaceMetadata,
-    getOrCreateShareLink,
-    revokeShareLink,
-    archiveSpace,
-    unarchiveSpace,
     saveGeneratedQuizQuestions,
 } from '@/lib/management';
 import {
@@ -100,7 +96,6 @@ export default function SpaceEditPage() {
     const spaceId = parseInt(params.id as string);
 
     // Main States
-    const [activeTab, setActiveTab] = useState<'curriculum' | 'settings'>('curriculum');
     const [space, setSpace] = useState<SpaceStructure | null>(null);
     const [loading, setLoading] = useState(true);
     const [savingChapter, setSavingChapter] = useState(false);
@@ -130,10 +125,11 @@ export default function SpaceEditPage() {
     const [isDeletingChapter, setIsDeletingChapter] = useState(false);
     const [isDeletingLesson, setIsDeletingLesson] = useState(false);
 
-    // Share & Metadata States
-    const [shareUrl, setShareUrl] = useState<string | null>(null);
-    const [generatingShare, setGeneratingShare] = useState(false);
-    const [archiving, setArchiving] = useState(false);
+    // Metadata States — Chia sẻ & Lưu trữ đã chuyển hẳn sang /my-shares (xem
+    // audit "cơ cấu lại" 2026-09-05: tab Cài đặt & Chia sẻ bị xoá, card đó
+    // dư thừa với 1 trang đã làm đúng việc này), chỉ còn "Thông tin cơ bản"
+    // ở lại trang edit — gấp lại mặc định, mở khi cần đổi tên/mô tả Space.
+    const [metaEditOpen, setMetaEditOpen] = useState(false);
     const [metaTitle, setMetaTitle] = useState('');
     const [metaDesc, setMetaDesc] = useState('');
     const [savingMeta, setSavingMeta] = useState(false);
@@ -225,61 +221,6 @@ export default function SpaceEditPage() {
             await apiLogout();
         } finally {
             router.push('/');
-        }
-    };
-
-    // Share Link Handler
-    const handleCopyShareLink = async () => {
-        try {
-            setGeneratingShare(true);
-            const res = await getOrCreateShareLink(spaceId);
-            setShareUrl(res.shareUrl);
-            await navigator.clipboard.writeText(res.shareUrl);
-            setToast({ message: 'Đã sao chép link chia sẻ vào bộ nhớ tạm!', type: 'success' });
-        } catch (err: any) {
-            setToast({ message: 'Không thể tạo link chia sẻ: ' + err.message, type: 'error' });
-        } finally {
-            setGeneratingShare(false);
-        }
-    };
-
-    // 2026-09-05 — cơ cấu lại: trước đây chỉ /my-shares (qua AccountMenu) mới
-    // thu hồi được link, dù trang edit là nơi TẠO link — chủ space phải rời
-    // trang đang sửa để tắt chia sẻ chính space mình vừa tạo link. Gộp về
-    // đây, cùng card với "Sao chép Link".
-    const handleRevokeShareLink = async () => {
-        if (!window.confirm('Thu hồi link chia sẻ? Ai đang giữ link cũ sẽ không truy cập được nữa.')) return;
-        try {
-            setGeneratingShare(true);
-            await revokeShareLink(spaceId);
-            setShareUrl(null);
-            setToast({ message: 'Đã thu hồi link chia sẻ.', type: 'success' });
-        } catch (err: any) {
-            setToast({ message: 'Không thể thu hồi link: ' + err.message, type: 'error' });
-        } finally {
-            setGeneratingShare(false);
-        }
-    };
-
-    // 2026-09-05 — cơ cấu lại: trước đây chỉ /my-spaces (trang list) mới bấm
-    // lưu trữ được, trang edit chỉ hiển thị badge trạng thái (đọc, không
-    // sửa) — đang sửa 1 space muốn lưu trữ phải thoát ra list mới làm được.
-    const handleToggleArchive = async () => {
-        if (!space) return;
-        const isActive = space.status === 'Active';
-        setArchiving(true);
-        try {
-            if (isActive) {
-                await archiveSpace(spaceId);
-            } else {
-                await unarchiveSpace(spaceId);
-            }
-            setSpace(prev => prev ? { ...prev, status: isActive ? 'Archived' : 'Active' } : null);
-            setToast({ message: isActive ? 'Đã lưu trữ Space.' : 'Đã khôi phục Space.', type: 'success' });
-        } catch (err: any) {
-            setToast({ message: 'Không thể đổi trạng thái: ' + err.message, type: 'error' });
-        } finally {
-            setArchiving(false);
         }
     };
 
@@ -936,7 +877,7 @@ export default function SpaceEditPage() {
         return (
             <div className="min-h-screen bg-ink-page flex items-center justify-center p-4">
                 <div className="bg-ink-panel border border-ink-border rounded-ink-lg shadow-ink-sm p-8 max-w-md w-full text-center">
-                    <div className="w-12 h-12 rounded-full bg-red-50 text-red-500 flex items-center justify-center mx-auto mb-4">
+                    <div className="w-12 h-12 rounded-full bg-destructive/10 text-destructive flex items-center justify-center mx-auto mb-4">
                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
                         </svg>
@@ -952,8 +893,6 @@ export default function SpaceEditPage() {
     }
 
     if (!space) return null;
-
-    const totalLessons = space.chapters.reduce((sum, ch) => sum + ch.lessons.length, 0);
 
     // Breadcrumb for the lesson editor panel — which chapter the open lesson
     // belongs to. Previously the panel only showed the lesson's own title,
@@ -994,7 +933,7 @@ export default function SpaceEditPage() {
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setChapterToDelete(null)} disabled={isDeletingChapter}>Hủy</Button>
                         <Button
-                            className="bg-red-600 hover:bg-red-700 text-white"
+                            variant="destructive"
                             disabled={isDeletingChapter}
                             onClick={() => chapterToDelete !== null && handleDeleteChapter(chapterToDelete)}
                         >
@@ -1016,7 +955,7 @@ export default function SpaceEditPage() {
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setLessonToDelete(null)} disabled={isDeletingLesson}>Hủy</Button>
                         <Button
-                            className="bg-red-600 hover:bg-red-700 text-white"
+                            variant="destructive"
                             disabled={isDeletingLesson}
                             onClick={() => lessonToDelete && handleDeleteLesson(lessonToDelete.chapterId, lessonToDelete.lessonId)}
                         >
@@ -1036,97 +975,55 @@ export default function SpaceEditPage() {
             />
 
             {/* Top Navigation Bar — vỏ dùng chung TopBar variant="site" (bg/border/
-                height/sticky/z-index khớp Header.tsx), subRow chứa hàng tab riêng
-                của trang edit. Không dùng variant="workspace" vì đây là màn quản
-                trị (CRUD), không phải trải nghiệm xem video có focus-mode. */}
-            <TopBar
-                variant="site"
-                subRow={
-                    <div className="flex border-t border-ink-pageDim gap-6">
-                        <button
-                            onClick={() => setActiveTab('curriculum')}
-                            className={`py-3 text-xs font-semibold border-b-2 transition-colors flex items-center gap-2 ${
-                                activeTab === 'curriculum'
-                                    ? 'border-ink-accent text-ink-accent'
-                                    : 'border-transparent text-ink-textMuted hover:text-ink-text'
-                            }`}
-                        >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
-                            </svg>
-                            Cấu trúc bài học
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('settings')}
-                            className={`py-3 text-xs font-semibold border-b-2 transition-colors flex items-center gap-2 ${
-                                activeTab === 'settings'
-                                    ? 'border-ink-accent text-ink-accent'
-                                    : 'border-transparent text-ink-textMuted hover:text-ink-text'
-                            }`}
-                        >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                            </svg>
-                            Cài đặt & Chia sẻ
-                        </button>
-                    </div>
-                }
-            >
-                {/* Left: Back & Title */}
-                <div className="flex items-center gap-4 min-w-0">
-                    <button
-                        onClick={() => router.push('/')}
-                        className="inline-flex items-center gap-1.5 text-sm text-ink-textMuted hover:text-ink-text transition-colors font-medium focus:outline-none"
-                    >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7"/>
-                        </svg>
-                        <span>Trang chủ</span>
-                    </button>
-
-                    <div className="w-px h-5 bg-ink-border hidden sm:block"/>
-
-                    <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                            <h1 className="text-sm font-bold text-ink-text truncate max-w-xs sm:max-w-md leading-none">
-                                {space.title}
-                            </h1>
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold border ${
-                                space.status === 'Active'
-                                    ? 'bg-ink-successA text-ink-success border-ink-successBorder'
-                                    : 'bg-ink-warningA text-ink-warning border-ink-warningBorder'
-                            }`}>
-                                {space.status === 'Active' ? 'Đang hoạt động' : 'Đã lưu trữ'}
-                            </span>
-                        </div>
-                        <p className="text-xs text-ink-textDim mt-0.5">
-                            {space.chapters.length} chương • {totalLessons} bài học
-                        </p>
-                    </div>
+                height/sticky/z-index khớp Header.tsx). Không còn subRow tab strip
+                (xem audit "cơ cấu lại" 2026-09-05: đây là lý do duy nhất khiến
+                header trang này cao 2 tầng trong khi Home/Learn chỉ 1 tầng —
+                "Cấu trúc bài học" giờ là toàn bộ nội dung trang, "Cài đặt & Chia
+                sẻ" đã tách hẳn: Thông tin cơ bản gấp vào sidebar bên dưới, Chia
+                sẻ & Lưu trữ chuyển hẳn sang /my-shares). Không dùng variant="workspace"
+                vì đây là màn quản trị (CRUD), không phải trải nghiệm xem video có
+                focus-mode. */}
+            <TopBar variant="site">
+                {/* Left: breadcrumb — cùng ngữ pháp "đang ở đâu" với TopBar
+                    workspace của trang Learn (Space đang học › Space › Chương),
+                    thay vì idiom nút back đơn trước đây không liên quan gì tới
+                    Learn. 2026-09-05 — bỏ nút "Trang chủ" riêng: brand mark của
+                    TopBar đã tự vẽ điểm về "/" đó (xem audit "Hệ Thống Header"),
+                    ở đây chỉ còn đúng đoạn breadcrumb tiếp theo. */}
+                <div className="flex items-center gap-2 min-w-0 text-sm">
+                    <ChevronRight size={14} className="shrink-0 text-ink-textDim" />
+                    <h1 title={space.title} className="min-w-0 truncate font-medium text-ink-text">
+                        {space.title}
+                    </h1>
+                    <span className={`shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold border ${
+                        space.status === 'Active'
+                            ? 'bg-ink-successA text-ink-success border-ink-successBorder'
+                            : 'bg-ink-warningA text-ink-warning border-ink-warningBorder'
+                    }`}>
+                        {space.status === 'Active' ? 'Đang hoạt động' : 'Đã lưu trữ'}
+                    </span>
                 </div>
 
-                {/* Right: Actions */}
+                {/* Right: Actions — cùng họ icon-only 26×26 với Learn (✎/⛶), thay
+                    Button có nhãn trước đây. "Chia sẻ" không còn mở card tại đây
+                    (đã chuyển hẳn sang /my-shares), chỉ còn là lối tắt. */}
                 <div className="flex items-center gap-2">
-                    {/* 2026-09-05 — nút "Chia sẻ" rời khỏi đây, gộp vào card "Chia sẻ &
-                        Lưu trữ" trong tab Cài đặt & Chia sẻ (trước đây có 2 control làm
-                        y hệt 1 việc: nút này + 1 card riêng ở tab settings — xem audit
-                        "cơ cấu lại" 2026-09-05). Tab đã tên sẵn "Cài đặt & Chia sẻ" nên
-                        không mất lối vào, chỉ gom về đúng 1 chỗ. */}
-
-                    {/* View Learning Page */}
-                    <Button
-                        variant="outline"
-                        size="sm"
+                    <button
                         onClick={() => router.push(`/spaces/${spaceId}/learn`)}
-                        className="inline-flex items-center gap-1.5"
+                        aria-label="Vào học"
+                        title="Xem trang học của Space này"
+                        className="vd-focusable flex items-center justify-center w-[26px] h-[26px] rounded-ink-sm cursor-pointer shrink-0 border bg-transparent border-ink-border text-ink-textMid"
                     >
-                        <svg className="w-4 h-4 text-ink-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                        </svg>
-                        <span>Vào học</span>
-                    </Button>
+                        <Play size={14} />
+                    </button>
+                    <button
+                        onClick={() => router.push('/my-shares')}
+                        aria-label="Chia sẻ & lưu trữ"
+                        title="Quản lý link chia sẻ và lưu trữ Space (trang /my-shares)"
+                        className="vd-focusable flex items-center justify-center w-[26px] h-[26px] rounded-ink-sm cursor-pointer shrink-0 border bg-transparent border-ink-border text-ink-textMid"
+                    >
+                        <Share2 size={14} />
+                    </button>
 
                     {user && (
                         <>
@@ -1139,10 +1036,62 @@ export default function SpaceEditPage() {
 
             {/* Main Body */}
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full">
-                {activeTab === 'curriculum' ? (
-                    <div className="flex flex-col lg:flex-row gap-6">
+                <div className="flex flex-col lg:flex-row gap-6">
                         {/* Sidebar: Space Tree */}
                         <div className="w-full lg:w-80 flex-shrink-0">
+                            {/* Thông tin cơ bản Space — trước đây là 1 tab riêng ("Cài đặt
+                                & Chia sẻ"), giờ gấp lại mặc định ngay trên cây nội dung vì
+                                đây là hành động hiếm (đổi tên/mô tả), không cần chiếm 1
+                                tab riêng khi cả trang giờ chỉ còn đúng 1 việc: soạn nội
+                                dung (xem audit "cơ cấu lại" 2026-09-05). */}
+                            <div className="bg-ink-panel rounded-ink-lg border border-ink-border shadow-ink-sm mb-4 overflow-hidden">
+                                <button
+                                    onClick={() => setMetaEditOpen(o => !o)}
+                                    className="vd-focusable w-full flex items-center justify-between p-4 text-left"
+                                >
+                                    <h2 className="text-xs font-bold text-ink-text uppercase tracking-wider">
+                                        Thông tin cơ bản Space
+                                    </h2>
+                                    <ChevronRight size={14} className={`text-ink-textDim shrink-0 transition-transform ${metaEditOpen ? 'rotate-90' : ''}`} />
+                                </button>
+                                {metaEditOpen && (
+                                    <div className="px-4 pb-4 space-y-3 border-t border-ink-pageDim pt-4">
+                                        <div>
+                                            <label className="block text-xs font-semibold text-ink-text mb-1.5">
+                                                Tên Space
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={metaTitle}
+                                                onChange={(e) => setMetaTitle(e.target.value)}
+                                                className="w-full px-3 py-2 border border-ink-borderHi rounded-ink-md text-sm focus:outline-none focus:ring-2 focus:ring-ink-accent"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-semibold text-ink-text mb-1.5">
+                                                Mô tả tổng quan Space
+                                            </label>
+                                            <textarea
+                                                value={metaDesc}
+                                                onChange={(e) => setMetaDesc(e.target.value)}
+                                                rows={3}
+                                                className="w-full px-3 py-2 border border-ink-borderHi rounded-ink-md text-sm focus:outline-none focus:ring-2 focus:ring-ink-accent resize-none"
+                                            />
+                                        </div>
+                                        <div className="flex justify-end">
+                                            <Button
+                                                size="sm"
+                                                onClick={handleSaveSettings}
+                                                disabled={savingMeta}
+                                                className="bg-ink-accent hover:bg-ink-accent text-white"
+                                            >
+                                                {savingMeta ? 'Đang lưu…' : 'Cập nhật thông tin'}
+                                            </Button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
                             <div className="bg-ink-panel rounded-ink-lg border border-ink-border shadow-ink-sm p-4 sticky top-36">
                                 <div className="flex items-center justify-between mb-3 pb-3 border-b border-ink-pageDim">
                                     <h2 className="text-xs font-bold text-ink-text uppercase tracking-wider">
@@ -1252,7 +1201,7 @@ export default function SpaceEditPage() {
                                                             </button>
                                                             <button
                                                                 onClick={() => setChapterToDelete(chapter.id)}
-                                                                className="text-ink-textDim hover:text-red-600 p-1 hover:bg-red-50 rounded transition-colors text-xs"
+                                                                className="text-ink-textDim hover:text-destructive p-1 hover:bg-destructive/10 rounded transition-colors text-xs"
                                                                 title="Xóa chương"
                                                             >
                                                                 ✕
@@ -1354,7 +1303,7 @@ export default function SpaceEditPage() {
                                                                             </button>
                                                                             <button
                                                                                 onClick={() => setLessonToDelete({ chapterId: chapter.id, lessonId: lesson.id })}
-                                                                                className="p-1 text-ink-textDim hover:text-red-600 rounded hover:bg-red-50"
+                                                                                className="p-1 text-ink-textDim hover:text-destructive rounded hover:bg-destructive/10"
                                                                                 title="Xóa"
                                                                             >
                                                                                 ✕
@@ -1465,7 +1414,7 @@ export default function SpaceEditPage() {
                                                 <Button
                                                     variant="outline"
                                                     onClick={() => setChapterToDelete(selectedItem.id)}
-                                                    className="text-red-600 border-red-200 hover:bg-red-50"
+                                                    className="text-destructive border-destructive/30 hover:bg-destructive/10"
                                                 >
                                                     Xóa chương này
                                                 </Button>
@@ -1519,7 +1468,7 @@ export default function SpaceEditPage() {
                                                         className="w-full px-3.5 py-2.5 border border-ink-borderHi rounded-ink-md text-sm focus:outline-none focus:ring-2 focus:ring-ink-accent"
                                                     />
                                                     {lessonForm.videoUrl && !extractYoutubeId(lessonForm.videoUrl) ? (
-                                                        <p className="text-[11px] text-red-600 mt-1 font-medium">
+                                                        <p className="text-[11px] text-destructive mt-1 font-medium">
                                                             Không phải link YouTube hợp lệ.
                                                         </p>
                                                     ) : (
@@ -1599,19 +1548,19 @@ export default function SpaceEditPage() {
                                                 </div>
 
                                                 {aiError && (
-                                                    <div className="mt-3 text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg p-2.5">
+                                                    <div className="mt-3 text-xs text-ink-warning bg-ink-warningA border border-ink-warningBorder rounded-lg p-2.5">
                                                         {aiError}
                                                         {aiErrorCode === 'AI_CUSTOM_RECIPE_REQUIRES_BYOK_OR_PAID' && (
                                                             <button
                                                                 onClick={() => lessonForm.sourceId && handleGenerateAndCreateAIQuizLesson(lessonForm.sourceId, 'CREDITS')}
                                                                 disabled={aiLoading !== null}
-                                                                className="mt-2 block px-2.5 py-1.5 rounded-lg text-[11px] font-medium bg-amber-600 text-white hover:bg-amber-700 disabled:opacity-50"
+                                                                className="mt-2 block px-2.5 py-1.5 rounded-lg text-[11px] font-medium bg-ink-warning text-white hover:bg-ink-warning disabled:opacity-50"
                                                             >
                                                                 Trả phí để nền tảng tạo giúp
                                                             </button>
                                                         )}
                                                         {aiErrorCode === 'AI_INSUFFICIENT_CREDITS' && (
-                                                            <a href="/billing" className="mt-2 block px-2.5 py-1.5 rounded-lg text-[11px] font-medium bg-amber-600 text-white hover:bg-amber-700 w-fit">
+                                                            <a href="/billing" className="mt-2 block px-2.5 py-1.5 rounded-lg text-[11px] font-medium bg-ink-warning text-white hover:bg-ink-warning w-fit">
                                                                 Mua thêm credit
                                                             </a>
                                                         )}
@@ -1644,7 +1593,7 @@ export default function SpaceEditPage() {
                                                             <Button
                                                                 onClick={handleCreateQuizLessonFromAIDraft}
                                                                 disabled={creatingAIQuizLesson}
-                                                                className="vd-focusable bg-emerald-600 hover:bg-emerald-700 text-white"
+                                                                className="vd-focusable bg-ink-success hover:bg-ink-success text-white"
                                                             >
                                                                 {creatingAIQuizLesson ? 'Đang tạo…' : 'Tạo bài quiz mới từ đây'}
                                                             </Button>
@@ -1661,7 +1610,7 @@ export default function SpaceEditPage() {
                                                                                 key={optIdx}
                                                                                 className={`px-3 py-1.5 rounded-lg text-xs flex items-center justify-between ${
                                                                                     opt.trim().toUpperCase() === q.correctAnswer.trim().toUpperCase()
-                                                                                        ? 'bg-emerald-100/70 text-emerald-800 font-semibold border border-emerald-300'
+                                                                                        ? 'bg-ink-successA text-ink-success font-semibold border border-ink-successBorder'
                                                                                         : 'bg-ink-panel text-ink-textMid border border-ink-border'
                                                                                 }`}
                                                                             >
@@ -1775,19 +1724,19 @@ export default function SpaceEditPage() {
                                                             </Button>
 
                                                             {aiError && (
-                                                                <div className="mt-2 text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg p-2.5">
+                                                                <div className="mt-2 text-xs text-ink-warning bg-ink-warningA border border-ink-warningBorder rounded-lg p-2.5">
                                                                     {aiError}
                                                                     {aiErrorCode === 'AI_CUSTOM_RECIPE_REQUIRES_BYOK_OR_PAID' && (
                                                                         <button
                                                                             onClick={() => handleGenerateAIQuiz(selectedSourceId, 'CREDITS')}
                                                                             disabled={aiLoading !== null}
-                                                                            className="mt-2 block px-2.5 py-1.5 rounded-lg text-[11px] font-medium bg-amber-600 text-white hover:bg-amber-700 disabled:opacity-50"
+                                                                            className="mt-2 block px-2.5 py-1.5 rounded-lg text-[11px] font-medium bg-ink-warning text-white hover:bg-ink-warning disabled:opacity-50"
                                                                         >
                                                                             Trả phí để nền tảng tạo giúp
                                                                         </button>
                                                                     )}
                                                                     {aiErrorCode === 'AI_INSUFFICIENT_CREDITS' && (
-                                                                        <a href="/billing" className="mt-2 block px-2.5 py-1.5 rounded-lg text-[11px] font-medium bg-amber-600 text-white hover:bg-amber-700 w-fit">
+                                                                        <a href="/billing" className="mt-2 block px-2.5 py-1.5 rounded-lg text-[11px] font-medium bg-ink-warning text-white hover:bg-ink-warning w-fit">
                                                                             Mua thêm credit
                                                                         </a>
                                                                     )}
@@ -1832,7 +1781,7 @@ export default function SpaceEditPage() {
                                                                 <Button
                                                                     onClick={handleSaveAIQuizDraftIntoCurrentLesson}
                                                                     disabled={savingAIQuizIntoCurrentLesson}
-                                                                    className="vd-focusable bg-emerald-600 hover:bg-emerald-700 text-white"
+                                                                    className="vd-focusable bg-ink-success hover:bg-ink-success text-white"
                                                                 >
                                                                     {savingAIQuizIntoCurrentLesson ? 'Đang lưu…' : 'Lưu vào bài quiz này'}
                                                                 </Button>
@@ -1850,7 +1799,7 @@ export default function SpaceEditPage() {
                                                                                 key={optIdx}
                                                                                 className={`px-3 py-1.5 rounded-lg text-xs flex items-center justify-between ${
                                                                                     opt.trim().toUpperCase() === q.correctAnswer.trim().toUpperCase()
-                                                                                        ? 'bg-emerald-100/70 text-emerald-800 font-semibold border border-emerald-300'
+                                                                                        ? 'bg-ink-successA text-ink-success font-semibold border border-ink-successBorder'
                                                                                         : 'bg-ink-panel text-ink-textMid border border-ink-border'
                                                                                 }`}
                                                                             >
@@ -1883,13 +1832,13 @@ export default function SpaceEditPage() {
                                                                                     key={optIdx}
                                                                                     className={`px-3 py-1.5 rounded-lg text-xs flex items-center justify-between ${
                                                                                         optIdx === correctIdx
-                                                                                            ? 'bg-emerald-100/70 text-emerald-800 font-semibold border border-emerald-300'
+                                                                                            ? 'bg-ink-successA text-ink-success font-semibold border border-ink-successBorder'
                                                                                             : 'bg-ink-panel text-ink-textMid border border-ink-border'
                                                                                     }`}
                                                                                 >
                                                                                     <span>{opt}</span>
                                                                                     {optIdx === correctIdx && (
-                                                                                        <span className="text-[10px] bg-emerald-600 text-white px-1.5 py-0.2 rounded font-bold">
+                                                                                        <span className="text-[10px] bg-ink-success text-white px-1.5 py-0.2 rounded font-bold">
                                                                                             ĐÚNG
                                                                                         </span>
                                                                                     )}
@@ -1943,7 +1892,7 @@ export default function SpaceEditPage() {
                                                 </div>
 
                                                 {quizUploadedCount !== null && (
-                                                    <p className="mt-2 text-xs text-emerald-600 font-semibold flex items-center gap-1">
+                                                    <p className="mt-2 text-xs text-ink-success font-semibold flex items-center gap-1">
                                                         <span>✓</span> Đã lưu {quizUploadedCount} câu hỏi vào bài học này
                                                     </p>
                                                 )}
@@ -1963,7 +1912,7 @@ export default function SpaceEditPage() {
                                                         <Button
                                                             onClick={handleUploadQuiz}
                                                             disabled={isProcessing}
-                                                            className="vd-focusable flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
+                                                            className="vd-focusable flex-1 bg-ink-success hover:bg-ink-success text-white"
                                                         >
                                                             {isProcessing ? 'Đang tải lên…' : 'Xác nhận Tải lên'}
                                                         </Button>
@@ -1993,13 +1942,13 @@ export default function SpaceEditPage() {
                                                                         key={optIdx}
                                                                         className={`px-3 py-1.5 rounded-lg text-xs flex items-center justify-between ${
                                                                             optIdx === q.correctId
-                                                                                ? 'bg-emerald-100/70 text-emerald-800 font-semibold border border-emerald-300'
+                                                                                ? 'bg-ink-successA text-ink-success font-semibold border border-ink-successBorder'
                                                                                 : 'bg-ink-panel text-ink-textMid border border-ink-border'
                                                                         }`}
                                                                     >
                                                                         <span>{opt}</span>
                                                                         {optIdx === q.correctId && (
-                                                                            <span className="text-[10px] bg-emerald-600 text-white px-1.5 py-0.2 rounded font-bold">
+                                                                            <span className="text-[10px] bg-ink-success text-white px-1.5 py-0.2 rounded font-bold">
                                                                                 ĐÚNG
                                                                             </span>
                                                                         )}
@@ -2031,128 +1980,6 @@ export default function SpaceEditPage() {
                             </div>
                         </div>
                     </div>
-                ) : (
-                    /* Tab 2: Settings & Share Link */
-                    <div className="max-w-3xl mx-auto space-y-6">
-                        {/* Space Metadata Card */}
-                        <div className="bg-ink-panel rounded-ink-lg border border-ink-border shadow-ink-sm p-6">
-                            <h2 className="text-base font-bold text-ink-text mb-4 pb-3 border-b border-ink-pageDim flex items-center gap-2">
-                                <svg className="w-5 h-5 text-ink-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                                </svg>
-                                Thông tin cơ bản Space
-                            </h2>
-
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="block text-xs font-semibold text-ink-text mb-1.5">
-                                        Tên Space
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={metaTitle}
-                                        onChange={(e) => setMetaTitle(e.target.value)}
-                                        className="w-full px-3.5 py-2.5 border border-ink-borderHi rounded-ink-md text-sm focus:outline-none focus:ring-2 focus:ring-ink-accent"
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="block text-xs font-semibold text-ink-text mb-1.5">
-                                        Mô tả tổng quan Space
-                                    </label>
-                                    <textarea
-                                        value={metaDesc}
-                                        onChange={(e) => setMetaDesc(e.target.value)}
-                                        rows={4}
-                                        className="w-full px-3.5 py-2.5 border border-ink-borderHi rounded-ink-md text-sm focus:outline-none focus:ring-2 focus:ring-ink-accent resize-none"
-                                    />
-                                </div>
-
-                                <div className="flex justify-end pt-2">
-                                    <Button
-                                        onClick={handleSaveSettings}
-                                        disabled={savingMeta}
-                                        className="bg-ink-accent hover:bg-ink-accent text-white"
-                                    >
-                                        {savingMeta ? 'Đang lưu…' : 'Cập nhật thông tin'}
-                                    </Button>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Chia sẻ & Lưu trữ — gộp từ 2 card/control rời trước đây (nút
-                            "Chia sẻ" ở TopBar + card "Link chia sẻ Space" riêng, cùng làm
-                            1 việc) cộng thêm hành động Lưu trữ vốn chỉ bấm được ở trang
-                            list /my-spaces, không có ở đây (xem audit "cơ cấu lại" 2026-09-05). */}
-                        <div className="bg-ink-panel rounded-ink-lg border border-ink-border shadow-ink-sm p-6">
-                            <h2 className="text-base font-bold text-ink-text mb-2 flex items-center gap-2">
-                                <svg className="w-5 h-5 text-ink-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/>
-                                </svg>
-                                Chia sẻ & Lưu trữ
-                            </h2>
-                            <p className="text-xs text-ink-textMuted mb-4 leading-relaxed">
-                                Tạo đường dẫn ổn định cho Space. Bất kỳ ai có link này đều có thể xem trước nội dung và bấm &quot;Sao chép về học&quot; để lưu Space vào tài khoản cá nhân của họ.
-                            </p>
-
-                            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-                                <input
-                                    type="text"
-                                    readOnly
-                                    value={shareUrl || 'Bấm nút để lấy link chia sẻ…'}
-                                    className="flex-1 px-3.5 py-2.5 bg-ink-page border border-ink-border rounded-ink-md text-xs font-mono text-ink-textMid focus:outline-none"
-                                />
-                                <Button
-                                    onClick={handleCopyShareLink}
-                                    disabled={generatingShare}
-                                    className="bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center gap-1.5 shrink-0"
-                                >
-                                    {generatingShare ? 'Đang tạo…' : 'Sao chép Link'}
-                                </Button>
-                                <Button
-                                    variant="outline"
-                                    onClick={handleRevokeShareLink}
-                                    disabled={generatingShare || !shareUrl}
-                                    className="text-red-600 border-red-200 hover:bg-red-50 shrink-0"
-                                    title={!shareUrl ? 'Lấy link chia sẻ trước để có gì mà thu hồi' : undefined}
-                                >
-                                    Thu hồi
-                                </Button>
-                            </div>
-
-                            <div className="flex items-center justify-between mt-2">
-                                <p className="text-[11px] text-ink-textDim">
-                                    Space khác cũng đang chia sẻ? Xem tất cả tại 1 chỗ.
-                                </p>
-                                <button
-                                    onClick={() => router.push('/my-shares')}
-                                    className="text-[11px] font-medium text-ink-accent hover:text-ink-accent/80 underline underline-offset-2 shrink-0"
-                                >
-                                    Xem tất cả link chia sẻ của tôi →
-                                </button>
-                            </div>
-
-                            <div className="mt-5 pt-5 border-t border-ink-pageDim flex items-center justify-between">
-                                <div>
-                                    <p className="text-xs font-semibold text-ink-text">Trạng thái Space</p>
-                                    <p className="text-[11px] text-ink-textDim mt-0.5">
-                                        {space.status === 'Active'
-                                            ? 'Đang hoạt động — hiện trong danh sách "Space đã tạo" của bạn.'
-                                            : 'Đã lưu trữ — vẫn giữ nguyên dữ liệu, chỉ ẩn khỏi danh sách mặc định.'}
-                                    </p>
-                                </div>
-                                <Button
-                                    variant="outline"
-                                    onClick={handleToggleArchive}
-                                    disabled={archiving}
-                                    className="shrink-0"
-                                >
-                                    {archiving ? '...' : space.status === 'Active' ? 'Lưu trữ' : 'Khôi phục'}
-                                </Button>
-                            </div>
-                        </div>
-                    </div>
-                )}
             </main>
         </div>
     );

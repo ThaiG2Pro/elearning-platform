@@ -64,7 +64,7 @@ export default function AboutPage() {
                         </Button>
                         {user ? (
                             <Button
-                                onClick={() => router.push('/my-spaces')}
+                                onClick={() => router.push('/my-learning')}
                                 variant="outline"
                                 className="border-ink-border text-ink-text hover:bg-ink-page font-medium px-6 py-2.5 h-auto text-sm sm:text-base rounded-ink-md transition-all"
                             >
@@ -127,7 +127,9 @@ export default function AboutPage() {
                         đây là dải minh hoạ trang trí cho 4 tính năng riêng biệt trên
                         trang giới thiệu, không phải badge/CTA lặp lại nên không phạm
                         nguyên tắc "một accent duy nhất" (nguyên tắc đó nhằm vào chip/
-                        nút hành động, không nhằm vào icon trang trí minh hoạ nội dung). */}
+                        nút hành động, không nhằm vào icon trang trí minh hoạ nội dung).
+                        NGOẠI LỆ CỐ ĐỊNH của design-tokens guard (scripts/check-design-
+                        tokens.js) — không phải nợ chờ migrate, đừng ép về ink-*. */}
                     <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
                         <div className="bg-ink-panel border border-ink-border rounded-ink-md p-6 shadow-ink-sm hover:border-ink-borderHi transition-all">
                             <div className="w-10 h-10 rounded-lg bg-blue-100/70 text-blue-700 flex items-center justify-center font-bold mb-4">
@@ -171,32 +173,33 @@ export default function AboutPage() {
                     </div>
                 </section>
 
-                {/* Product Philosophy — nền tối bespoke, CỐ Ý giữ nguyên (không đổi
-                    sang ink.*): hệ ink chỉ định nghĩa token cho nền sáng ("giấy
-                    trắng"), không có cặp token nào an toàn để dùng trên nền đảo màu
-                    như khối trang trí này — ép ink-text (màu tối) lên nền tối sẽ vỡ
-                    contrast. Đây không phải "chế độ tối toàn app" (đã chốt KHÔNG làm
-                    ở mục 6), chỉ là 1 khối trang trí cục bộ trên trang giới thiệu. */}
-                <section className="bg-slate-900 text-white rounded-ink-lg p-8 sm:p-12 mb-12 shadow-md">
+                {/* Product Philosophy — khối trang trí nền tối cục bộ trên trang
+                    giới thiệu, KHÔNG phải "chế độ tối toàn app" (đã chốt KHÔNG làm
+                    ở mục 6). Nền dùng chung ink.room (đã là nền tối chuẩn của hệ
+                    ink-* — "phòng tắt đèn" của focus mode); chữ/viền dùng bộ token
+                    ink.screen* (xem :root{--ink-screen-*} trong globals.css) — cùng
+                    họ token quiz/page.tsx dùng cho focus mode, tránh mỗi nơi tự chọn
+                    một dải slate/blue riêng cho cùng nhu cầu "chữ trên nền tối". */}
+                <section className="bg-ink-room text-ink-screenText rounded-ink-lg p-8 sm:p-12 mb-12 shadow-md">
                     <div className="max-w-3xl">
-                        <span className="text-xs font-semibold uppercase tracking-wider text-blue-400">Triết lý thiết kế</span>
-                        <h2 className="text-2xl sm:text-4xl font-bold mt-2 mb-4 text-white">Tối giản để tập trung nghiền ngẫm</h2>
-                        <p className="text-slate-300 text-base sm:text-lg leading-relaxed mb-8">
+                        <span className="text-xs font-semibold uppercase tracking-wider text-ink-accentScreen">Triết lý thiết kế</span>
+                        <h2 className="text-2xl sm:text-4xl font-bold mt-2 mb-4 text-ink-screenText">Tối giản để tập trung nghiền ngẫm</h2>
+                        <p className="text-ink-screenTextMid text-base sm:text-lg leading-relaxed mb-8">
                             Chúng tôi tin rằng sự xao nhãng là kẻ thù lớn nhất của việc học. Giao diện được tinh giản tối đa, không có quảng cáo chen ngang hay thông báo gây phiền toái, giúp bạn toàn tâm vào nội dung tri thức.
                         </p>
 
-                        <div className="grid sm:grid-cols-3 gap-6 pt-4 border-t border-slate-800">
+                        <div className="grid sm:grid-cols-3 gap-6 pt-4 border-t border-ink-screenBorder">
                             <div>
-                                <div className="text-2xl sm:text-3xl font-extrabold text-blue-400">100%</div>
-                                <div className="text-slate-400 text-xs sm:text-sm mt-1">Chủ động tiến độ</div>
+                                <div className="text-2xl sm:text-3xl font-extrabold text-ink-accentScreen">100%</div>
+                                <div className="text-ink-screenTextMuted text-xs sm:text-sm mt-1">Chủ động tiến độ</div>
                             </div>
                             <div>
-                                <div className="text-2xl sm:text-3xl font-extrabold text-blue-400">0%</div>
-                                <div className="text-slate-400 text-xs sm:text-sm mt-1">Quảng cáo & xao nhãng</div>
+                                <div className="text-2xl sm:text-3xl font-extrabold text-ink-accentScreen">0%</div>
+                                <div className="text-ink-screenTextMuted text-xs sm:text-sm mt-1">Quảng cáo & xao nhãng</div>
                             </div>
                             <div>
-                                <div className="text-2xl sm:text-3xl font-extrabold text-blue-400">24/7</div>
-                                <div className="text-slate-400 text-xs sm:text-sm mt-1">Sẵn sàng truy cập</div>
+                                <div className="text-2xl sm:text-3xl font-extrabold text-ink-accentScreen">24/7</div>
+                                <div className="text-ink-screenTextMuted text-xs sm:text-sm mt-1">Sẵn sàng truy cập</div>
                             </div>
                         </div>
                     </div>

@@ -78,8 +78,8 @@ export default function ActivatePage() {
                         ink-correct/ink-wrong — token đó chỉ dành cho chấm quiz. */}
                     {appState === 'success' && (
                         <div className="flex flex-col items-center gap-4">
-                            <div className="w-14 h-14 rounded-full bg-emerald-100 flex items-center justify-center">
-                                <svg className="w-7 h-7 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <div className="w-14 h-14 rounded-full bg-ink-successA flex items-center justify-center">
+                                <svg className="w-7 h-7 text-ink-success" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                                 </svg>
                             </div>
@@ -93,8 +93,8 @@ export default function ActivatePage() {
 
                     {appState === 'error' && (
                         <div className="flex flex-col items-center gap-4">
-                            <div className="w-14 h-14 rounded-full bg-red-100 flex items-center justify-center">
-                                <svg className="w-7 h-7 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <div className="w-14 h-14 rounded-full bg-destructive/10 flex items-center justify-center">
+                                <svg className="w-7 h-7 text-destructive" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                 </svg>
                             </div>

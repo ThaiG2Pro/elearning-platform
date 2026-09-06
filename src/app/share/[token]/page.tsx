@@ -117,7 +117,7 @@ export default function SharedSpacePage() {
                 cta={space && (
                     <section>
                         {errorMessage && (
-                            <p className="text-sm text-red-600 mb-3">{errorMessage}</p>
+                            <p className="text-sm text-destructive mb-3">{errorMessage}</p>
                         )}
                         {isOwner ? (
                             <div className="flex flex-wrap items-center gap-3">

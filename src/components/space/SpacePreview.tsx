@@ -1,6 +1,7 @@
 'use client';
 
 import Image from 'next/image';
+import Link from 'next/link';
 import { ReactNode } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { MARGIN_W } from '@/lib/vibe/theme';
@@ -15,6 +16,9 @@ export interface SpacePreviewData {
     ownerName?: string | null;
     thumbnailUrl?: string;
     isOwner: boolean;
+    // UI (2026-09-05) — set khi space này là bản clone/fork của người khác,
+    // để phân biệt với bản gốc chính chủ ngay trên trang preview.
+    clonedFrom?: { spaceId: number; ownerName: string } | null;
     chapters: {
         id: number;
         title: string;
@@ -75,8 +79,8 @@ export default function SpacePreview({ state, errorMessage, onBack, data, badge,
                 </div>
             ) : state === 'error' ? (
                 <div className="flex flex-col items-center py-16 text-center">
-                    <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mb-3">
-                        <svg className="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div className="w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center mb-3">
+                        <svg className="w-6 h-6 text-destructive" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                     </div>
@@ -119,6 +123,20 @@ export default function SpacePreview({ state, errorMessage, onBack, data, badge,
                         {data.ownerName && (
                             <p className="text-sm text-ink-textMuted mb-2">
                                 Tác giả: <span className="font-medium text-ink-text">{data.isOwner ? 'Bạn' : data.ownerName}</span>
+                            </p>
+                        )}
+                        {/* UI (2026-09-05) — phân biệt bản clone/fork với bản gốc
+                            chính chủ, kèm lối vào xem lại bản gốc. */}
+                        {data.clonedFrom && (
+                            <p className="text-sm text-ink-textMuted mb-2 flex items-center gap-1.5 flex-wrap">
+                                <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                </svg>
+                                Bản sao chép từ Space gốc của <span className="font-medium text-ink-text">{data.clonedFrom.ownerName}</span>
+                                <span className="text-ink-textDim">·</span>
+                                <Link href={`/spaces/${data.clonedFrom.spaceId}`} className="text-ink-accent hover:underline">
+                                    Xem bản gốc
+                                </Link>
                             </p>
                         )}
                         {data.description && (

@@ -135,7 +135,7 @@ export default function VibeDemoPage() {
   // cuộn trong khung này chứ không đẩy video ra ngoài. Title đã truncate +
   // có tooltip title={l.title} nên tên bài dài không phá vỡ chiều cao dòng.
   const renderPlaylist = () => (
-    <div className="flex-1 overflow-y-auto py-1.5 cs-scrollbar">
+    <div className="flex-1 overflow-y-auto py-1.5 vd-scrollbar">
       {lessons.map((l, i) => {
         const isActive = l.id === activeId;
         const isDone   = l.status === 'completed';
@@ -224,7 +224,7 @@ export default function VibeDemoPage() {
         </div>
       </form>
 
-      <div className="flex-1 overflow-y-auto pb-1.5 cs-scrollbar">
+      <div className="flex-1 overflow-y-auto pb-1.5 vd-scrollbar">
         {notes.length === 0 && (
           <div className="flex items-stretch">
             <span style={{ width: MARGIN_W }} className="shrink-0" />
@@ -331,7 +331,7 @@ export default function VibeDemoPage() {
 
           {/* ══ LEFT COLUMN — video ══ */}
           <div
-            className={`relative flex flex-col h-full ${(isCompact && !focusMode) ? 'overflow-auto cs-scrollbar' : 'overflow-hidden'} ${focusMode ? 'justify-center' : 'justify-start'}`}
+            className={`relative flex flex-col h-full ${(isCompact && !focusMode) ? 'overflow-auto vd-scrollbar' : 'overflow-hidden'} ${focusMode ? 'justify-center' : 'justify-start'}`}
           >
 
             {/* Header = MỘT dòng h1. Mọi meta khác đều đã có chỗ riêng:

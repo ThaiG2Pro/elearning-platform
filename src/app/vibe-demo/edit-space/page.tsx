@@ -553,7 +553,7 @@ export default function VibeEditSpaceDemoPage() {
           pattern ở các trang vibe-demo khác (home, spaces…). */}
       <div
         style={{ top: TOP_BAR_H }}
-        className="fixed left-0 right-0 bottom-0 z-[1] flex justify-center bg-ink-page overflow-y-auto cs-scrollbar"
+        className="fixed left-0 right-0 bottom-0 z-[1] flex justify-center bg-ink-page overflow-y-auto vd-scrollbar"
       >
         <div
           className="w-full max-w-[1240px] grid items-start"

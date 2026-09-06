@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { CheckCircle2, Circle, ChevronRight, X, Maximize2, Minimize2, ListVideo, StickyNote, Plus } from 'lucide-react';
-import { beVietnam, R, TOP_BAR_H, MARGIN_W, useIsCompact, VIBE_GLOBAL_CSS } from '@/lib/vibe/theme';
+import { T, beVietnam, R, TOP_BAR_H, MARGIN_W, useIsCompact, VIBE_GLOBAL_CSS } from '@/lib/vibe/theme';
 
 /* ─── Data ──────────────────────────────────────────────────────────────── */
 type Status = 'completed' | 'in_progress' | 'not_started';
@@ -124,7 +124,7 @@ export default function VibeArticleDemoPage() {
   );
 
   const renderPlaylist = () => (
-    <div className="flex-1 overflow-y-auto py-1.5 cs-scrollbar">
+    <div className="flex-1 overflow-y-auto py-1.5 vd-scrollbar">
       {lessons.map((l, i) => {
         const isActive = l.id === activeId;
         const isDone   = l.status === 'completed';
@@ -198,21 +198,21 @@ export default function VibeArticleDemoPage() {
             onChange={e => setDraft(e.target.value)}
             placeholder="Ghi chú cho mục đang đọc…"
             className="flex-1 bg-transparent border-0 outline-none text-[15px] text-ink-text py-3 pr-3 pl-[14px]"
-            style={{ caretColor: '#2E4A9E' }}
+            style={{ caretColor: T.accent }}
           />
           <button
             type="submit"
             aria-label="Thêm ghi chú"
             className="vd-focusable py-2.5 px-3.5 bg-none border-0 cursor-pointer text-ink-textDim flex items-center transition-colors duration-150"
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#2E4A9E'; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'rgba(33,38,51,0.28)'; }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = T.accent; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = T.inkDim; }}
           >
             <Plus size={15} />
           </button>
         </div>
       </form>
 
-      <div className="flex-1 overflow-y-auto pb-1.5 cs-scrollbar">
+      <div className="flex-1 overflow-y-auto pb-1.5 vd-scrollbar">
         {notes.length === 0 && (
           <div className="flex items-stretch">
             <span style={{ width: MARGIN_W }} className="shrink-0" />
@@ -511,7 +511,7 @@ setCount(c => c + 1); // 2 → 3`} />
           <div
             ref={scrollRef}
             onScroll={onScroll}
-            className="relative flex flex-col h-full overflow-y-auto pb-12 justify-start cs-scrollbar"
+            className="relative flex flex-col h-full overflow-y-auto pb-12 justify-start vd-scrollbar"
           >
             {!focusMode && (
               <div className="shrink-0 pt-[18px] pb-3.5">

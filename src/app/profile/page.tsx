@@ -275,7 +275,7 @@ export default function EditProfilePage() {
                             <Button type="button" variant="outline" size="sm" onClick={handleAvatarButtonClick} disabled={avatarUploading}>
                                 Đổi ảnh đại diện
                             </Button>
-                            {avatarError && <p className="mt-1.5 text-xs text-red-600">{avatarError}</p>}
+                            {avatarError && <p className="mt-1.5 text-xs text-destructive">{avatarError}</p>}
                         </div>
                     </div>
 
@@ -319,7 +319,7 @@ export default function EditProfilePage() {
                                             placeholder="18"
                                         />
                                         {(appState === 'business_error' || appState === 'system_error') && errorMessage && (
-                                            <p className="mt-1 text-xs text-red-600">{errorMessage}</p>
+                                            <p className="mt-1 text-xs text-destructive">{errorMessage}</p>
                                         )}
                                     </>
                                 )
@@ -379,12 +379,12 @@ export default function EditProfilePage() {
                         {exporting && <span className="w-4 h-4 border-2 border-ink-textDim border-t-transparent rounded-full animate-spin" />}
                         {exporting ? 'Đang chuẩn bị...' : 'Tải xuống dữ liệu (JSON)'}
                     </Button>
-                    {exportError && <p className="mt-2 text-xs text-red-600">{exportError}</p>}
+                    {exportError && <p className="mt-2 text-xs text-destructive">{exportError}</p>}
                 </div>
 
                 {/* WP1.5.6 — xoá tài khoản */}
-                <div className="bg-ink-panel border border-red-200 rounded-ink-md shadow-ink-sm p-6">
-                    <h2 className="text-sm font-semibold text-red-700 mb-1">Xoá tài khoản</h2>
+                <div className="bg-ink-panel border border-destructive/30 rounded-ink-md shadow-ink-sm p-6">
+                    <h2 className="text-sm font-semibold text-destructive mb-1">Xoá tài khoản</h2>
                     <p className="text-sm text-ink-textMuted mb-4">
                         Hành động này không thể hoàn tác. Bạn sẽ không thể đăng nhập lại bằng tài khoản này.
                     </p>
@@ -409,9 +409,9 @@ export default function EditProfilePage() {
                         onKeyDown={(e) => { if (e.key === 'Enter') handleDeleteAccount(); }}
                         placeholder="Mật khẩu hiện tại"
                         autoFocus
-                        className="w-full px-3 py-2 border border-ink-borderHi rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                        className="w-full px-3 py-2 border border-ink-borderHi rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-destructive"
                     />
-                    {deleteError && <p className="text-xs text-red-600">{deleteError}</p>}
+                    {deleteError && <p className="text-xs text-destructive">{deleteError}</p>}
                     <DialogFooter>
                         <Button variant="outline" onClick={closeDeleteDialog} disabled={deleting}>
                             Hủy

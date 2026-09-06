@@ -14,4 +14,13 @@ export interface OwnedSpaceDto {
     // nhiều chương/bài) không cần tab/lọc riêng theo nguồn.
     lessonCount: number;
     createdAt: Date;
+    // UI (2026-09-05) — /my-learning trộn chung space chủ tự tạo và space
+    // clone/fork từ người khác (query chỉ lọc owner_id, giống /my-spaces),
+    // set khi space này là 1 bản clone để card hiện "Bản sao của <ownerName>".
+    clonedFrom?: { spaceId: number; ownerName: string } | null;
+    // UI (2026-09-06) — vòng đời (ACTIVE/ARCHIVED) của space, tách bạch với
+    // `status` (tiến độ học) ở trên. Cần để /my-learning (giờ đã gộp với
+    // /my-spaces) tự ẩn space đã lưu trữ khỏi danh sách chính, gấp vào 1 mục
+    // "Đã lưu trữ" riêng thay vì trộn chung như 1 space đang hoạt động.
+    lifecycleStatus: 'ACTIVE' | 'ARCHIVED';
 }

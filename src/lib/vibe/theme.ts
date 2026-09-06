@@ -23,39 +23,64 @@ export const beVietnam = Be_Vietnam_Pro({
   display: 'swap',
 });
 
+// Giá trị thật của mọi màu/bóng đổ nằm ở block :root { --ink-* } trong
+// src/app/globals.css — object T này CHỈ tham chiếu var(), không giữ hex
+// riêng nữa (trước đây bị chép tay 1-1 sang tailwind.config.js, dễ lệch khi
+// sửa 1 trong 2 nơi mà quên nơi còn lại). Đổi màu → sửa globals.css.
 export const T = {
-  page:    '#FAFAF7', // giấy trắng sứ — trung tính, nhiều khí thở
-  pageDim: '#E9E9E4', // đèn phòng dịu xuống khi video đang chạy
-  room:    '#1A1C22', // phòng tắt đèn — nền focus mode, KHÔNG phải dark theme
-  panel:   '#FFFFFF', // mặt giấy của panel — trắng tuyệt đối, "spotlight" nội dung
-  screen:  '#14161C', // màn hình video — luôn tối như thiết bị thật
-  ink:     '#212633', // mực xanh-đen (blue-black ink) — chữ chính
-  inkMid:  'rgba(33,38,51,0.72)',
-  inkMuted:'rgba(33,38,51,0.50)',
-  inkDim:  'rgba(33,38,51,0.28)',
-  border:  'rgba(33,38,51,0.10)',
-  borderHi:'rgba(33,38,51,0.20)',
-  accent:  '#2E4A9E', // mực bút máy — accent duy nhất của cả trang
-  accentA: 'rgba(46,74,158,0.08)',
-  marginLn:'rgba(46,74,158,0.30)', // đường kẻ lề vở — motif cấu trúc chung của playlist & notes
-  onAccent:'#FFFFFF',
+  page:    'var(--ink-page)',      // giấy trắng sứ — trung tính, nhiều khí thở
+  pageDim: 'var(--ink-page-dim)',  // đèn phòng dịu xuống khi video đang chạy
+  room:    'var(--ink-room)',      // phòng tắt đèn — nền focus mode, KHÔNG phải dark theme
+  panel:   'var(--ink-panel)',     // mặt giấy của panel — trắng tuyệt đối, "spotlight" nội dung
+  screen:  'var(--ink-screen)',    // màn hình video — luôn tối như thiết bị thật
+  ink:     'var(--ink-text)',      // mực xanh-đen (blue-black ink) — chữ chính
+  inkMid:  'var(--ink-text-mid)',
+  inkMuted:'var(--ink-text-muted)',
+  inkDim:  'var(--ink-text-dim)',
+  border:  'var(--ink-border)',
+  borderHi:'var(--ink-border-hi)',
+  accent:  'var(--ink-accent)',    // mực bút máy — accent duy nhất của cả trang
+  accentA: 'var(--ink-accent-a)',
+  marginLn:'var(--ink-margin-ln)', // đường kẻ lề vở — motif cấu trúc chung của playlist & notes
+  onAccent:'var(--ink-on-accent)',
   // Mực xanh "dưới ánh màn hình" — bản sáng của accent, chỉ dùng cho các
   // element nằm TRÊN nền video/phòng thi tối (progress, trạng thái đã lưu).
-  accentScreen: '#8FA6EE',
+  accentScreen: 'var(--ink-accent-screen)',
   // Ngữ nghĩa chấm điểm — CHỈ dùng trong quiz, CHỈ sau khi nộp bài. Mực xanh
   // là nét bút của học viên (khi làm bài); correct/wrong là bút chấm của
   // giáo viên (chỉ xuất hiện sau khi chấm), không bao giờ trộn với accent.
-  correct:  '#217A4A',
-  correctA: 'rgba(33,122,74,0.08)',
-  wrong:    '#A8362E',
-  wrongA:   'rgba(168,54,46,0.07)',
+  correct:  'var(--ink-correct)',
+  correctA: 'var(--ink-correct-a)',
+  wrong:    'var(--ink-wrong)',
+  wrongA:   'var(--ink-wrong-a)',
+  // Ngữ nghĩa trạng thái CHUNG (badge/banner: active/archived, free/paid,
+  // cảnh báo giới hạn...) — khác correct/wrong ở trên (chỉ dành riêng cho bài
+  // chấm quiz, chỉ sau khi nộp bài). Giữ đồng bộ 1-1 với ink.success/warning
+  // trong tailwind.config.js (cả hai cùng đọc từ globals.css).
+  success:  'var(--ink-success)',
+  successA: 'var(--ink-success-a)',
+  successBorder: 'var(--ink-success-border)',
+  warning:  'var(--ink-warning)',
+  warningA: 'var(--ink-warning-a)',
+  warningBorder: 'var(--ink-warning-border)',
+  // Bản warning trên nền tối (thanh điều khiển video/phòng thi) — xem
+  // chú thích tại :root{--ink-warning-screen} trong globals.css.
+  warningScreen: 'var(--ink-warning-screen)',
   // "Chì/mực" — motif của edit-space: nét đứt (chì) = bản thảo/chưa đăng,
   // nét liền (marginLn/accent) = đã đăng. Không dùng ở trang tiêu thụ nội dung.
-  pencilLn: 'rgba(33,38,51,0.30)',
+  pencilLn: 'var(--ink-pencil)',
   // Nền khối code — chỉ dùng trong article (motif "trang sách").
-  codeBg:   'rgba(33,38,51,0.045)',
-  shadowSm:'0 1px 2px rgba(33,38,51,0.04), 0 4px 12px -6px rgba(33,38,51,0.08)',
-  shadowMd:'0 2px 4px rgba(33,38,51,0.04), 0 16px 40px -16px rgba(33,38,51,0.20)',
+  codeBg:   'var(--ink-code-bg)',
+  // Chữ/viền trên nền đảo màu (room hoặc khối nền tối cục bộ khác, vd panel
+  // "Product Philosophy" ở /about) — xem chú thích tại :root{--ink-screen-*}
+  // trong globals.css.
+  screenText:      'var(--ink-screen-text)',
+  screenTextMid:   'var(--ink-screen-text-mid)',
+  screenTextMuted: 'var(--ink-screen-text-muted)',
+  screenTextDim:   'var(--ink-screen-text-dim)',
+  screenBorder:    'var(--ink-screen-border)',
+  shadowSm:'var(--ink-shadow-sm)',
+  shadowMd:'var(--ink-shadow-md)',
   sans:    `${beVietnam.style.fontFamily}, -apple-system, 'Segoe UI', Roboto, sans-serif`,
   mono:    "'JetBrains Mono','Fira Code',monospace", // CHỈ cho timestamp/duration — 11px
 } as const;
@@ -65,7 +90,12 @@ export const R = { sm: 6, md: 12, lg: 16 };
 
 // Chiều cao top bar CỦA TRANG LESSON (video/quiz/article/edit-space) — dùng
 // cho breadcrumb bar tự vẽ trong từng trang đó.
-export const TOP_BAR_H = 52;
+// 2026-09-05 — đổi từ 52 → 56 (xem audit "Hệ Thống Header"): không có ngữ
+// cảnh nào biện minh việc bar này thấp hơn APP_TOP_BAR_H 4px, chỉ là 2 người
+// implement độc lập không đối chiếu. Giữ 2 hằng số TÁCH RỜI (không gộp làm
+// một) vì lý do ban đầu vẫn đúng: đây là 2 ngữ cảnh điều hướng khác nhau,
+// tình cờ cùng số không nên khoá cứng thành 1 con số.
+export const TOP_BAR_H = 56;
 
 // ── Công thức kích thước video LIÊN TỤC (dùng chung vibe-demo/page.tsx và
 // spaces/[id]/learn) — video ăn toàn bộ chiều cao viewport trừ đi đúng phần

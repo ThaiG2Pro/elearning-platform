@@ -72,7 +72,7 @@ export default function VibeAboutDemoPage() {
 
       <div
         style={{ top: APP_TOP_BAR_H }}
-        className="fixed left-0 right-0 bottom-0 bg-ink-page overflow-y-auto flex justify-center cs-scrollbar"
+        className="fixed left-0 right-0 bottom-0 bg-ink-page overflow-y-auto flex justify-center vd-scrollbar"
       >
         <div
           className="w-full max-w-[760px]"

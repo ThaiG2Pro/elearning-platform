@@ -6,6 +6,9 @@ export interface Space {
     thumbnailUrl?: string;
     isShowcase?: boolean;
     cloneCount?: number;
+    // UI (2026-09-05) — set khi chính space này là 1 bản clone/fork (không
+    // phải bản gốc chính chủ), để card hiện badge "Bản sao của <ownerName>".
+    clonedFrom?: { spaceId: number; ownerName: string } | null;
 }
 
 export type SpaceListResponse = Space[];
@@ -20,6 +23,9 @@ export interface SpaceDetail {
     chapters: any[]; // TODO: Define chapter type
     completionRate?: number; // WP1.3 — % of lessons finished by the logged-in user
     shareToken?: string;
+    // UI (2026-09-05) — set khi space này là bản clone/fork của người khác,
+    // để trang preview hiện "Bản sao chép từ Space gốc của <ownerName>".
+    clonedFrom?: { spaceId: number; ownerName: string } | null;
 }
 
 // WP1.6 follow-up (round 2) — renamed from EnrolledSpace: this is a space
@@ -44,6 +50,14 @@ export interface MyLearningSpace {
     // WP1.10.6 — badge "N bài" trên card, phân biệt hình thái (1 video vs
     // nhiều chương/bài) không cần tab/lọc riêng theo nguồn.
     lessonCount: number;
+    // UI (2026-09-05) — set khi space này là bản clone/fork của người khác,
+    // để card hiện "Bản sao của <ownerName>" (query owner_id trộn chung cả
+    // space tự tạo lẫn space clone, giống /my-spaces).
+    clonedFrom?: { spaceId: number; ownerName: string } | null;
+    // UI (2026-09-06) — vòng đời (ACTIVE/ARCHIVED), tách bạch với `status`
+    // (tiến độ học) ở trên. /my-learning (đã gộp /my-spaces vào) dùng field
+    // này để ẩn space đã lưu trữ khỏi danh sách chính, gấp vào mục riêng.
+    lifecycleStatus: 'ACTIVE' | 'ARCHIVED';
 }
 
 export interface MyLearningSpacesResponse {
@@ -129,6 +143,8 @@ export interface PublicSpace {
     ownerId?: number;
     thumbnailUrl?: string;
     shareToken?: string;
+    // UI (2026-09-05) — xem SpaceDetail ở trên.
+    clonedFrom?: { spaceId: number; ownerName: string } | null;
     chapters: {
         id: number;
         title: string;

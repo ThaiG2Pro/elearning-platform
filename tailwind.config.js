@@ -26,11 +26,12 @@ module.exports = {
     			'ink-lg': '16px',
     		},
     		boxShadow: {
-    			// Đồng bộ 1-1 với T.shadowSm / T.shadowMd trong theme.ts — bóng
-    			// đổ mềm, 2 lớp (contact shadow sát + ambient shadow xa), thay
-    			// cho shadow-sm/shadow-md mặc định của Tailwind trên panel/card.
-    			'ink-sm': '0 1px 2px rgba(33,38,51,0.04), 0 4px 12px -6px rgba(33,38,51,0.08)',
-    			'ink-md': '0 2px 4px rgba(33,38,51,0.04), 0 16px 40px -16px rgba(33,38,51,0.20)',
+    			// Bóng đổ mềm, 2 lớp (contact shadow sát + ambient shadow xa),
+    			// thay cho shadow-sm/shadow-md mặc định của Tailwind trên panel/
+    			// card. Giá trị thật ở globals.css (--ink-shadow-sm/md), giữ
+    			// đồng bộ 1-1 với T.shadowSm/T.shadowMd trong theme.ts.
+    			'ink-sm': 'var(--ink-shadow-sm)',
+    			'ink-md': 'var(--ink-shadow-md)',
     		},
     		colors: {
     			background: 'hsl(var(--background))',
@@ -76,34 +77,55 @@ module.exports = {
     			// "Mực xanh trên giấy trắng" — namespace riêng cho design system
     			// vibe-demo, tách khỏi theme shadcn ở trên để không đụng tên
     			// (accent/primary/border... đã có nghĩa khác trong theme cũ).
-    			// Giá trị hex tĩnh (không qua CSS var) vì dark mode của hệ này
-    			// KHÔNG phải theme toàn app — "phòng tối"/"focus mode" là trạng
-    			// thái cục bộ của từng trang, xem src/lib/vibe/theme.ts.
-    			// Giữ đồng bộ 1-1 với object T trong file đó khi còn tồn tại
-    			// song song hai hệ token.
+    			// NGUỒN GIÁ TRỊ THẬT là block :root { --ink-* } trong globals.css —
+    			// ở đây và src/lib/vibe/theme.ts (object T) chỉ tham chiếu var(),
+    			// không định nghĩa hex riêng nữa. Đổi màu → sửa globals.css,
+    			// KHÔNG sửa file này. (Dark mode của hệ này KHÔNG phải theme toàn
+    			// app — "phòng tối"/focus mode là trạng thái cục bộ từng trang,
+    			// nên vẫn là hex đặc qua var(), không qua hsl() như shadcn.)
     			ink: {
-    				page: '#FAFAF7',
-    				pageDim: '#E9E9E4',
-    				room: '#1A1C22',
-    				panel: '#FFFFFF',
-    				screen: '#14161C',
-    				text: '#212633',
-    				textMid: 'rgba(33,38,51,0.72)',
-    				textMuted: 'rgba(33,38,51,0.50)',
-    				textDim: 'rgba(33,38,51,0.28)',
-    				border: 'rgba(33,38,51,0.10)',
-    				borderHi: 'rgba(33,38,51,0.20)',
-    				accent: '#2E4A9E',
-    				accentA: 'rgba(46,74,158,0.08)',
-    				accentScreen: '#8FA6EE',
-    				onAccent: '#FFFFFF',
-    				marginLn: 'rgba(46,74,158,0.30)',
-    				correct: '#217A4A',
-    				correctA: 'rgba(33,122,74,0.08)',
-    				wrong: '#A8362E',
-    				wrongA: 'rgba(168,54,46,0.07)',
-    				pencil: 'rgba(33,38,51,0.30)',
-    				codeBg: 'rgba(33,38,51,0.045)',
+    				page: 'var(--ink-page)',
+    				pageDim: 'var(--ink-page-dim)',
+    				room: 'var(--ink-room)',
+    				panel: 'var(--ink-panel)',
+    				screen: 'var(--ink-screen)',
+    				text: 'var(--ink-text)',
+    				textMid: 'var(--ink-text-mid)',
+    				textMuted: 'var(--ink-text-muted)',
+    				textDim: 'var(--ink-text-dim)',
+    				border: 'var(--ink-border)',
+    				borderHi: 'var(--ink-border-hi)',
+    				accent: 'var(--ink-accent)',
+    				accentA: 'var(--ink-accent-a)',
+    				accentScreen: 'var(--ink-accent-screen)',
+    				onAccent: 'var(--ink-on-accent)',
+    				marginLn: 'var(--ink-margin-ln)',
+    				correct: 'var(--ink-correct)',
+    				correctA: 'var(--ink-correct-a)',
+    				wrong: 'var(--ink-wrong)',
+    				wrongA: 'var(--ink-wrong-a)',
+    				// Ngữ nghĩa trạng thái CHUNG (badge/banner: active/archived,
+    				// free/paid, cảnh báo giới hạn...) — khác correct/wrong ở trên
+    				// (chỉ dành riêng cho bài chấm quiz).
+    				success: 'var(--ink-success)',
+    				successA: 'var(--ink-success-a)',
+    				successBorder: 'var(--ink-success-border)',
+    				warning: 'var(--ink-warning)',
+    				warningA: 'var(--ink-warning-a)',
+    				warningBorder: 'var(--ink-warning-border)',
+    				// Bản warning trên nền tối — xem chú thích tại
+    				// :root { --ink-warning-screen } ở globals.css.
+    				warningScreen: 'var(--ink-warning-screen)',
+    				pencil: 'var(--ink-pencil)',
+    				codeBg: 'var(--ink-code-bg)',
+    				// Chữ/viền trên nền đảo màu (ink.room hoặc khối nền tối cục bộ
+    				// khác) — xem chú thích đầy đủ tại :root { --ink-screen-* } ở
+    				// globals.css.
+    				screenText: 'var(--ink-screen-text)',
+    				screenTextMid: 'var(--ink-screen-text-mid)',
+    				screenTextMuted: 'var(--ink-screen-text-muted)',
+    				screenTextDim: 'var(--ink-screen-text-dim)',
+    				screenBorder: 'var(--ink-screen-border)',
     			}
     		}
     	}

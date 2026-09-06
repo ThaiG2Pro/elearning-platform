@@ -50,6 +50,7 @@ export class ContentManagementService {
                 id: true,
                 title: true,
                 status: true,
+                cloned_from_space_id: true,
                 chapters: {
                     select: {
                         // WP1.10.6 — needs every lesson (not just video ones)
@@ -68,6 +69,26 @@ export class ContentManagementService {
             orderBy: { id: 'desc' },
         });
 
+        // UI (2026-09-05) — /my-spaces trộn chung space chủ tự tạo và space
+        // clone/fork từ người khác (getOwnedSpaces chỉ lọc owner_id, đúng
+        // chủ ý — 1 người quản lý mọi thứ mình sở hữu ở cùng 1 nơi), nên cần
+        // batch-fetch tên chủ sở hữu GỐC cho những space nào trong list này
+        // là bản clone, để card hiện "Bản sao của <tên chủ gốc>" thay vì
+        // trông như 1 space độc lập chính chủ.
+        const originIds = spaces
+            .map(s => s.cloned_from_space_id)
+            .filter((id): id is bigint => id !== null);
+        const originOwnerNameMap = new Map<string, string>();
+        if (originIds.length > 0) {
+            const origins = await this.prisma.spaces.findMany({
+                where: { id: { in: originIds } },
+                select: { id: true, owner: { select: { full_name: true } } },
+            });
+            for (const origin of origins) {
+                originOwnerNameMap.set(origin.id.toString(), origin.owner.full_name);
+            }
+        }
+
         return spaces.map(space => {
             // Find the first video across all chapters and lessons
             const firstVideoUrl = VideoThumbnailUtil.findFirstVideoUrl(
@@ -77,6 +98,12 @@ export class ContentManagementService {
                 ? VideoThumbnailUtil.deriveThumbnailFromVideoUrl(firstVideoUrl)
                 : '/images/space-placeholder.svg';
             const lessonCount = space.chapters.reduce((sum, ch) => sum + ch.lessons.length, 0);
+            const clonedFrom = space.cloned_from_space_id
+                ? {
+                    spaceId: Number(space.cloned_from_space_id),
+                    ownerName: originOwnerNameMap.get(space.cloned_from_space_id.toString()) || 'Không rõ',
+                }
+                : null;
 
             return new SpaceSummaryDto(
                 space.id,
@@ -84,6 +111,7 @@ export class ContentManagementService {
                 space.status,
                 thumbnailUrl,
                 lessonCount,
+                clonedFrom,
             );
         });
     }
@@ -301,9 +329,9 @@ export class ContentManagementService {
     }
 
     /** WP1.5.11: list of the user's own spaces with their current share status, for the "my share links" screen. */
-    async listMyShareLinks(userId: bigint): Promise<Array<{ id: number; title: string; shareToken: string | null }>> {
+    async listMyShareLinks(userId: bigint): Promise<Array<{ id: number; title: string; shareToken: string | null; status: string }>> {
         const spaces = await this.spaceRepository.findOwnedWithShareStatus(userId);
-        return spaces.map(c => ({ id: Number(c.id), title: c.title, shareToken: c.shareToken }));
+        return spaces.map(c => ({ id: Number(c.id), title: c.title, shareToken: c.shareToken, status: c.status }));
     }
 
     /** Public: anonymous-safe view of a shared space, keyed by its share token. */
@@ -334,6 +362,7 @@ export class ContentManagementService {
                 : '/images/space-placeholder.svg',
             space.shareToken || token,
             Number(space.ownerId),
+            (space as any).clonedFrom,
         );
     }
 

@@ -49,6 +49,12 @@ export class SpaceRepository {
                 owner: {
                     select: { full_name: true },
                 },
+                // UI (2026-09-05) — phân biệt bản clone/fork với bản gốc
+                // chính chủ trên trang preview: cần tên chủ sở hữu space GỐC
+                // khi chính space này là 1 bản clone.
+                cloned_from: {
+                    select: { id: true, owner: { select: { full_name: true } } },
+                },
                 chapters: {
                     include: {
                         lessons: true,
@@ -92,12 +98,25 @@ export class SpaceRepository {
             space.share_token,
         );
         (domainSpace as any).ownerName = space.owner.full_name;
+        (domainSpace as any).clonedFrom = space.cloned_from
+            ? { spaceId: Number(space.cloned_from.id), ownerName: space.cloned_from.owner.full_name }
+            : null;
         return domainSpace;
     }
 
-    async findActiveSpacesWithThumbnails(search?: string): Promise<{ id: bigint; title: string; slug: string; description: string | null; thumbnailUrl: string; isShowcase: boolean; cloneCount: number }[]> {
+    async findActiveSpacesWithThumbnails(search?: string): Promise<{ id: bigint; title: string; slug: string; description: string | null; thumbnailUrl: string; isShowcase: boolean; cloneCount: number; clonedFrom: { spaceId: number; ownerName: string } | null }[]> {
+        // Discovery policy (2026-09-05): trước đây chỉ lọc status=ACTIVE nên
+        // MỌI space active — kể cả space chủ chưa từng bấm "Chia sẻ" (private)
+        // và mọi bản clone cá nhân (mặc định không có share_token) — đều lộ
+        // diện ở trang chủ guest. share_token != null nghĩa là "chủ đã chủ
+        // động chia sẻ", khớp với /share/[token] flow đã có sẵn — không cần
+        // cột mới. Bản clone tự động ẩn theo đúng rule này (cloneForOwner
+        // không set share_token), tự tái xuất hiện nếu sau này chủ bản clone
+        // đó chủ động share lại chính nó (giống model fork công khai của
+        // GitHub) — không cần loại trừ cloned_from_space_id riêng.
         const where: any = {
             status: 'ACTIVE',
+            share_token: { not: null },
         };
 
         if (search) {
@@ -115,6 +134,7 @@ export class SpaceRepository {
                 slug: true,
                 description: true,
                 is_showcase: true,
+                cloned_from_space_id: true,
             },
             orderBy: { id: 'desc' },
         });
@@ -130,14 +150,42 @@ export class SpaceRepository {
             }
         }
 
+        // UI (2026-09-05) — phân biệt bản clone/fork với bản gốc chính chủ:
+        // batch-fetch tên chủ sở hữu của space GỐC cho những space trong
+        // trang này mà bản thân nó là 1 bản clone (cloned_from_space_id !=
+        // null), để card có thể hiện "Bản sao của <tên chủ gốc>".
+        const originIds = spaces
+            .map(s => s.cloned_from_space_id)
+            .filter((id): id is bigint => id !== null);
+        const originOwnerNameMap = new Map<string, string>();
+        if (originIds.length > 0) {
+            const origins = await this.prisma.spaces.findMany({
+                where: { id: { in: originIds } },
+                select: { id: true, owner: { select: { full_name: true } } },
+            });
+            for (const origin of origins) {
+                originOwnerNameMap.set(origin.id.toString(), origin.owner.full_name);
+            }
+        }
+
         const spacesWithThumbnails = await Promise.all(
             spaces.map(async (space) => {
                 const thumbnailUrl = await this.getSpaceThumbnailUrl(space.id);
+                const clonedFrom = space.cloned_from_space_id
+                    ? {
+                        spaceId: Number(space.cloned_from_space_id),
+                        ownerName: originOwnerNameMap.get(space.cloned_from_space_id.toString()) || 'Không rõ',
+                    }
+                    : null;
                 return {
-                    ...space,
+                    id: space.id,
+                    title: space.title,
+                    slug: space.slug,
+                    description: space.description,
                     isShowcase: space.is_showcase,
                     cloneCount: cloneCountMap.get(space.id.toString()) || 0,
                     thumbnailUrl,
+                    clonedFrom,
                 };
             })
         );
@@ -249,14 +297,17 @@ export class SpaceRepository {
         });
     }
 
-    /** WP1.5.11: for the "my share links" management screen. */
-    async findOwnedWithShareStatus(userId: bigint): Promise<Array<{ id: bigint; title: string; shareToken: string | null }>> {
+    /** WP1.5.11: for the "my share links" management screen.
+     * 2026-09-05 — status thêm vào cùng đợt gộp "Chia sẻ & Lưu trữ" của trang
+     * edit về hẳn /my-shares (xem audit "cơ cấu lại"): trước đây trang này
+     * không biết Space đang Active/Archived nên không thể có nút lưu trữ. */
+    async findOwnedWithShareStatus(userId: bigint): Promise<Array<{ id: bigint; title: string; shareToken: string | null; status: string }>> {
         const spaces = await this.prisma.spaces.findMany({
             where: { owner_id: userId },
-            select: { id: true, title: true, share_token: true },
+            select: { id: true, title: true, share_token: true, status: true },
             orderBy: { id: 'desc' },
         });
-        return spaces.map(c => ({ id: c.id, title: c.title, shareToken: c.share_token }));
+        return spaces.map(c => ({ id: c.id, title: c.title, shareToken: c.share_token, status: c.status }));
     }
 
     /** Public lookup by share token — no ownership check, used by anonymous visitors. */
@@ -265,6 +316,11 @@ export class SpaceRepository {
             where: { share_token: token, status: 'ACTIVE' },
             include: {
                 owner: { select: { full_name: true } },
+                // UI (2026-09-05) — phân biệt bản clone/fork với bản gốc
+                // chính chủ trên trang /share/[token] cũng vậy.
+                cloned_from: {
+                    select: { id: true, owner: { select: { full_name: true } } },
+                },
                 chapters: {
                     include: { lessons: true },
                     orderBy: { order_index: 'asc' },
@@ -298,6 +354,9 @@ export class SpaceRepository {
             space.share_token,
         );
         (domainSpace as any).ownerName = space.owner?.full_name || '';
+        (domainSpace as any).clonedFrom = space.cloned_from
+            ? { spaceId: Number(space.cloned_from.id), ownerName: space.cloned_from.owner.full_name }
+            : null;
         return domainSpace;
     }
 

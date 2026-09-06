@@ -104,7 +104,7 @@ export default function VibeSpacesDemoPage() {
 
       <div
         style={{ top: APP_TOP_BAR_H }}
-        className="fixed left-0 right-0 bottom-0 bg-ink-page overflow-y-auto flex justify-center cs-scrollbar"
+        className="fixed left-0 right-0 bottom-0 bg-ink-page overflow-y-auto flex justify-center vd-scrollbar"
       >
         <div
           className="w-full max-w-[900px]"
@@ -169,7 +169,7 @@ export default function VibeSpacesDemoPage() {
 
           {/* ── Giá sách ──
               Danh sách không có max-height/overflow riêng: khung cuộn duy nhất
-              là div .cs-scrollbar bọc ngoài (page-scroll). Với 50+ mục, giá
+              là div .vd-scrollbar bọc ngoài (page-scroll). Với 50+ mục, giá
               sách chỉ cao thêm và cuộn theo trang — không cần bọc thêm
               max-height + overflow ở đây. */}
           <div

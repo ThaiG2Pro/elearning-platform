@@ -50,6 +50,19 @@ export default function SpaceCard({ space, onClick }: SpaceCardProps) {
                             {space.cloneCount} người cùng học
                         </span>
                     )}
+                    {/* UI (2026-09-05) — phân biệt bản clone/fork với bản gốc
+                        chính chủ, tránh nhầm 2 kết quả trông giống hệt nhau. */}
+                    {space.clonedFrom && (
+                        <span
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium bg-ink-page text-ink-textMuted border border-ink-border"
+                            title={`Bản sao chép từ Space gốc của ${space.clonedFrom.ownerName}`}
+                        >
+                            <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                            </svg>
+                            Bản sao của {space.clonedFrom.ownerName}
+                        </span>
+                    )}
                 </div>
                 <div className="flex items-start justify-between gap-2 mb-2">
                     <h3 className="text-sm font-semibold text-ink-text leading-snug line-clamp-2 flex-1">{space.title}</h3>

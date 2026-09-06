@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { ArrowLeft } from 'lucide-react';
 import { registerUser } from '@/lib/auth';
 import { RegisterRequest } from '@/types/auth.types';
 import Header from '@/components/Header';
@@ -141,10 +142,10 @@ export default function RegisterPage() {
                                             id="fullName" name="fullName" type="text" required
                                             value={fullName} onChange={(e) => setFullName(e.target.value)}
                                             disabled={appState === 'submitting'}
-                                            className={`w-full px-3 py-2.5 border rounded-lg text-sm text-ink-text placeholder:text-ink-textMuted focus:outline-none focus:ring-2 focus:ring-ink-accent focus:border-transparent disabled:opacity-50 transition-shadow ${fieldErrors.fullName ? 'border-red-400 bg-red-50' : 'border-ink-border'}`}
+                                            className={`w-full px-3 py-2.5 border rounded-lg text-sm text-ink-text placeholder:text-ink-textMuted focus:outline-none focus:ring-2 focus:ring-ink-accent focus:border-transparent disabled:opacity-50 transition-shadow ${fieldErrors.fullName ? 'border-destructive bg-destructive/10' : 'border-ink-border'}`}
                                             placeholder="Nguyễn Văn A"
                                         />
-                                        {fieldErrors.fullName && <p className="mt-1 text-xs text-red-600">{fieldErrors.fullName}</p>}
+                                        {fieldErrors.fullName && <p className="mt-1 text-xs text-destructive">{fieldErrors.fullName}</p>}
                                     </>
                                 )
                             },
@@ -156,10 +157,10 @@ export default function RegisterPage() {
                                             id="age" name="age" type="number" min="1" required
                                             value={age} onChange={(e) => setAge(e.target.value)}
                                             disabled={appState === 'submitting'}
-                                            className={`w-full px-3 py-2.5 border rounded-lg text-sm text-ink-text placeholder:text-ink-textMuted focus:outline-none focus:ring-2 focus:ring-ink-accent focus:border-transparent disabled:opacity-50 transition-shadow ${fieldErrors.age ? 'border-red-400 bg-red-50' : 'border-ink-border'}`}
+                                            className={`w-full px-3 py-2.5 border rounded-lg text-sm text-ink-text placeholder:text-ink-textMuted focus:outline-none focus:ring-2 focus:ring-ink-accent focus:border-transparent disabled:opacity-50 transition-shadow ${fieldErrors.age ? 'border-destructive bg-destructive/10' : 'border-ink-border'}`}
                                             placeholder="18"
                                         />
-                                        {fieldErrors.age && <p className="mt-1 text-xs text-red-600">{fieldErrors.age}</p>}
+                                        {fieldErrors.age && <p className="mt-1 text-xs text-destructive">{fieldErrors.age}</p>}
                                     </>
                                 )
                             },
@@ -171,10 +172,10 @@ export default function RegisterPage() {
                                             id="password" name="password" type="password" autoComplete="new-password" required minLength={6}
                                             value={password} onChange={(e) => setPassword(e.target.value)}
                                             disabled={appState === 'submitting'}
-                                            className={`w-full px-3 py-2.5 border rounded-lg text-sm text-ink-text placeholder:text-ink-textMuted focus:outline-none focus:ring-2 focus:ring-ink-accent focus:border-transparent disabled:opacity-50 transition-shadow ${fieldErrors.password ? 'border-red-400 bg-red-50' : 'border-ink-border'}`}
+                                            className={`w-full px-3 py-2.5 border rounded-lg text-sm text-ink-text placeholder:text-ink-textMuted focus:outline-none focus:ring-2 focus:ring-ink-accent focus:border-transparent disabled:opacity-50 transition-shadow ${fieldErrors.password ? 'border-destructive bg-destructive/10' : 'border-ink-border'}`}
                                             placeholder="Tối thiểu 6 ký tự"
                                         />
-                                        {fieldErrors.password && <p className="mt-1 text-xs text-red-600">{fieldErrors.password}</p>}
+                                        {fieldErrors.password && <p className="mt-1 text-xs text-destructive">{fieldErrors.password}</p>}
                                     </>
                                 )
                             },
@@ -201,8 +202,9 @@ export default function RegisterPage() {
                                     {appState === 'submitting' ? 'Đang tạo tài khoản...' : 'Đăng ký'}
                                 </button>
                                 <div className="mt-3 text-center">
-                                    <button type="button" onClick={handleBackToIdentify} className="vd-focusable text-sm text-ink-textMuted hover:text-ink-text transition-colors">
-                                        ← Quay lại
+                                    <button type="button" onClick={handleBackToIdentify} className="vd-focusable inline-flex items-center gap-1 text-sm text-ink-textMuted hover:text-ink-text transition-colors">
+                                        <ArrowLeft size={14} />
+                                        <span>Quay lại</span>
                                     </button>
                                 </div>
                             </div>

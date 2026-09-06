@@ -136,7 +136,7 @@ export default function ChangePasswordPage() {
                                             placeholder="Nhập lại mật khẩu mới"
                                         />
                                         {(appState === 'business_error' || appState === 'system_error') && errorMessage && (
-                                            <p className="mt-1 text-xs text-red-600">{errorMessage}</p>
+                                            <p className="mt-1 text-xs text-destructive">{errorMessage}</p>
                                         )}
                                     </>
                                 )

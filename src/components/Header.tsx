@@ -28,20 +28,12 @@ export default function Header({ user, onLogout, onJoin }: HeaderProps) {
         // Vỏ bar (sticky, chiều cao APP_TOP_BAR_H, border, căn giữa max-w-7xl)
         // giờ nằm trong <TopBar variant="site"> dùng chung với breadcrumb bar
         // trang học — nav vẫn dùng motif "gạch chân accent khi active".
+        // 2026-09-05 — brand mark ("E" + "E-Learning") không còn tự vẽ ở đây:
+        // TopBar giờ vẽ nó ở MỌI variant (xem audit "Hệ Thống Header"), Header
+        // chỉ còn cần khai báo nav.
         <TopBar variant="site">
-            {/* Logo & Main Nav */}
+            {/* Main Nav */}
                     <div className="flex items-center gap-6 sm:gap-8">
-                        <button
-                            onClick={() => router.push('/')}
-                            className="flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-ink-accent focus:ring-offset-2 rounded-md whitespace-nowrap"
-                            aria-label="Trang chủ"
-                        >
-                            <div className="w-8 h-8 rounded-lg bg-ink-accent flex items-center justify-center">
-                                <span className="text-white font-bold text-sm">E</span>
-                            </div>
-                            <span className="font-semibold text-ink-text text-base hidden sm:block">E-Learning</span>
-                        </button>
-
                         <nav className="flex items-center gap-1 sm:gap-5 overflow-x-auto" aria-label="Main Navigation">
                             <button
                                 onClick={handleHomeClick}

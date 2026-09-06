@@ -13,8 +13,8 @@ interface ToastProps {
 // error page) — KHÔNG dùng ink-correct/ink-wrong vì token đó chỉ dành cho
 // chấm quiz. "info" là loại trung lập/mặc định nên map thẳng vào ink-accent.
 const toastConfig = {
-    error:   { bg: 'bg-ink-panel border-l-4 border-l-red-500', icon: 'text-red-500', text: 'text-ink-text' },
-    success: { bg: 'bg-ink-panel border-l-4 border-l-emerald-500', icon: 'text-emerald-500', text: 'text-ink-text' },
+    error:   { bg: 'bg-ink-panel border-l-4 border-l-destructive', icon: 'text-destructive', text: 'text-ink-text' },
+    success: { bg: 'bg-ink-panel border-l-4 border-l-ink-success', icon: 'text-ink-success', text: 'text-ink-text' },
     info:    { bg: 'bg-ink-panel border-l-4 border-l-ink-accent', icon: 'text-ink-accent', text: 'text-ink-text' },
 };
 

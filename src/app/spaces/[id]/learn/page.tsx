@@ -728,7 +728,7 @@ export default function LearningPage() {
                     {/* flex-1 trong cha có chiều cao bị chặn (rail desktop
                         h-[calc(100%-30px)], overlay focus max-h, compact cuộn
                         nguyên cột) — thay hack max-h-[calc(100vh-280px)] cũ. */}
-                    <div className="flex-1 min-h-0 space-y-4 overflow-y-auto cs-scrollbar py-1.5">
+                    <div className="flex-1 min-h-0 space-y-4 overflow-y-auto vd-scrollbar py-1.5">
                         {groupedChapters.map((chapterGroup, cIdx) => (
                             <div key={chapterGroup.chapterId || cIdx} className="space-y-1.5">
                                 {/* Chapter Header — WP1.10.5: space có đúng 1 chương thì ẩn
@@ -836,7 +836,7 @@ export default function LearningPage() {
                     </div>
                 </>
             ) : (
-                <div className="flex-1 min-h-0 overflow-y-auto cs-scrollbar px-3 pt-3 pb-3">
+                <div className="flex-1 min-h-0 overflow-y-auto vd-scrollbar px-3 pt-3 pb-3">
                     {/* Danh sách ghi chú — cùng motif "lề vở" THẬT như playlist ở trên
                         (cột lề trái MARGIN_W + đường kẻ dọc liên tục), thay khối
                         card-viền-bo-góc-riêng-từng-note cũ. Nút xoá chỉ hiện khi hover,
@@ -872,7 +872,7 @@ export default function LearningPage() {
                                         <button
                                             onClick={() => handleDeleteNote(note.id)}
                                             title="Xoá ghi chú"
-                                            className="flex-shrink-0 text-ink-textDim hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                                            className="flex-shrink-0 text-ink-textDim hover:text-destructive transition-colors opacity-0 group-hover:opacity-100"
                                         >
                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -942,18 +942,24 @@ export default function LearningPage() {
 
     return (
         <div>
-            {/* ══ TITLE BAR — chrome phẳng 52px, một hairline (porting nguyên
+            {/* ══ TITLE BAR — chrome phẳng 56px, một hairline (porting nguyên
                 ngữ pháp vibe-demo/page.tsx): breadcrumb thay nút "Quay lại",
                 progress hairline + % mono, nút edit/focus icon-only 26px.
                 Tên bài KHÔNG nằm ở đây — "Header = MỘT dòng h1" dưới kia.
                 Trong focus mode bar "tắt đèn" cùng căn phòng: nền chuyển màu
-                phòng tối, chữ thành mực sáng mờ — cùng nhịp transition 600ms. ══ */}
+                phòng tối, chữ thành mực sáng mờ — cùng nhịp transition 600ms.
+                2026-09-05 — đoạn đầu breadcrumb không còn là "Trang chủ": brand
+                mark của TopBar đã tự vẽ điểm về "/" đó (xem audit "Hệ Thống
+                Header"), nên ở đây chỉ còn đoạn breadcrumb THỨ HAI trở đi —
+                đổi nhãn "Spaces" → "Space đang học" cho khớp đúng tên mục
+                tương ứng trong AccountMenu (trỏ cùng /my-learning). ══ */}
             <TopBar variant="workspace" focusMode={focusMode}>
+                <ChevronRight size={14} className={`shrink-0 ${focusMode ? 'text-[rgba(244,246,252,0.25)]' : 'text-ink-textDim'}`} />
                 <button
                     onClick={() => router.push('/my-learning')}
                     className="vd-focusable shrink-0 whitespace-nowrap bg-transparent border-none p-0 cursor-pointer text-inherit hover:underline"
                 >
-                    Spaces
+                    {isCompact ? 'Spaces' : 'Space đang học'}
                 </button>
                 {!isCompact && spaceTitle && (
                     <>
@@ -1033,7 +1039,7 @@ export default function LearningPage() {
                     }}
                 >
                     {/* ══ LEFT COLUMN — video/quiz ══ */}
-                    <div className={`relative flex flex-col h-full min-w-0 ${leftScrolls ? 'overflow-auto cs-scrollbar' : 'overflow-hidden'} ${(focusMode && isVideoLesson) ? 'justify-center' : 'justify-start'}`}>
+                    <div className={`relative flex flex-col h-full min-w-0 ${leftScrolls ? 'overflow-auto vd-scrollbar' : 'overflow-hidden'} ${(focusMode && isVideoLesson) ? 'justify-center' : 'justify-start'}`}>
                         {/* Header = MỘT dòng h1 (vibe-demo/page.tsx:349): mọi meta khác
                             đã có chỗ riêng — chương → breadcrumb, số bài/thời lượng →
                             playlist, thời gian phát → thanh trạng thái của video. */}
@@ -1156,7 +1162,7 @@ export default function LearningPage() {
                                                     </div>
                                                     <span>{formatTime(videoDuration || currentLesson.duration || 0)}</span>
                                                     {progressSyncError ? (
-                                                        <span className="vd-ink-in text-amber-400 ml-2 whitespace-nowrap">⟳ đang lưu lại...</span>
+                                                        <span className="vd-ink-in text-ink-warningScreen ml-2 whitespace-nowrap">⟳ đang lưu lại...</span>
                                                     ) : (
                                                         <span className="text-ink-accentScreen ml-2 whitespace-nowrap">✓ đã lưu</span>
                                                     )}
@@ -1201,7 +1207,7 @@ export default function LearningPage() {
                                             <h3 className="text-base font-semibold text-ink-text">
                                                 Bài kiểm tra
                                             </h3>
-                                            <div className={`flex items-center gap-1.5 text-sm font-mono font-semibold px-3 py-1 rounded-full ${low ? 'bg-red-50 text-red-600' : 'bg-ink-page text-ink-textMid'}`}>
+                                            <div className={`flex items-center gap-1.5 text-sm font-mono font-semibold px-3 py-1 rounded-full ${low ? 'bg-destructive/10 text-destructive' : 'bg-ink-page text-ink-textMid'}`}>
                                                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                                 </svg>
@@ -1516,8 +1522,8 @@ export default function LearningPage() {
 
                             {appState === 'error' && (
                                 <div className="flex flex-col items-center py-12 text-center">
-                                    <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mb-3">
-                                        <svg className="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <div className="w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center mb-3">
+                                        <svg className="w-6 h-6 text-destructive" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
                                         </svg>
                                     </div>

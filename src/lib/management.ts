@@ -410,6 +410,10 @@ export interface MyShareLink {
     title: string;
     shareToken: string | null;
     shareUrl: string | null;
+    // 2026-09-05 — thêm cùng đợt gộp "Chia sẻ & Lưu trữ" của trang edit về
+    // hẳn /my-shares (xem audit "cơ cấu lại"): trang này giờ cũng cần biết
+    // Space đang Active/Archived để có nút lưu trữ ngay tại đây.
+    status: string;
 }
 
 // WP1.5.11 — "quản lý share link của tôi": list every owned space with its
@@ -443,9 +447,10 @@ export interface MySharedAIGeneration {
     sourceUrl: string;
 }
 
-// 2026-09-05 — "/my-ai-shares": danh sách bản AI (quiz/tóm tắt) đã tạo bằng
-// BYOK và đang SHARED — điểm chạm quản lý còn thiếu sau khi feature share
-// BYOK ra mắt (chỉ có checkbox lúc generate, không có nơi xem/thu hồi lại).
+// 2026-09-05 — "/my-shares" (tab "AI"): danh sách bản AI (quiz/tóm tắt) đã
+// tạo bằng BYOK và đang SHARED — điểm chạm quản lý còn thiếu sau khi feature
+// share BYOK ra mắt (chỉ có checkbox lúc generate, không có nơi xem/thu hồi
+// lại). Trang từng đứng riêng ở /my-ai-shares, nay gộp vào /my-shares.
 export const listMySharedAIGenerations = async (): Promise<MySharedAIGeneration[]> => {
     try {
         const response = await api.get('/management/ai-generations');

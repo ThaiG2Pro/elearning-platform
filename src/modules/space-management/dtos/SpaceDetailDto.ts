@@ -11,6 +11,10 @@ export class SpaceDetailDto {
         public status?: string,
         public completionRate?: number,
         public shareToken?: string,
+        // UI (2026-09-05) — set khi space này là bản clone/fork của người
+        // khác, để trang preview hiện "Bản sao chép từ Space gốc của
+        // <ownerName>" + link "Xem bản gốc".
+        public clonedFrom?: { spaceId: number; ownerName: string } | null,
     ) { }
 }
 
@@ -47,5 +51,7 @@ export class PublicSpaceDto {
         public thumbnailUrl?: string,
         public shareToken?: string,
         public ownerId?: number,
+        // UI (2026-09-05) — xem SpaceDetailDto ở trên.
+        public clonedFrom?: { spaceId: number; ownerName: string } | null,
     ) { }
 }

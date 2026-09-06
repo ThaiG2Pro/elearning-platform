@@ -26,6 +26,7 @@ export class SpaceService {
             space.thumbnailUrl,
             space.isShowcase,
             space.cloneCount,
+            space.clonedFrom,
         ));
     }
 
@@ -42,6 +43,22 @@ export class SpaceService {
         // including on their own space. Personal-organizer model: a space
         // is accessible to the user who owns it, full stop.
         const isOwner = !!userId && fullSpace.ownerId === userId;
+
+        // Security fix (2026-09-05) — this method used to build and return
+        // the full chapters/lessons/contentUrl payload for ANY spaceId, no
+        // matter who asked (isOwner was computed but never enforced): an
+        // anonymous caller, or any logged-in user, could read a private
+        // space's entire content by guessing/enumerating its numeric id.
+        // `/spaces/[id]/page.tsx` also uses this same method as the public
+        // "preview before Sao chép về học" page reached from the homepage
+        // listing or a share link, so non-owners are still let through when
+        // the space has actually been shared — never by id alone.
+        const isPubliclyShared = fullSpace.status === 'ACTIVE' && !!fullSpace.shareToken;
+        if (!isOwner && !isPubliclyShared) {
+            // Same message/shape as "doesn't exist" — a 403 would confirm a
+            // private space's id is in use, a 404 doesn't.
+            throw new Error('SPACE_NOT_FOUND');
+        }
 
         // WP1.3: surface the logged-in user's own progress on space-detail —
         // ownership-based, no enrollment required.
@@ -84,6 +101,7 @@ export class SpaceService {
             fullSpace.status,
             completionRate,
             fullSpace.shareToken || fullSpace.share_token || undefined,
+            fullSpace.clonedFrom,
         );
     }
 

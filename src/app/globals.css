@@ -22,115 +22,82 @@
     min-height: 200px;
 }
 
-/* ─────────────────────────────────────────────────────────────────────────
-   CRAFT STUDIO — Design Tokens (scoped: does not affect main app theme)
-   Spec: docs/design/vibe-craft-studio-spec.md
-   Inspired by: Linear.app · Obsidian · Raycast · VS Code Dark · Vercel
-   ───────────────────────────────────────────────────────────────────────── */
-
-/* Import JetBrains Mono for timestamps, code blocks, and metric labels */
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap');
-
-.craft-studio {
-  /* ── Backgrounds ── */
-  --cs-bg-main:        #0B0F17;    /* Onyx deep — main canvas */
-  --cs-bg-surface:     #161B26;    /* Elevated surface / card */
-  --cs-bg-surface-alt: rgba(22, 27, 38, 0.75); /* Glassmorphism layer */
-  --cs-bg-overlay:     rgba(11, 15, 23, 0.80); /* Modal backdrop */
-
-  /* ── Borders (sub-pixel precision) ── */
-  --cs-border-subtle:  rgba(255, 255, 255, 0.08);
-  --cs-border-medium:  rgba(255, 255, 255, 0.12);
-  --cs-border-strong:  rgba(255, 255, 255, 0.18);
-
-  /* ── Text ── */
-  --cs-text-primary:   #F9FAFB;    /* slate-50  — high contrast body */
-  --cs-text-secondary: #CBD5E1;    /* slate-300 — secondary labels */
-  --cs-text-muted:     #9CA3AF;    /* slate-400 — timestamps, captions */
-  --cs-text-disabled:  #4B5563;    /* slate-600 — inactive states */
-
-  /* ── Accent: Emerald (Completion / Progress) ── */
-  --cs-emerald:        #10B981;
-  --cs-emerald-glow:   rgba(16, 185, 129, 0.15);
-  --cs-emerald-border: rgba(16, 185, 129, 0.30);
-
-  /* ── Accent: Amber (Group Streak 🔥) ── */
-  --cs-amber:          #F59E0B;
-  --cs-amber-glow:     rgba(245, 158, 11, 0.15);
-  --cs-amber-border:   rgba(245, 158, 11, 0.35);
-
-  /* ── Accent: Indigo (AI / Quiz signals) ── */
-  --cs-indigo:         #6366F1;
-  --cs-indigo-glow:    rgba(99, 102, 241, 0.15);
-  --cs-indigo-border:  rgba(99, 102, 241, 0.30);
-
-  /* ── Typography ── */
-  --cs-font-sans: 'Inter', 'Geist', system-ui, sans-serif;
-  --cs-font-mono: 'JetBrains Mono', 'Fira Code', monospace;
-
-  /* ── Motion ── */
-  --cs-transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* Glassmorphism surface utility */
-.cs-glass {
-  background: var(--cs-bg-surface-alt);
-  backdrop-filter: blur(16px) saturate(180%);
-  -webkit-backdrop-filter: blur(16px) saturate(180%);
-  border: 1px solid var(--cs-border-subtle);
-}
-
-/* Custom scrollbar — Craft Studio style */
-.cs-scrollbar::-webkit-scrollbar { width: 4px; }
-.cs-scrollbar::-webkit-scrollbar-track { background: transparent; }
-.cs-scrollbar::-webkit-scrollbar-thumb {
+/* Custom scrollbar dùng chung cho mọi trang ink-* (trước là .cs-scrollbar,
+   sót lại từ hệ "Craft Studio" đã gỡ bỏ — đây là utility DUY NHẤT của hệ đó
+   còn được dùng, nên giữ lại và đổi tên cho khớp namespace vd-*). */
+.vd-scrollbar::-webkit-scrollbar { width: 4px; }
+.vd-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.vd-scrollbar::-webkit-scrollbar-thumb {
   background: rgba(255,255,255,0.1);
   border-radius: 99px;
 }
-.cs-scrollbar::-webkit-scrollbar-thumb:hover {
+.vd-scrollbar::-webkit-scrollbar-thumb:hover {
   background: rgba(255,255,255,0.2);
-}
-
-/* Emerald progress bar shimmer */
-@keyframes cs-shimmer {
-  0%   { background-position: -200% center; }
-  100% { background-position:  200% center; }
-}
-.cs-progress-bar {
-  background: linear-gradient(
-    90deg,
-    var(--cs-emerald) 0%,
-    #34D399 40%,
-    var(--cs-emerald) 100%
-  );
-  background-size: 200% auto;
-  animation: cs-shimmer 2.5s linear infinite;
-}
-
-/* Indigo AI pulse ring */
-@keyframes cs-pulse-ring {
-  0%   { box-shadow: 0 0 0 0   rgba(99,102,241,0.4); }
-  70%  { box-shadow: 0 0 0 6px rgba(99,102,241,0.0); }
-  100% { box-shadow: 0 0 0 0   rgba(99,102,241,0.0); }
-}
-.cs-ai-pulse { animation: cs-pulse-ring 2s ease-out infinite; }
-
-/* Lesson row active left accent */
-.cs-lesson-active {
-  border-left: 2px solid var(--cs-emerald);
-  background: var(--cs-emerald-glow);
 }
 
 
 /* ─────────────────────────────────────────────────────────────────────────
-   "MỰC XANH TRÊN GIẤY TRẮNG" — global a11y/motion cho hệ ink-*
-   Đồng bộ 1-1 với VIBE_GLOBAL_CSS trong src/lib/vibe/theme.ts. Trước đây
-   mỗi trang /vibe-demo/* tự nhúng qua <style>{VIBE_GLOBAL_CSS}</style>; ở
-   trang thật đặt 1 lần ở đây để mọi trang dùng chung .vd-focusable/.vd-ink-in
-   mà không phải tự import/nhúng lại.
+   "MỰC XANH TRÊN GIẤY TRẮNG" (ink-*) — NGUỒN CHÂN LÝ DUY NHẤT cho màu/bo góc/
+   bóng đổ của design system chính. tailwind.config.js (namespace ink.*) và
+   src/lib/vibe/theme.ts (object T) không còn giữ hex riêng — cả hai CHỈ
+   tham chiếu var(--ink-*) khai báo ở đây. Đổi màu → sửa DUY NHẤT khối này.
    ───────────────────────────────────────────────────────────────────────── */
+:root {
+  --ink-page: #FAFAF7;
+  --ink-page-dim: #E9E9E4;
+  --ink-room: #1A1C22;
+  --ink-panel: #FFFFFF;
+  --ink-screen: #14161C;
+  --ink-text: #212633;
+  --ink-text-mid: rgba(33,38,51,0.72);
+  --ink-text-muted: rgba(33,38,51,0.50);
+  --ink-text-dim: rgba(33,38,51,0.28);
+  --ink-border: rgba(33,38,51,0.10);
+  --ink-border-hi: rgba(33,38,51,0.20);
+  --ink-accent: #2E4A9E;
+  --ink-accent-a: rgba(46,74,158,0.08);
+  --ink-accent-screen: #8FA6EE;
+  --ink-on-accent: #FFFFFF;
+  --ink-margin-ln: rgba(46,74,158,0.30);
+  --ink-correct: #217A4A;
+  --ink-correct-a: rgba(33,122,74,0.08);
+  --ink-wrong: #A8362E;
+  --ink-wrong-a: rgba(168,54,46,0.07);
+  --ink-success: #047857;
+  --ink-success-a: #ecfdf5;
+  --ink-success-border: #a7f3d0;
+  --ink-warning: #b45309;
+  --ink-warning-a: #fffbeb;
+  --ink-warning-border: #fde68a;
+  --ink-pencil: rgba(33,38,51,0.30);
+  --ink-code-bg: rgba(33,38,51,0.045);
+  --ink-shadow-sm: 0 1px 2px rgba(33,38,51,0.04), 0 4px 12px -6px rgba(33,38,51,0.08);
+  --ink-shadow-md: 0 2px 4px rgba(33,38,51,0.04), 0 16px 40px -16px rgba(33,38,51,0.20);
+
+  /* "screen" — chữ/viền dùng TRÊN nền đảo màu (ink.room #1A1C22 hoặc bất kỳ
+     khối nền tối cục bộ nào, ví dụ panel "Product Philosophy" ở /about).
+     Trước đây mỗi nơi tự viết tay rgba(244,246,252,x) (quiz focus-mode) hoặc
+     slate-300/400/800 + blue-400 (about) — 2 bộ giá trị khác nhau cho CÙNG 1
+     nhu cầu "chữ trên nền tối". Gom về đây, 4/5 giá trị lấy đúng độ mờ đã
+     dùng thật trong quiz/page.tsx (0.85/0.45/0.25/0.10) để không đổi hình ảnh
+     hiện có; screenTextMid (0.65) là bậc mới, cho đoạn văn dài trên nền tối.
+     KHÔNG phải theme toàn app — chỉ áp dụng cho khối nội dung nằm trên nền
+     tối cục bộ, xem ink.room/T.room. */
+  --ink-screen-text: rgba(244,246,252,0.85);
+  --ink-screen-text-mid: rgba(244,246,252,0.65);
+  --ink-screen-text-muted: rgba(244,246,252,0.45);
+  --ink-screen-text-dim: rgba(244,246,252,0.25);
+  --ink-screen-border: rgba(244,246,252,0.10);
+  /* Bản "trên nền tối" của ink-warning — cùng lý do tồn tại với
+     ink-accent-screen (#8FA6EE): ink-warning (#b45309) là amber TỐI, chọn để
+     đọc được trên nền giấy trắng, nên tương phản rất kém trên nền tối
+     (video/phòng thi). Dùng ở thanh điều khiển video (spaces/[id]/learn) khi
+     đồng bộ tiến độ lỗi — trước đây viết tay amber-400, giữ nguyên giá trị. */
+  --ink-warning-screen: #FBBF24;
+}
+
 .vd-focusable:focus-visible {
-  outline: 2px solid #2E4A9E;
+  outline: 2px solid var(--ink-accent);
   outline-offset: 2px;
   border-radius: 4px;
 }
@@ -146,7 +113,12 @@
 @layer base {
   :root {
     /* Corporate Professional — Blue base */
-    --background: 210 40% 98%;       /* slate-50 surface */
+    /* 2026-09-05 — background = ink.panel (#FFFFFF), y hệt lần sửa --primary
+       bên dưới: slate-50 (210 40% 98%) là 1 xám-xanh KHÁC "giấy trắng sứ"
+       của ink-*, nên mọi <Button variant="outline">/<Alert> không set màu
+       riêng nổi lên như 1 viên pill xám lạc tông trên nền bg-ink-panel trắng
+       tuyệt đối (xem audit "ngôn ngữ thiết kế header" 2026-09-04). */
+    --background: 0 0% 100%;         /* = ink.panel #FFFFFF */
     --foreground: 222 47% 11%;       /* slate-900 text */
     --card: 0 0% 100%;
     --card-foreground: 222 47% 11%;
@@ -170,8 +142,12 @@
     --accent-foreground: 222 47% 11%;
     --destructive: 0 84% 60%;        /* red-500 */
     --destructive-foreground: 0 0% 100%;
-    --border: 214 32% 91%;           /* slate-200 */
-    --input: 214 32% 91%;
+    /* border/input = ink.border (rgba(33,38,51,0.10)) đổi sang HSL đặc (opaque)
+       tương đương màu đó khi phủ trên nền trắng — cùng đợt sửa --background ở
+       trên. Trước là slate-200, xám-xanh khác tông với mọi viền ink-border
+       khác trong app (nav underline, breadcrumb, badge...). */
+    --border: 240 5% 92%;            /* ≈ ink.border trên nền trắng */
+    --input: 240 5% 92%;
     --ring: 225 55% 40%;              /* = --primary, ink.accent */
     --radius: 0.625rem;
 

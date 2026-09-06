@@ -1,0 +1,7 @@
+{
+  "_comment": "Baseline nợ cũ raw-Tailwind-color — xem scripts/check-design-tokens.js. Cập nhật bằng: node scripts/check-design-tokens.js --update. Key \"_permanent_exceptions\" ghi những file KHÔNG cần giảm về 0 (có lý do, xem file đó).",
+  "_permanent_exceptions": {
+    "src/app/about/page.tsx": "8 = 4 icon minh hoạ trang trí (blue/emerald/amber/purple), cố ý khác màu nhau cho 4 tính năng riêng biệt — không phải badge/CTA lặp lại nên không phạm nguyên tắc một-accent-duy-nhất. Xem comment tại chỗ. KHÔNG migrate về ink-*."
+  },
+  "src/app/about/page.tsx": 8
+}

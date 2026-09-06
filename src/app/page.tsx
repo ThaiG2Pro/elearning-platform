@@ -225,7 +225,7 @@ export default function Home() {
                         <p className="text-xs font-semibold text-ink-correct uppercase tracking-wide mb-1">Đã tạo Space</p>
                         <h2 className="text-lg font-bold text-ink-text">{createdSpace.title}</h2>
                         {createdSpace.titleIsPlaceholder && (
-                            <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mt-2">
+                            <p className="text-sm text-ink-warning bg-ink-warningA border border-ink-warningBorder rounded-lg px-3 py-2 mt-2">
                                 Không đọc được tên video từ YouTube — đã đặt tên tạm, bạn có thể đổi trong phần chỉnh sửa.
                             </p>
                         )}
@@ -406,8 +406,8 @@ export default function Home() {
 
                 {appState === 'error' && errorMessage && (
                     <div className="flex flex-col items-center py-12 text-center">
-                        <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mb-3">
-                            <svg className="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div className="w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center mb-3">
+                            <svg className="w-6 h-6 text-destructive" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                             </svg>
                         </div>

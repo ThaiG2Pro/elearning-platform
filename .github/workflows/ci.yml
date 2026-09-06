@@ -55,6 +55,12 @@ jobs:
       - name: Lint
         run: pnpm lint
 
+      # ── Design tokens guard ───────────────────────────────────────────────────
+      # Chặn PR thêm mới màu Tailwind mặc định (bg-blue-500...) thay vì dùng
+      # token ink-* — xem scripts/check-design-tokens.js.
+      - name: Design tokens check
+        run: pnpm check:tokens
+
       # ── Unit + Integration tests ──────────────────────────────────────────────
       - name: Run tests
         run: pnpm test

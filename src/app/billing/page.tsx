@@ -130,7 +130,7 @@ export default function BillingPage() {
                 </div>
 
                 {error && (
-                    <div className="mt-4 text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg p-2.5">
+                    <div className="mt-4 text-xs text-ink-warning bg-ink-warningA border border-ink-warningBorder rounded-lg p-2.5">
                         {error}
                     </div>
                 )}

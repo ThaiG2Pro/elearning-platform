@@ -312,7 +312,7 @@ const [timerAnnouncement, setTimerAnnouncement] = useState('');
   );
 
   const renderPlaylist = () => (
-    <div className="flex-1 overflow-y-auto py-1.5 cs-scrollbar">
+    <div className="flex-1 overflow-y-auto py-1.5 vd-scrollbar">
       {lessons.map((l, i) => {
         const isActive = l.id === activeId;
         const isDone   = l.status === 'completed';
@@ -377,14 +377,14 @@ const [timerAnnouncement, setTimerAnnouncement] = useState('');
     <div className="flex flex-wrap gap-1.5">
       {QUIZ.map((q, i) => {
         const isCurrent = i === qIdx && (taking || reviewing);
-        let border = 'rgba(33,38,51,0.10)', bg = 'transparent', color = 'rgba(33,38,51,0.28)';
+        let border: string = T.border, bg = 'transparent', color: string = T.inkDim;
         if (graded) {
           const ok = picked[i] === q.answer;
-          border = ok ? '#217A4A' : '#A8362E';
-          bg     = ok ? 'rgba(33,122,74,0.08)' : 'rgba(168,54,46,0.07)';
-          color  = ok ? '#217A4A' : '#A8362E';
+          border = ok ? T.correct : T.wrong;
+          bg     = ok ? T.correctA : T.wrongA;
+          color  = ok ? T.correct : T.wrong;
         } else if (picked[i] !== null) {
-          border = '#2E4A9E'; bg = 'rgba(46,74,158,0.08)'; color = '#2E4A9E';
+          border = T.accent; bg = T.accentA; color = T.accent;
         }
         return (
           <button
@@ -447,7 +447,7 @@ const [timerAnnouncement, setTimerAnnouncement] = useState('');
               onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(ci); } }}
               className={`vd-focusable flex items-stretch transition-colors duration-[120ms] ${graded ? 'cursor-default' : 'cursor-pointer'}`}
               style={{
-                background: showRight ? 'rgba(33,122,74,0.08)' : showWrong ? 'rgba(168,54,46,0.07)' : (!graded && isPicked) ? 'rgba(46,74,158,0.08)' : 'transparent',
+                background: showRight ? T.correctA : showWrong ? T.wrongA : (!graded && isPicked) ? T.accentA : 'transparent',
               }}
               onMouseEnter={e => { if (!graded && !isPicked) (e.currentTarget as HTMLElement).style.background = 'rgba(33,38,51,0.03)'; }}
               onMouseLeave={e => { if (!graded && !isPicked) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
@@ -613,7 +613,7 @@ const [timerAnnouncement, setTimerAnnouncement] = useState('');
       <>
         <div className="flex items-center border-b border-ink-border">
           <span
-            style={{ width: MARGIN_W, color: low ? '#A8362E' : 'rgba(33,38,51,0.50)' }}
+            style={{ width: MARGIN_W, color: low ? T.wrong : T.inkMuted }}
             className="shrink-0 flex items-center justify-center"
           >
             <Timer size={14} />
@@ -623,7 +623,7 @@ const [timerAnnouncement, setTimerAnnouncement] = useState('');
               {active.title}
             </span>
             <span
-              style={{ color: low ? '#A8362E' : '#212633' }}
+              style={{ color: low ? T.wrong : T.ink }}
               className="ml-auto font-mono text-base font-semibold [font-variant-numeric:tabular-nums]"
             >
               {fmtTime(secondsLeft)}
@@ -716,9 +716,9 @@ const [timerAnnouncement, setTimerAnnouncement] = useState('');
               <span
                 className="text-[13px] font-semibold px-2.5 py-1"
                 style={{
-                  color: passed ? '#217A4A' : '#A8362E',
-                  background: passed ? 'rgba(33,122,74,0.08)' : 'rgba(168,54,46,0.07)',
-                  border: `1px solid ${passed ? '#217A4A' : '#A8362E'}`,
+                  color: passed ? T.correct : T.wrong,
+                  background: passed ? T.correctA : T.wrongA,
+                  border: `1px solid ${passed ? T.correct : T.wrong}`,
                   borderRadius: R.sm,
                 }}
               >
@@ -763,7 +763,7 @@ const [timerAnnouncement, setTimerAnnouncement] = useState('');
     <>
       <div className="flex items-center border-b border-ink-border">
         <span
-          style={{ width: MARGIN_W, color: score >= PASS_COUNT ? '#217A4A' : '#A8362E' }}
+          style={{ width: MARGIN_W, color: score >= PASS_COUNT ? T.correct : T.wrong }}
           className="shrink-0 flex items-center justify-center font-mono text-[11px] font-semibold"
         >
           {score}/{QUIZ.length}
@@ -843,9 +843,9 @@ const [timerAnnouncement, setTimerAnnouncement] = useState('');
       <div
         style={{
           top: 0, height: TOP_BAR_H,
-          background: focusMode ? '#1A1C22' : '#FFFFFF',
-          borderBottom: `1px solid ${focusMode ? 'rgba(244,246,252,0.10)' : 'rgba(33,38,51,0.10)'}`,
-          color: focusMode ? 'rgba(244,246,252,0.45)' : 'rgba(33,38,51,0.50)',
+          background: focusMode ? T.room : T.panel,
+          borderBottom: `1px solid ${focusMode ? T.screenBorder : T.border}`,
+          color: focusMode ? T.screenTextMuted : T.inkMuted,
         }}
         className="fixed left-0 right-0 z-50 flex items-center px-7 gap-2 text-[12.5px] transition-[background,border-color,color] duration-[600ms] ease-in-out"
       >
@@ -856,17 +856,17 @@ const [timerAnnouncement, setTimerAnnouncement] = useState('');
         <span className="shrink-0 whitespace-nowrap">Spaces</span>
         {!isCompact && (
           <>
-            <ChevronRight size={11} className="shrink-0" style={{ color: focusMode ? 'rgba(244,246,252,0.25)' : 'rgba(33,38,51,0.28)' }} />
+            <ChevronRight size={11} className="shrink-0" style={{ color: focusMode ? T.screenTextDim : T.inkDim }} />
             <span className="shrink-0 whitespace-nowrap">Lập trình web</span>
           </>
         )}
-        <ChevronRight size={11} className="shrink-0" style={{ color: focusMode ? 'rgba(244,246,252,0.25)' : 'rgba(33,38,51,0.28)' }} />
-        <span className="min-w-0 flex-1 truncate font-medium" style={{ color: focusMode ? 'rgba(244,246,252,0.85)' : '#212633' }}>{active.chapter}</span>
+        <ChevronRight size={11} className="shrink-0" style={{ color: focusMode ? T.screenTextDim : T.inkDim }} />
+        <span className="min-w-0 flex-1 truncate font-medium" style={{ color: focusMode ? T.screenText : T.ink }}>{active.chapter}</span>
 
         <div className="ml-auto flex items-center gap-4">
           {taking ? (
             /* Đang thi: không có gì để bấm trên top bar — chỉ nhắc trạng thái */
-            <span className="text-xs" style={{ color: 'rgba(244,246,252,0.45)' }}>
+            <span className="text-xs" style={{ color: T.screenTextMuted }}>
               Đang làm bài — nộp bài để rời phòng thi
             </span>
           ) : (
@@ -878,10 +878,10 @@ const [timerAnnouncement, setTimerAnnouncement] = useState('');
                 >
                   <div
                     className="h-full transition-[width] duration-[400ms] ease-in-out"
-                    style={{ width: `${pct}%`, background: focusMode ? '#8FA6EE' : '#2E4A9E' }}
+                    style={{ width: `${pct}%`, background: focusMode ? T.accentScreen : T.accent }}
                   />
                 </div>
-                <span className="font-mono text-[11px]" style={{ color: focusMode ? '#8FA6EE' : '#2E4A9E' }}>{pct}%</span>
+                <span className="font-mono text-[11px]" style={{ color: focusMode ? T.accentScreen : T.accent }}>{pct}%</span>
               </div>
 
               <button
@@ -891,9 +891,9 @@ const [timerAnnouncement, setTimerAnnouncement] = useState('');
                 className="vd-focusable w-[26px] h-[26px] flex items-center justify-center cursor-pointer shrink-0"
                 style={{
                   background: focusMode ? 'rgba(143,166,238,0.14)' : 'none',
-                  border: `1px solid ${focusMode ? '#8FA6EE' : 'rgba(33,38,51,0.10)'}`,
+                  border: `1px solid ${focusMode ? T.accentScreen : T.border}`,
                   borderRadius: R.sm,
-                  color: focusMode ? '#8FA6EE' : 'rgba(33,38,51,0.72)',
+                  color: focusMode ? T.accentScreen : T.inkMid,
                 }}
               >
                 {focusMode ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
@@ -905,7 +905,7 @@ const [timerAnnouncement, setTimerAnnouncement] = useState('');
 
       {/* ══ WORKSPACE ══ */}
       <div
-        style={{ top: TOP_BAR_H, background: focusMode ? '#1A1C22' : '#FAFAF7' }}
+        style={{ top: TOP_BAR_H, background: focusMode ? T.room : T.page }}
         className="fixed left-0 right-0 bottom-0 z-[1] flex justify-center transition-[background] duration-[600ms] ease-in-out"
       >
         <div
@@ -919,7 +919,7 @@ const [timerAnnouncement, setTimerAnnouncement] = useState('');
 
           {/* ══ LEFT COLUMN — tờ giấy kiểm tra. Cột LUÔN cuộn được vì chiều
               cao tờ giấy phụ thuộc nội dung câu hỏi, không khóa tỉ lệ như video. ══ */}
-          <div className="relative flex flex-col h-full overflow-y-auto pb-10 justify-start cs-scrollbar">
+          <div className="relative flex flex-col h-full overflow-y-auto pb-10 justify-start vd-scrollbar">
             {!focusMode && (
               <div className="shrink-0 pt-[18px] pb-3.5">
                 <h1 className="text-[clamp(19px,2.1vw,26px)] font-bold tracking-[-0.015em] leading-[1.25] m-0 text-ink-text">

@@ -259,11 +259,11 @@ export default function AILessonComposer({
                                 <span
                                     className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium border ${
                                         isFree
-                                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                                            : 'bg-amber-50 text-amber-700 border-amber-100'
+                                            ? 'bg-ink-successA text-ink-success border-ink-successBorder'
+                                            : 'bg-ink-warningA text-ink-warning border-ink-warningBorder'
                                     }`}
                                 >
-                                    <span className={`w-1.5 h-1.5 rounded-full ${isFree ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                                    <span className={`w-1.5 h-1.5 rounded-full ${isFree ? 'bg-ink-success' : 'bg-ink-warning'}`} />
                                     {/* Server (AIGenerationPolicy.decideRouting) luôn xét BYOK TRƯỚC —
                                         điền đủ 3 ô là dùng key riêng, bất kể tham số có đang trùng mặc
                                         định hay không. Badge phải khớp đúng thứ tự ưu tiên đó, không chỉ
@@ -419,10 +419,10 @@ export default function AILessonComposer({
                                         </label>
                                         {/* 2026-09-05 — cùng gap với "Chia sẻ & Lưu trữ" ở trang edit
                                             (audit "cơ cấu lại"): tick xong không có lối nào xem/thu hồi
-                                            lại. /my-ai-shares đã có sẵn cho việc đó, chỉ thiếu lối tắt
-                                            từ đúng chỗ tick checkbox. */}
+                                            lại. /my-shares (tab "AI") đã có sẵn cho việc đó, chỉ thiếu
+                                            lối tắt từ đúng chỗ tick checkbox. */}
                                         <Link
-                                            href="/my-ai-shares"
+                                            href="/my-shares?tab=ai"
                                             className="block text-[11px] font-medium text-ink-accent hover:text-ink-accent/80 underline underline-offset-2"
                                         >
                                             Xem AI đã chia sẻ của tôi →
@@ -444,7 +444,7 @@ export default function AILessonComposer({
                         </button>
 
                         {error && (
-                            <div className="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg p-2.5">
+                            <div className="text-xs text-ink-warning bg-ink-warningA border border-ink-warningBorder rounded-lg p-2.5">
                                 {error}
                                 {/* Cùng cặp nhánh trả phí với panel cũ ở trang học (WP4.1) —
                                     chính sách tier do server quyết, UI chỉ mở đúng lối đi. */}
@@ -452,7 +452,7 @@ export default function AILessonComposer({
                                     <button
                                         onClick={() => handleGenerate('CREDITS')}
                                         disabled={loading}
-                                        className="mt-2 block px-2.5 py-1.5 rounded-lg text-[11px] font-medium bg-amber-600 text-white hover:bg-amber-700 disabled:opacity-50"
+                                        className="mt-2 block px-2.5 py-1.5 rounded-lg text-[11px] font-medium bg-ink-warning text-white hover:bg-ink-warning disabled:opacity-50"
                                     >
                                         Trả phí để nền tảng tạo giúp
                                     </button>
@@ -460,7 +460,7 @@ export default function AILessonComposer({
                                 {errorCode === 'AI_INSUFFICIENT_CREDITS' && (
                                     <Link
                                         href="/billing"
-                                        className="mt-2 inline-block px-2.5 py-1.5 rounded-lg text-[11px] font-medium bg-amber-600 text-white hover:bg-amber-700"
+                                        className="mt-2 inline-block px-2.5 py-1.5 rounded-lg text-[11px] font-medium bg-ink-warning text-white hover:bg-ink-warning"
                                     >
                                         Mua thêm credit
                                     </Link>

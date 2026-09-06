@@ -37,7 +37,7 @@ export class ManagementController {
         await this.contentService.revokeShareLink(userId, spaceId);
     }
 
-    async listMyShareLinks(userId: bigint): Promise<Array<{ id: number; title: string; shareToken: string | null }>> {
+    async listMyShareLinks(userId: bigint): Promise<Array<{ id: number; title: string; shareToken: string | null; status: string }>> {
         return await this.contentService.listMyShareLinks(userId);
     }
 

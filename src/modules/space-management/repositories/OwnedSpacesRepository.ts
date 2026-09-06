@@ -37,7 +37,17 @@ export class OwnedSpacesRepository {
         const spaces = await this.prisma.spaces.findMany({
             where: { owner_id: userId },
             orderBy,
+            // UI (2026-09-06) — cần status vòng đời (ACTIVE/ARCHIVED) để trang
+            // gộp /my-learning tự ẩn space đã lưu trữ khỏi danh sách chính
+            // (xem OwnedSpaceDto.lifecycleStatus).
             include: {
+                // UI (2026-09-05) — cần tên chủ sở hữu space GỐC khi chính
+                // space này là 1 bản clone, để phân biệt với bản gốc chính
+                // chủ (xem SpaceRepository.findActiveSpacesWithThumbnails,
+                // cùng nhu cầu ở /my-spaces).
+                cloned_from: {
+                    select: { id: true, owner: { select: { full_name: true } } },
+                },
                 chapters: {
                     orderBy: { order_index: 'asc' },
                     include: {
@@ -129,6 +139,14 @@ export class OwnedSpacesRepository {
                 // WP1.10.6 — badge "N bài" trên card, phân biệt hình thái.
                 lessonCount: totalLessons,
                 createdAt: space.created_at,
+                clonedFrom: space.cloned_from
+                    ? { spaceId: Number(space.cloned_from.id), ownerName: space.cloned_from.owner.full_name }
+                    : null,
+                // WP1.6 follow-up — DRAFT exists in the Prisma enum but no
+                // write path ever sets it on a space (see schema_status
+                // divergence note); every owned space is really ACTIVE or
+                // ARCHIVED in practice.
+                lifecycleStatus: space.status as 'ACTIVE' | 'ARCHIVED',
             };
         });
 

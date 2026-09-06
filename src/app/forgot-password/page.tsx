@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { ArrowLeft } from 'lucide-react';
 import { forgotPassword } from '@/lib/auth';
 import { ForgotPasswordRequest } from '@/types/auth.types';
 import Header from '@/components/Header';
@@ -105,8 +106,9 @@ export default function ForgotPasswordPage() {
                   {appState === 'submitting' ? 'Đang gửi...' : 'Gửi liên kết khôi phục'}
                 </button>
                 <div className="mt-3 text-center">
-                  <button type="button" onClick={handleBackToJoin} className="vd-focusable text-sm text-ink-textMuted hover:text-ink-text transition-colors">
-                    ← Quay lại đăng nhập
+                  <button type="button" onClick={handleBackToJoin} className="vd-focusable inline-flex items-center gap-1 text-sm text-ink-textMuted hover:text-ink-text transition-colors">
+                    <ArrowLeft size={14} />
+                    <span>Quay lại đăng nhập</span>
                   </button>
                 </div>
               </div>
