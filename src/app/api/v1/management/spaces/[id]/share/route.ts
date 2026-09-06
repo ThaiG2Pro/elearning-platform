@@ -7,10 +7,8 @@ import { getUserIdFromRequest } from '@/shared/middleware/auth';
  * WP1.4 — the main growth channel for Checkpoint 1, must stay stable across
  * upgrades once handed out (ROADMAP.md principle #3).
  */
-export async function POST(
-    request: NextRequest,
-    { params }: { params: { id: string } }
-) {
+export async function POST(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+    const params = await props.params;
     try {
         const userId = await getUserIdFromRequest(request);
         if (!userId) {
@@ -40,10 +38,8 @@ export async function POST(
 }
 
 /** WP1.5.11: owner-only revoke — old share URL 404s immediately afterwards. */
-export async function DELETE(
-    request: NextRequest,
-    { params }: { params: { id: string } }
-) {
+export async function DELETE(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+    const params = await props.params;
     try {
         const userId = await getUserIdFromRequest(request);
         if (!userId) {

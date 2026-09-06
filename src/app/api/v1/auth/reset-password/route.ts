@@ -1,12 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { AuthController } from '../../../../../modules/auth/controllers/AuthController';
 import { ResetDto } from '../../../../../modules/auth/dtos/ResetDto';
+import { applyRateLimit, getClientIp, AUTH_RATE_LIMITS } from '../../../../../shared/middleware/rateLimit';
 
 const authController = new AuthController();
 
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
+        const limited = applyRateLimit([
+            { bucket: 'reset:ip', key: getClientIp(request), ...AUTH_RATE_LIMITS.resetPerIp },
+        ]);
+        if (limited) return limited;
+
         // Support both "password" and "newPassword" for backward compatibility
         const password = body.password || body.newPassword;
         const dto = new ResetDto(body.token, password);

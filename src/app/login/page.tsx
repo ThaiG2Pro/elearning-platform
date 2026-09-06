@@ -8,6 +8,7 @@ import { LoginRequest } from '@/types/auth.types';
 import Header from '@/components/Header';
 import Toast from '@/components/Toast';
 import { MARGIN_W } from '@/lib/vibe/theme';
+import { sanitizeRedirectPath } from '@/shared/security/safeRedirect';
 
 export default function LoginPage() {
     const router = useRouter();
@@ -22,7 +23,7 @@ export default function LoginPage() {
         // Get email and continueUrl from URL params
         const urlParams = new URLSearchParams(window.location.search);
         const emailParam = urlParams.get('email') || '';
-        const continueParam = urlParams.get('continueUrl') || '/';
+        const continueParam = sanitizeRedirectPath(urlParams.get('continueUrl'), '/');
         setEmail(emailParam);
         setContinueUrl(continueParam);
     }, []);
@@ -42,11 +43,12 @@ export default function LoginPage() {
             const response = await loginUser(request);
 
             // Success: Store tokens and redirect
-            AuthUtils.setTokens(response.accessToken, response.refreshToken);
+            AuthUtils.setTokens(response.accessToken);
             setAppState('success');
 
             // Redirect to the specified URL or home
-            const redirectUrl = response.redirectUrl || continueUrl || '/';
+            // Server already sanitises redirectUrl; re-check client-side as defence in depth.
+            const redirectUrl = sanitizeRedirectPath(response.redirectUrl || continueUrl, '/');
             router.push(redirectUrl);
 
         } catch (error: any) {

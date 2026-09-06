@@ -7,10 +7,8 @@ import { getUserIdFromRequest } from '@/shared/middleware/auth';
  * Requires login (anonymous visitors are sent through /join first by the
  * frontend); the clone is fully independent of the original from this point.
  */
-export async function POST(
-    request: NextRequest,
-    { params }: { params: { token: string } }
-) {
+export async function POST(request: NextRequest, props: { params: Promise<{ token: string }> }) {
+    const params = await props.params;
     try {
         const userId = await getUserIdFromRequest(request);
         if (!userId) {

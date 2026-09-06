@@ -1,5 +1,5 @@
-import axios from 'axios';
 import { JSDOM } from 'jsdom';
+import { fetchPublicUrl } from '../../../shared/security/safeUrl';
 import { Readability } from '@mozilla/readability';
 import { WebContentFetchError, WebContentProvider } from './WebContentProvider';
 
@@ -12,10 +12,8 @@ export class ReadabilityWebContentProvider implements WebContentProvider {
     async fetchContent(url: string): Promise<string> {
         let html: string;
         try {
-            const response = await axios.get(url, {
-                headers: { 'User-Agent': 'Mozilla/5.0 (compatible; elearning-platform-bot/1.0)' },
-                timeout: 15_000,
-            });
+            // SSRF guard: public host only, redirects re-validated, body capped.
+            const response = await fetchPublicUrl(url, { timeoutMs: 15_000, maxBytes: 5 * 1024 * 1024 });
             html = response.data;
         } catch (error) {
             throw new WebContentFetchError(url, error);

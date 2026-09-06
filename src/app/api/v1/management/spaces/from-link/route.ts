@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ManagementController } from '@/modules/space-management/controllers/ManagementController';
 import { getUserIdFromRequest } from '@/shared/middleware/auth';
+import { applyRateLimit, UPLOAD_RATE_LIMITS } from '@/shared/middleware/rateLimit';
 
 /**
  * WP1.1 — "dán link → tự parse metadata → tự tạo space" trong 1 bước,
@@ -12,6 +13,11 @@ export async function POST(request: NextRequest) {
         if (!userId) {
             return NextResponse.json({ error: 'UNAUTHORIZED' }, { status: 401 });
         }
+
+        const limited = applyRateLimit([
+            { bucket: 'from-link:user', key: userId.toString(), ...UPLOAD_RATE_LIMITS.fromLinkPerUser },
+        ]);
+        if (limited) return limited;
 
         const body: { url?: string } = await request.json();
         if (!body.url?.trim()) {

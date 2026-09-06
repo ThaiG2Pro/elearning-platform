@@ -4,10 +4,8 @@ import { ManagementController } from '@/modules/space-management/controllers/Man
 import { getUserIdFromRequest } from '@/shared/middleware/auth';
 import { UpdateSectionDto } from '@/modules/space-management/dtos/ContentDto';
 
-export async function PUT(
-    request: NextRequest,
-    { params }: { params: { id: string } }
-) {
+export async function PUT(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+    const params = await props.params;
     try {
         const userId = await getUserIdFromRequest(request);
         if (!userId) {
@@ -33,10 +31,8 @@ export async function PUT(
     }
 }
 
-export async function DELETE(
-    request: NextRequest,
-    { params }: { params: { id: string } }
-) {
+export async function DELETE(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+    const params = await props.params;
     try {
         const userId = await getUserIdFromRequest(request);
         if (!userId) {

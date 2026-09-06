@@ -48,6 +48,11 @@ tự động hoá được**:
    ```
    fly ssh console -C "pnpm exec prisma migrate deploy"
    ```
+   **Không bao giờ chạy `prisma db seed` trên prod.** `prisma/seed.ts` là dữ
+   liệu dev/QA: nó `TRUNCATE` toàn bộ bảng rồi tạo 4 user với mật khẩu
+   `password123`. Script tự từ chối chạy khi `NODE_ENV=production` hoặc
+   `DATABASE_URL` không trỏ về DB local; chỉ vượt qua bằng
+   `ALLOW_DESTRUCTIVE_SEED=1` khi thật sự muốn xoá sạch dữ liệu.
 7. `fly deploy`
 8. Trỏ DNS domain thật (nếu có) về Fly qua `fly certs add <domain>`.
 

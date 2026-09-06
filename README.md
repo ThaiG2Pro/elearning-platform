@@ -71,7 +71,7 @@ cp .env.example .env
 
 ```bash
 pnpm prisma migrate dev    # Chạy migrations
-pnpm prisma db seed        # Seed dữ liệu mẫu
+pnpm prisma db seed        # Seed dữ liệu mẫu (XOÁ SẠCH DB — chỉ chạy được với DB local)
 pnpm prisma studio         # Mở Prisma Studio
 ```
 

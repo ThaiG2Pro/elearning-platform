@@ -8,6 +8,7 @@ import { LLMProvider } from './LLMProvider';
 import { WebContentProvider } from './WebContentProvider';
 import { YouTubeOEmbedAdapter } from '../../../shared/adapters/YouTubeOEmbedAdapter';
 import { aiGenerationCreditCost } from '../../billing/domain/CreditLedger';
+import { assertPublicHttpUrl } from '../../../shared/security/safeUrl';
 
 /** WP4.1 — chỉ 2 method service này cần, tránh phụ thuộc cứng vào CreditRepository thật trong test. */
 export interface CreditSpender {
@@ -163,6 +164,16 @@ export class AIGenerationService {
             throw new Error('BYOK_CONFIG_INCOMPLETE');
         }
         const hasByokKey = byokStatus === 'COMPLETE';
+        if (hasByokKey) {
+            // SSRF guard: the user's API key is POSTed to this URL, and the
+            // server makes the request — so it must be a public https host,
+            // never something inside our network (litellm, db, metadata IP…).
+            try {
+                await assertPublicHttpUrl(req.byokBaseUrl!, { requireHttps: true });
+            } catch {
+                throw new Error('BYOK_BASE_URL_INVALID');
+            }
+        }
         // force = user chủ động "Tạo lại": coi như chưa có cache để routing
         // rơi vào nhánh GENERATE (vẫn qua đủ rate-limit/quota/credit như 1
         // lần generate mới — force không phải đường lách chi phí).

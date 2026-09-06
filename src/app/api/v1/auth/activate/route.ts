@@ -1,12 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { AuthController } from '../../../../../modules/auth/controllers/AuthController';
 import { ActivateDto } from '../../../../../modules/auth/dtos/ActivateDto';
+import { applyRateLimit, getClientIp, AUTH_RATE_LIMITS } from '../../../../../shared/middleware/rateLimit';
 
 const authController = new AuthController();
 
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
+        const limited = applyRateLimit([
+            { bucket: 'activate:ip', key: getClientIp(request), ...AUTH_RATE_LIMITS.activatePerIp },
+        ]);
+        if (limited) return limited;
+
         const dto = new ActivateDto(body.token);
         const result = await authController.activate(dto);
         return NextResponse.json(result, { status: 200 });

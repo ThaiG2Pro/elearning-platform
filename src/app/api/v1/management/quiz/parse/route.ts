@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { QuizController } from '../../../../../../modules/space-management/controllers/QuizController';
 import { getUserIdFromRequest } from '../../../../../../shared/middleware/auth';
 import { QuizPolicy } from '../../../../../../modules/space-management/domain/QuizPolicy';
+import { applyRateLimit, UPLOAD_RATE_LIMITS, QUIZ_UPLOAD_MAX_BYTES } from '../../../../../../shared/middleware/rateLimit';
 
 export async function POST(request: NextRequest) {
     try {
@@ -15,6 +16,11 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
+        const limited = applyRateLimit([
+            { bucket: 'quiz-parse:user', key: userId.toString(), ...UPLOAD_RATE_LIMITS.quizUploadPerUser },
+        ]);
+        if (limited) return limited;
+
         const formData = await request.formData();
         const file = formData.get('file') as File;
 
@@ -22,9 +28,13 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'No file provided' }, { status: 400 });
         }
 
-        // Validate file type
-        if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
-            return NextResponse.json({ error: 'Only Excel files (.xlsx, .xls) are allowed' }, { status: 400 });
+        // Validate file type — only OOXML .xlsx (the parser does not read legacy .xls)
+        if (!file.name.toLowerCase().endsWith('.xlsx')) {
+            return NextResponse.json({ error: 'INVALID_FILE_TYPE', message: 'Only .xlsx files are allowed' }, { status: 400 });
+        }
+        // Size cap: the whole file is buffered in memory before parsing.
+        if (file.size > QUIZ_UPLOAD_MAX_BYTES) {
+            return NextResponse.json({ error: 'FILE_TOO_LARGE', message: `File must be at most ${QUIZ_UPLOAD_MAX_BYTES / 1024 / 1024} MB` }, { status: 413 });
         }
 
         // Convert file to buffer

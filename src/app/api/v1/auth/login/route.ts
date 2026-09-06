@@ -1,18 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { AuthController } from '../../../../../modules/auth/controllers/AuthController';
 import { LoginDto } from '../../../../../modules/auth/dtos/LoginDto';
+import { applyRateLimit, getClientIp, normaliseEmailKey, AUTH_RATE_LIMITS } from '../../../../../shared/middleware/rateLimit';
 
 const authController = new AuthController();
 
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
+        const emailKey = normaliseEmailKey(body.email);
+        const limited = applyRateLimit([
+            { bucket: 'login:ip', key: getClientIp(request), ...AUTH_RATE_LIMITS.loginPerIp },
+            ...(emailKey ? [{ bucket: 'login:email', key: emailKey, ...AUTH_RATE_LIMITS.loginPerEmail }] : []),
+        ]);
+        if (limited) return limited;
+
         const dto = new LoginDto(body.email, body.password, body.continueUrl);
         const result = await authController.login(dto);
 
-        // Set httpOnly cookie for refresh token (BR-SESSION-02: Session Persistence)
-        const response = NextResponse.json(result, { status: 200 });
-        response.cookies.set('refreshToken', result.refreshToken, {
+        // Refresh token travels ONLY in the httpOnly cookie (BR-SESSION-02).
+        // Never echo it in the JSON body: the client would end up keeping it
+        // in localStorage where any XSS can read a 7-day credential.
+        const { refreshToken, ...publicResult } = result;
+        const response = NextResponse.json(publicResult, { status: 200 });
+        response.cookies.set('refreshToken', refreshToken, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'strict',

@@ -1,5 +1,5 @@
-import axios from 'axios';
 import { JSDOM } from 'jsdom';
+import { fetchPublicUrl, isPublicHttpUrlSyntax } from '../security/safeUrl';
 import { YouTubeOEmbedAdapter } from './YouTubeOEmbedAdapter';
 
 export interface WebPageMetaResult {
@@ -19,14 +19,14 @@ export interface WebPageMetaResult {
  * `oEmbedAdapter.fetchOEmbed` bên YouTube.
  */
 export class WebPageAdapter {
+    /**
+     * "Any non-YouTube http(s) URL" — but never one that points into our own
+     * network (localhost, private ranges, Docker service names, cloud metadata
+     * IPs). The DNS-level check happens in `fetchMeta`/`fetchPublicUrl`.
+     */
     static isWebUrl(url: string): boolean {
         if (YouTubeOEmbedAdapter.isYouTubeHost(url)) return false;
-        try {
-            const parsed = new URL(url);
-            return parsed.protocol === 'http:' || parsed.protocol === 'https:';
-        } catch {
-            return false;
-        }
+        return isPublicHttpUrlSyntax(url);
     }
 
     /** Dedup theo URL đã bỏ query string/hash — tracking params không đổi nội dung trang. */
@@ -43,10 +43,8 @@ export class WebPageAdapter {
 
     async fetchMeta(url: string): Promise<WebPageMetaResult> {
         try {
-            const response = await axios.get(url, {
-                headers: { 'User-Agent': 'Mozilla/5.0 (compatible; elearning-platform-bot/1.0)' },
-                timeout: 15_000,
-            });
+            // SSRF guard: public host only, redirects re-validated, body capped.
+            const response = await fetchPublicUrl(url, { timeoutMs: 15_000, maxBytes: 2 * 1024 * 1024 });
             const dom = new JSDOM(response.data);
             const title = dom.window.document.title?.trim();
             return { title: title || url };

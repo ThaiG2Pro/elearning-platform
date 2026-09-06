@@ -3,10 +3,8 @@ import { SpaceManagementController } from '../../../../../../../modules/space-ma
 import { getUserIdFromRequest } from '../../../../../../../shared/middleware/auth';
 import { BulkSpaceContentDto } from '../../../../../../../modules/space-management/dtos/BulkSpaceContentDto';
 
-export async function PUT(
-    request: NextRequest,
-    { params }: { params: { id: string } }
-) {
+export async function PUT(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+    const params = await props.params;
     try {
         const userId = await getUserIdFromRequest(request);
         if (!userId) {
@@ -39,7 +37,10 @@ export async function PUT(
     } catch (error) {
         console.error('Error syncing space content:', error);
         const message = error instanceof Error ? error.message : 'Internal server error';
-        const status = message === 'ACCESS_DENIED' ? 403 : message === 'SPACE_NOT_FOUND' ? 404 : 500;
+        const status = message === 'ACCESS_DENIED' ? 403
+            : message === 'SPACE_NOT_FOUND' ? 404
+            : (message === 'CHAPTER_NOT_IN_SPACE' || message === 'LESSON_NOT_IN_SPACE') ? 400
+            : 500;
         return NextResponse.json({ error: message }, { status });
     }
 }

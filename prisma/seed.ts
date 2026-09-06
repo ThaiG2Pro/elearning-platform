@@ -4,6 +4,44 @@ import crypto, { randomBytes } from 'crypto';
 
 const prisma = new PrismaClient();
 
+const LOCAL_DB_HOSTS = new Set(['localhost', '127.0.0.1', '::1', 'db', 'postgres']);
+
+/**
+ * This seed TRUNCATES every table. It exists for dev/QA only. Refuse to run
+ * against anything that looks like a real deployment unless the operator
+ * explicitly opts in with ALLOW_DESTRUCTIVE_SEED=1.
+ *
+ * "Looks real" = NODE_ENV is production, or DATABASE_URL points at a host that
+ * is not a local/compose database.
+ */
+function assertSafeToTruncate(): void {
+    if (process.env.ALLOW_DESTRUCTIVE_SEED === '1') {
+        console.warn('⚠️  ALLOW_DESTRUCTIVE_SEED=1 — skipping production guard, ALL DATA WILL BE WIPED.');
+        return;
+    }
+
+    const reasons: string[] = [];
+    if (process.env.NODE_ENV === 'production') {
+        reasons.push('NODE_ENV=production');
+    }
+    let host = '';
+    try {
+        host = new URL(process.env.DATABASE_URL ?? '').hostname.toLowerCase();
+    } catch {
+        // unparsable → treat as unknown/remote
+    }
+    if (!LOCAL_DB_HOSTS.has(host)) {
+        reasons.push(`DATABASE_URL host "${host || '?'}" is not a local database`);
+    }
+
+    if (reasons.length > 0) {
+        console.error('❌ Refusing to run destructive seed (it TRUNCATEs every table):');
+        for (const r of reasons) console.error(`   - ${r}`);
+        console.error('   Set ALLOW_DESTRUCTIVE_SEED=1 to override if you really mean it.');
+        process.exit(1);
+    }
+}
+
 /** Mirrors SpaceRepository.ensureShareToken — opaque, not the numeric id. */
 function generateShareToken(): string {
     return randomBytes(10).toString('base64url');
@@ -75,6 +113,7 @@ async function upsertVideoSource(
 }
 
 async function main() {
+    assertSafeToTruncate();
     console.log('🌱 Seeding database with comprehensive test scenarios...');
 
     // Clear existing data — use TRUNCATE to ensure tables are fully cleared and sequences reset

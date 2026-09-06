@@ -19,10 +19,8 @@ const VALID_RECIPE_TYPES: RecipeType[] = ['summary', 'quiz'];
  * và yêu cầu kèm theo (job queue / PENDING-timeout) xem doc comment đầu
  * `AIGenerationService.ts`.
  */
-export async function POST(
-    request: NextRequest,
-    { params }: { params: { sourceId: string } },
-) {
+export async function POST(request: NextRequest, props: { params: Promise<{ sourceId: string }> }) {
+    const params = await props.params;
     try {
         const userId = await getUserIdFromRequest(request);
         if (!userId) {
@@ -97,6 +95,7 @@ export async function POST(
             message === 'TRANSCRIPT_UNSUPPORTED_SOURCE' ||
             message === 'SHARED_FREE_NOT_CONFIGURED' ||
             message === 'BYOK_CONFIG_INCOMPLETE' ||
+            message === 'BYOK_BASE_URL_INVALID' ||
             message === 'BILLING_NOT_CONFIGURED'
         ) {
             return NextResponse.json({ error: message }, { status: 422 });

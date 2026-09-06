@@ -8,6 +8,7 @@ import Header from '@/components/Header';
 import Toast from '@/components/Toast';
 import SalesAgentWidget from '@/components/ai/SalesAgentWidget';
 import { MARGIN_W } from '@/lib/vibe/theme';
+import { sanitizeRedirectPath } from '@/shared/security/safeRedirect';
 
 type AppState = 'idle' | 'submitting' | 'redirecting' | 'error';
 
@@ -22,7 +23,7 @@ export default function JoinPage() {
     useEffect(() => {
         // Get continueUrl from URL params
         const urlParams = new URLSearchParams(window.location.search);
-        const url = urlParams.get('continueUrl') || '/';
+        const url = sanitizeRedirectPath(urlParams.get('continueUrl'), '/');
         setContinueUrl(url);
     }, []);
 
@@ -55,9 +56,9 @@ export default function JoinPage() {
 
             // Redirect based on action
             if (response.action === 'LOGIN') {
-                router.push(`/login?email=${encodeURIComponent(email)}&continueUrl=${encodeURIComponent(response.continueUrl)}`);
+                router.push(`/login?email=${encodeURIComponent(email)}&continueUrl=${encodeURIComponent(sanitizeRedirectPath(response.continueUrl, '/'))}`);
             } else if (response.action === 'REGISTER') {
-                router.push(`/register?email=${encodeURIComponent(email)}&continueUrl=${encodeURIComponent(response.continueUrl)}`);
+                router.push(`/register?email=${encodeURIComponent(email)}&continueUrl=${encodeURIComponent(sanitizeRedirectPath(response.continueUrl, '/'))}`);
             }
         } catch (error: any) {
             setAppState('error');

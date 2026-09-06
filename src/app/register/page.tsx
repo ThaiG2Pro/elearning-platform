@@ -7,6 +7,7 @@ import { RegisterRequest } from '@/types/auth.types';
 import Header from '@/components/Header';
 import Toast from '@/components/Toast';
 import { MARGIN_W } from '@/lib/vibe/theme';
+import { sanitizeRedirectPath } from '@/shared/security/safeRedirect';
 
 export default function RegisterPage() {
     const router = useRouter();
@@ -24,7 +25,7 @@ export default function RegisterPage() {
         // Get email and continueUrl from URL params
         const urlParams = new URLSearchParams(window.location.search);
         const emailParam = urlParams.get('email') || '';
-        const continueParam = urlParams.get('continueUrl') || '/';
+        const continueParam = sanitizeRedirectPath(urlParams.get('continueUrl'), '/');
         setEmail(emailParam);
         setContinueUrl(continueParam);
     }, []);

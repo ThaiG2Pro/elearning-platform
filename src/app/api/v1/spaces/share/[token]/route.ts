@@ -7,10 +7,8 @@ import { SpaceController } from '@/modules/space-management/controllers/SpaceCon
  * archived/unknown token reads as "not found", never a hint that the token
  * existed once.
  */
-export async function GET(
-    _request: NextRequest,
-    { params }: { params: { token: string } }
-) {
+export async function GET(_request: NextRequest, props: { params: Promise<{ token: string }> }) {
+    const params = await props.params;
     try {
         const controller = new SpaceController();
         const space = await controller.getSpaceByShareToken(params.token);

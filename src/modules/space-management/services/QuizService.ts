@@ -174,10 +174,12 @@ export class QuizService {
             throw new Error('Required repositories not provided');
         }
 
+        // Ownership gate: a lesson id in the URL is not proof of access.
+        const spaceId = await this.assertLessonAccess(userId, lessonId);
+
         // Find or create progress
         let progress = await this.progressRepo.findByStudentAndLesson(userId, lessonId);
         if (!progress) {
-            const spaceId = await this.findSpaceIdByLesson(lessonId);
             progress = LearningProgress.create(userId, spaceId, lessonId);
         }
 
@@ -224,6 +226,10 @@ export class QuizService {
         if (!this.questionRepo || !this.progressRepo || !this.prisma) {
             throw new Error('Required repositories not provided');
         }
+
+        // Ownership gate — submit reveals the correct answers, so it must
+        // never run against a lesson the caller does not own.
+        const spaceId = await this.assertLessonAccess(userId, lessonId);
 
         // Step 0: Check timeout (BR-QUIZ-03)
         let progress = await this.progressRepo.findByStudentAndLesson(userId, lessonId);
@@ -287,7 +293,6 @@ export class QuizService {
 
         // Step 2: Update Progress
         if (!progress) {
-            const spaceId = await this.findSpaceIdByLesson(lessonId);
             progress = LearningProgress.create(userId, spaceId, lessonId);
         }
 
@@ -335,22 +340,26 @@ export class QuizService {
         }];
     }
 
-    private async findSpaceIdByLesson(lessonId: bigint): Promise<bigint> {
-        const lesson = await this.prisma!.lessons.findUnique({
+    /**
+     * Verify that `userId` may take the quiz of `lessonId`, i.e. owns the
+     * space the lesson belongs to (spaces are personal; a "learner" of a
+     * shared space works on their own cloned copy, which they own).
+     * Returns the space id. Throws LESSON_NOT_FOUND / ACCESS_DENIED.
+     */
+    async assertLessonAccess(userId: bigint, lessonId: bigint): Promise<bigint> {
+        if (!this.prisma) {
+            throw new Error('PrismaClient not provided');
+        }
+        const lesson = await this.prisma.lessons.findUnique({
             where: { id: lessonId },
-            include: {
-                chapter: {
-                    include: {
-                        space: true
-                    }
-                }
-            }
+            include: { chapter: { include: { space: true } } },
         });
 
         if (!lesson) {
             throw new Error('LESSON_NOT_FOUND');
         }
 
+        AccessControlPolicy.validateOwnership(userId, lesson.chapter.space.owner_id);
         return lesson.chapter.space.id;
     }
 }

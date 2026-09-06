@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 import { getUserIdFromRequest } from '../../../../../../shared/middleware/auth';
 
 // Sample rows deliberately exercise the full contract QuizValidationPolicy
@@ -25,13 +25,12 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const worksheet = XLSX.utils.aoa_to_sheet(SAMPLE_ROWS);
-        worksheet['!cols'] = [{ wch: 40 }, { wch: 45 }, { wch: 20 }];
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet('Câu hỏi');
+        worksheet.columns = [{ width: 40 }, { width: 45 }, { width: 20 }];
+        SAMPLE_ROWS.forEach((row) => worksheet.addRow(row));
 
-        const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, 'Câu hỏi');
-
-        const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+        const buffer = Buffer.from(await workbook.xlsx.writeBuffer());
 
         return new NextResponse(buffer, {
             status: 200,

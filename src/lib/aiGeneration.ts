@@ -84,6 +84,9 @@ export const generateAIContent = async (
         if (code === 'BYOK_CONFIG_INCOMPLETE') {
             throw new AIGenerationError('Cần nhập đủ cả API key, endpoint và tên model để dùng key riêng.', code);
         }
+        if (code === 'BYOK_BASE_URL_INVALID') {
+            throw new AIGenerationError('Endpoint của key riêng phải là địa chỉ https công khai (không phải localhost hay mạng nội bộ).', code);
+        }
         // WP4.1 — không đủ credit: dẫn rõ sang trang mua thêm, không âm thầm chặn.
         if (code === 'AI_INSUFFICIENT_CREDITS') {
             throw new AIGenerationError('Không đủ credit — mua thêm để dùng tính năng trả phí này.', code);

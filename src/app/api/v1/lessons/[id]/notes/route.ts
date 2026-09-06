@@ -5,10 +5,8 @@ import { getUserIdFromRequest } from '@/shared/middleware/auth';
 // WP1.5.4: a lesson now has many notes (was a single text blob on
 // learning_progress). GET lists them, POST adds a new one — no more
 // upsert-a-single-row semantics.
-export async function GET(
-    request: NextRequest,
-    { params }: { params: { id: string } }
-) {
+export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+    const params = await props.params;
     try {
         const userId = await getUserIdFromRequest(request);
         if (!userId) {
@@ -32,10 +30,8 @@ export async function GET(
     }
 }
 
-export async function POST(
-    request: NextRequest,
-    { params }: { params: { id: string } }
-) {
+export async function POST(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+    const params = await props.params;
     try {
         const userId = await getUserIdFromRequest(request);
         if (!userId) {

@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { QuizController } from '../../../../../../../../modules/space-management/controllers/QuizController';
 import { getUserFromRequest } from '../../../../../../../../shared/middleware/auth';
+import { applyRateLimit, UPLOAD_RATE_LIMITS, QUIZ_UPLOAD_MAX_BYTES } from '../../../../../../../../shared/middleware/rateLimit';
 
 const controller = new QuizController();
 
-export async function POST(
-    request: NextRequest,
-    { params }: { params: { id: string } }
-) {
+export async function POST(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+    const params = await props.params;
     try {
         const user = await getUserFromRequest(request);
         if (!user) {
@@ -15,6 +14,11 @@ export async function POST(
         }
 
         const lessonId = BigInt(params.id);
+
+        const limited = applyRateLimit([
+            { bucket: 'quiz-upload:user', key: user.id.toString(), ...UPLOAD_RATE_LIMITS.quizUploadPerUser },
+        ]);
+        if (limited) return limited;
 
         // Get file from form data
         const formData = await request.formData();
@@ -24,9 +28,13 @@ export async function POST(
             return NextResponse.json({ error: 'NO_FILE', message: 'No file provided' }, { status: 400 });
         }
 
-        // Validate file type
-        if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
-            return NextResponse.json({ error: 'INVALID_FILE_TYPE', message: 'Only Excel files (.xlsx, .xls) are allowed' }, { status: 400 });
+        // Validate file type — only OOXML .xlsx (the parser does not read legacy .xls)
+        if (!file.name.toLowerCase().endsWith('.xlsx')) {
+            return NextResponse.json({ error: 'INVALID_FILE_TYPE', message: 'Only .xlsx files are allowed' }, { status: 400 });
+        }
+        // Size cap: the whole file is buffered in memory before parsing.
+        if (file.size > QUIZ_UPLOAD_MAX_BYTES) {
+            return NextResponse.json({ error: 'FILE_TOO_LARGE', message: `File must be at most ${QUIZ_UPLOAD_MAX_BYTES / 1024 / 1024} MB` }, { status: 413 });
         }
 
         // Convert file to buffer

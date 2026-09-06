@@ -73,7 +73,10 @@ services:
       context: .
       dockerfile: Dockerfile
       target: builder
-    command: sh -c "pnpm exec prisma migrate deploy && pnpm exec prisma db seed"
+    # Migrations only. Dev sample data is opt-in — run it yourself when you want it:
+    #   docker compose run --rm migrate pnpm exec prisma db seed
+    # (prisma/seed.ts TRUNCATEs every table and refuses to run against a non-local DB.)
+    command: sh -c "pnpm exec prisma migrate deploy"
     environment:
       DATABASE_URL: postgresql://elearning_user:elearning_pass@db:5432/elearning?sslmode=disable
     depends_on:

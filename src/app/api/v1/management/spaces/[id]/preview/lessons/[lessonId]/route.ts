@@ -4,8 +4,9 @@ import { getUserFromRequest } from '@/shared/middleware/auth';
 
 export async function GET(
     request: NextRequest,
-    { params }: { params: { id: string; lessonId: string } }
+    props: { params: Promise<{ id: string; lessonId: string }> }
 ) {
+    const params = await props.params;
     try {
         const user = await getUserFromRequest(request);
         if (!user) {

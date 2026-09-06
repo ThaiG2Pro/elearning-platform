@@ -2,14 +2,11 @@ import { TokenEntity } from './TokenEntity';
 import { UserEntity } from './UserEntity';
 import { v4 as uuidv4 } from 'uuid';
 import jwt from 'jsonwebtoken';
+import { getJwtSecret } from '../../../shared/config/jwt';
 
 export class TokenFactory {
     private static getJwtSecret(): string {
-        const JWT_SECRET = process.env.JWT_SECRET;
-        if (!JWT_SECRET || JWT_SECRET === 'your_jwt_secret_key_here') {
-            throw new Error('JWT_SECRET not properly configured');
-        }
-        return JWT_SECRET;
+        return getJwtSecret();
     }
 
     static createActivationToken(userId: bigint): TokenEntity {

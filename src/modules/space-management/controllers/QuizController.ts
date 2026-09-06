@@ -41,7 +41,8 @@ export class QuizController {
         return await this.service.saveGeneratedQuestions(userId, lessonId, questions);
     }
 
-    async generateQuiz(lessonId: bigint): Promise<QuizQuestionsDto> {
+    async generateQuiz(userId: bigint, lessonId: bigint): Promise<QuizQuestionsDto> {
+        await this.service.assertLessonAccess(userId, lessonId);
         return await this.service.generateQuiz(lessonId);
     }
 

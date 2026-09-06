@@ -8,10 +8,8 @@ import { getUserIdFromRequest } from '@/shared/middleware/auth';
  * Sau khi thu hồi, request khác không còn ăn cache bản này nữa
  * (findSharedByokMatch chỉ khớp visibility='SHARED').
  */
-export async function DELETE(
-    request: NextRequest,
-    { params }: { params: { id: string } }
-) {
+export async function DELETE(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+    const params = await props.params;
     try {
         const userId = await getUserIdFromRequest(request);
         if (!userId) {

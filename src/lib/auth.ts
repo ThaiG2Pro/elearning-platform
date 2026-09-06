@@ -33,8 +33,9 @@ export const loginUser = async (request: LoginRequest): Promise<LoginResponse> =
         const response = await api.post('/auth/login', request);
         const loginData = response.data as LoginResponse;
 
-        // Store tokens in localStorage
-        AuthUtils.setTokens(loginData.accessToken, loginData.refreshToken);
+        // Only the short-lived access token is kept client-side; the refresh
+        // token is an httpOnly cookie set by the server.
+        AuthUtils.setTokens(loginData.accessToken);
         // Store user info in localStorage
         AuthUtils.setUserInfo(loginData.user);
 
@@ -73,6 +74,9 @@ export const registerUser = async (request: RegisterRequest): Promise<RegisterRe
         if (error.response?.data?.code === 'VALIDATION_ERROR') {
             throw new Error('VALIDATION_ERROR');
         }
+        if (error.response?.status === 429 || error.response?.data?.code === 'RATE_LIMIT_EXCEEDED') {
+            throw new Error('Bạn đã thực hiện quá nhiều yêu cầu. Vui lòng thử lại sau ít phút.');
+        }
         throw new Error('Có lỗi xảy ra khi đăng ký.');
     }
 };
@@ -108,6 +112,9 @@ export const resetPassword = async (request: ResetPasswordRequest): Promise<Rese
         }
         if (error.response?.data?.code === 'VALIDATION_ERROR') {
             throw new Error('Thông tin không hợp lệ. Vui lòng kiểm tra lại.');
+        }
+        if (error.response?.status === 429 || error.response?.data?.code === 'RATE_LIMIT_EXCEEDED') {
+            throw new Error('Bạn đã thực hiện quá nhiều yêu cầu. Vui lòng thử lại sau ít phút.');
         }
         throw new Error('Có lỗi xảy ra khi đặt lại mật khẩu.');
     }
@@ -214,20 +221,23 @@ export const activateUser = async (request: ActivateRequest): Promise<ActivateRe
         if (error.response?.data?.code === 'USER_NOT_FOUND') {
             throw new Error('Người dùng không tồn tại. Vui lòng đăng ký lại.');
         }
+        if (error.response?.status === 429 || error.response?.data?.code === 'RATE_LIMIT_EXCEEDED') {
+            throw new Error('Bạn đã thực hiện quá nhiều yêu cầu. Vui lòng thử lại sau ít phút.');
+        }
         throw new Error('Có lỗi xảy ra khi kích hoạt tài khoản.');
     }
 };
 export class AuthUtils {
     private static readonly ACCESS_TOKEN_KEY = 'accessToken';
-    private static readonly REFRESH_TOKEN_KEY = 'refreshToken';
+    /** Legacy key: older builds stored the refresh token here. Only ever removed now. */
+    private static readonly LEGACY_REFRESH_TOKEN_KEY = 'refreshToken';
     private static readonly USER_INFO_KEY = 'userInfo';
 
-    static setTokens(accessToken: string, refreshToken?: string): void {
+    static setTokens(accessToken: string): void {
         if (typeof window !== 'undefined') {
             localStorage.setItem(this.ACCESS_TOKEN_KEY, accessToken);
-            if (refreshToken) {
-                localStorage.setItem(this.REFRESH_TOKEN_KEY, refreshToken);
-            }
+            // Purge any refresh token left behind by a previous build.
+            localStorage.removeItem(this.LEGACY_REFRESH_TOKEN_KEY);
         }
     }
 
@@ -244,17 +254,10 @@ export class AuthUtils {
         return null;
     }
 
-    static getRefreshToken(): string | null {
-        if (typeof window !== 'undefined') {
-            return localStorage.getItem(this.REFRESH_TOKEN_KEY);
-        }
-        return null;
-    }
-
     static clearTokens(): void {
         if (typeof window !== 'undefined') {
             localStorage.removeItem(this.ACCESS_TOKEN_KEY);
-            localStorage.removeItem(this.REFRESH_TOKEN_KEY);
+            localStorage.removeItem(this.LEGACY_REFRESH_TOKEN_KEY);
             localStorage.removeItem(this.USER_INFO_KEY);
         }
     }

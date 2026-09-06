@@ -6,8 +6,9 @@ import { getUserIdFromRequest } from '@/shared/middleware/auth';
 // layer). Ownership is enforced in NoteService.deleteNote.
 export async function DELETE(
     request: NextRequest,
-    { params }: { params: { id: string; noteId: string } }
+    props: { params: Promise<{ id: string; noteId: string }> }
 ) {
+    const params = await props.params;
     try {
         const userId = await getUserIdFromRequest(request);
         if (!userId) {

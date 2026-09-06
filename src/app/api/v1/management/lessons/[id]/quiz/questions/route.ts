@@ -17,10 +17,8 @@ const controller = new QuizController();
  * AIGenerationService/generateAIContent) — route này không tự chạy AI, chỉ
  * nhận kết quả user đã xem trước và chủ động xác nhận muốn lưu thành bài quiz.
  */
-export async function POST(
-    request: NextRequest,
-    { params }: { params: { id: string } }
-) {
+export async function POST(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+    const params = await props.params;
     try {
         const user = await getUserFromRequest(request);
         if (!user) {

@@ -23,6 +23,7 @@ import { UpdateAvatarResponseDto } from '../dtos/UpdateAvatarResponseDto';
 import { DeleteAccountDto } from '../dtos/DeleteAccountDto';
 import { DeleteAccountResponseDto } from '../dtos/DeleteAccountResponseDto';
 import { UserDataExportDto } from '../dtos/UserDataExportDto';
+import { sanitizeRedirectPath } from '../../../shared/security/safeRedirect';
 
 export class AuthController {
     private authService: AuthService;
@@ -42,7 +43,8 @@ export class AuthController {
         }
 
         const action = await this.authService.identifyUser(dto.email);
-        return new IdentifyResponseDto(action, dto.continueUrl);
+        // Echo back only a same-origin path so the client never bounces off-site.
+        return new IdentifyResponseDto(action, sanitizeRedirectPath(dto.continueUrl, '/'));
     }
 
     async register(dto: RegisterDto): Promise<RegisterResponseDto> {

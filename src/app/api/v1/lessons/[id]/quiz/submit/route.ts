@@ -3,10 +3,8 @@ import { QuizController } from '@/modules/space-management/controllers/QuizContr
 import { getUserIdFromRequest } from '@/shared/middleware/auth';
 import { SubmitQuizDto } from '@/modules/space-management/dtos/QuizResultDto';
 
-export async function POST(
-    request: NextRequest,
-    { params }: { params: { id: string } }
-) {
+export async function POST(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+    const params = await props.params;
     try {
         const userId = await getUserIdFromRequest(request);
         if (!userId) {

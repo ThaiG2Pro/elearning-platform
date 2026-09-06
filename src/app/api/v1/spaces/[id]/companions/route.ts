@@ -3,10 +3,8 @@ import { SpaceController } from '@/modules/space-management/controllers/SpaceCon
 import { getUserIdFromRequest } from '@/shared/middleware/auth';
 
 /** WP1.7 — who else is learning this space's clone lineage, read-only. */
-export async function GET(
-    request: NextRequest,
-    { params }: { params: { id: string } }
-) {
+export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+    const params = await props.params;
     try {
         if (!params.id || isNaN(Number(params.id))) {
             return NextResponse.json(

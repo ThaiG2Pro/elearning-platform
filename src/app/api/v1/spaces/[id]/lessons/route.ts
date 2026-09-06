@@ -3,10 +3,8 @@ import { SpaceController } from '@/modules/space-management/controllers/SpaceCon
 import { prisma } from '@/shared/config/database';
 import { getUserIdFromRequest } from '@/shared/middleware/auth';
 
-export async function GET(
-    request: NextRequest,
-    { params }: { params: { id: string } }
-) {
+export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+    const params = await props.params;
     try {
         if (!params.id || isNaN(Number(params.id))) {
             return NextResponse.json(
@@ -43,7 +41,7 @@ export async function GET(
         }
 
         // Extract lessons from chapters
-        const progressRepo = new (await import('@/modules/space-management/repositories/LearningProgressRepository')).LearningProgressRepository(prisma);
+        const progressRepo = new ((await import('@/modules/space-management/repositories/LearningProgressRepository')).LearningProgressRepository)(prisma);
 
         const lessons = [] as any[];
         for (const chapter of space.chapters) {

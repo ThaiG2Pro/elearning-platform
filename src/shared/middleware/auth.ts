@@ -1,7 +1,6 @@
 import jwt from 'jsonwebtoken';
 import { NextRequest } from 'next/server';
-
-const JWT_SECRET = process.env.JWT_SECRET || 'secret';
+import { getJwtSecret } from '../config/jwt';
 
 export interface RequestContext {
     userId: bigint | null;
@@ -22,7 +21,16 @@ export async function getRequestContext(request: NextRequest): Promise<RequestCo
         return { userId: null, role: null, isAuthenticated: false };
     }
     try {
-        const decoded = jwt.verify(token, JWT_SECRET) as { id: string; role: string };
+        // getJwtSecret() throws when the secret is missing — caught below,
+        // so a misconfigured server treats every token as unauthenticated
+        // rather than verifying against a known fallback string.
+        const decoded = jwt.verify(token, getJwtSecret()) as { id: string; role: string; type?: string };
+        // Access and refresh tokens share a secret; only the short-lived
+        // access token may authorize API calls. A stolen 7-day refresh token
+        // must never be accepted here.
+        if (decoded.type !== 'access') {
+            return { userId: null, role: null, isAuthenticated: false };
+        }
         return { userId: BigInt(decoded.id), role: decoded.role, isAuthenticated: true };
     } catch (error) {
         return { userId: null, role: null, isAuthenticated: false };
