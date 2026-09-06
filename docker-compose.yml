@@ -49,7 +49,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      DATABASE_URL: postgresql://elearning_user:elearning_pass@db:5432/elearning?sslmode=disable
+      DATABASE_URL: postgresql://elearning_user:elearning_pass@db:5432/elearning?sslmode=disable&connection_limit=5&pool_timeout=10
       JWT_SECRET: ${JWT_SECRET}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
       YOUTUBE_API_KEY: ${YOUTUBE_API_KEY}

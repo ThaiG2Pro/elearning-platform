@@ -44,9 +44,11 @@ export class WebPageAdapter {
     async fetchMeta(url: string): Promise<WebPageMetaResult> {
         try {
             // SSRF guard: public host only, redirects re-validated, body capped.
-            const response = await fetchPublicUrl(url, { timeoutMs: 15_000, maxBytes: 2 * 1024 * 1024 });
+            // Perf (2026-09-06): timeout 15s → 10s; chỉ cần <title>.
+            const response = await fetchPublicUrl(url, { timeoutMs: 10_000, maxBytes: 2 * 1024 * 1024 });
             const dom = new JSDOM(response.data);
             const title = dom.window.document.title?.trim();
+            dom.window.close();
             return { title: title || url };
         } catch (error) {
             throw new Error('WEB_PAGE_METADATA_FETCH_FAILED');

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { AuthController } from '@/modules/auth/controllers/AuthController';
 import { getUserIdFromRequest } from '@/shared/middleware/auth';
+import { applyRateLimit, HEAVY_RATE_LIMITS } from '@/shared/middleware/rateLimit';
 
 // WP1.5.11 — self-service data export. The last item open in the WP1.5
 // core-product-debt audit's "xoá tài khoản/export dữ liệu" pair; account
@@ -15,6 +16,13 @@ export async function GET(request: NextRequest) {
         if (!userId) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
+
+        // Perf (2026-09-06): export kéo toàn bộ spaces/lessons/questions/
+        // progress/notes vào RAM rồi stringify — không để spam.
+        const limited = applyRateLimit([
+            { bucket: 'export-data:user', key: userId.toString(), ...HEAVY_RATE_LIMITS.exportDataPerUser },
+        ]);
+        if (limited) return limited;
 
         const controller = new AuthController();
         const data = await controller.exportUserData(userId);

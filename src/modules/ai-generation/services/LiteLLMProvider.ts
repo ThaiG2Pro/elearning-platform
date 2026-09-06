@@ -39,6 +39,11 @@ function stripThinkBlocks(text: string): string {
     return out.trim();
 }
 
+function llmTimeoutMs(): number {
+    const raw = Number(process.env.AI_LLM_TIMEOUT_MS);
+    return Number.isFinite(raw) && raw > 0 ? raw : 60_000;
+}
+
 export class LiteLLMProvider implements LLMProvider {
     async generate(options: GenerateOptions): Promise<string> {
         // WP3.1 — BYOK truyền baseUrl/model riêng (endpoint của chính user);
@@ -50,7 +55,15 @@ export class LiteLLMProvider implements LLMProvider {
         }
         const model = options.model ?? defaultModel();
 
-        const client = new OpenAI({ apiKey: options.apiKey, baseURL });
+        // Perf (2026-09-06): request AI là SYNC (route await trọn lời gọi),
+        // mỗi request treo giữ 1 connection DB + event loop. SDK mặc định
+        // timeout 10 phút + retry 2 lần = 1 request xấu có thể treo ~30 phút.
+        const client = new OpenAI({
+            apiKey: options.apiKey,
+            baseURL,
+            timeout: llmTimeoutMs(),
+            maxRetries: 1,
+        });
         try {
             const response = await client.chat.completions.create({
                 model,

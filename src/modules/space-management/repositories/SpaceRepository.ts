@@ -6,6 +6,10 @@ import { Lesson } from '../domain/Lesson';
 import { VideoThumbnailUtil } from '../../shared/utils/VideoThumbnailUtil';
 import { AIGenerationPolicy, KeySource } from '../../ai-generation/domain/AIGenerationPolicy';
 
+// Perf (2026-09-06): trang chủ public không có phân trang phía client; cap
+// cứng để 1 request không kéo cả bảng khi số space tăng.
+const PUBLIC_LIST_MAX_ITEMS = 60;
+
 export class SpaceRepository {
     constructor(private prisma: PrismaClient) { }
 
@@ -126,6 +130,12 @@ export class SpaceRepository {
             };
         }
 
+        // Perf (2026-09-06): trước đây là N+1 — 1 query lấy list rồi MỖI space
+        // gọi getSpaceThumbnailUrl (1 query kéo cả cây chapters/lessons), cộng
+        // 1 groupBy đếm clone trên TOÀN bảng. Đây là endpoint public bị gọi
+        // nhiều nhất (trang chủ guest). Giờ: 1 query lấy list kèm content_url
+        // của lessons (chỉ cột cần), cap số dòng, đếm clone chỉ cho id trong
+        // trang. Tổng cố định 3 query bất kể số space.
         const spaces = await this.prisma.spaces.findMany({
             where,
             select: {
@@ -135,12 +145,28 @@ export class SpaceRepository {
                 description: true,
                 is_showcase: true,
                 cloned_from_space_id: true,
+                chapters: {
+                    select: {
+                        lessons: {
+                            where: { content_url: { not: null } },
+                            select: { content_url: true },
+                            orderBy: { order_index: 'asc' },
+                            take: 1,
+                        },
+                    },
+                    orderBy: { order_index: 'asc' },
+                },
             },
             orderBy: { id: 'desc' },
+            take: PUBLIC_LIST_MAX_ITEMS,
         });
 
+        if (spaces.length === 0) return [];
+
+        const pageIds = spaces.map(s => s.id);
         const cloneCounts = await this.prisma.spaces.groupBy({
             by: ['cloned_from_space_id'],
+            where: { cloned_from_space_id: { in: pageIds } },
             _count: { id: true },
         });
         const cloneCountMap = new Map<string, number>();
@@ -168,63 +194,28 @@ export class SpaceRepository {
             }
         }
 
-        const spacesWithThumbnails = await Promise.all(
-            spaces.map(async (space) => {
-                const thumbnailUrl = await this.getSpaceThumbnailUrl(space.id);
-                const clonedFrom = space.cloned_from_space_id
-                    ? {
-                        spaceId: Number(space.cloned_from_space_id),
-                        ownerName: originOwnerNameMap.get(space.cloned_from_space_id.toString()) || 'Không rõ',
-                    }
-                    : null;
-                return {
-                    id: space.id,
-                    title: space.title,
-                    slug: space.slug,
-                    description: space.description,
-                    isShowcase: space.is_showcase,
-                    cloneCount: cloneCountMap.get(space.id.toString()) || 0,
-                    thumbnailUrl,
-                    clonedFrom,
-                };
-            })
-        );
-
-        return spacesWithThumbnails;
-    }
-
-    private async getSpaceThumbnailUrl(spaceId: bigint): Promise<string> {
-        try {
-            const space = await this.prisma.spaces.findUnique({
-                where: { id: spaceId },
-                include: {
-                    chapters: {
-                        orderBy: { order_index: 'asc' },
-                        include: {
-                            lessons: {
-                                where: { content_url: { not: null } },
-                                orderBy: { order_index: 'asc' },
-                            },
-                        },
-                    },
-                },
-            });
-
-            if (!space) {
-                return '/images/space-placeholder.svg';
-            }
-
-            // Find first video URL
+        return spaces.map((space) => {
             const firstVideoUrl = VideoThumbnailUtil.findFirstVideoUrl(space.chapters);
-            if (firstVideoUrl) {
-                return VideoThumbnailUtil.deriveThumbnailFromVideoUrl(firstVideoUrl);
-            }
-
-            return '/images/space-placeholder.svg';
-        } catch (error) {
-            console.warn('Error getting space thumbnail:', error);
-            return '/images/space-placeholder.svg';
-        }
+            const thumbnailUrl = firstVideoUrl
+                ? VideoThumbnailUtil.deriveThumbnailFromVideoUrl(firstVideoUrl)
+                : '/images/space-placeholder.svg';
+            const clonedFrom = space.cloned_from_space_id
+                ? {
+                    spaceId: Number(space.cloned_from_space_id),
+                    ownerName: originOwnerNameMap.get(space.cloned_from_space_id.toString()) || 'Không rõ',
+                }
+                : null;
+            return {
+                id: space.id,
+                title: space.title,
+                slug: space.slug,
+                description: space.description,
+                isShowcase: space.is_showcase,
+                cloneCount: cloneCountMap.get(space.id.toString()) || 0,
+                thumbnailUrl,
+                clonedFrom,
+            };
+        });
     }
 
     async create(space: Space): Promise<void> {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { AIGenerationController } from '@/modules/ai-generation/controllers/AIGenerationController';
 import { getUserIdFromRequest } from '@/shared/middleware/auth';
+import { applyRateLimit, getClientIp, HEAVY_RATE_LIMITS } from '@/shared/middleware/rateLimit';
 import { RecipeType } from '@/modules/ai-generation/domain/Recipes';
 
 const VALID_RECIPE_TYPES: RecipeType[] = ['summary', 'quiz'];
@@ -30,6 +31,13 @@ export async function POST(request: NextRequest, props: { params: Promise<{ sour
         if (!params.sourceId || isNaN(Number(params.sourceId))) {
             return NextResponse.json({ error: 'SOURCE_NOT_FOUND' }, { status: 404 });
         }
+
+        // Perf (2026-09-06): chặn burst trước khi chạm DB/LLM.
+        const limited = applyRateLimit([
+            { bucket: 'ai-generate:user', key: userId.toString(), ...HEAVY_RATE_LIMITS.aiGeneratePerUser },
+            { bucket: 'ai-generate:ip', key: getClientIp(request), ...HEAVY_RATE_LIMITS.aiGeneratePerIp },
+        ]);
+        if (limited) return limited;
 
         const body: {
             type?: string;

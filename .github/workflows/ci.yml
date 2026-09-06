@@ -92,3 +92,50 @@ jobs:
           MAILTRAP_USER: placeholder
           MAILTRAP_PASS: placeholder
           MAIL_FROM: noreply@elearning.com
+
+  # ── Docker image → GHCR (chỉ khi push lên main) ─────────────────────────────
+  # Perf (2026-09-06): `next build` cần ~1.5–2GB RAM — build trên VPS 512MB/1GB
+  # sẽ OOM. Build ở đây rồi VPS chỉ `docker pull ghcr.io/<owner>/<repo>:latest`.
+  # Xem docs/DEPLOY.md mục "VPS tự host".
+  docker-image:
+    name: Build & push image
+    needs: quality
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Image metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=raw,value=latest
+            type=sha,prefix=sha-
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: runner
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

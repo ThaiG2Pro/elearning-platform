@@ -70,3 +70,25 @@ subscription/gate feature nào phụ thuộc vào nó.
 - [x] Donate button trong code, bật qua env, tắt an toàn khi chưa cấu hình
 - [ ] **Tài khoản Fly.io thật + thanh toán + deploy thật** — việc vận hành,
       cần người có quyền thanh toán của dự án làm, ngoài phạm vi agent code.
+
+## VPS tự host / hosting rẻ (bổ sung 2026-09-06)
+
+Các cấu hình đã có sẵn trong repo cho máy 512MB–1GB RAM, 1 vCPU:
+
+- **Không build trên VPS.** `next build` cần ~1.5–2GB RAM. CI (`ci.yml`, job
+  `docker-image`) tự build và push `ghcr.io/<owner>/<repo>:latest` mỗi lần
+  push lên `main`. Trên VPS chỉ `docker pull` rồi `docker run`/compose với
+  image đó (đổi `build:` của service `app` thành `image:`).
+- **Node heap** đã giới hạn `NODE_OPTIONS=--max-old-space-size=384` trong
+  Dockerfile. Máy ≥2GB có thể override qua env.
+- **Postgres pool:** `DATABASE_URL` phải có `connection_limit=5&pool_timeout=10`
+  (xem `.env.example`). Nếu Postgres chạy cùng máy: `shared_buffers=64MB`,
+  `max_connections=20`. Bật swap 1–2GB trên VPS.
+- **Reverse proxy có cache** (Caddy/Nginx/Cloudflare) phía trước: hai endpoint
+  public `GET /api/v1/spaces` và `GET /api/v1/spaces/share/[token]` đã trả
+  `Cache-Control: s-maxage=60` để proxy cache được. Proxy cũng phải truyền
+  `X-Forwarded-For` để rate limit theo IP hoạt động.
+- **Timeout LLM:** `AI_LLM_TIMEOUT_MS` (mặc định 60000). Transcript YouTube
+  timeout cứng 20s.
+- **LiteLLM proxy** (~300–500MB RAM) là service nặng nhất trong compose — cân
+  nhắc host riêng hoặc gọi thẳng provider; quyết định kiến trúc, chưa chốt.

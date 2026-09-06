@@ -138,6 +138,10 @@ export default function LearningPage() {
 
     // Progress tracking refs (lesson-bound)
     const lastSentTimeRef = useRef<number>(0);
+    // Perf (2026-09-06): 5s → 15s. Mỗi lần sync là 3–4 query DB; với N người
+    // xem đồng thời là N/5 req/s liên tục vào Postgres. Vị trí cuối vẫn được
+    // flush khi rời trang/đổi bài nên độ chính xác khi resume không đổi.
+    const PROGRESS_SYNC_DELTA_SEC = 15;
     const quizTimerRef = useRef<NodeJS.Timeout | null>(null);
 
     // Video refs
@@ -205,7 +209,7 @@ export default function LearningPage() {
         // Local display only — every tick, no throttle, no network round-trip.
         setLivePosition(roundedTime);
 
-        if (Math.abs(roundedTime - lastSentTimeRef.current) >= 5) {
+        if (Math.abs(roundedTime - lastSentTimeRef.current) >= PROGRESS_SYNC_DELTA_SEC) {
             if (!currentLesson) return;
 
             const previousSentTime = lastSentTimeRef.current;
@@ -442,7 +446,7 @@ export default function LearningPage() {
         const duration = Math.floor(videoRef.current.duration || 0);
         setLivePosition(currentTime);
 
-        if (Math.abs(currentTime - lastSentTimeRef.current) < 5) return;
+        if (Math.abs(currentTime - lastSentTimeRef.current) < PROGRESS_SYNC_DELTA_SEC) return;
 
         const previousSentTime = lastSentTimeRef.current;
         lastSentTimeRef.current = currentTime;

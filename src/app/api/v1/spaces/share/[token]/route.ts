@@ -12,7 +12,10 @@ export async function GET(_request: NextRequest, props: { params: Promise<{ toke
     try {
         const controller = new SpaceController();
         const space = await controller.getSpaceByShareToken(params.token);
-        return NextResponse.json(space);
+        // Perf (2026-09-06): public + no-auth → cache được ở CDN/proxy 60s.
+        return NextResponse.json(space, {
+            headers: { 'Cache-Control': 'public, max-age=0, s-maxage=60, stale-while-revalidate=300' },
+        });
     } catch (error) {
         const message = error instanceof Error ? error.message : 'INTERNAL_ERROR';
         if (message === 'SHARE_LINK_NOT_FOUND') {

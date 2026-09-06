@@ -1,5 +1,10 @@
 import { fetchTranscript } from 'youtube-transcript-plus';
 import { TranscriptFetchError, TranscriptProvider } from './TranscriptProvider';
+import { withTimeout } from '@/shared/http/withTimeout';
+
+// Perf (2026-09-06): lib không cho set timeout; YouTube chậm/chặn IP VPS là
+// request user treo vô hạn.
+const TRANSCRIPT_TIMEOUT_MS = 20_000;
 
 /**
  * WP2.2 — implementation đầu tiên của `TranscriptProvider`, dùng
@@ -11,7 +16,7 @@ import { TranscriptFetchError, TranscriptProvider } from './TranscriptProvider';
 export class YoutubeTranscriptPlusProvider implements TranscriptProvider {
     async fetchTranscript(videoId: string): Promise<string> {
         try {
-            const segments = await fetchTranscript(videoId);
+            const segments = await withTimeout(fetchTranscript(videoId), TRANSCRIPT_TIMEOUT_MS, 'TRANSCRIPT_FETCH');
             return segments.map((segment) => segment.text).join(' ').trim();
         } catch (error) {
             throw new TranscriptFetchError(videoId, error);

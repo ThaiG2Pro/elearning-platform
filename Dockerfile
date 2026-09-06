@@ -30,6 +30,9 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
+# Perf (2026-09-06): VPS nhỏ (512MB–1GB). Ép V8 GC sớm thay vì để kernel
+# OOM-kill cả process. Override bằng `-e NODE_OPTIONS=...` nếu máy có nhiều RAM.
+ENV NODE_OPTIONS="--max-old-space-size=384"
 
 # Create non-root user for security
 RUN addgroup --system --gid 1001 nodejs \

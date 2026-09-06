@@ -135,5 +135,17 @@ export const UPLOAD_RATE_LIMITS = {
     fromLinkPerUser: { limit: 20, windowMs: 10 * MIN },
 } as const;
 
+/**
+ * Perf (2026-09-06) — endpoint giữ connection lâu / kéo nhiều dữ liệu.
+ * AI generation là request sync tới LLM (tới 60s), export-data kéo toàn bộ
+ * dữ liệu user vào RAM. Quota theo ngày của AIGenerationPolicy vẫn áp sau,
+ * đây chỉ là cầu chì chống burst từ 1 user/1 IP.
+ */
+export const HEAVY_RATE_LIMITS = {
+    aiGeneratePerUser: { limit: 6, windowMs: MIN },
+    aiGeneratePerIp: { limit: 20, windowMs: MIN },
+    exportDataPerUser: { limit: 2, windowMs: HOUR },
+} as const;
+
 /** Quiz .xlsx files are buffered fully in memory before parsing. */
 export const QUIZ_UPLOAD_MAX_BYTES = 2 * 1024 * 1024;
