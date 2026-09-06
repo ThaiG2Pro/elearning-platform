@@ -40,7 +40,17 @@ export class OwnedSpacesRepository {
             // UI (2026-09-06) — cần status vòng đời (ACTIVE/ARCHIVED) để trang
             // gộp /my-learning tự ẩn space đã lưu trữ khỏi danh sách chính
             // (xem OwnedSpaceDto.lifecycleStatus).
-            include: {
+            // Perf (2026-09-06) — `select` thay `include`: trước đây kéo về
+            // MỌI cột của mọi lesson (description, content, position...) chỉ
+            // để đếm số bài và tìm video đầu tiên làm thumbnail. Với user có
+            // vài chục space × vài chục bài, payload từ Postgres nặng gấp
+            // ~10 lần mức cần thiết trên mỗi lần mở /my-learning.
+            select: {
+                id: true,
+                title: true,
+                slug: true,
+                status: true,
+                created_at: true,
                 // UI (2026-09-05) — cần tên chủ sở hữu space GỐC khi chính
                 // space này là 1 bản clone, để phân biệt với bản gốc chính
                 // chủ (xem SpaceRepository.findActiveSpacesWithThumbnails,
@@ -50,7 +60,7 @@ export class OwnedSpacesRepository {
                 },
                 chapters: {
                     orderBy: { order_index: 'asc' },
-                    include: {
+                    select: {
                         // No `content_url: { not: null }` filter here — that
                         // excluded every QUIZ lesson (which never has a
                         // content_url) from both totalLessons and
@@ -62,6 +72,7 @@ export class OwnedSpacesRepository {
                         // correctly counts quiz lessons.
                         lessons: {
                             orderBy: { order_index: 'asc' },
+                            select: { id: true, content_url: true },
                         },
                     },
                 },

@@ -38,3 +38,9 @@ README.md
 
 # CI
 .github
+
+# Perf (2026-09-06) — 7 trang demo thiết kế (~3000 dòng, ~200KB source) chỉ
+# dùng để tham chiếu vibe khi dev; không đưa vào image production để build
+# nhanh hơn và standalone nhẹ hơn. Vẫn build ở CI job `quality` để không
+# hỏng khi refactor component chung.
+src/app/vibe-demo

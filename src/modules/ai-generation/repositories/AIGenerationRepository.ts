@@ -239,7 +239,9 @@ export class AIGenerationRepository {
     async listSharedByUser(userId: bigint): Promise<SharedAIGenerationSummary[]> {
         const rows = await this.prisma.ai_generations.findMany({
             where: { generated_by_user_id: userId, key_source: 'BYOK', visibility: 'SHARED' },
-            include: { source: true },
+            // Perf (2026-09-06) — chỉ cần title/url; `source: true` kéo cả
+            // cột transcript (tới 60K chữ) cho MỖI dòng trong danh sách.
+            include: { source: { select: { title: true, url: true } } },
             orderBy: { created_at: 'desc' },
         });
         return rows.map((row) => ({

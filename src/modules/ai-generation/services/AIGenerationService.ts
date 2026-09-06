@@ -131,7 +131,12 @@ export class AIGenerationService {
     ) { }
 
     async generate(req: GenerateRequest): Promise<GenerateResult> {
-        const source = await this.prisma.sources.findUnique({ where: { id: req.sourceId } });
+        // Perf (2026-09-06) — không kéo cột `transcript` (tới 60K chữ) ở đây;
+        // ensureTranscript mới là nơi đọc nó khi thật sự cần.
+        const source = await this.prisma.sources.findUnique({
+            where: { id: req.sourceId },
+            select: { id: true, url: true, type: true },
+        });
         if (!source) {
             throw new Error('SOURCE_NOT_FOUND');
         }
@@ -320,7 +325,10 @@ export class AIGenerationService {
      * đưa vào prompt LLM", không riêng caption video.
      */
     private async ensureTranscript(sourceId: bigint, sourceUrl: string, sourceType: string): Promise<string> {
-        const source = await this.prisma.sources.findUnique({ where: { id: sourceId } });
+        const source = await this.prisma.sources.findUnique({
+            where: { id: sourceId },
+            select: { transcript: true },
+        });
         if (source?.transcript) {
             return source.transcript;
         }

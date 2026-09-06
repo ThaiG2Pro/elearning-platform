@@ -32,8 +32,12 @@ import { UserDataExportDto } from '../dtos/UserDataExportDto';
 // WP1.5.6 — data: URL only (no file-storage infra exists in this app), and
 // capped well below the client-side resize target (see profile/page.tsx) so
 // a hand-crafted request can't smuggle in a multi-MB blob.
+// Perf (2026-09-06) — 400K → 120K. Client resize ra JPEG 256px chất lượng
+// 0.85 thường chỉ 20–60KB (base64 ≈ 30–80KB). Blob avatar được include vào
+// MỌI lần findByEmail/findById (login, /me), nên trần này quyết định trực
+// tiếp băng thông DB ↔ app trên mỗi request có auth profile.
 const AVATAR_DATA_URL_PATTERN = /^data:image\/(png|jpe?g|webp);base64,/;
-const MAX_AVATAR_DATA_URL_LENGTH = 400_000;
+const MAX_AVATAR_DATA_URL_LENGTH = 120_000;
 
 export class AuthService {
     constructor(

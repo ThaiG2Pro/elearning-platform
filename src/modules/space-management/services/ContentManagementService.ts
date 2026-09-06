@@ -185,6 +185,10 @@ export class ContentManagementService {
             let title: string;
             let thumbnailUrl: string | undefined;
             let sourceType: source_type;
+            // Perf (2026-09-06) — nội dung web trích được ngay lúc lấy tiêu đề
+            // (xem WebPageMetaResult.textContent); lưu luôn để AI không phải
+            // tải + parse trang lần 2.
+            let transcript: string | undefined;
 
             if (isYouTube) {
                 const videoId = YouTubeOEmbedAdapter.extractVideoId(trimmedUrl);
@@ -209,6 +213,7 @@ export class ContentManagementService {
                 try {
                     const meta = await this.webPageAdapter.fetchMeta(trimmedUrl);
                     title = meta.title;
+                    transcript = meta.textContent;
                 } catch {
                     // fall back to the placeholder title set above
                 }
@@ -221,6 +226,8 @@ export class ContentManagementService {
                     title,
                     type: sourceType,
                     metadata: thumbnailUrl ? { thumbnailUrl } : undefined,
+                    transcript,
+                    transcript_fetched_at: transcript ? new Date() : undefined,
                 },
             });
         }
