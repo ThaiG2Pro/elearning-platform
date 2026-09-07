@@ -61,24 +61,43 @@ export class CreditRepository {
         }
     }
 
-    /** Tiêu credit cho 1 lần generate PAID_TIER — throw nếu không đủ số dư. */
+    /**
+     * Tiêu credit cho 1 lần generate PAID_TIER — throw AI_INSUFFICIENT_CREDITS
+     * nếu không đủ số dư.
+     *
+     * Security fix (race condition): bản cũ đọc credit_balance bằng SELECT,
+     * kiểm tra trong JS rồi UPDATE giá trị đã tính sẵn. Prisma interactive
+     * transaction chạy ở READ COMMITTED nên 2 request song song cùng đọc số
+     * dư cũ, cùng qua bước kiểm tra, cùng ghi → trừ 2 lần / âm số dư. Giờ
+     * điều kiện `credit_balance >= amount` nằm ngay trong câu UPDATE: Postgres
+     * khoá row và đánh giá lại WHERE sau khi transaction trước commit, nên chỉ
+     * đúng 1 request qua được khi số dư chỉ đủ cho 1 lần.
+     */
     async spendCredits(userId: bigint, amount: number): Promise<number> {
+        CreditLedger.assertValidAmount(amount);
         return this.prisma.$transaction(async (tx) => {
+            const updated = await tx.users.updateMany({
+                where: { id: userId, credit_balance: { gte: amount } },
+                data: { credit_balance: { decrement: amount } },
+            });
+            if (updated.count === 0) {
+                // Không phân biệt user không tồn tại vs không đủ tiền: caller
+                // đã xác thực userId từ JWT nên trường hợp 1 không xảy ra.
+                throw new Error('AI_INSUFFICIENT_CREDITS');
+            }
             const user = await tx.users.findUniqueOrThrow({
                 where: { id: userId },
                 select: { credit_balance: true },
             });
-            const newBalance = CreditLedger.balanceAfterSpend(user.credit_balance, amount);
-            await tx.users.update({ where: { id: userId }, data: { credit_balance: newBalance } });
             await tx.credit_transactions.create({
                 data: {
                     user_id: userId,
                     amount: -amount,
                     reason: 'AI_GENERATION_SPEND',
-                    balance_after: newBalance,
+                    balance_after: user.credit_balance,
                 },
             });
-            return newBalance;
+            return user.credit_balance;
         });
     }
 

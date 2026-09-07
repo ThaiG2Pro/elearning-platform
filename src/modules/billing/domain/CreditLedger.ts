@@ -54,7 +54,7 @@ export class CreditLedger {
      * số âm/NaN/số lẻ lọt vào ledger (spend số âm = in credit, purchase số âm
      * = âm thầm trừ tiền user).
      */
-    private static assertValidAmount(amount: number): void {
+    static assertValidAmount(amount: number): void {
         if (!Number.isInteger(amount) || amount <= 0) {
             throw new Error('INVALID_CREDIT_AMOUNT');
         }
@@ -68,8 +68,10 @@ export class CreditLedger {
 
     /**
      * Tiêu credit cho 1 lần generate PAID_TIER — không bao giờ để số dư âm.
-     * Tầng repository chịu trách nhiệm đọc số dư mới nhất trong cùng 1 DB
-     * transaction trước khi gọi hàm này (chống race 2 request đồng thời).
+     * Lưu ý: CreditRepository.spendCredits KHÔNG dùng hàm này nữa — điều kiện
+     * đủ tiền được đặt thẳng trong câu UPDATE (WHERE credit_balance >= cost)
+     * để Postgres quyết định atomically; hàm này giữ lại làm quy tắc nghiệp
+     * vụ thuần (tính toán/hiển thị, test) chứ không phải hàng rào chống race.
      */
     static balanceAfterSpend(currentBalance: number, cost: number): number {
         CreditLedger.assertValidAmount(cost);
