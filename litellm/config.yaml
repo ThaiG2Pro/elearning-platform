@@ -1,3 +1,8 @@
+# 2026-09-06 — TUỲ CHỌN: proxy này không còn chạy mặc định (xem
+# docker-compose.yml profile `litellm` và .env.example). App gọi thẳng
+# provider qua LITELLM_BASE_URL; file này chỉ dùng khi bật profile trên máy
+# ≥2GB RAM.
+#
 # WP2.2 (revised) — LiteLLM proxy config: 1 endpoint, nhiều provider.
 # Đổi provider chỉ cần thêm 1 entry ở đây + set env key tương ứng — không
 # đụng code TS (LiteLLMProvider chỉ nói chuyện với endpoint OpenAI-compatible

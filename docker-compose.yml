@@ -5,6 +5,16 @@ services:
   db:
     image: postgres:16-alpine
     restart: unless-stopped
+    # Perf (2026-09-06) — tuning cho VPS 1GB chạy chung app (docs/DEPLOY.md).
+    mem_limit: 256m
+    command:
+      - postgres
+      - -c
+      - shared_buffers=64MB
+      - -c
+      - max_connections=20
+      - -c
+      - work_mem=4MB
     environment:
       POSTGRES_DB: elearning
       POSTGRES_USER: elearning_user
@@ -19,12 +29,20 @@ services:
       timeout: 5s
       retries: 5
 
-  # ── LiteLLM proxy (WP2.2 revised) — 1 endpoint OpenAI-compatible cho nhiều
-  # provider (Groq/OpenAI/Anthropic/OpenRouter/tự host). Đổi provider chỉ sửa
-  # litellm/config.yaml + env key, không đụng code app.
+  # ── LiteLLM proxy — TUỲ CHỌN (2026-09-06, quyết định nhóm E) ────────────
+  # Trước là service bắt buộc; nay app gọi thẳng endpoint OpenAI-compatible
+  # của provider (Groq mặc định) qua LITELLM_BASE_URL nên KHÔNG khởi động
+  # cùng `docker compose up`. Proxy Python này ăn 300–500MB RAM — quá nặng
+  # cho VPS 1GB. Chỉ bật khi máy ≥2GB và cần menu nhiều provider cho nhánh
+  # SHARED_FREE:  docker compose --profile litellm up -d
+  # rồi set LITELLM_BASE_URL=http://litellm:4000 cho app.
+  # Nhánh BYOK chưa từng đi qua proxy này (user tự truyền endpoint riêng).
   litellm:
+    profiles:
+      - litellm
     image: ghcr.io/berriai/litellm:main-latest
     restart: unless-stopped
+    mem_limit: 768m
     ports:
       - "4000:4000"
     volumes:
@@ -46,6 +64,9 @@ services:
       dockerfile: Dockerfile
       target: runner
     restart: unless-stopped
+    # Perf (2026-09-06) — trần RAM để 1 container lỗi không kéo cả VPS 1GB
+    # sập; Node heap bên trong đã cap 384MB (Dockerfile NODE_OPTIONS).
+    mem_limit: 512m
     ports:
       - "3000:3000"
     environment:
@@ -58,14 +79,14 @@ services:
       MAILTRAP_USER: ${MAILTRAP_USER}
       MAILTRAP_PASS: ${MAILTRAP_PASS}
       MAIL_FROM: ${MAIL_FROM:-noreply@elearning.com}
-      LITELLM_BASE_URL: http://litellm:4000
+      # Gọi thẳng provider (mặc định Groq). LITELLM_MASTER_KEY khi đó chính
+      # là API key của provider. Xem .env.example.
+      LITELLM_BASE_URL: ${LITELLM_BASE_URL:-https://api.groq.com/openai/v1}
       LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY}
-      AI_DEFAULT_MODEL: ${AI_DEFAULT_MODEL:-default}
+      AI_DEFAULT_MODEL: ${AI_DEFAULT_MODEL:-openai/gpt-oss-120b}
     depends_on:
       db:
         condition: service_healthy
-      litellm:
-        condition: service_started
 
   # ── DB migration runner (one-shot) ──────────────────────────────────────────
   migrate:

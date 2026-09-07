@@ -90,5 +90,43 @@ Các cấu hình đã có sẵn trong repo cho máy 512MB–1GB RAM, 1 vCPU:
   `X-Forwarded-For` để rate limit theo IP hoạt động.
 - **Timeout LLM:** `AI_LLM_TIMEOUT_MS` (mặc định 60000). Transcript YouTube
   timeout cứng 20s.
-- **LiteLLM proxy** (~300–500MB RAM) là service nặng nhất trong compose — cân
-  nhắc host riêng hoặc gọi thẳng provider; quyết định kiến trúc, chưa chốt.
+
+## Quyết định nhóm E (2026-09-06) — VPS VN 1GB
+
+| Hạng mục | Chốt |
+|---|---|
+| Hosting | VPS Việt Nam 1GB RAM (≈100k VND/tháng), Postgres chạy cùng máy |
+| LiteLLM | **Bỏ khỏi mặc định.** App gọi thẳng provider qua `LITELLM_BASE_URL` (Groq). Vẫn còn dưới dạng `docker compose --profile litellm` cho máy ≥2GB |
+| BYOK | Không đổi backend — form đã có chip preset Groq/OpenAI/OpenRouter/DeepSeek/Gemini/Anthropic điền sẵn endpoint + model |
+| AI generation | Giữ đồng bộ (timeout 60s + rate limit đã có). Chỉ chuyển async nếu reverse proxy cắt request < 60s |
+| Cache/Redis | **Không cần.** 1 process Node → rate limiter in-memory đủ; response public cache ở reverse proxy qua `s-maxage`. Chỉ cân nhắc Valkey khi chạy ≥2 instance app |
+| Backup | `pg_dump` → Cloudflare R2 (10GB miễn phí), xem dưới |
+
+### RAM dự kiến (mem_limit đã đặt trong docker-compose.yml)
+
+| Container | mem_limit | thực tế thường |
+|---|---|---|
+| app (Node heap cap 384MB) | 512m | 300–400MB |
+| db (`shared_buffers=64MB`, `max_connections=20`) | 256m | 80–120MB |
+| Hệ thống + Caddy/Nginx | — | ~100MB |
+
+Bật swap 1GB để tránh OOM kill khi JSDOM đột biến: `fallocate -l 1G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile`.
+
+### Backup tiết kiệm (scripts/ops/backup-db.sh)
+
+App ít user ban đầu nên **không backup theo lịch cố định mà backup khi dữ liệu đổi**:
+script chạy 2 lần/tuần qua cron, dump ra rồi so hash với lần upload trước —
+không đổi thì thoát ngay, 0 byte lên mạng. Có đổi thì upload 1 file `-Fc`
+(vài MB) và giữ 8 bản gần nhất. Trước mỗi lần deploy/migrate chạy tay `FORCE=1`.
+
+```sh
+# 1 lần: cài rclone, tạo remote "r2" (S3 → Cloudflare R2), tạo bucket elearning-backup
+curl https://rclone.org/install.sh | sudo bash
+rclone config
+# cron
+echo '0 3 * * 3,0 /opt/elearning/scripts/ops/backup-db.sh >> /var/log/elearning-backup.log 2>&1' | sudo tee /etc/cron.d/elearning-backup
+# khôi phục sang VPS mới
+scripts/ops/restore-db.sh
+```
+
+Khi có user thật, chỉ cần đổi cron thành hàng ngày — script không đổi.

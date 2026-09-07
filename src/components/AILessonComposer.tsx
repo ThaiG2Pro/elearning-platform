@@ -25,6 +25,20 @@ import VideoSourceDropdown from '@/components/VideoSourceDropdown';
  * chứa video sinh ra nó, và để dropdown hiển thị đủ ngữ cảnh khi space có
  * nhiều chương trùng tên bài.
  */
+// 2026-09-06 (quyết định nhóm E — bỏ LiteLLM proxy trên VPS 1GB): BYOK gọi
+// thẳng endpoint OpenAI-compatible của từng provider (LiteLLMProvider chỉ
+// tạo OpenAI SDK client với baseURL user nhập), nên preset ở đây thay cho
+// menu provider từng nằm trong litellm/config.yaml. Chọn preset chỉ điền
+// sẵn 2 ô Endpoint/Model — user vẫn sửa tay được ("Tự nhập").
+const BYOK_PRESETS: { key: string; label: string; baseUrl: string; model: string }[] = [
+    { key: 'groq',       label: 'Groq',       baseUrl: 'https://api.groq.com/openai/v1',                          model: 'openai/gpt-oss-120b' },
+    { key: 'openai',     label: 'OpenAI',     baseUrl: 'https://api.openai.com/v1',                               model: 'gpt-4o-mini' },
+    { key: 'openrouter', label: 'OpenRouter', baseUrl: 'https://openrouter.ai/api/v1',                            model: 'meta-llama/llama-3.3-70b-instruct' },
+    { key: 'deepseek',   label: 'DeepSeek',   baseUrl: 'https://api.deepseek.com/v1',                             model: 'deepseek-chat' },
+    { key: 'gemini',     label: 'Gemini',     baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai/', model: 'gemini-2.0-flash' },
+    { key: 'anthropic',  label: 'Anthropic',  baseUrl: 'https://api.anthropic.com/v1/',                           model: 'claude-3-5-haiku-20241022' },
+];
+
 export interface AIVideoSourceOption {
     lessonId: number;
     lessonTitle: string;
@@ -387,6 +401,31 @@ export default function AILessonComposer({
                                             />
                                         </div>
                                         <div>
+                                            <label className="block text-[11px] font-medium text-ink-textDim mb-1">Nhà cung cấp</label>
+                                            <div className="flex flex-wrap gap-1.5">
+                                                {BYOK_PRESETS.map((preset) => {
+                                                    const active = byokBaseUrl.trim() === preset.baseUrl;
+                                                    return (
+                                                        <button
+                                                            key={preset.key}
+                                                            type="button"
+                                                            onClick={() => { setByokBaseUrl(preset.baseUrl); setByokModel(preset.model); }}
+                                                            className={`px-2.5 py-1 rounded-md text-xs font-medium border transition-colors ${
+                                                                active
+                                                                    ? 'bg-ink-accent text-white border-ink-accent'
+                                                                    : 'bg-ink-panel text-ink-text border-ink-border hover:border-ink-accent'
+                                                            }`}
+                                                        >
+                                                            {preset.label}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                            <p className="mt-1 text-[11px] text-ink-textMuted">
+                                                Chọn để điền sẵn endpoint và model, hoặc tự nhập bên dưới cho provider khác (Mistral, xAI, Ollama...).
+                                            </p>
+                                        </div>
+                                        <div>
                                             <label className="block text-[11px] font-medium text-ink-textDim mb-1">Endpoint</label>
                                             <input
                                                 type="text"
@@ -403,7 +442,7 @@ export default function AILessonComposer({
                                                 type="text"
                                                 value={byokModel}
                                                 onChange={(e) => setByokModel(e.target.value)}
-                                                placeholder="vd: llama-3.3-70b-versatile"
+                                                placeholder="vd: openai/gpt-oss-120b"
                                                 autoComplete="off"
                                                 className="w-full px-2.5 py-1.5 text-xs border border-ink-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ink-accent"
                                             />
