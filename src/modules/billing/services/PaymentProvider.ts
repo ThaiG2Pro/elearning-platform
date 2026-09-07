@@ -26,6 +26,15 @@ export interface VerifiedWebhookEvent {
     /** id của session/payment_intent — dùng làm stripeReference chống double-credit. */
     referenceId: string;
     stripeCustomerId: string | null;
+    /**
+     * Security — `payment_status` của Checkout Session ('paid' | 'unpaid' |
+     * 'no_payment_required'). `checkout.session.completed` chỉ có nghĩa là
+     * user đã đi hết flow checkout, KHÔNG có nghĩa là tiền đã về: phương thức
+     * trả chậm (bank transfer, boleto, OXXO…) hoàn tất session với
+     * 'unpaid' và Stripe sẽ gửi `checkout.session.async_payment_succeeded`
+     * sau. Chỉ cộng credit khi 'paid'. null nếu provider không cung cấp.
+     */
+    paymentStatus: string | null;
     /** metadata gắn lúc tạo checkout session (userId, packageId, credits...). */
     metadata: Record<string, string>;
 }

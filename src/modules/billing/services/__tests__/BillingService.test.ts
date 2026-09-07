@@ -27,6 +27,7 @@ const makeEvent = (overrides: Partial<VerifiedWebhookEvent> = {}): VerifiedWebho
     type: 'checkout.session.completed',
     referenceId: 'cs_test_abc',
     stripeCustomerId: 'cus_123',
+    paymentStatus: 'paid',
     metadata: { userId: '7', packageId: 'standard' },
     ...overrides,
 });
@@ -69,6 +70,18 @@ describe('BillingService.handleWebhook', () => {
         );
         expect(creditRepo.addCredits).not.toHaveBeenCalled();
     });
+
+    // Security: "completed" không đồng nghĩa "đã thu tiền" — chỉ 'paid' mới
+    // cộng credit; unpaid/no_payment_required/null đều bỏ qua, không throw.
+    it.each(['unpaid', 'no_payment_required', null])(
+        'does not credit when payment_status is %s (session completed but not paid)',
+        async (paymentStatus) => {
+            provider.verifyAndParseWebhook.mockReturnValue(makeEvent({ paymentStatus }));
+
+            await expect(service.handleWebhook('raw', 'sig')).resolves.toBeUndefined();
+            expect(creditRepo.addCredits).not.toHaveBeenCalled();
+        },
+    );
 
     it('ignores event types other than checkout.session.completed without crediting', async () => {
         provider.verifyAndParseWebhook.mockReturnValue(

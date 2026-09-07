@@ -66,6 +66,7 @@ export class StripePaymentProvider implements PaymentProvider {
             type: event.type,
             referenceId: session.id,
             stripeCustomerId: typeof session.customer === 'string' ? session.customer : null,
+            paymentStatus: session.payment_status ?? null,
             metadata: (session.metadata as Record<string, string>) ?? {},
         };
     }

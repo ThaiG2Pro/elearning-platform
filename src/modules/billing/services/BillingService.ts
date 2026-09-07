@@ -62,6 +62,18 @@ export class BillingService {
         if (event.type !== 'checkout.session.completed') {
             return;
         }
+        // Security fix: session "completed" với payment_status != 'paid'
+        // (phương thức trả chậm chưa thu được tiền) từng vẫn được cộng credit.
+        // Trả về 200 (không throw) để Stripe không retry vô ích — nếu sau đó
+        // tiền về, Stripe gửi event async_payment_succeeded riêng (chưa hỗ
+        // trợ; Checkout của hệ thống chỉ bật thẻ nên thực tế luôn 'paid').
+        if (event.paymentStatus !== 'paid') {
+            console.warn('Stripe webhook: checkout.session.completed but payment_status is not paid — no credits added', {
+                referenceId: event.referenceId,
+                paymentStatus: event.paymentStatus,
+            });
+            return;
+        }
         const userIdRaw = event.metadata.userId;
         const packageId = event.metadata.packageId;
         if (!userIdRaw || !packageId) {
