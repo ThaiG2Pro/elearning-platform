@@ -62,6 +62,9 @@ export const generateAIContent = async (
         // của bạn hoặc chờ ngày mai", không âm thầm chặn, không tự fallback.
         // Dedup phía server (409): 1 request khác đang generate đúng bản này
         // — kết quả sẽ có sẵn trong cache khi request kia xong, chỉ cần chờ.
+        if (code === 'ACCESS_DENIED') {
+            throw new AIGenerationError('Bạn không có quyền tạo nội dung AI cho nguồn này.', code);
+        }
         if (code === 'AI_GENERATION_IN_PROGRESS') {
             throw new AIGenerationError('Nội dung này đang được tạo bởi một yêu cầu khác — chờ chút rồi bấm lại.', code);
         }

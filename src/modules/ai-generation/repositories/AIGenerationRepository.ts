@@ -98,15 +98,35 @@ export class AIGenerationRepository {
 
     /** Tra bản SHARED-BYOK trùng recipe tuỳ biến — mục 4 nhánh 3. Cùng lý do
      *  chỉ khớp READY như `findDefaultCache` ở trên. */
-    async findSharedByokMatch(sourceId: bigint, recipeHash: string): Promise<AIGenerationRecord | null> {
+    async findSharedByokMatch(
+        sourceId: bigint,
+        recipeHash: string,
+        requesterUserId?: bigint,
+    ): Promise<AIGenerationRecord | null> {
+        const where = {
+            source_id: sourceId,
+            recipe_hash: recipeHash,
+            key_source: 'BYOK' as const,
+            visibility: 'SHARED' as const,
+            status: 'READY' as const,
+            archived_at: null,
+        };
+        // Security (cache poisoning): nội dung SHARED-BYOK do user khác tạo
+        // bằng endpoint LLM của chính họ — server không kiểm chứng được. Ưu
+        // tiên bản của chính requester trước (không bao giờ bị người khác ghi
+        // đè nội dung cho mình); chỉ khi không có mới dùng bản của người khác,
+        // và chọn bản CŨ NHẤT theo id thay vì findFirst không ORDER BY (thứ
+        // tự tuỳ planner → kẻ tấn công chèn bản mới có thể "thắng" ngẫu nhiên).
+        if (requesterUserId !== undefined) {
+            const own = await this.prisma.ai_generations.findFirst({
+                where: { ...where, generated_by_user_id: requesterUserId },
+                orderBy: { id: 'asc' },
+            });
+            if (own) return toRecord(own);
+        }
         const row = await this.prisma.ai_generations.findFirst({
-            where: {
-                source_id: sourceId,
-                recipe_hash: recipeHash,
-                key_source: 'BYOK',
-                visibility: 'SHARED',
-                status: 'READY',
-            },
+            where,
+            orderBy: { id: 'asc' },
         });
         return row ? toRecord(row) : null;
     }

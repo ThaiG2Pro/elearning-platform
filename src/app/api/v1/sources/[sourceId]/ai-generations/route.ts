@@ -91,6 +91,10 @@ export async function POST(request: NextRequest, props: { params: Promise<{ sour
         if (message === 'SOURCE_NOT_FOUND') {
             return NextResponse.json({ error: message }, { status: 404 });
         }
+        // Security: source tồn tại nhưng không nằm trong space nào của user.
+        if (message === 'ACCESS_DENIED') {
+            return NextResponse.json({ error: message }, { status: 403 });
+        }
         // Dedup: đã có 1 request khác đang generate đúng bản này — 409
         // Conflict (xung đột với tiến trình đang chạy, không phải lỗi input).
         if (message === 'AI_GENERATION_IN_PROGRESS') {

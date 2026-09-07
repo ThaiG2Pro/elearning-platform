@@ -141,6 +141,23 @@ export class AIGenerationService {
             throw new Error('SOURCE_NOT_FOUND');
         }
 
+        // Security (IDOR): sourceId đến thẳng từ URL. Chỉ chủ 1 space có
+        // lesson đang trỏ vào source này mới được generate trên nó — mọi
+        // trigger hợp lệ đều đi từ trang edit space của chính owner (xem
+        // src/lib/aiGeneration.ts). Không có bước này, bất kỳ user đăng nhập
+        // nào cũng đốt quota SHARED_FREE / "đầu độc" cache cho source lạ chỉ
+        // bằng cách đếm id.
+        const ownedLesson = await this.prisma.lessons.findFirst({
+            where: {
+                source_id: source.id,
+                chapter: { space: { owner_id: req.userId } },
+            },
+            select: { id: true },
+        });
+        if (!ownedLesson) {
+            throw new Error('ACCESS_DENIED');
+        }
+
         // WP4.2 — "còn ai đang thật sự dùng" (mục 6.4), tách khỏi
         // created_at/updated_at. Best-effort: không throw ra ngoài, generate
         // chính không được phép fail vì lỗi ghi 1 cột phụ trợ.
@@ -187,7 +204,7 @@ export class AIGenerationService {
             ? await this.repo.findDefaultCache(req.sourceId, recipeHash)
             : null;
         const sharedByokMatch = !isDefaultRecipe && !skipCache
-            ? await this.repo.findSharedByokMatch(req.sourceId, recipeHash)
+            ? await this.repo.findSharedByokMatch(req.sourceId, recipeHash, req.userId)
             : null;
 
         // WP4.1 — chỉ có ý nghĩa khi 3 nhánh rẻ hơn ở trên đều không khớp;

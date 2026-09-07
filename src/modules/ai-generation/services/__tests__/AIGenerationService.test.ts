@@ -3,10 +3,15 @@ import { AIGenerationService } from '../AIGenerationService';
 
 // ── Mocks ────────────────────────────────────────────────────────────────────
 
-const makePrisma = (source: any) => ({
+const makePrisma = (source: any, ownedLesson: any = { id: 10n }) => ({
     sources: {
         findUnique: vi.fn().mockResolvedValue(source),
         update: vi.fn().mockResolvedValue(undefined),
+    },
+    // Security: generate chỉ chạy khi user sở hữu 1 space có lesson trỏ vào
+    // source — mặc định mock "có" để các test pipeline cũ không đổi hành vi.
+    lessons: {
+        findFirst: vi.fn().mockResolvedValue(ownedLesson),
     },
 });
 
@@ -84,6 +89,39 @@ describe('AIGenerationService.generate', () => {
         await expect(
             service.generate({ sourceId: 1n, recipeType: 'summary', userId: 5n }),
         ).rejects.toThrow('SOURCE_NOT_FOUND');
+    });
+
+    // Security (IDOR): source tồn tại nhưng user không sở hữu space nào có
+    // lesson trỏ vào nó → 403, không chạm cache/LLM/quota.
+    it('throws ACCESS_DENIED when the user owns no space containing this source', async () => {
+        prisma = makePrisma(SOURCE, null);
+        service = new AIGenerationService(prisma as any, repo as any, transcriptProvider as any, llmProvider as any);
+
+        await expect(
+            service.generate({ sourceId: 1n, recipeType: 'summary', userId: 5n }),
+        ).rejects.toThrow('ACCESS_DENIED');
+
+        expect(prisma.lessons.findFirst).toHaveBeenCalledWith({
+            where: { source_id: 1n, chapter: { space: { owner_id: 5n } } },
+            select: { id: true },
+        });
+        expect(repo.findDefaultCache).not.toHaveBeenCalled();
+        expect(llmProvider.generate).not.toHaveBeenCalled();
+        expect(repo.countActivationsToday).not.toHaveBeenCalled();
+    });
+
+    it('passes the requester userId to findSharedByokMatch so own SHARED-BYOK copy wins over strangers', async () => {
+        await service.generate({
+            sourceId: 1n,
+            recipeType: 'summary',
+            userId: 5n,
+            params: { length: 'long' },
+            byokApiKey: 'sk-test',
+            byokBaseUrl: 'https://api.openai.com/v1',
+            byokModel: 'gpt-4o-mini',
+        }).catch(() => undefined);
+
+        expect(repo.findSharedByokMatch).toHaveBeenCalledWith(1n, expect.any(String), 5n);
     });
 
     it('serves the SHARED_FREE cache instantly without calling the LLM again', async () => {
