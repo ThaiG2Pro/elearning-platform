@@ -1,6 +1,6 @@
 # ── Stage 1: Install dependencies ─────────────────────────────────────────────
-FROM node:20-alpine AS deps
-RUN apk add --no-cache libc6-compat
+FROM node:24-alpine AS deps
+RUN apk add --no-cache libc6-compat openssl
 WORKDIR /app
 
 # Install pnpm
@@ -10,7 +10,8 @@ COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
 
 # ── Stage 2: Build the application ────────────────────────────────────────────
-FROM node:20-alpine AS builder
+FROM node:24-alpine AS builder
+RUN apk add --no-cache openssl
 RUN corepack enable && corepack prepare pnpm@latest --activate
 WORKDIR /app
 
@@ -25,7 +26,8 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN pnpm run build
 
 # ── Stage 3: Production runtime ───────────────────────────────────────────────
-FROM node:20-alpine AS runner
+FROM node:24-alpine AS runner
+RUN apk add --no-cache openssl
 WORKDIR /app
 
 ENV NODE_ENV=production
@@ -42,10 +44,10 @@ RUN addgroup --system --gid 1001 nodejs \
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-# Prisma runtime needs the schema + generated client
+# Prisma: client sinh ra + engine đã được Next standalone trace sẵn vào
+# node_modules/.pnpm/@prisma+client@*/node_modules/.prisma (pnpm KHÔNG có
+# node_modules/.prisma ở top-level — COPY đường đó sẽ fail). Chỉ cần thêm schema.
 COPY --from=builder /app/prisma ./prisma
-COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 
 USER nextjs
 

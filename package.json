@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "",
   "packageManager": "pnpm@10.30.3",
+  "engines": {
+    "node": ">=22"
+  },
   "main": "index.js",
   "scripts": {
     "dev": "next dev",
