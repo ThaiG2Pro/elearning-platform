@@ -439,7 +439,7 @@ export default function MyLearningPage() {
                         <p className="text-xs font-semibold text-ink-textMid uppercase tracking-wide mb-1">Đã tạo Space</p>
                         <h2 className="text-lg font-bold text-ink-text">{createdSpace.title}</h2>
                         {createdSpace.titleIsPlaceholder && (
-                            <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mt-2">
+                            <p className="text-sm text-ink-warning bg-ink-warningA border border-ink-warningBorder rounded-lg px-3 py-2 mt-2">
                                 Không đọc được tên video từ YouTube — đã đặt tên tạm, bạn có thể đổi trong phần chỉnh sửa.
                             </p>
                         )}
