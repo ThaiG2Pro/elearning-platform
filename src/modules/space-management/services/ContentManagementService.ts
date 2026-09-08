@@ -9,6 +9,7 @@ import { VideoThumbnailUtil } from '../../shared/utils/VideoThumbnailUtil';
 import { YouTubeOEmbedAdapter } from '../../../shared/adapters/YouTubeOEmbedAdapter';
 import { WebPageAdapter } from '../../../shared/adapters/WebPageAdapter';
 import { FIELD_LIMITS, assertMaxLength } from '../../../shared/validation/fieldLimits';
+import { isPublicHttpUrlSyntax } from '../../../shared/security/safeUrl';
 
 export interface QuizQuestionPreviewDto {
     id: bigint;
@@ -513,6 +514,19 @@ export class ContentManagementService {
         assertMaxLength(dto.title, FIELD_LIMITS.TITLE, 'TITLE_TOO_LONG');
         if (dto.contentUrl) {
             assertMaxLength(dto.contentUrl, FIELD_LIMITS.URL, 'URL_TOO_LONG');
+            // Security — content_url được lưu thẳng không qua adapter nào validate
+            // khi URL không phải YouTube/web page (findOrCreateSourceForUrl bên
+            // dưới chỉ best-effort, im lặng bỏ qua source chứ không chặn lưu).
+            // Không có check này, 1 lesson VIDEO/ARTICLE có thể lưu content_url =
+            // "javascript:alert(1)" hoặc bất kỳ scheme lạ nào — hiện tại chưa có
+            // chỗ nào trong UI render nó thành href/dangerouslySetInnerHTML nên
+            // chưa khai thác được XSS trực tiếp, nhưng đây là dữ liệu server lưu
+            // và trả về nguyên văn cho client, nên chặn ở nguồn thay vì dựa vào
+            // "hiện tại chưa ai render sai" mãi đúng. isPublicHttpUrlSyntax (dùng
+            // chung với WebPageAdapter) chỉ chấp nhận http/https hợp lệ.
+            if (!isPublicHttpUrlSyntax(dto.contentUrl)) {
+                throw new Error('INVALID_CONTENT_URL');
+            }
         }
         // 2026-09-04 — trước đó lesson tạo tay trong editor (khác luồng "dán
         // link → tự tạo space") không bao giờ có source_id dù có videoUrl,
@@ -539,6 +553,11 @@ export class ContentManagementService {
         }
         if (dto.contentUrl) {
             assertMaxLength(dto.contentUrl, FIELD_LIMITS.URL, 'URL_TOO_LONG');
+            // Cùng lý do với createLesson ở trên — chặn scheme lạ (javascript:,
+            // data:, ...) trước khi ghi content_url.
+            if (!isPublicHttpUrlSyntax(dto.contentUrl)) {
+                throw new Error('INVALID_CONTENT_URL');
+            }
         }
 
         // Cùng lý do với createLesson ở trên — sửa/dán videoUrl vào 1 lesson

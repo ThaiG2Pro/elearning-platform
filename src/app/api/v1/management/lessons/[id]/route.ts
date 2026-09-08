@@ -39,7 +39,7 @@ export async function PUT(request: NextRequest, props: { params: Promise<{ id: s
         const message = error instanceof Error ? error.message : 'Internal server error';
         const status = message === 'ACCESS_DENIED' ? 403
             : message === 'LESSON_NOT_FOUND' ? 404
-            : message === 'TITLE_TOO_LONG' || message === 'URL_TOO_LONG' ? 400
+            : message === 'TITLE_TOO_LONG' || message === 'URL_TOO_LONG' || message === 'INVALID_CONTENT_URL' ? 400
             : 500;
         return NextResponse.json({ error: safeErrorMessage(message, status) }, { status });
     }
