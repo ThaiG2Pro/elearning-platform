@@ -1,6 +1,7 @@
 import { NoteRepository } from '../repositories/NoteRepository';
 import { Note } from '../domain/Note';
 import { PrismaClient } from '@prisma/client';
+import { AccessControlPolicy } from '../domain/AccessControlPolicy';
 
 export interface NoteView {
     id: string;
@@ -28,7 +29,12 @@ export class NoteService {
             throw new Error('NOTE_TOO_LONG');
         }
 
-        const spaceId = await this.findSpaceIdByLesson(lessonId);
+        // Security — lessonId chỉ là 1 route param, tự nó không chứng minh
+        // được quyền truy cập (giống assertLessonAccess bên QuizService):
+        // trước khi findSpaceIdByLesson chỉ trả về spaceId, không hề kiểm
+        // space đó có phải của userId hay không, nên bất kỳ user đăng nhập
+        // nào cũng ghi được note lên lesson của người khác.
+        const spaceId = await this.findSpaceIdByLesson(userId, lessonId);
         const note = Note.create(userId, spaceId, lessonId, trimmed, videoTimestampSec);
         const saved = await this.noteRepo.create(note);
         return this.toView(saved);
@@ -61,7 +67,7 @@ export class NoteService {
         };
     }
 
-    private async findSpaceIdByLesson(lessonId: bigint): Promise<bigint> {
+    private async findSpaceIdByLesson(userId: bigint, lessonId: bigint): Promise<bigint> {
         const lesson = await this.prisma.lessons.findUnique({
             where: { id: lessonId },
             include: { chapter: { include: { space: true } } },
@@ -70,6 +76,12 @@ export class NoteService {
         if (!lesson) {
             throw new Error('LESSON_NOT_FOUND');
         }
+
+        // Cùng chính sách sở hữu với QuizService.assertLessonAccess: space là
+        // của cá nhân, "học viên" của 1 space share thực chất học trên bản
+        // clone họ tự sở hữu — nên ghi note vào lesson chỉ hợp lệ khi userId
+        // chính là owner của space chứa lesson đó.
+        AccessControlPolicy.validateOwnership(userId, lesson.chapter.space.owner_id);
 
         return lesson.chapter.space.id;
     }

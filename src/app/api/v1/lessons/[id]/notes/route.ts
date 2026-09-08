@@ -61,7 +61,10 @@ export async function POST(request: NextRequest, props: { params: Promise<{ id: 
     } catch (error) {
         console.error('Error creating note:', error);
         const message = error instanceof Error ? error.message : 'Internal server error';
-        const status = message === 'NOTE_EMPTY' || message === 'NOTE_TOO_LONG' ? 400 : 500;
+        const status = message === 'NOTE_EMPTY' || message === 'NOTE_TOO_LONG' ? 400
+            : message === 'ACCESS_DENIED' ? 403
+            : message === 'LESSON_NOT_FOUND' ? 404
+            : 500;
         return NextResponse.json({ error: safeErrorMessage(message, status) }, { status });
     }
 }
