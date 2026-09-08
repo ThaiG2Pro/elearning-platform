@@ -4,6 +4,7 @@ import { getUserFromRequest } from '../../../../../../../../shared/middleware/au
 import { applyRateLimit, UPLOAD_RATE_LIMITS, QUIZ_UPLOAD_MAX_BYTES } from '../../../../../../../../shared/middleware/rateLimit';
 import { parseIdParam } from '../../../../../../../../shared/http/params';
 import { safeErrorMessage } from '../../../../../../../../shared/http/routeErrors';
+import { hasXlsxMagicBytes } from '../../../../../../../../shared/validation/fileSignature';
 
 const controller = new QuizController();
 
@@ -36,6 +37,12 @@ export async function POST(request: NextRequest, props: { params: Promise<{ id: 
         // Validate file type — only OOXML .xlsx (the parser does not read legacy .xls)
         if (!file.name.toLowerCase().endsWith('.xlsx')) {
             return NextResponse.json({ error: 'INVALID_FILE_TYPE', message: 'Only .xlsx files are allowed' }, { status: 400 });
+        }
+        // Magic-byte check — tên file client tự khai báo, không đáng tin.
+        // .xlsx là ZIP nên luôn mở đầu bằng "PK\x03\x04"; một file bất kỳ
+        // đổi tên thành .xlsx sẽ bị chặn ở đây trước khi chạm tới parser.
+        if (!(await hasXlsxMagicBytes(file))) {
+            return NextResponse.json({ error: 'INVALID_FILE_TYPE', message: 'File is not a valid .xlsx (bad signature)' }, { status: 400 });
         }
         // Size cap: the whole file is buffered in memory before parsing.
         if (file.size > QUIZ_UPLOAD_MAX_BYTES) {
