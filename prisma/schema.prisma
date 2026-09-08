@@ -94,6 +94,12 @@ model users {
   credit_balance      Int                 @default(0) @map("credit_balance")
   // WP4.1 — Stripe Customer id, tạo lười (lazy) ở lần mua credit đầu tiên.
   stripe_customer_id  String?             @unique @map("stripe_customer_id") @db.VarChar(255)
+  // Security — mốc thời gian đổi/reset mật khẩu gần nhất. Dùng để vô hiệu
+  // hoá refresh token cũ tại /auth/refresh: token có iat trước mốc này bị
+  // từ chối, ép người dùng (và kẻ chiếm được refresh token cũ) phải đăng
+  // nhập lại. Access token 15 phút vẫn có thể sống nốt tới hết hạn — đánh
+  // đổi chấp nhận được để không phải tra DB trên mọi request có auth.
+  password_changed_at DateTime?           @map("password_changed_at") @db.Timestamp(6)
   // Avatar (ảnh data-URL, có thể hàng trăm KB) tách sang user_avatars —
   // bảng users là bảng nóng nhất (auth, join khắp nơi), không để nó cõng blob.
   avatar            user_avatars?

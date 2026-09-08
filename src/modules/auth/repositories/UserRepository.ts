@@ -9,6 +9,7 @@ type UserWithAvatar = {
     id: bigint; email: string; password_hash: string; status: user_status;
     role: user_role; full_name: string; age: number | null;
     created_at: Date | null; avatar: { data: string } | null;
+    password_changed_at: Date | null;
 };
 
 function toEntity(user: UserWithAvatar): UserEntity {
@@ -23,6 +24,7 @@ function toEntity(user: UserWithAvatar): UserEntity {
         user.created_at || undefined,
         undefined, // lastLoginAt - not loaded in this query
         user.avatar?.data || undefined,
+        user.password_changed_at || undefined,
     );
 }
 
@@ -99,6 +101,7 @@ export class UserRepository {
                         full_name: user.fullName,
                         status: user.status as user_status,
                         age: user.age || null,
+                        password_changed_at: user.passwordChangedAt ?? undefined,
                     },
                 }),
                 user.avatarUrl
@@ -129,7 +132,8 @@ export class UserRepository {
     // (activation/reset), not JWT sessions — the access token stays valid
     // until it naturally expires since shared/middleware/auth.ts trusts the
     // JWT payload without a DB lookup; the refresh route does re-check
-    // isActive(), so refreshing is blocked immediately.
+    // isActive() (and, since the password-change fix below, password_changed_at
+    // too), so refreshing is blocked immediately.
     async invalidateAllTokens(userId: bigint): Promise<void> {
         await prisma.tokens.deleteMany({ where: { user_id: userId } });
     }

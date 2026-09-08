@@ -12,6 +12,9 @@ export class UserEntity {
         public createdAt?: Date,
         public lastLoginAt?: Date,
         public avatarUrl?: string,
+        // Security — mốc đổi mật khẩu gần nhất, dùng để vô hiệu hoá refresh
+        // token cũ (xem changePassword()).
+        public passwordChangedAt?: Date,
     ) { }
 
     isActive(): boolean {
@@ -43,6 +46,11 @@ export class UserEntity {
 
     async changePassword(newPassword: string): Promise<void> {
         this.passwordHash = await bcrypt.hash(newPassword, 10);
+        // Security — bất kỳ refresh token nào phát hành trước thời điểm này
+        // (kể cả token bị lộ) sẽ bị /auth/refresh từ chối. Áp dụng cho cả
+        // đổi mật khẩu (change-password) lẫn khôi phục (reset-password) vì
+        // cả hai đều đi qua hàm này.
+        this.passwordChangedAt = new Date();
     }
 
     updateLastLogin(): void {

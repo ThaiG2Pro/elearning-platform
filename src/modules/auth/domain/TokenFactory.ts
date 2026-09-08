@@ -41,12 +41,14 @@ export class TokenFactory {
         }
     }
 
-    static verifyRefreshToken(token: string): { userId: bigint } | null {
+    static verifyRefreshToken(token: string): { userId: bigint; issuedAt: Date } | null {
         try {
             const secret = this.getJwtSecret();
             const decoded = jwt.verify(token, secret) as any;
             if (decoded.type === 'refresh') {
-                return { userId: BigInt(decoded.id) };
+                // `iat` là số giây kể từ epoch do jsonwebtoken tự gắn khi sign() —
+                // dùng để so sánh với password_changed_at (xem /auth/refresh).
+                return { userId: BigInt(decoded.id), issuedAt: new Date(decoded.iat * 1000) };
             }
             return null;
         } catch {

@@ -34,5 +34,17 @@ describe('UserEntity', () => {
             const match = await user.matchPassword('my-new-pass');
             expect(match).toBe(true);
         });
+
+        // Security fix: session invalidation — /auth/refresh dùng
+        // passwordChangedAt để từ chối refresh token cũ hơn lần đổi mật
+        // khẩu gần nhất.
+        it('sets passwordChangedAt to now', async () => {
+            const user = makeUser();
+            expect(user.passwordChangedAt).toBeUndefined();
+            const before = Date.now();
+            await user.changePassword('new-secure-password');
+            expect(user.passwordChangedAt).toBeInstanceOf(Date);
+            expect(user.passwordChangedAt!.getTime()).toBeGreaterThanOrEqual(before);
+        });
     });
 });

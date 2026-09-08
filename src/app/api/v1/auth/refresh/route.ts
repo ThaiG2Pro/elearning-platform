@@ -42,6 +42,19 @@ export async function POST(request: NextRequest) {
             );
         }
 
+        // Security — huỷ session khi đổi/reset mật khẩu: refresh token phát
+        // hành trước lần đổi mật khẩu gần nhất (kể cả token bị đánh cắp) bị
+        // từ chối ở đây, buộc phải đăng nhập lại bằng mật khẩu mới. Access
+        // token 15 phút đang dùng vẫn sống nốt tới hết hạn — accepted vì
+        // getRequestContext() không tra DB trên mọi request (xem comment
+        // trong UserRepository.invalidateAllTokens).
+        if (user.passwordChangedAt && decoded.issuedAt < user.passwordChangedAt) {
+            return NextResponse.json(
+                { code: 'INVALID_REFRESH_TOKEN', message: 'Refresh token invalidated by password change' },
+                { status: 401 }
+            );
+        }
+
         // Generate new access token
         const newTokens = TokenFactory.createAuthTokens(user);
 

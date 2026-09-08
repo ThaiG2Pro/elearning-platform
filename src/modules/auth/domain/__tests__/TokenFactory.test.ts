@@ -26,6 +26,18 @@ describe('TokenFactory refresh flow', () => {
         expect(decoded!.userId).toBe(42n);
     });
 
+    // Security fix: /auth/refresh so sánh issuedAt với password_changed_at
+    // để huỷ refresh token cũ sau khi đổi mật khẩu — issuedAt phải đọc đúng
+    // từ claim `iat` mà jsonwebtoken tự gắn lúc sign().
+    it('exposes issuedAt derived from the JWT iat claim', () => {
+        const before = Math.floor(Date.now() / 1000);
+        const { refreshToken } = TokenFactory.createAuthTokens(makeUser());
+        const decoded = TokenFactory.verifyRefreshToken(refreshToken);
+        expect(decoded).not.toBeNull();
+        expect(decoded!.issuedAt).toBeInstanceOf(Date);
+        expect(Math.floor(decoded!.issuedAt.getTime() / 1000)).toBeGreaterThanOrEqual(before);
+    });
+
     it('rejects an access token passed as a refresh token', () => {
         const { accessToken } = TokenFactory.createAuthTokens(makeUser());
         expect(TokenFactory.verifyRefreshToken(accessToken)).toBeNull();
