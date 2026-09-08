@@ -58,6 +58,9 @@ export async function PUT(request: NextRequest, props: { params: Promise<{ id: s
         if (error instanceof Error && error.message === 'SPACE_NOT_FOUND') {
             return NextResponse.json({ error: 'SPACE_NOT_FOUND' }, { status: 404 });
         }
+        if (error instanceof Error && error.message === 'TITLE_TOO_LONG') {
+            return NextResponse.json({ error: 'TITLE_TOO_LONG' }, { status: 400 });
+        }
         const message = error instanceof Error ? error.message : 'Internal server error';
         return NextResponse.json({ error: safeErrorMessage(message, 500) }, { status: 500 });
     }

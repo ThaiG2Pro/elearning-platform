@@ -99,6 +99,11 @@ export async function POST(request: NextRequest, props: { params: Promise<{ id: 
         }, { status: 201 });
     } catch (error) {
         console.error('Create section error:', error);
+        // Security — createSection giờ chặn title quá dài (Fix 8), trước đây
+        // mọi lỗi từ service đều rơi vào 500 chung dù là lỗi input hợp lệ 400.
+        if (error instanceof Error && error.message === 'TITLE_TOO_LONG') {
+            return NextResponse.json({ error: 'TITLE_TOO_LONG' }, { status: 400 });
+        }
         return NextResponse.json(
             { error: 'Internal server error' },
             { status: 500 }

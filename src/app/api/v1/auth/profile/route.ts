@@ -50,6 +50,12 @@ export async function PUT(
         return NextResponse.json(result);
     } catch (error) {
         console.error('Update profile error:', error);
+        // Security — VALIDATION_ERROR (fullName rỗng hoặc quá dài, xem
+        // AuthController.updateProfile) trước đó luôn rơi vào 500 chung ở
+        // đây, dù đã được map đúng 400 ở route register cho cùng error code.
+        if (error instanceof Error && error.message === 'VALIDATION_ERROR') {
+            return NextResponse.json({ error: 'VALIDATION_ERROR', message: 'Invalid full name' }, { status: 400 });
+        }
         return NextResponse.json(
             { error: 'Internal server error' },
             { status: 500 }

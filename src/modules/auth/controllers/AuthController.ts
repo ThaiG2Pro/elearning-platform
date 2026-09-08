@@ -24,6 +24,7 @@ import { DeleteAccountDto } from '../dtos/DeleteAccountDto';
 import { DeleteAccountResponseDto } from '../dtos/DeleteAccountResponseDto';
 import { UserDataExportDto } from '../dtos/UserDataExportDto';
 import { sanitizeRedirectPath } from '../../../shared/security/safeRedirect';
+import { FIELD_LIMITS, assertMaxLength } from '../../../shared/validation/fieldLimits';
 
 export class AuthController {
     private authService: AuthService;
@@ -52,6 +53,10 @@ export class AuthController {
         if (!dto.email || !dto.password || !dto.fullName) {
             throw new Error('VALIDATION_ERROR');
         }
+        // Security — full_name là VarChar(100), trước đây không bị chặn ở
+        // đây nên 1 fullName cực dài rơi thẳng xuống Prisma và bị Postgres
+        // từ chối bằng lỗi thô (xem shared/validation/fieldLimits.ts).
+        assertMaxLength(dto.fullName, FIELD_LIMITS.FULL_NAME, 'VALIDATION_ERROR');
         return await this.authService.registerNewUser(dto);
     }
 
@@ -95,6 +100,7 @@ export class AuthController {
         if (!dto.fullName) {
             throw new Error('VALIDATION_ERROR');
         }
+        assertMaxLength(dto.fullName, FIELD_LIMITS.FULL_NAME, 'VALIDATION_ERROR');
         return await this.authService.updateProfile(userId, dto);
     }
 

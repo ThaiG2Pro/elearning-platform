@@ -63,6 +63,10 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ spaceId: spaceId.toString(), status: 'ACTIVE' }, { status: 201 });
     } catch (error) {
         console.error('Create space error:', error);
+        // Security — createSpace giờ chặn title quá dài (Fix 8).
+        if (error instanceof Error && error.message === 'TITLE_TOO_LONG') {
+            return NextResponse.json({ error: 'TITLE_TOO_LONG' }, { status: 400 });
+        }
         return NextResponse.json(
             { error: 'Internal server error' },
             { status: 500 }

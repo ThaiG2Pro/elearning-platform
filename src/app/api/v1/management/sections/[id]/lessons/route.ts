@@ -42,7 +42,10 @@ export async function POST(request: NextRequest, props: { params: Promise<{ id: 
     } catch (error) {
         console.error('Create lesson error:', error);
         const message = error instanceof Error ? error.message : 'Internal server error';
-        const status = message === 'ACCESS_DENIED' ? 403 : message === 'SECTION_NOT_FOUND' ? 404 : 500;
+        const status = message === 'ACCESS_DENIED' ? 403
+            : message === 'SECTION_NOT_FOUND' ? 404
+            : message === 'TITLE_TOO_LONG' || message === 'URL_TOO_LONG' || message === 'INVALID_LESSON_TYPE' ? 400
+            : 500;
         return NextResponse.json({ error: safeErrorMessage(message, status) }, { status });
     }
 }

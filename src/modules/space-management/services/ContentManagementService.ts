@@ -8,6 +8,7 @@ import type { source_type, lesson_type } from '@prisma/client';
 import { VideoThumbnailUtil } from '../../shared/utils/VideoThumbnailUtil';
 import { YouTubeOEmbedAdapter } from '../../../shared/adapters/YouTubeOEmbedAdapter';
 import { WebPageAdapter } from '../../../shared/adapters/WebPageAdapter';
+import { FIELD_LIMITS, assertMaxLength } from '../../../shared/validation/fieldLimits';
 
 export interface QuizQuestionPreviewDto {
     id: bigint;
@@ -118,6 +119,7 @@ export class ContentManagementService {
 
     async createSpace(ownerId: bigint, dto: CreateSpaceDto): Promise<bigint> {
         const title = dto?.title?.trim() || 'Space mới';
+        assertMaxLength(title, FIELD_LIMITS.TITLE, 'TITLE_TOO_LONG');
         const baseSlug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'khoa-hoc-moi';
         const suffix = Math.random().toString(36).slice(2, 7);
         const slug = `${baseSlug}-${suffix}`;
@@ -391,6 +393,7 @@ export class ContentManagementService {
 
         // Owner can edit their space at any time — no approval-driven lock.
         if (data.title) {
+            assertMaxLength(data.title, FIELD_LIMITS.TITLE, 'TITLE_TOO_LONG');
             space.title = data.title;
         }
         if (data.description !== undefined) {
@@ -472,6 +475,7 @@ export class ContentManagementService {
         const space = await this.spaceRepository.findById(spaceId);
         if (!space) throw new Error('SPACE_NOT_FOUND');
         AccessControlPolicy.validateOwnership(userId, space.ownerId);
+        assertMaxLength(dto.title, FIELD_LIMITS.TITLE, 'TITLE_TOO_LONG');
 
         const section = await this.prisma.chapters.create({
             data: {
@@ -485,6 +489,9 @@ export class ContentManagementService {
 
     async updateSection(userId: bigint, sectionId: bigint, dto: UpdateSectionDto): Promise<void> {
         AccessControlPolicy.validateOwnership(userId, await this.getOwnerIdForSection(sectionId));
+        if (dto.title) {
+            assertMaxLength(dto.title, FIELD_LIMITS.TITLE, 'TITLE_TOO_LONG');
+        }
 
         await this.prisma.chapters.update({
             where: { id: sectionId },
@@ -502,6 +509,10 @@ export class ContentManagementService {
         // nghiệp vụ rõ ràng thay vì Prisma error thô.
         if (!['VIDEO', 'QUIZ', 'ARTICLE'].includes(dto.type)) {
             throw new Error('INVALID_LESSON_TYPE');
+        }
+        assertMaxLength(dto.title, FIELD_LIMITS.TITLE, 'TITLE_TOO_LONG');
+        if (dto.contentUrl) {
+            assertMaxLength(dto.contentUrl, FIELD_LIMITS.URL, 'URL_TOO_LONG');
         }
         // 2026-09-04 — trước đó lesson tạo tay trong editor (khác luồng "dán
         // link → tự tạo space") không bao giờ có source_id dù có videoUrl,
@@ -523,6 +534,12 @@ export class ContentManagementService {
 
     async updateLesson(userId: bigint, lessonId: bigint, dto: UpdateLessonDto): Promise<{ sourceId: bigint | null }> {
         AccessControlPolicy.validateOwnership(userId, await this.getOwnerIdForLesson(lessonId));
+        if (dto.title) {
+            assertMaxLength(dto.title, FIELD_LIMITS.TITLE, 'TITLE_TOO_LONG');
+        }
+        if (dto.contentUrl) {
+            assertMaxLength(dto.contentUrl, FIELD_LIMITS.URL, 'URL_TOO_LONG');
+        }
 
         // Cùng lý do với createLesson ở trên — sửa/dán videoUrl vào 1 lesson
         // đã tồn tại (vd tạo lesson rỗng rồi mới dán link sau) cũng phải gán
