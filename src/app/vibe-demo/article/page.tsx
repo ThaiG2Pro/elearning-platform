@@ -385,7 +385,7 @@ setCount(c => c + 1); // 2 → 3`} />
         </P>
         {[
           ['a', 'Subscription / event listener — không gỡ thì mỗi lần render chồng thêm một listener.'],
-          ['b', 'Request bất đồng bộ — đánh dấu &quot;đã hủy&quot; để response về muộn không setState lên component đã unmount.'],
+          ['b', 'Request bất đồng bộ — đánh dấu "đã hủy" để response về muộn không setState lên component đã unmount.'],
           ['c', 'Timer — clearInterval/clearTimeout, nếu không đồng hồ cũ vẫn chạy song song đồng hồ mới.'],
         ].map(([m, text]) => (
           <div key={m} className="flex items-stretch">
@@ -395,10 +395,15 @@ setCount(c => c + 1); // 2 → 3`} />
             >
               {m}
             </span>
-            <div
-              className="flex-1 border-l border-ink-marginLn pt-3 pr-8 pb-0 pl-[22px] text-[15.5px] text-ink-textMid leading-[1.7]"
-              dangerouslySetInnerHTML={{ __html: text }}
-            />
+            {/* Security — text ở trên là chuỗi tĩnh hardcode trong file, không
+                phải input người dùng, nên dangerouslySetInnerHTML cũ ở đây
+                chưa từng là lỗ hổng thật. Nó chỉ tồn tại để giải mã entity
+                &quot; thành dấu ngoặc kép — bỏ hẳn entity, dùng ký tự " trực
+                tiếp trong string, thì render bằng JSX text con bình thường
+                là đủ, không cần innerHTML nữa. */}
+            <div className="flex-1 border-l border-ink-marginLn pt-3 pr-8 pb-0 pl-[22px] text-[15.5px] text-ink-textMid leading-[1.7]">
+              {text}
+            </div>
           </div>
         ))}
         <P>
