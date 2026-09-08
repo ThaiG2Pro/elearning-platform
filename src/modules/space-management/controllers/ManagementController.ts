@@ -3,6 +3,7 @@ import { SpaceRepository } from '../repositories/SpaceRepository';
 import { CreateSpaceDto, SpaceSummaryDto } from '../dtos/SpaceManagementDto';
 import { CreateSectionDto, UpdateSectionDto, SectionDto, CreateLessonDto, UpdateLessonDto } from '../dtos/ContentDto';
 import { prisma } from '../../../shared/config/database';
+import { Space } from '../domain/Space';
 
 export class ManagementController {
     private contentService: ContentManagementService;
@@ -42,8 +43,8 @@ export class ManagementController {
     }
 
     // Section Management
-    async getSpaceSections(spaceId: bigint): Promise<SectionDto[]> {
-        return await this.contentService.getSpaceSections(spaceId);
+    async getSpaceSections(userId: bigint, spaceId: bigint): Promise<{ space: Space; sections: SectionDto[] }> {
+        return await this.contentService.getSpaceSections(userId, spaceId);
     }
 
     async createSection(userId: bigint, spaceId: bigint, dto: CreateSectionDto): Promise<bigint> {

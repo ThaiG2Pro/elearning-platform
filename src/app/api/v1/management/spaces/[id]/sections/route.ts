@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { ManagementController } from '@/modules/space-management/controllers/ManagementController';
 import { getUserIdFromRequest } from '@/shared/middleware/auth';
 import { CreateSectionDto } from '@/modules/space-management/dtos/ContentDto';
-import { prisma } from '@/shared/config/database';
 import { parseIdParam } from '@/shared/http/params';
 
 export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
@@ -18,22 +17,15 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
             return NextResponse.json({ error: 'SPACE_NOT_FOUND' }, { status: 404 });
         }
 
-        // Ensure space exists
-        const space = await prisma.spaces.findUnique({ where: { id: spaceId } });
-        if (!space) {
-            return NextResponse.json({ error: 'SPACE_NOT_FOUND' }, { status: 404 });
-        }
-
-        // Ensure owner
-        if (space.owner_id !== userId) {
-            return NextResponse.json({ error: 'ACCESS_DENIED' }, { status: 403 });
-        }
-
-        // Personal-organizer model: the owner can always view/edit their
-        // space's sections, active or not — no approval-driven lock.
-
+        // Security fix (issue 13) — ownership check giờ nằm trong
+        // ContentManagementService.getSpaceSections (AccessControlPolicy),
+        // cùng chỗ với mọi route quản trị khác, thay vì route tự query
+        // prisma.spaces + so sánh owner_id (dễ trôi lệch nếu service đổi
+        // logic mà quên đồng bộ 2 nơi). Personal-organizer model: the owner
+        // can always view/edit their space's sections, active or not — no
+        // approval-driven lock.
         const controller = new ManagementController();
-        const sections = await controller.getSpaceSections(spaceId);
+        const { space, sections } = await controller.getSpaceSections(userId, spaceId);
 
         // Found while smoke-testing this file's ownership check (WP1.6
         // follow-up): SectionDto/LessonDto ids are bigint and this route
@@ -53,6 +45,12 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
         });
     } catch (error) {
         console.error('Get space sections error:', error);
+        if (error instanceof Error && error.message === 'SPACE_NOT_FOUND') {
+            return NextResponse.json({ error: 'SPACE_NOT_FOUND' }, { status: 404 });
+        }
+        if (error instanceof Error && error.message === 'ACCESS_DENIED') {
+            return NextResponse.json({ error: 'ACCESS_DENIED' }, { status: 403 });
+        }
         return NextResponse.json(
             { error: 'Internal server error' },
             { status: 500 }
@@ -74,19 +72,9 @@ export async function POST(request: NextRequest, props: { params: Promise<{ id: 
         }
         const body: CreateSectionDto = await request.json();
 
-        // Authorization & business checks
-        const space = await prisma.spaces.findUnique({ where: { id: spaceId } });
-        if (!space) {
-            return NextResponse.json({ error: 'SPACE_NOT_FOUND' }, { status: 404 });
-        }
-
-        // Ensure the requester is the owner
-        if (space.owner_id !== userId) {
-            return NextResponse.json({ error: 'ACCESS_DENIED' }, { status: 403 });
-        }
-
-        // Owner can add sections at any time — no approval-driven lock.
-
+        // Security fix (issue 13) — createSection tự làm ownership check
+        // (AccessControlPolicy) rồi, route không cần tự query prisma.spaces
+        // nữa. Owner can add sections at any time — no approval-driven lock.
         const controller = new ManagementController();
         const sectionId = await controller.createSection(userId, spaceId, body);
 
@@ -103,6 +91,15 @@ export async function POST(request: NextRequest, props: { params: Promise<{ id: 
         // mọi lỗi từ service đều rơi vào 500 chung dù là lỗi input hợp lệ 400.
         if (error instanceof Error && error.message === 'TITLE_TOO_LONG') {
             return NextResponse.json({ error: 'TITLE_TOO_LONG' }, { status: 400 });
+        }
+        // Security fix (issue 13) — ownership check giờ ném từ service
+        // (SPACE_NOT_FOUND/ACCESS_DENIED) thay vì route tự kiểm trước; cần
+        // map 2 mã lỗi này ở đây, không thì rơi vào 500 chung.
+        if (error instanceof Error && error.message === 'SPACE_NOT_FOUND') {
+            return NextResponse.json({ error: 'SPACE_NOT_FOUND' }, { status: 404 });
+        }
+        if (error instanceof Error && error.message === 'ACCESS_DENIED') {
+            return NextResponse.json({ error: 'ACCESS_DENIED' }, { status: 403 });
         }
         return NextResponse.json(
             { error: 'Internal server error' },

@@ -1,4 +1,5 @@
 import { SpaceRepository } from '../repositories/SpaceRepository';
+import { Space } from '../domain/Space';
 import { AccessControlPolicy } from '../domain/AccessControlPolicy';
 import { CreateSpaceDto, SpaceSummaryDto } from '../dtos/SpaceManagementDto';
 import { CreateSectionDto, UpdateSectionDto, SectionDto, CreateLessonDto, UpdateLessonDto, LessonDto } from '../dtos/ContentDto';
@@ -443,7 +444,23 @@ export class ContentManagementService {
         return lesson.chapter.space.owner_id;
     }
 
-    async getSpaceSections(spaceId: bigint): Promise<SectionDto[]> {
+    /**
+     * Security fix (issue 13) — GET/POST management/spaces/[id]/sections
+     * trước đây tự làm ownership check bằng prisma.spaces.findUnique +
+     * so sánh owner_id thẳng trong route, khác với mọi route quản trị còn
+     * lại (đều đi qua AccessControlPolicy trong service). 2 bản check này
+     * có thể trôi lệch theo thời gian — sửa createSection/updateSpaceMetadata
+     * để chặt hơn/khác đi mà quên đồng bộ route này là kiểu lỗi dễ xảy ra.
+     * Chuyển ownership check vào đây (cùng chỗ createSection/updateSection
+     * đã làm) để chỉ có đúng 1 nguồn sự thật; trả về cả Space (không chỉ
+     * SectionDto[]) để route dựng response mà không cần tự query prisma
+     * lần nữa.
+     */
+    async getSpaceSections(userId: bigint, spaceId: bigint): Promise<{ space: Space; sections: SectionDto[] }> {
+        const space = await this.spaceRepository.findById(spaceId);
+        if (!space) throw new Error('SPACE_NOT_FOUND');
+        AccessControlPolicy.validateOwnership(userId, space.ownerId);
+
         const sections = await this.prisma.chapters.findMany({
             where: { space_id: spaceId },
             include: {
@@ -454,7 +471,7 @@ export class ContentManagementService {
             orderBy: { order_index: 'asc' },
         });
 
-        return sections.map(section => {
+        const sectionDtos = sections.map(section => {
             const lessons = section.lessons.map(lesson => new LessonDto(
                 lesson.id,
                 lesson.title,
@@ -470,6 +487,7 @@ export class ContentManagementService {
                 lessons
             );
         });
+        return { space, sections: sectionDtos };
     }
 
     async createSection(userId: bigint, spaceId: bigint, dto: CreateSectionDto): Promise<bigint> {
