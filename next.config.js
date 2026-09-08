@@ -4,6 +4,12 @@ const nextConfig = {
     // Required for the multi-stage Docker image (copies .next/standalone).
     output: 'standalone',
 
+    // Security — tắt header "X-Powered-By: Next.js" mà Next.js tự thêm mặc
+    // định trên mọi response. Không phải lỗ hổng tự thân, nhưng lộ rõ
+    // framework/stack cho attacker recon (biết chính xác nên tìm CVE nào),
+    // không phục vụ mục đích gì cho client hợp lệ.
+    poweredByHeader: false,
+
     // ── Security headers ────────────────────────────────────────────────────
     async headers() {
         return [
