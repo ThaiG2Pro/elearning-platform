@@ -30,7 +30,18 @@ const nextConfig = {
                             // exact). A scheme-less host source matches whatever scheme the page itself
                             // is loaded over, so this is correct for both http dev and https prod without
                             // having to list both schemes.
-                            "script-src 'self' 'unsafe-inline' 'unsafe-eval' www.youtube.com s.ytimg.com",
+                            //
+                            // Security (2026-09-08): 'unsafe-eval' dropped in production — grep across
+                            // src/ found no eval()/new Function() call anywhere in app code, so nothing
+                            // legitimate needs it there and it only helps an XSS payload run arbitrary
+                            // strings as code. Kept in development only: `next dev`'s webpack HMR client
+                            // uses eval-based source maps by default, which this same CSP would otherwise
+                            // block, breaking local dev/hot-reload. 'unsafe-inline' stays in both — Next.js
+                            // App Router injects its own inline <script> for RSC/hydration data with no
+                            // nonce wired up (would need a new middleware.ts issuing a per-request nonce);
+                            // removing it blind, without a browser to verify hydration still works, risks
+                            // shipping a broken page. Tracked as a follow-up, not done here.
+                            `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV !== 'production' ? " 'unsafe-eval'" : ''} www.youtube.com s.ytimg.com`,
                             "style-src 'self' 'unsafe-inline'",
                             // vumbnail.com serves Vimeo thumbnails (VideoThumbnailUtil); i.vimeocdn.com backs
                             // vumbnail's redirects/CDN images.
