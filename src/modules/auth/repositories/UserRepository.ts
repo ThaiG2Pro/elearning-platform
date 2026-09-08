@@ -12,6 +12,10 @@ type UserWithAvatar = {
     password_changed_at: Date | null;
 };
 
+function normalizeEmail(email: string): string {
+    return email.trim().toLowerCase();
+}
+
 function toEntity(user: UserWithAvatar): UserEntity {
     return new UserEntity(
         user.id,
@@ -30,8 +34,18 @@ function toEntity(user: UserWithAvatar): UserEntity {
 
 export class UserRepository {
     async findByEmail(email: string): Promise<UserEntity | null> {
+        // Security/correctness — email chưa từng được chuẩn hoá chữ thường ở
+        // đâu cả (register/login/forgot-password đều truyền thẳng input của
+        // user). Cột users.email là unique nhưng so sánh phân biệt hoa
+        // thường, nên "Foo@Example.com" và "foo@example.com" từng tạo được
+        // 2 tài khoản khác nhau — vừa gây nhầm lẫn (đăng ký lại tưởng trùng
+        // email nhưng không), vừa khiến login/quên-mật-khẩu thất bại khó
+        // hiểu nếu người dùng gõ khác hoa/thường lúc đăng ký. Chuẩn hoá ở
+        // đúng 1 chỗ này — nơi duy nhất tra cứu theo email — cùng với save()
+        // (nơi duy nhất ghi email mới) là đủ, không cần sửa từng DTO/service
+        // gọi vào.
         const user = await prisma.users.findUnique({
-            where: { email },
+            where: { email: normalizeEmail(email) },
             include: { avatar: { select: { data: true } } },
         });
         if (!user) return null;
@@ -57,7 +71,7 @@ export class UserRepository {
         created_at: Date;
     }): Promise<bigint> {
         const user = await prisma.users.create({
-            data,
+            data: { ...data, email: normalizeEmail(data.email) },
         });
         return user.id;
     }
@@ -80,7 +94,7 @@ export class UserRepository {
             // New user
             const created = await prisma.users.create({
                 data: {
-                    email: user.email,
+                    email: normalizeEmail(user.email),
                     password_hash: user.passwordHash,
                     full_name: user.fullName,
                     status: user.status as user_status,
