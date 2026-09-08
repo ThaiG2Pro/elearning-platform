@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { QuizController } from '@/modules/space-management/controllers/QuizController';
 import { getUserIdFromRequest } from '@/shared/middleware/auth';
+import { parseIdParam } from '@/shared/http/params';
+import { safeErrorMessage } from '@/shared/http/routeErrors';
 
 export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
     const params = await props.params;
@@ -10,7 +12,10 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const lessonId = BigInt(params.id);
+        const lessonId = parseIdParam(params.id);
+        if (lessonId === null) {
+            return NextResponse.json({ error: 'LESSON_NOT_FOUND' }, { status: 404 });
+        }
         const controller = new QuizController();
         const result = await controller.generateQuiz(userId, lessonId);
 
@@ -29,6 +34,6 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
         console.error('Error generating quiz:', error);
         const message = error instanceof Error ? error.message : 'Internal server error';
         const status = message === 'ACCESS_DENIED' ? 403 : (message === 'NO_QUESTIONS_FOUND' || message === 'LESSON_NOT_FOUND') ? 404 : 500;
-        return NextResponse.json({ error: message }, { status });
+        return NextResponse.json({ error: safeErrorMessage(message, status) }, { status });
     }
 }

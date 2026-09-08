@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { QuizController } from '../../../../../../../../modules/space-management/controllers/QuizController';
 import { getUserFromRequest } from '../../../../../../../../shared/middleware/auth';
+import { safeErrorMessage } from '../../../../../../../../shared/http/routeErrors';
 
 const controller = new QuizController();
 
@@ -60,6 +61,6 @@ export async function POST(request: NextRequest, props: { params: Promise<{ id: 
             return NextResponse.json({ error: 'INVALID_QUESTIONS', message: error.message }, { status: 400 });
         }
         const message = error instanceof Error ? error.message : 'Internal server error';
-        return NextResponse.json({ error: message }, { status: 500 });
+        return NextResponse.json({ error: safeErrorMessage(message, 500) }, { status: 500 });
     }
 }

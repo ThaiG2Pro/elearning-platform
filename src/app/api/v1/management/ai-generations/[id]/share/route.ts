@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { AIGenerationController } from '@/modules/ai-generation/controllers/AIGenerationController';
 import { getUserIdFromRequest } from '@/shared/middleware/auth';
+import { parseIdParam } from '@/shared/http/params';
 
 /**
  * Owner-only: thu hồi share (chuyển 1 bản AI BYOK từ SHARED về PRIVATE) —
@@ -16,12 +17,13 @@ export async function DELETE(request: NextRequest, props: { params: Promise<{ id
             return NextResponse.json({ error: 'UNAUTHORIZED' }, { status: 401 });
         }
 
-        if (!params.id || isNaN(Number(params.id))) {
+        const generationId = parseIdParam(params.id);
+        if (generationId === null) {
             return NextResponse.json({ error: 'AI_GENERATION_NOT_FOUND' }, { status: 404 });
         }
 
         const controller = new AIGenerationController();
-        await controller.revokeSharedGeneration(userId, BigInt(params.id));
+        await controller.revokeSharedGeneration(userId, generationId);
 
         return NextResponse.json({ status: 'REVOKED' });
     } catch (error) {

@@ -3,6 +3,7 @@ import { AIGenerationController } from '@/modules/ai-generation/controllers/AIGe
 import { getUserIdFromRequest } from '@/shared/middleware/auth';
 import { applyRateLimit, getClientIp, HEAVY_RATE_LIMITS } from '@/shared/middleware/rateLimit';
 import { RecipeType } from '@/modules/ai-generation/domain/Recipes';
+import { parseIdParam } from '@/shared/http/params';
 
 const VALID_RECIPE_TYPES: RecipeType[] = ['summary', 'quiz'];
 
@@ -28,7 +29,8 @@ export async function POST(request: NextRequest, props: { params: Promise<{ sour
             return NextResponse.json({ error: 'UNAUTHORIZED' }, { status: 401 });
         }
 
-        if (!params.sourceId || isNaN(Number(params.sourceId))) {
+        const sourceId = parseIdParam(params.sourceId);
+        if (sourceId === null) {
             return NextResponse.json({ error: 'SOURCE_NOT_FOUND' }, { status: 404 });
         }
 
@@ -64,7 +66,7 @@ export async function POST(request: NextRequest, props: { params: Promise<{ sour
 
         const controller = new AIGenerationController();
         const result = await controller.generate({
-            sourceId: BigInt(params.sourceId),
+            sourceId,
             recipeType: body.type as RecipeType,
             userId,
             params: body.params,

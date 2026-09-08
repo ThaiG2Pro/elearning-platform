@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { QuizController } from '../../../../../../../../modules/space-management/controllers/QuizController';
 import { getUserFromRequest } from '../../../../../../../../shared/middleware/auth';
 import { applyRateLimit, UPLOAD_RATE_LIMITS, QUIZ_UPLOAD_MAX_BYTES } from '../../../../../../../../shared/middleware/rateLimit';
+import { parseIdParam } from '../../../../../../../../shared/http/params';
+import { safeErrorMessage } from '../../../../../../../../shared/http/routeErrors';
 
 const controller = new QuizController();
 
@@ -13,7 +15,10 @@ export async function POST(request: NextRequest, props: { params: Promise<{ id: 
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const lessonId = BigInt(params.id);
+        const lessonId = parseIdParam(params.id);
+        if (lessonId === null) {
+            return NextResponse.json({ error: 'LESSON_NOT_FOUND', message: 'Bài học không tồn tại' }, { status: 404 });
+        }
 
         const limited = applyRateLimit([
             { bucket: 'quiz-upload:user', key: user.id.toString(), ...UPLOAD_RATE_LIMITS.quizUploadPerUser },
@@ -68,6 +73,6 @@ export async function POST(request: NextRequest, props: { params: Promise<{ id: 
             return NextResponse.json({ error: 'INVALID_EXCEL_FORMAT', message: error.message }, { status: 400 });
         }
         const message = error instanceof Error ? error.message : 'Internal server error';
-        return NextResponse.json({ error: message }, { status: 500 });
+        return NextResponse.json({ error: safeErrorMessage(message, 500) }, { status: 500 });
     }
 }

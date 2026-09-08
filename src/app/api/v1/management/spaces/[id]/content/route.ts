@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { SpaceManagementController } from '../../../../../../../modules/space-management/controllers/SpaceManagementController';
 import { getUserIdFromRequest } from '../../../../../../../shared/middleware/auth';
 import { BulkSpaceContentDto } from '../../../../../../../modules/space-management/dtos/BulkSpaceContentDto';
+import { parseIdParam } from '../../../../../../../shared/http/params';
+import { safeErrorMessage } from '../../../../../../../shared/http/routeErrors';
 
 export async function PUT(request: NextRequest, props: { params: Promise<{ id: string }> }) {
     const params = await props.params;
@@ -11,11 +13,11 @@ export async function PUT(request: NextRequest, props: { params: Promise<{ id: s
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        if (!params.id || isNaN(Number(params.id))) {
+        const spaceId = parseIdParam(params.id);
+        if (spaceId === null) {
             return NextResponse.json({ error: 'SPACE_NOT_FOUND' }, { status: 404 });
         }
 
-        const spaceId = BigInt(params.id);
         const body: BulkSpaceContentDto = await request.json();
 
         // Basic validation: accept either sections (structured) or lessons (flat). Both may be empty arrays.
@@ -41,6 +43,6 @@ export async function PUT(request: NextRequest, props: { params: Promise<{ id: s
             : message === 'SPACE_NOT_FOUND' ? 404
             : (message === 'CHAPTER_NOT_IN_SPACE' || message === 'LESSON_NOT_IN_SPACE') ? 400
             : 500;
-        return NextResponse.json({ error: message }, { status });
+        return NextResponse.json({ error: safeErrorMessage(message, status) }, { status });
     }
 }

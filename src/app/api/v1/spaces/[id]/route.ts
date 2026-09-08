@@ -1,18 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { SpaceController } from '@/modules/space-management/controllers/SpaceController';
 import { getUserIdFromRequest } from '@/shared/middleware/auth';
+import { parseIdParam } from '@/shared/http/params';
 
 export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
     const params = await props.params;
     try {
-        if (!params.id || isNaN(Number(params.id))) {
+        const spaceId = parseIdParam(params.id);
+        if (spaceId === null) {
             return NextResponse.json(
                 { error: 'SPACE_NOT_FOUND' },
                 { status: 404 }
             );
         }
 
-        const spaceId = BigInt(params.id);
         const userId = await getUserIdFromRequest(request);
 
         const controller = new SpaceController();

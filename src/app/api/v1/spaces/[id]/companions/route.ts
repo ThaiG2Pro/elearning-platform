@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { SpaceController } from '@/modules/space-management/controllers/SpaceController';
 import { getUserIdFromRequest } from '@/shared/middleware/auth';
+import { parseIdParam } from '@/shared/http/params';
 
 /** WP1.7 — who else is learning this space's clone lineage, read-only. */
 export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
     const params = await props.params;
     try {
-        if (!params.id || isNaN(Number(params.id))) {
+        const spaceId = parseIdParam(params.id);
+        if (spaceId === null) {
             return NextResponse.json(
                 { error: 'SPACE_NOT_FOUND' },
                 { status: 404 }
@@ -21,7 +23,6 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
             );
         }
 
-        const spaceId = BigInt(params.id);
         const controller = new SpaceController();
         const companions = await controller.getCompanions(spaceId, userId);
 

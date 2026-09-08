@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ManagementController } from '@/modules/space-management/controllers/ManagementController';
 import { getUserIdFromRequest } from '@/shared/middleware/auth';
+import { parseIdParam } from '@/shared/http/params';
 
 /**
  * Owner-only: get (and lazily create) the stable share link for a space.
@@ -15,7 +16,10 @@ export async function POST(request: NextRequest, props: { params: Promise<{ id: 
             return NextResponse.json({ error: 'UNAUTHORIZED' }, { status: 401 });
         }
 
-        const spaceId = BigInt(params.id);
+        const spaceId = parseIdParam(params.id);
+        if (spaceId === null) {
+            return NextResponse.json({ error: 'SPACE_NOT_FOUND' }, { status: 404 });
+        }
         const controller = new ManagementController();
         const shareToken = await controller.getOrCreateShareLink(userId, spaceId);
 
@@ -46,7 +50,10 @@ export async function DELETE(request: NextRequest, props: { params: Promise<{ id
             return NextResponse.json({ error: 'UNAUTHORIZED' }, { status: 401 });
         }
 
-        const spaceId = BigInt(params.id);
+        const spaceId = parseIdParam(params.id);
+        if (spaceId === null) {
+            return NextResponse.json({ error: 'SPACE_NOT_FOUND' }, { status: 404 });
+        }
         const controller = new ManagementController();
         await controller.revokeShareLink(userId, spaceId);
 

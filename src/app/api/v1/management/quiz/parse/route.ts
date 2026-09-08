@@ -3,6 +3,7 @@ import { QuizController } from '../../../../../../modules/space-management/contr
 import { getUserIdFromRequest } from '../../../../../../shared/middleware/auth';
 import { QuizPolicy } from '../../../../../../modules/space-management/domain/QuizPolicy';
 import { applyRateLimit, UPLOAD_RATE_LIMITS, QUIZ_UPLOAD_MAX_BYTES } from '../../../../../../shared/middleware/rateLimit';
+import { safeErrorMessage } from '../../../../../../shared/http/routeErrors';
 
 export async function POST(request: NextRequest) {
     try {
@@ -84,6 +85,6 @@ export async function POST(request: NextRequest) {
         }
 
         const message = error instanceof Error ? error.message : 'Internal server error';
-        return NextResponse.json({ error: message }, { status: 500 });
+        return NextResponse.json({ error: safeErrorMessage(message, 500) }, { status: 500 });
     }
 }

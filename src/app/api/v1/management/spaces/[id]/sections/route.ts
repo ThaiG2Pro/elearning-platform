@@ -3,6 +3,7 @@ import { ManagementController } from '@/modules/space-management/controllers/Man
 import { getUserIdFromRequest } from '@/shared/middleware/auth';
 import { CreateSectionDto } from '@/modules/space-management/dtos/ContentDto';
 import { prisma } from '@/shared/config/database';
+import { parseIdParam } from '@/shared/http/params';
 
 export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
     const params = await props.params;
@@ -12,11 +13,10 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        if (!params.id || isNaN(Number(params.id))) {
+        const spaceId = parseIdParam(params.id);
+        if (spaceId === null) {
             return NextResponse.json({ error: 'SPACE_NOT_FOUND' }, { status: 404 });
         }
-
-        const spaceId = BigInt(params.id);
 
         // Ensure space exists
         const space = await prisma.spaces.findUnique({ where: { id: spaceId } });
@@ -68,11 +68,10 @@ export async function POST(request: NextRequest, props: { params: Promise<{ id: 
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        if (!params.id || isNaN(Number(params.id))) {
+        const spaceId = parseIdParam(params.id);
+        if (spaceId === null) {
             return NextResponse.json({ error: 'SPACE_NOT_FOUND' }, { status: 404 });
         }
-
-        const spaceId = BigInt(params.id);
         const body: CreateSectionDto = await request.json();
 
         // Authorization & business checks

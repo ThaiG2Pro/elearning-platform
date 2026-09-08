@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { ManagementController } from '@/modules/space-management/controllers/ManagementController';
 import { getUserIdFromRequest } from '@/shared/middleware/auth';
 import { CreateLessonDto } from '@/modules/space-management/dtos/ContentDto';
+import { parseIdParam } from '@/shared/http/params';
+import { safeErrorMessage } from '@/shared/http/routeErrors';
 
 export async function POST(request: NextRequest, props: { params: Promise<{ id: string }> }) {
     const params = await props.params;
@@ -11,7 +13,10 @@ export async function POST(request: NextRequest, props: { params: Promise<{ id: 
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const sectionId = BigInt(params.id);
+        const sectionId = parseIdParam(params.id);
+        if (sectionId === null) {
+            return NextResponse.json({ error: 'SECTION_NOT_FOUND' }, { status: 404 });
+        }
         const rawBody = await request.json();
         // Editor UI space-management refactor — the frontend has always
         // posted the video URL under the field name `videoUrl` (matching its
@@ -38,6 +43,6 @@ export async function POST(request: NextRequest, props: { params: Promise<{ id: 
         console.error('Create lesson error:', error);
         const message = error instanceof Error ? error.message : 'Internal server error';
         const status = message === 'ACCESS_DENIED' ? 403 : message === 'SECTION_NOT_FOUND' ? 404 : 500;
-        return NextResponse.json({ error: message }, { status });
+        return NextResponse.json({ error: safeErrorMessage(message, status) }, { status });
     }
 }

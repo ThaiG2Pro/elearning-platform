@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ManagementController } from '@/modules/space-management/controllers/ManagementController';
 import { getUserIdFromRequest } from '@/shared/middleware/auth';
+import { parseIdParam } from '@/shared/http/params';
+import { safeErrorMessage } from '@/shared/http/routeErrors';
 
 export async function PUT(request: NextRequest, props: { params: Promise<{ id: string }> }) {
     const params = await props.params;
@@ -10,11 +12,11 @@ export async function PUT(request: NextRequest, props: { params: Promise<{ id: s
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        if (!params.id || isNaN(Number(params.id))) {
+        const spaceId = parseIdParam(params.id);
+        if (spaceId === null) {
             return NextResponse.json({ error: 'SPACE_NOT_FOUND' }, { status: 404 });
         }
 
-        const spaceId = BigInt(params.id);
         const body: { title?: string; description?: string; status?: string } = await request.json();
 
         // WP1.6 follow-up (round 3) — `status` (archive/unarchive) now shares
@@ -57,6 +59,6 @@ export async function PUT(request: NextRequest, props: { params: Promise<{ id: s
             return NextResponse.json({ error: 'SPACE_NOT_FOUND' }, { status: 404 });
         }
         const message = error instanceof Error ? error.message : 'Internal server error';
-        return NextResponse.json({ error: message }, { status: 500 });
+        return NextResponse.json({ error: safeErrorMessage(message, 500) }, { status: 500 });
     }
 }

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { SpaceManagementController } from '@/modules/space-management/controllers/SpaceManagementController';
 import { getUserFromRequest } from '@/shared/middleware/auth';
+import { parseIdParam } from '@/shared/http/params';
+import { safeErrorMessage } from '@/shared/http/routeErrors';
 
 export async function GET(
     request: NextRequest,
@@ -13,8 +15,11 @@ export async function GET(
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const spaceId = BigInt(params.id);
-        const lessonId = BigInt(params.lessonId);
+        const spaceId = parseIdParam(params.id);
+        const lessonId = parseIdParam(params.lessonId);
+        if (spaceId === null || lessonId === null) {
+            return NextResponse.json({ error: 'LESSON_NOT_FOUND' }, { status: 404 });
+        }
 
         const controller = new SpaceManagementController();
         const lessonPreview = await controller.getLessonPreview(spaceId, lessonId, user);
@@ -38,6 +43,6 @@ export async function GET(
         console.error('Get lesson preview error:', error);
         const message = error instanceof Error ? error.message : 'Internal server error';
         const status = message === 'FORBIDDEN' ? 403 : message === 'LESSON_NOT_FOUND' ? 404 : 500;
-        return NextResponse.json({ error: message }, { status });
+        return NextResponse.json({ error: safeErrorMessage(message, status) }, { status });
     }
 }

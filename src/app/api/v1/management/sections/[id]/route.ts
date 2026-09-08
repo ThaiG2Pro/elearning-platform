@@ -3,6 +3,8 @@ import { SpaceManagementController } from '@/modules/space-management/controller
 import { ManagementController } from '@/modules/space-management/controllers/ManagementController';
 import { getUserIdFromRequest } from '@/shared/middleware/auth';
 import { UpdateSectionDto } from '@/modules/space-management/dtos/ContentDto';
+import { parseIdParam } from '@/shared/http/params';
+import { safeErrorMessage } from '@/shared/http/routeErrors';
 
 export async function PUT(request: NextRequest, props: { params: Promise<{ id: string }> }) {
     const params = await props.params;
@@ -12,11 +14,11 @@ export async function PUT(request: NextRequest, props: { params: Promise<{ id: s
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        if (!params.id || isNaN(Number(params.id))) {
+        const sectionId = parseIdParam(params.id);
+        if (sectionId === null) {
             return NextResponse.json({ error: 'SECTION_NOT_FOUND' }, { status: 404 });
         }
 
-        const sectionId = BigInt(params.id);
         const body: UpdateSectionDto = await request.json();
 
         const controller = new ManagementController();
@@ -27,7 +29,7 @@ export async function PUT(request: NextRequest, props: { params: Promise<{ id: s
         console.error('Update section error:', error);
         const message = error instanceof Error ? error.message : 'Internal server error';
         const status = message === 'ACCESS_DENIED' ? 403 : message === 'SECTION_NOT_FOUND' ? 404 : 500;
-        return NextResponse.json({ error: message }, { status });
+        return NextResponse.json({ error: safeErrorMessage(message, status) }, { status });
     }
 }
 
@@ -39,11 +41,11 @@ export async function DELETE(request: NextRequest, props: { params: Promise<{ id
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        if (!params.id || isNaN(Number(params.id))) {
+        const sectionId = parseIdParam(params.id);
+        if (sectionId === null) {
             return NextResponse.json({ error: 'SECTION_NOT_FOUND' }, { status: 404 });
         }
 
-        const sectionId = BigInt(params.id);
         const controller = new SpaceManagementController();
         await controller.deleteSection(userId, sectionId);
 
@@ -52,6 +54,6 @@ export async function DELETE(request: NextRequest, props: { params: Promise<{ id
         console.error('Error deleting section:', error);
         const message = error instanceof Error ? error.message : 'Internal server error';
         const status = message === 'ACCESS_DENIED' ? 403 : message === 'SECTION_NOT_FOUND' ? 404 : 500;
-        return NextResponse.json({ error: message }, { status });
+        return NextResponse.json({ error: safeErrorMessage(message, status) }, { status });
     }
 }
