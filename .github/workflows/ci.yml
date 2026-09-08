@@ -55,6 +55,18 @@ jobs:
       - name: Lint
         run: pnpm lint
 
+      # ── Dependency vulnerability scan ────────────────────────────────────────
+      # Security fix — CI trước đây không có bước nào quét lockfile, PR có thể
+      # thêm/giữ dependency dính CVE mà không ai biết cho đến khi tự chạy tay.
+      # --prod: chỉ quét dependency thực sự ship trong production build
+      # (devDependencies như vitest/eslint/vite không lên server, ReDoS/arbitrary
+      # file read của vite dev server không phải rủi ro thật ở đây — quét cả
+      # --prod lẫn full sẽ đỏ liên tục vì các CVE dev-tooling chưa có bản vá,
+      # vô hiệu hoá luôn giá trị cảnh báo của bước này). --audit-level=high:
+      # chỉ chặn ở high/critical, moderate/low quá nhiều false-positive.
+      - name: Dependency audit (production deps, high/critical)
+        run: pnpm audit --prod --audit-level=high
+
       # ── Design tokens guard ───────────────────────────────────────────────────
       # Chặn PR thêm mới màu Tailwind mặc định (bg-blue-500...) thay vì dùng
       # token ink-* — xem scripts/check-design-tokens.js.

@@ -16,9 +16,15 @@ services:
       - -c
       - work_mem=4MB
     environment:
-      POSTGRES_DB: elearning
-      POSTGRES_USER: elearning_user
-      POSTGRES_PASSWORD: elearning_pass
+      POSTGRES_DB: ${POSTGRES_DB:-elearning}
+      POSTGRES_USER: ${POSTGRES_USER:-elearning_user}
+      # Security fix — mật khẩu hardcode cứng (elearning_pass) trước đây là
+      # default không đổi được, cùng 1 giá trị cho mọi máy chạy compose file
+      # này. Giờ đọc từ .env (biến POSTGRES_PASSWORD), vẫn giữ default để
+      # `docker compose up` chạy ngay không cần cấu hình cho dev cục bộ,
+      # nhưng ai deploy thật (kể cả VPS 1GB ở docs/DEPLOY.md) phải tự set
+      # POSTGRES_PASSWORD trong .env — xem .env.example.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-elearning_pass}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
@@ -70,7 +76,15 @@ services:
     ports:
       - "3000:3000"
     environment:
-      DATABASE_URL: postgresql://elearning_user:elearning_pass@db:5432/elearning?sslmode=disable&connection_limit=5&pool_timeout=10
+      # Security fix — user/password giờ khớp với đúng biến app đã set ở
+      # service `db` (POSTGRES_USER/POSTGRES_PASSWORD) thay vì lặp lại
+      # elearning_user/elearning_pass hardcode ở đây, tránh 2 nơi trôi lệch
+      # nhau nếu ai đó chỉ đổi 1 chỗ. sslmode=disable giữ nguyên: `db` chỉ
+      # nghe trên mạng nội bộ do compose tạo (không map ra ngoài ngoài port
+      # debug 15432), Postgres image gốc cũng không có sẵn cert TLS để bật
+      # sslmode=require — an toàn cho local/VPS 1 container, không áp dụng
+      # cho DATABASE_URL production (Neon) vốn luôn dùng sslmode=require.
+      DATABASE_URL: postgresql://${POSTGRES_USER:-elearning_user}:${POSTGRES_PASSWORD:-elearning_pass}@db:5432/${POSTGRES_DB:-elearning}?sslmode=disable&connection_limit=5&pool_timeout=10
       JWT_SECRET: ${JWT_SECRET}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
       YOUTUBE_API_KEY: ${YOUTUBE_API_KEY}
@@ -99,7 +113,7 @@ services:
     # (prisma/seed.ts TRUNCATEs every table and refuses to run against a non-local DB.)
     command: sh -c "pnpm exec prisma migrate deploy"
     environment:
-      DATABASE_URL: postgresql://elearning_user:elearning_pass@db:5432/elearning?sslmode=disable
+      DATABASE_URL: postgresql://${POSTGRES_USER:-elearning_user}:${POSTGRES_PASSWORD:-elearning_pass}@db:5432/${POSTGRES_DB:-elearning}?sslmode=disable
     depends_on:
       db:
         condition: service_healthy
