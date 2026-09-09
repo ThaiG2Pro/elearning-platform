@@ -113,18 +113,28 @@ export class SpaceService {
      */
     async getCompanions(spaceId: bigint, userId: bigint): Promise<CompanionDto[]> {
         const lineage = await this.spaceRepository.findLineageSpaces(spaceId);
+        // isMember dùng lineage ĐẦY ĐỦ (kể cả ARCHIVED) — chủ 1 clone đã archive
+        // vẫn phải mở được trang companions của chính lineage đó, chỉ là họ (và
+        // các thành viên archived khác) sẽ không HIỆN RA cho người khác xem, xem
+        // filter bên dưới.
         const isMember = lineage.some(member => member.ownerId === userId);
         if (!isMember) {
             throw new Error('FORBIDDEN');
         }
 
-        // Solo — no one else has cloned this space (or its root) yet.
-        if (lineage.length <= 1 || !this.learnService) {
+        // 2026-09-07 — archive là hành động cá nhân ("dọn dẹp/ẩn hoạt động"),
+        // không có ý định công khai tiến độ của mình cho người khác trong
+        // lineage nữa. Loại thành viên ARCHIVED khỏi danh sách hiển thị —
+        // tránh leak tên thật + % hoàn thành của người đã chủ động ẩn.
+        const visibleLineage = lineage.filter(member => member.status === 'ACTIVE');
+
+        // Solo — không còn ai khác (đang active) trong lineage để so sánh.
+        if (visibleLineage.length <= 1 || !this.learnService) {
             return [];
         }
 
         const companions = await Promise.all(
-            lineage.map(async (member) => {
+            visibleLineage.map(async (member) => {
                 const progress = await this.learnService!.getSpaceProgress(member.ownerId, member.id);
                 return new CompanionDto(
                     Number(member.id),

@@ -27,6 +27,10 @@ export interface SharedAIGenerationSummary {
     sourceId: bigint;
     sourceTitle: string | null;
     sourceUrl: string;
+    /** true nếu content đã bị data-retention job null hoá (archived_at != null) —
+     *  row vẫn "SHARED" trên giấy tờ nhưng không còn nội dung nào để phục vụ.
+     *  Owner cần thấy rõ để không tưởng nhầm là đang hoạt động. */
+    isArchived: boolean;
 }
 
 export interface CreateAIGenerationInput {
@@ -91,13 +95,24 @@ export class AIGenerationRepository {
      */
     async findDefaultCache(sourceId: bigint, recipeHash: string): Promise<AIGenerationRecord | null> {
         const row = await this.prisma.ai_generations.findFirst({
-            where: { source_id: sourceId, recipe_hash: recipeHash, key_source: 'SHARED_FREE', status: 'READY' },
+            where: {
+                source_id: sourceId,
+                recipe_hash: recipeHash,
+                key_source: 'SHARED_FREE',
+                status: 'READY',
+                // 2026-09-07 — row READY nhưng đã archived_at != null đã bị
+                // null hoá `content` (data-retention job). Không loại trừ
+                // ở đây thì cache "hit" trả về content rỗng cho user thay
+                // vì tự generate lại. Coi row đã archive như chưa có cache.
+                archived_at: null,
+            },
         });
         return row ? toRecord(row) : null;
     }
 
     /** Tra bản SHARED-BYOK trùng recipe tuỳ biến — mục 4 nhánh 3. Cùng lý do
-     *  chỉ khớp READY như `findDefaultCache` ở trên. */
+     *  chỉ khớp READY như `findDefaultCache` ở trên, và cùng lý do loại trừ
+     *  row đã archive (content đã bị null hoá) — xem comment ở trên. */
     async findSharedByokMatch(
         sourceId: bigint,
         recipeHash: string,
@@ -200,6 +215,14 @@ export class AIGenerationRepository {
                         error: null,
                         generated_by_user_id: input.generatedByUserId,
                         model_version: input.modelVersion,
+                        // 2026-09-07 — row cũ có thể đã bị data-retention job
+                        // archive (archived_at != null). Đang tái sinh nó để
+                        // generate lại nên phải bỏ luôn dấu archived cũ — nếu
+                        // không, row sẽ mang trạng thái mâu thuẫn (READY sau
+                        // này nhưng vẫn "archived") và bị findDefaultCache/
+                        // findSharedByokMatch loại trừ ngay ở lần tra cứu kế
+                        // tiếp dù vừa mới generate xong.
+                        archived_at: null,
                     },
                 });
                 return toRecord(row);
@@ -272,6 +295,7 @@ export class AIGenerationRepository {
             sourceId: row.source_id,
             sourceTitle: row.source.title,
             sourceUrl: row.source.url,
+            isArchived: row.archived_at !== null,
         }));
     }
 

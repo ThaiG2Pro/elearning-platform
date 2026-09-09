@@ -27,7 +27,7 @@ describe('SpaceService.getCompanions', () => {
 
     it('rejects a caller who is not a member of the lineage', async () => {
         spaceRepo.findLineageSpaces.mockResolvedValue([
-            { id: 1n, ownerId: 10n, ownerName: 'Alice' },
+            { id: 1n, ownerId: 10n, ownerName: 'Alice', status: 'ACTIVE' },
         ]);
 
         await expect(service.getCompanions(1n, 99n)).rejects.toThrow('FORBIDDEN');
@@ -35,7 +35,7 @@ describe('SpaceService.getCompanions', () => {
 
     it('returns empty when the caller is the only member of the lineage', async () => {
         spaceRepo.findLineageSpaces.mockResolvedValue([
-            { id: 1n, ownerId: 10n, ownerName: 'Alice' },
+            { id: 1n, ownerId: 10n, ownerName: 'Alice', status: 'ACTIVE' },
         ]);
 
         const result = await service.getCompanions(1n, 10n);
@@ -45,8 +45,8 @@ describe('SpaceService.getCompanions', () => {
 
     it('returns every lineage member with their own progress, sorted by completion desc', async () => {
         spaceRepo.findLineageSpaces.mockResolvedValue([
-            { id: 1n, ownerId: 10n, ownerName: 'Alice' },
-            { id: 2n, ownerId: 20n, ownerName: 'Bob' },
+            { id: 1n, ownerId: 10n, ownerName: 'Alice', status: 'ACTIVE' },
+            { id: 2n, ownerId: 20n, ownerName: 'Bob', status: 'ACTIVE' },
         ]);
         learnService.getSpaceProgress.mockImplementation(async (userId: bigint) =>
             userId === 10n
@@ -62,5 +62,35 @@ describe('SpaceService.getCompanions', () => {
         ]);
         expect(learnService.getSpaceProgress).toHaveBeenCalledWith(10n, 1n);
         expect(learnService.getSpaceProgress).toHaveBeenCalledWith(20n, 2n);
+    });
+
+    // 2026-09-07 — privacy fix: ai archive clone của mình thì không còn muốn
+    // lộ tên + % cho người khác trong lineage nữa (xem docs/research/
+    // space-lifecycle-clone-archive-audit.md mục 5).
+    it('excludes ARCHIVED members from the visible companions list', async () => {
+        spaceRepo.findLineageSpaces.mockResolvedValue([
+            { id: 1n, ownerId: 10n, ownerName: 'Alice', status: 'ACTIVE' },
+            { id: 2n, ownerId: 20n, ownerName: 'Bob', status: 'ARCHIVED' },
+        ]);
+        learnService.getSpaceProgress.mockResolvedValue({ completionRate: 40, finishedLessons: 2, totalLessons: 5 });
+
+        const result = await service.getCompanions(1n, 10n);
+
+        // Chỉ còn Alice (đang active) — Bob đã archive nên không hiện ra dù
+        // vẫn thuộc lineage. Vì chỉ còn 1 người active, coi như "solo".
+        expect(result).toEqual([]);
+        expect(learnService.getSpaceProgress).not.toHaveBeenCalled();
+    });
+
+    it('still allows an ARCHIVED member themself to open companions (isMember check ignores status)', async () => {
+        spaceRepo.findLineageSpaces.mockResolvedValue([
+            { id: 1n, ownerId: 10n, ownerName: 'Alice', status: 'ACTIVE' },
+            { id: 2n, ownerId: 20n, ownerName: 'Bob', status: 'ARCHIVED' },
+        ]);
+
+        // Bob (đã archive) vẫn được xem trang companions — chỉ là kết quả trả
+        // về không có ai (Alice không thấy Bob, Bob nhìn vào cũng chỉ thấy 1
+        // người active còn lại nên bị coi là "solo").
+        await expect(service.getCompanions(1n, 20n)).resolves.toEqual([]);
     });
 });

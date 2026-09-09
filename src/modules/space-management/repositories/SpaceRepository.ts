@@ -28,24 +28,6 @@ export class SpaceRepository {
         );
     }
 
-    async findActiveById(id: bigint): Promise<Space | null> {
-        const space = await this.prisma.spaces.findFirst({
-            where: {
-                id,
-                status: 'ACTIVE',
-            },
-        });
-        if (!space) return null;
-        return new Space(
-            space.id,
-            space.owner_id,
-            space.title,
-            space.slug,
-            space.description,
-            space.status as SpaceStatus,
-        );
-    }
-
     async findByIdWithFullStructure(id: bigint): Promise<any> {
         const space = await this.prisma.spaces.findUnique({
             where: { id },
@@ -166,7 +148,10 @@ export class SpaceRepository {
         const pageIds = spaces.map(s => s.id);
         const cloneCounts = await this.prisma.spaces.groupBy({
             by: ['cloned_from_space_id'],
-            where: { cloned_from_space_id: { in: pageIds } },
+            // 2026-09-07 — loại clone đã ARCHIVED khỏi đếm: trước đây đếm cả
+            // clone chủ đã ẩn/dọn dẹp, khiến số "N người đã sao chép" hiển
+            // thị công khai cao hơn thực tế đang còn "sống".
+            where: { cloned_from_space_id: { in: pageIds }, status: 'ACTIVE' },
             _count: { id: true },
         });
         const cloneCountMap = new Map<string, number>();
@@ -263,11 +248,28 @@ export class SpaceRepository {
         for (let attempt = 0; attempt < 5; attempt++) {
             const token = randomBytes(10).toString('base64url');
             try {
-                await this.prisma.spaces.update({
-                    where: { id: spaceId },
+                // 2026-09-07 — compare-and-swap: `updateMany` với điều kiện
+                // `share_token: null` trong WHERE chặn race đọc-rồi-ghi (2
+                // request cùng lúc thấy null ở bước findUnique phía trên rồi
+                // cùng ghi token khác nhau — xem docs/research/space-lifecycle-
+                // clone-archive-audit.md mục 4). Request nào tới update trước
+                // (còn khớp WHERE) mới thắng; request thua đọc lại token mà
+                // request thắng vừa ghi thay vì trả nhầm token của chính mình
+                // (token đó chưa từng được lưu, dùng nó sẽ 404 ngay từ đầu).
+                const result = await this.prisma.spaces.updateMany({
+                    where: { id: spaceId, share_token: null },
                     data: { share_token: token },
                 });
-                return token;
+                if (result.count === 1) return token;
+
+                const after = await this.prisma.spaces.findUnique({
+                    where: { id: spaceId },
+                    select: { share_token: true },
+                });
+                if (!after) throw new Error('SPACE_NOT_FOUND');
+                if (after.share_token) return after.share_token;
+                // Bất thường (WHERE không khớp nhưng share_token vẫn null) —
+                // thử lại vòng kế tiếp với token mới thay vì throw ngay.
             } catch (error: any) {
                 if (error?.code === 'P2002') continue; // unique violation, retry
                 throw error;
@@ -383,6 +385,17 @@ export class SpaceRepository {
         });
         if (!source) throw new Error('SPACE_NOT_FOUND');
 
+        // 2026-09-07 — race archive-vs-clone: đường vào duy nhất của hàm này
+        // (cloneSharedSpace) đã check status ACTIVE ở `findByShareToken`,
+        // nhưng đó là 1 query độc lập, đọc xong buông — chủ space có thể
+        // archive đúng lúc giữa 2 bước. Re-check ở đây, ngay sát lúc thực sự
+        // ghi dữ liệu, để archive có hiệu lực gần như tức thời với mọi lượt
+        // clone đang tiến hành. Cùng mã lỗi SHARE_LINK_NOT_FOUND vì từ góc
+        // nhìn người bấm nút, "link vừa mất hiệu lực" đúng là như vậy.
+        if (source.status !== 'ACTIVE') {
+            throw new Error('SHARE_LINK_NOT_FOUND');
+        }
+
         // Fast path 1: owner cannot clone their own space — return source.id
         if (source.owner_id === newOwnerId) {
             return source.id;
@@ -491,7 +504,7 @@ export class SpaceRepository {
      * root, then BFS's back down — cloning a clone is possible (share a
      * clone → someone else clones it), so this isn't just one level deep.
      */
-    async findLineageSpaces(spaceId: bigint): Promise<{ id: bigint; ownerId: bigint; ownerName: string }[]> {
+    async findLineageSpaces(spaceId: bigint): Promise<{ id: bigint; ownerId: bigint; ownerName: string; status: string }[]> {
         const start = await this.prisma.spaces.findUnique({
             where: { id: spaceId },
             select: { id: true, cloned_from_space_id: true },
@@ -513,25 +526,28 @@ export class SpaceRepository {
             parentId = parent.cloned_from_space_id;
         }
 
-        const members = new Map<string, { id: bigint; ownerId: bigint; ownerName: string }>();
+        // `status` được lấy kèm ở đây (không thêm query) để tầng gọi (getCompanions)
+        // tự quyết định lọc thành viên ARCHIVED — cloneForOwner (fast-path lineage
+        // reuse) vẫn cần TOÀN BỘ thành viên bất kể status nên hàm này KHÔNG tự lọc.
+        const members = new Map<string, { id: bigint; ownerId: bigint; ownerName: string; status: string }>();
         const root = await this.prisma.spaces.findUnique({
             where: { id: rootId },
-            select: { id: true, owner_id: true, owner: { select: { full_name: true } } },
+            select: { id: true, owner_id: true, status: true, owner: { select: { full_name: true } } },
         });
         if (!root) return [];
-        members.set(root.id.toString(), { id: root.id, ownerId: root.owner_id, ownerName: root.owner.full_name });
+        members.set(root.id.toString(), { id: root.id, ownerId: root.owner_id, ownerName: root.owner.full_name, status: root.status });
 
         let frontier = [root.id];
         while (frontier.length > 0) {
             const children = await this.prisma.spaces.findMany({
                 where: { cloned_from_space_id: { in: frontier } },
-                select: { id: true, owner_id: true, owner: { select: { full_name: true } } },
+                select: { id: true, owner_id: true, status: true, owner: { select: { full_name: true } } },
             });
             frontier = [];
             for (const child of children) {
                 const key = child.id.toString();
                 if (members.has(key)) continue;
-                members.set(key, { id: child.id, ownerId: child.owner_id, ownerName: child.owner.full_name });
+                members.set(key, { id: child.id, ownerId: child.owner_id, ownerName: child.owner.full_name, status: child.status });
                 frontier.push(child.id);
             }
         }

@@ -110,7 +110,7 @@ export default function MySharesPage() {
     };
 
     const handleRevoke = async (spaceId: number) => {
-        if (!window.confirm('Thu hồi link này? Ai đang giữ link cũ sẽ không truy cập được nữa.')) return;
+        if (!window.confirm('Thu hồi link này? Ai đang giữ link cũ sẽ không truy cập được nữa. Lưu ý: nếu bạn chia sẻ lại sau này, hệ thống sẽ tạo một link MỚI — link cũ không thể khôi phục.')) return;
         setBusySpaceId(spaceId);
         try {
             await revokeShareLink(spaceId);
@@ -324,11 +324,22 @@ export default function MySharesPage() {
                                                     <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-ink-accentA text-ink-accent uppercase tracking-wide">
                                                         {item.recipeType === 'quiz' ? 'Quiz' : 'Tóm tắt'}
                                                     </span>
+                                                    {item.isArchived && (
+                                                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-ink-warningA text-ink-warning border border-ink-warningBorder uppercase tracking-wide">
+                                                            Đã dọn nội dung
+                                                        </span>
+                                                    )}
                                                     <p className="text-sm font-medium text-ink-text truncate">{item.sourceTitle || item.sourceUrl}</p>
                                                 </div>
                                                 <p className="text-xs text-ink-textMuted mt-0.5">
-                                                    Tạo lúc {formatDate(item.createdAt)} — đã được dùng lại{' '}
-                                                    <span className="font-semibold text-ink-text">{item.reuseCount}</span> lần
+                                                    {item.isArchived
+                                                        ? 'Nội dung đã bị dọn do lâu không dùng — không còn phục vụ được, có thể thu hồi.'
+                                                        : (
+                                                            <>
+                                                                Tạo lúc {formatDate(item.createdAt)} — đã được dùng lại{' '}
+                                                                <span className="font-semibold text-ink-text">{item.reuseCount}</span> lần
+                                                            </>
+                                                        )}
                                                 </p>
                                             </div>
                                             <div className="flex items-center gap-2 flex-shrink-0">

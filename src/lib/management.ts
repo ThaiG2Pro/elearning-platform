@@ -445,6 +445,9 @@ export interface MySharedAIGeneration {
     sourceId: string;
     sourceTitle: string | null;
     sourceUrl: string;
+    /** true nếu nội dung đã bị dọn do lâu không dùng (data-retention job) —
+     *  bản vẫn "đang chia sẻ" trên giấy tờ nhưng không còn nội dung để phục vụ. */
+    isArchived: boolean;
 }
 
 // 2026-09-05 — "/my-shares" (tab "AI"): danh sách bản AI (quiz/tóm tắt) đã

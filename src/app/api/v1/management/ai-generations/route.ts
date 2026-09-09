@@ -27,6 +27,7 @@ export async function GET(request: NextRequest) {
                 sourceId: item.sourceId.toString(),
                 sourceTitle: item.sourceTitle,
                 sourceUrl: item.sourceUrl,
+                isArchived: item.isArchived,
             })),
         });
     } catch (error) {

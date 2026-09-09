@@ -1,18 +1,14 @@
 import { PrismaClient } from '@prisma/client';
 
-export interface SourceArchiveCandidate {
-    id: bigint;
-    title: string | null;
-    lastAccessedAt: Date | null;
-    createdAt: Date | null;
-    hasPublicSpaceReference: boolean;
-}
-
 /**
- * WP4.2 (Checkpoint 4) — truy vấn cho `scripts/archiveStaleData.ts` +
- * "touch last-accessed" gọi từ `AIGenerationService.generate()`. Tách riêng
- * khỏi `AIGenerationRepository` vì đây là domain riêng (data retention), dù
- * cùng chạm bảng `sources`/`ai_generations`.
+ * WP4.2 (Checkpoint 4) — "touch last-accessed" gọi từ
+ * `AIGenerationService.generate()`. Tách riêng khỏi `AIGenerationRepository`
+ * vì đây là domain riêng (data retention), dù cùng chạm bảng `sources`.
+ *
+ * 2026-09-07 — đã xoá `findArchiveCandidates`/`archiveSource` (dead code:
+ * không có caller/test nào — job archive thật chạy ở
+ * `scripts/archiveStaleData.ts`, tự chứa logic riêng vì ràng buộc ts-node
+ * ESM không import được từ `src/modules/*`, xem comment ở đầu file đó).
  */
 export class DataRetentionRepository {
     constructor(private prisma: PrismaClient) { }
@@ -28,55 +24,5 @@ export class DataRetentionRepository {
             where: { id: sourceId },
             data: { last_accessed_at: new Date() },
         });
-    }
-
-    /**
-     * Mọi Source chưa archive, kèm cờ "còn space công khai nào tham chiếu
-     * không" (showcase HOẶC có share_token — 2 hình thức "công khai" hiện có
-     * trong data model, xem spaces.is_showcase/share_token).
-     */
-    async findArchiveCandidates(): Promise<SourceArchiveCandidate[]> {
-        const sources = await this.prisma.sources.findMany({
-            where: { archived_at: null },
-            select: {
-                id: true,
-                title: true,
-                last_accessed_at: true,
-                created_at: true,
-                spaces: {
-                    where: { OR: [{ is_showcase: true }, { share_token: { not: null } }] },
-                    select: { id: true },
-                    take: 1,
-                },
-            },
-        });
-        return sources.map((s) => ({
-            id: s.id,
-            title: s.title,
-            lastAccessedAt: s.last_accessed_at,
-            createdAt: s.created_at,
-            hasPublicSpaceReference: s.spaces.length > 0,
-        }));
-    }
-
-    /**
-     * Archive thật: đánh dấu archived_at, null hoá transcript (field nặng
-     * nhất — mục 6.4) trên Source, và archived_at + content trên mọi
-     * AIGeneration của Source đó (giữ nguyên recipe_hash/key_source/
-     * visibility cho cache-key/audit, chỉ mất nội dung — regenerate lại nếu
-     * ai đó quay lại dùng).
-     */
-    async archiveSource(sourceId: bigint): Promise<void> {
-        const now = new Date();
-        await this.prisma.$transaction([
-            this.prisma.sources.update({
-                where: { id: sourceId },
-                data: { archived_at: now, transcript: null },
-            }),
-            this.prisma.ai_generations.updateMany({
-                where: { source_id: sourceId, archived_at: null },
-                data: { archived_at: now, content: null },
-            }),
-        ]);
     }
 }
