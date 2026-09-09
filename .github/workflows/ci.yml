@@ -147,6 +147,10 @@ jobs:
           context: .
           target: runner
           push: true
+          # Ops (2026-09-09): NEXT_PUBLIC_* nướng lúc build — đặt ở
+          # Settings → Secrets and variables → Actions → Variables.
+          build-args: |
+            NEXT_PUBLIC_DONATE_URL=${{ vars.NEXT_PUBLIC_DONATE_URL }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha

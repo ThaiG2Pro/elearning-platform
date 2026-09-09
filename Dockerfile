@@ -22,6 +22,10 @@ COPY . .
 RUN pnpm exec prisma generate
 
 # Build Next.js (standalone output for minimal image)
+# Ops (2026-09-09): biến NEXT_PUBLIC_* được nướng vào bundle LÚC BUILD, set ở
+# runtime không có tác dụng — CI truyền qua --build-arg (ci.yml, GitHub vars).
+ARG NEXT_PUBLIC_DONATE_URL=""
+ENV NEXT_PUBLIC_DONATE_URL=$NEXT_PUBLIC_DONATE_URL
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN pnpm run build
 
@@ -54,5 +58,9 @@ USER nextjs
 EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
+
+# Ops (2026-09-09): /api/health ping DB; busybox wget có sẵn trong alpine.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
+  CMD wget -qO- http://127.0.0.1:3000/api/health >/dev/null || exit 1
 
 CMD ["node", "server.js"]

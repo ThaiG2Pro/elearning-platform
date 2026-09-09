@@ -1,0 +1,108 @@
+# Production compose cho VPS (2026-09-09) — dùng cùng file .env đặt cạnh.
+# Khác docker-compose.yml (dev):
+#   - app dùng IMAGE build sẵn từ CI (ghcr.io), không build trên VPS (2GB RAM
+#     không đủ cho `next build`)
+#   - chỉ Caddy mở cổng 80/443; app và db KHÔNG bind ra ngoài
+#   - log rotation cho mọi container (ổ 16GB)
+#   - container_name cố định để scripts/ops/*.sh gọi được
+# Chạy:  docker compose -f deploy/docker-compose.prod.yml --env-file .env up -d
+name: elearning
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    container_name: elearning-caddy
+    restart: unless-stopped
+    mem_limit: 128m
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      DOMAIN: ${DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    logging: *logging
+    depends_on:
+      - app
+
+  db:
+    image: postgres:16-alpine
+    container_name: elearning-db
+    restart: unless-stopped
+    mem_limit: 384m
+    command:
+      - postgres
+      - -c
+      - shared_buffers=96MB
+      - -c
+      - max_connections=20
+      - -c
+      - work_mem=4MB
+      - -c
+      - effective_cache_size=512MB
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging: *logging
+
+  app:
+    image: ${APP_IMAGE:-ghcr.io/thaig2pro/elearning-platform:latest}
+    container_name: elearning-app
+    restart: unless-stopped
+    # VPS 2GB: nới hơn bản dev (512m) — heap Node vẫn cap 384MB trong image,
+    # phần dư cho JSDOM/Prisma engine/buffer.
+    mem_limit: 768m
+    expose:
+      - "3000"
+    # Đường dẫn tính từ thư mục chứa compose file (deploy/) → .env ở gốc repo.
+    env_file:
+      - ../.env
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?sslmode=disable&connection_limit=5&pool_timeout=10
+    depends_on:
+      db:
+        condition: service_healthy
+    logging: *logging
+
+  # One-shot: docker compose -f deploy/docker-compose.prod.yml --env-file .env run --rm migrate
+  # Image runner (Next standalone) KHÔNG chứa prisma CLI (chỉ @prisma/client),
+  # nên dùng node:24-alpine + npx với thư mục prisma/ của repo đã clone trên
+  # VPS. Tải ~70MB mỗi lần chạy (chỉ khi deploy) — đổi lại image app gọn.
+  migrate:
+    image: node:24-alpine
+    profiles: ["migrate"]
+    working_dir: /app
+    volumes:
+      - ../prisma:/app/prisma:ro
+      - npm_cache:/root/.npm
+    command: ["npx", "--yes", "prisma@5", "migrate", "deploy"]
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?sslmode=disable
+    depends_on:
+      db:
+        condition: service_healthy
+    logging: *logging
+
+volumes:
+  postgres_data:
+  caddy_data:
+  caddy_config:
+  npm_cache:

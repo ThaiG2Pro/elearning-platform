@@ -1,0 +1,23 @@
+# Caddy tự xin/gia hạn Let's Encrypt cho {$DOMAIN}; redirect http→https mặc định.
+{$DOMAIN} {
+	encode zstd gzip
+
+	# Rate limit trong app đọc X-Forwarded-For — Caddy set sẵn header này.
+	reverse_proxy app:3000 {
+		# Request AI chờ LLM tới 60s (AI_LLM_TIMEOUT_MS) — đừng cắt sớm hơn app.
+		transport http {
+			read_timeout 90s
+		}
+	}
+
+	# Static của Next đã hash tên file → cache lâu ở trình duyệt.
+	@static path /_next/static/*
+	header @static Cache-Control "public, max-age=31536000, immutable"
+
+	log {
+		output file /data/access.log {
+			roll_size 10mb
+			roll_keep 3
+		}
+	}
+}

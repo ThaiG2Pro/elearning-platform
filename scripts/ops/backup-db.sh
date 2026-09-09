@@ -17,7 +17,7 @@
 # trỏ R2 (rclone config → S3 → Cloudflare R2, endpoint <account>.r2.cloudflarestorage.com).
 set -eu
 
-DB_CONTAINER="${DB_CONTAINER:-elearning-platform-db-1}"
+DB_CONTAINER="${DB_CONTAINER:-elearning-db}"
 DB_USER="${DB_USER:-elearning_user}"
 DB_NAME="${DB_NAME:-elearning}"
 RCLONE_REMOTE="${RCLONE_REMOTE:-r2}"

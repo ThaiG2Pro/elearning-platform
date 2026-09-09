@@ -4,7 +4,7 @@
 #   ./restore-db.sh elearning-2026...dump # bản cụ thể
 # CẢNH BÁO: --clean xoá object hiện có trong DB đích trước khi nạp.
 set -eu
-DB_CONTAINER="${DB_CONTAINER:-elearning-platform-db-1}"
+DB_CONTAINER="${DB_CONTAINER:-elearning-db}"
 DB_USER="${DB_USER:-elearning_user}"
 DB_NAME="${DB_NAME:-elearning}"
 RCLONE_REMOTE="${RCLONE_REMOTE:-r2}"

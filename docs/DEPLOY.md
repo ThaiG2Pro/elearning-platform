@@ -91,7 +91,9 @@ Các cấu hình đã có sẵn trong repo cho máy 512MB–1GB RAM, 1 vCPU:
 - **Timeout LLM:** `AI_LLM_TIMEOUT_MS` (mặc định 60000). Transcript YouTube
   timeout cứng 20s.
 
-## Quyết định nhóm E (2026-09-06) — VPS VN 1GB
+> **Lên public:** làm theo [LAUNCH_CHECKLIST.md](LAUNCH_CHECKLIST.md) — bộ script `scripts/ops/` (vps-setup, preflight, deploy, backup/restore) + `deploy/docker-compose.prod.yml` (Caddy HTTPS, image GHCR).
+
+## Quyết định nhóm E (2026-09-06) — VPS VN 2GB (chốt gói 1C/2GB/16GB, 60k/tháng)
 
 | Hạng mục | Chốt |
 |---|---|
