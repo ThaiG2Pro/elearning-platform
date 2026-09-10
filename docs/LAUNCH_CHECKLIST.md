@@ -67,6 +67,9 @@ Cert Let's Encrypt mất ~30s lần đầu (`docker logs -f elearning-caddy`).
 | Khôi phục DB | `scripts/ops/restore-db.sh [file]` |
 | Ổ đĩa | `df -h /; docker system df` |
 
+## Sau khi lên: đọc [SURVIVAL.md](SURVIVAL.md)
+Monitor, autoheal, chặn bot, trần AI toàn hệ thống, SSH key, Cloudflare, diễn tập restore, runbook sự cố — xếp theo tuần.
+
 ## Chưa làm / biết trước
 - `scripts/archiveStaleData.ts` và `aiUsageReport.ts` chạy bằng ts-node, không có trong image runner —
   chạy từ máy dev với `DATABASE_URL` trỏ VPS (qua SSH tunnel) khi cần.
