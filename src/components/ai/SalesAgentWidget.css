@@ -231,7 +231,9 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #4ade80; /* green-400 */
+  /* Neutral, not green — đây là bot trả lời cố định, không phải người/AI
+     đang online thật, tránh gây hiểu nhầm. */
+  background: rgba(255, 255, 255, 0.7);
   flex-shrink: 0;
   animation: sag-dot-pulse 2s ease-in-out infinite;
 }
@@ -408,6 +410,36 @@
 @keyframes sag-bounce {
   0%, 60%, 100% { transform: translateY(0); }
   30%           { transform: translateY(-5px); }
+}
+
+/* Persistent escape hatch — luôn hiện, không chỉ khi bot bí đường trả lời. */
+.sag-panel__contact-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 14px;
+  border-top: 1px solid #f1f5f9;
+  background: #f8fafc;
+  flex-shrink: 0;
+  font-size: 11px;
+  color: #64748b; /* slate-500 */
+}
+
+.sag-panel__contact-link {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #1d4ed8;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 0;
+  white-space: nowrap;
+  transition: color 150ms ease;
+}
+
+.sag-panel__contact-link:hover {
+  color: #1e40af;
 }
 
 /* Footer / Input */
