@@ -18,6 +18,7 @@
     "typecheck": "tsc --noEmit",
     "check:tokens": "node scripts/check-design-tokens.js",
     "seed:showcase": "ts-node prisma/seed-showcase.ts",
+    "seed:playlists": "ts-node prisma/seed-playlists.ts",
     "ai:usage-report": "ts-node scripts/aiUsageReport.ts",
     "data:archive-stale": "ts-node scripts/archiveStaleData.ts"
   },

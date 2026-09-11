@@ -18,11 +18,20 @@ interface HeaderProps {
 // tới một link giả.
 const DONATE_URL = process.env.NEXT_PUBLIC_DONATE_URL;
 
+// Nav khai báo dạng danh sách thay vì lặp lại 1 khối JSX/route — thêm
+// /pricing, /guide, /faq (đang là 3 trang rỗng cần route) chỉ là thêm 1 dòng
+// thay vì chép lại cả khối button.
+const NAV_ITEMS: { href: string; label: string }[] = [
+    { href: '/', label: 'Trang chủ' },
+    { href: '/pricing', label: 'Bảng giá' },
+    { href: '/guide', label: 'Hướng dẫn' },
+    { href: '/faq', label: 'Hỏi đáp' },
+    { href: '/about', label: 'Về chúng tôi' },
+];
+
 export default function Header({ user, onLogout, onJoin }: HeaderProps) {
     const router = useRouter();
     const pathname = usePathname();
-    const handleHomeClick = () => router.push('/');
-    const handleAboutClick = () => router.push('/about');
 
     return (
         // Vỏ bar (sticky, chiều cao APP_TOP_BAR_H, border, căn giữa max-w-7xl)
@@ -35,26 +44,19 @@ export default function Header({ user, onLogout, onJoin }: HeaderProps) {
             {/* Main Nav */}
                     <div className="flex items-center gap-6 sm:gap-8">
                         <nav className="flex items-center gap-1 sm:gap-5 overflow-x-auto" aria-label="Main Navigation">
-                            <button
-                                onClick={handleHomeClick}
-                                className={`vd-focusable whitespace-nowrap px-1 py-1.5 border-b-2 text-sm font-medium transition-colors ${
-                                    pathname === '/'
-                                        ? 'border-ink-accent text-ink-text font-semibold'
-                                        : 'border-transparent text-ink-textMuted hover:text-ink-text'
-                                }`}
-                            >
-                                Trang chủ
-                            </button>
-                            <button
-                                onClick={handleAboutClick}
-                                className={`vd-focusable whitespace-nowrap px-1 py-1.5 border-b-2 text-sm font-medium transition-colors ${
-                                    pathname === '/about'
-                                        ? 'border-ink-accent text-ink-text font-semibold'
-                                        : 'border-transparent text-ink-textMuted hover:text-ink-text'
-                                }`}
-                            >
-                                Về chúng tôi
-                            </button>
+                            {NAV_ITEMS.map((item) => (
+                                <button
+                                    key={item.href}
+                                    onClick={() => router.push(item.href)}
+                                    className={`vd-focusable whitespace-nowrap px-1 py-1.5 border-b-2 text-sm font-medium transition-colors ${
+                                        pathname === item.href
+                                            ? 'border-ink-accent text-ink-text font-semibold'
+                                            : 'border-transparent text-ink-textMuted hover:text-ink-text'
+                                    }`}
+                                >
+                                    {item.label}
+                                </button>
+                            ))}
                         </nav>
                     </div>
 
