@@ -61,15 +61,8 @@ nhận tin Telegram.
 
 ### A4. 🟩 Xem log tập trung khi cần điều tra
 
-Không cần cài gì thêm ở quy mô này. Ghi nhớ 4 lệnh:
-
-```sh
-docker logs -f --tail 200 elearning-app          # lỗi app
-docker logs --since 1h elearning-caddy            # request/cert
-docker exec elearning-caddy tail -n 200 /data/access.log | grep -v '"status":200'
-docker exec elearning-db psql -U $POSTGRES_USER -d $POSTGRES_DB -c \
-  "select pid, now()-query_start as dur, left(query,80) from pg_stat_activity where state='active' order by dur desc;"
-```
+Không cần cài gì thêm ở quy mô này. 4 lệnh cần nhớ đã gộp vào **`docs/RUNBOOK.md`** (cùng
+chỗ với sổ tay sự cố E3) — 1 nơi duy nhất, không lặp lại ở đây để tránh 2 bản lệch nhau.
 
 ---
 
@@ -310,9 +303,12 @@ Domain (tech.com) và VPS hết hạn là cái chết chắc chắn nhất trong
 script nào cứu được. Đặt 2 sự kiện trên lịch điện thoại, **trước 14 ngày**, lặp hằng năm
 (domain) / hằng tháng hoặc năm (VPS tuỳ gói). Bật auto-renew nếu nhà cung cấp cho.
 
-### E2. 🟥 Diễn tập khôi phục 1 lần
+### E2. 🟥 Diễn tập khôi phục 1 lần (script đã sẵn, còn cần bạn tự chạy 1 lần)
 
-Backup chưa từng restore thì chưa phải backup. Tuần đầu sau khi lên:
+Backup chưa từng restore thì chưa phải backup. Tuần đầu sau khi lên — dùng đúng
+`scripts/ops/restore-db.sh` thật (trỏ vào container tạm qua biến env) thay vì gõ tay
+`rclone`/`pg_restore` riêng, để diễn tập kiểm luôn đúng script sẽ dùng khi có sự cố thật,
+không phải 1 bản chép tay có thể lệch dần với script gốc:
 
 ```sh
 # 1. backup thật
@@ -320,9 +316,8 @@ FORCE=1 scripts/ops/backup-db.sh
 # 2. Postgres tạm, cổng khác, không đụng DB thật
 docker run -d --name pg-drill -e POSTGRES_PASSWORD=x -e POSTGRES_DB=drill postgres:16-alpine
 sleep 5
-# 3. restore vào đó
-rclone cat r2:elearning-backup/$(rclone lsf r2:elearning-backup | sort | tail -1) \
-  | docker exec -i pg-drill pg_restore -U postgres -d drill --no-owner
+# 3. restore vào đó bằng chính script production dùng (chỉ đổi đích qua env)
+DB_CONTAINER=pg-drill DB_USER=postgres DB_NAME=drill scripts/ops/restore-db.sh
 # 4. kiểm
 docker exec pg-drill psql -U postgres -d drill -c "select count(*) from users;"
 # 5. dọn
@@ -330,22 +325,12 @@ docker rm -f pg-drill
 ```
 Số user khớp với DB thật → backup dùng được. Ghi ngày diễn tập vào đây: ______
 
-### E3. 🟧 Sổ tay sự cố (runbook 1 trang)
+### E3. ✅ 2026-09-11 🟧 Sổ tay sự cố (runbook 1 trang)
 
-Khi có chuyện lúc 2h sáng, không ai nhớ gì. In hoặc ghim đoạn này:
-
-| Triệu chứng | Lệnh đầu tiên | Thường là |
-|---|---|---|
-| Trang không mở, monitor đỏ | `docker ps -a` | container exit → `docker logs --tail 100 <tên>` |
-| Trang mở nhưng lỗi 500 | `docker logs --tail 200 elearning-app` | DB không kết nối / hết connection pool |
-| Chậm toàn tập | `free -m; docker stats --no-stream` | swap đầy → `docker restart elearning-app` |
-| Không nhận mail | `docker logs elearning-app 2>&1 \| grep -i mail` | SMTP pass hết hạn / DNS DKIM đỏ |
-| AI lỗi | `curl -H "Authorization: Bearer $LITELLM_MASTER_KEY" $LITELLM_BASE_URL/models` | key hết hạn / model bị gỡ → đổi `AI_DEFAULT_MODEL` |
-| Ổ đầy | `df -h /; docker system df` | `docker system prune -af`; `journalctl --vacuum-size=100M` |
-| Cert lỗi | `docker logs elearning-caddy \| grep -i acme` | DNS đổi / cổng 80 bị chặn / Cloudflare cam khi renew |
-| Bị tấn công (traffic bất thường) | `docker exec elearning-caddy tail -n 2000 /data/access.log \| jq -r '.request.remote_ip' \| sort \| uniq -c \| sort -rn \| head` | bật Cloudflare "Under Attack Mode"; `ufw deny from <IP>` |
-| Rollback bản vừa deploy | `APP_IMAGE=ghcr.io/thaig2pro/elearning-platform:sha-<7> FORCE=1 scripts/ops/deploy.sh` | tag sha xem ở GitHub → Packages |
-| Mất sạch VPS | thuê VPS mới → `vps-setup.sh` → dán `.env` từ Bitwarden → `deploy.sh` → `restore-db.sh` → đổi A record | 30–60 phút nếu E2 đã làm |
+Khi có chuyện lúc 2h sáng, không ai nhớ gì. Đã tách thành **`docs/RUNBOOK.md`** — 1 file
+gọn để in hoặc ghim riêng (không kèm phần giải thích "vì sao" dài dòng của file này), gồm
+bảng triệu chứng → lệnh đầu tiên → nguyên nhân thường gặp, cộng thêm 4 lệnh xem log (A4)
+và sơ đồ network container (D3).
 
 ### E4. 🟩 Giới hạn thời gian của chính bạn
 
