@@ -29,27 +29,13 @@ Ký hiệu: 🟥 làm trong tuần đầu · 🟧 tuần 2–3 · 🟩 khi rản
 **Xong khi.** Tắt app thử `docker stop elearning-app`, trong 5 phút có thông báo; bật lại
 `docker start elearning-app`.
 
-### A2. 🟥 Tự hồi sinh container treo — autoheal
+### A2. ✅ 2026-09-11 🟥 Tự hồi sinh container treo — autoheal
 
 **Vì sao.** `restart: unless-stopped` chỉ khởi động lại khi process **chết**. Node treo
 (event loop kẹt, hết heap nhưng chưa crash) → Docker đánh `unhealthy` rồi… để đó.
 
-**Làm.** Thêm service vào `deploy/docker-compose.prod.yml`:
-
-```yaml
-  autoheal:
-    image: willfarrell/autoheal:latest
-    container_name: elearning-autoheal
-    restart: unless-stopped
-    mem_limit: 32m
-    environment:
-      AUTOHEAL_CONTAINER_LABEL: all      # theo dõi mọi container có healthcheck
-      AUTOHEAL_INTERVAL: 30
-      AUTOHEAL_START_PERIOD: 60
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-    logging: *logging
-```
+**Đã có trong repo.** Service `autoheal` đã ở `deploy/docker-compose.prod.yml`, lên cùng
+`docker compose … up -d` lần deploy tới, không cần làm gì thêm.
 
 Lưu ý: mount `docker.sock` cho container này quyền điều khiển Docker — chấp nhận vì image
 nhỏ, phổ biến, chỉ đọc trạng thái và gọi restart. Không mount sock cho container nào khác.
@@ -57,43 +43,21 @@ nhỏ, phổ biến, chỉ đọc trạng thái và gọi restart. Không mount 
 **Xong khi.** `docker exec elearning-app kill -STOP 1` (đóng băng process) → sau ~90s
 `docker ps` thấy app restart, `docker logs elearning-autoheal` có dòng restart.
 
-### A3. 🟧 Cảnh báo RAM / ổ đĩa qua Telegram
+### A3. ✅ 2026-09-11 (code xong, cần điền token) 🟧 Cảnh báo RAM / ổ đĩa qua Telegram
 
 **Vì sao.** Ổ 16GB đầy → Postgres ngừng ghi → mọi thao tác lỗi im lặng. Swap đầy → máy
 chậm như chết. Cả hai đều xảy ra từ từ, có thể báo trước.
 
-**Làm.**
+**Đã có trong repo.** `scripts/ops/alert.sh` (tự đọc `/opt/elearning/.env`) và cron
+`0 * * * * root … alert.sh` đã nằm trong `/etc/cron.d/elearning` do `vps-setup.sh` tạo. Chỉ
+còn 2 việc thủ công:
 1. Tạo bot Telegram: chat với `@BotFather` → `/newbot` → lấy `BOT_TOKEN`. Chat với bot 1 câu,
    rồi mở `https://api.telegram.org/bot<BOT_TOKEN>/getUpdates` lấy `chat.id`.
-2. Tạo `/opt/elearning/scripts/ops/alert.sh`:
+2. Điền `TELEGRAM_BOT_TOKEN` và `TELEGRAM_CHAT_ID` vào `.env` trên VPS (mẫu trong
+   `deploy/.env.production.example`). `preflight.sh` sẽ WARN nếu quên.
 
-```sh
-#!/usr/bin/env sh
-# Cron mỗi giờ: báo Telegram khi ổ/RAM/swap vượt ngưỡng hoặc container không healthy.
-TOKEN="<BOT_TOKEN>"; CHAT="<CHAT_ID>"; HOST="$(hostname)"
-send() { curl -s -X POST "https://api.telegram.org/bot$TOKEN/sendMessage" \
-           -d chat_id="$CHAT" -d text="[$HOST] $1" >/dev/null; }
-
-DISK=$(df / | awk 'NR==2{gsub("%","",$5); print $5}')
-[ "$DISK" -ge 85 ] && send "⚠ Ổ đĩa ${DISK}% — chạy: docker system prune -af; xem /var/lib/docker"
-
-SWAP_USED=$(free -m | awk '/Swap/{print $3}'); SWAP_TOTAL=$(free -m | awk '/Swap/{print $2}')
-[ "$SWAP_TOTAL" -gt 0 ] && [ $((SWAP_USED*100/SWAP_TOTAL)) -ge 70 ] && send "⚠ Swap ${SWAP_USED}MB/${SWAP_TOTAL}MB — RAM căng, cân nhắc docker restart elearning-app"
-
-for c in elearning-app elearning-db elearning-caddy; do
-    S=$(docker inspect -f '{{.State.Status}}/{{if .State.Health}}{{.State.Health.Status}}{{else}}-{{end}}' "$c" 2>/dev/null || echo missing)
-    case "$S" in running/healthy|running/-) ;; *) send "🔴 $c: $S";; esac
-done
-
-# Chứng chỉ HTTPS còn < 10 ngày (Caddy tự gia hạn, nhưng nếu DNS/port 80 hỏng thì không)
-EXP=$(echo | openssl s_client -servername "$DOMAIN" -connect "$DOMAIN:443" 2>/dev/null | openssl x509 -noout -enddate | cut -d= -f2)
-[ -n "$EXP" ] && [ $(( ($(date -d "$EXP" +%s) - $(date +%s)) / 86400 )) -lt 10 ] && send "⚠ Cert hết hạn sau <10 ngày — docker logs elearning-caddy"
-```
-
-3. `chmod 700 alert.sh` (chứa token) và cron: `0 * * * * root DOMAIN=<domain> /opt/elearning/scripts/ops/alert.sh`
-   thêm vào `/etc/cron.d/elearning`.
-
-**Xong khi.** Chạy tay với ngưỡng hạ thấp tạm (`DISK -ge 1`) → nhận tin Telegram.
+**Xong khi.** Chạy tay với ngưỡng hạ thấp tạm (`DISK_THRESHOLD=1 scripts/ops/alert.sh`) →
+nhận tin Telegram.
 
 ### A4. 🟩 Xem log tập trung khi cần điều tra
 

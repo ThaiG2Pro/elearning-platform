@@ -101,6 +101,23 @@ services:
         condition: service_healthy
     logging: *logging
 
+  # A2 (docs/SURVIVAL.md): tự khởi động lại container "unhealthy" — restart:
+  # unless-stopped chỉ cứu process CHẾT, không cứu process TREO (event loop
+  # kẹt, heap gần đầy nhưng chưa crash). Autoheal đọc HEALTHCHECK của mọi
+  # container và `docker restart` container nào fail liên tục.
+  autoheal:
+    image: willfarrell/autoheal:latest
+    container_name: elearning-autoheal
+    restart: unless-stopped
+    mem_limit: 32m
+    environment:
+      AUTOHEAL_CONTAINER_LABEL: all
+      AUTOHEAL_INTERVAL: 30
+      AUTOHEAL_START_PERIOD: 60
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    logging: *logging
+
 volumes:
   postgres_data:
   caddy_data:

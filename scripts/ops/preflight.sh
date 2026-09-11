@@ -35,6 +35,7 @@ case "${MAIL_FROM:-}" in
     *) pass "MAIL_FROM=$MAIL_FROM" ;;
 esac
 [ -z "${STRIPE_SECRET_KEY:-}" ] && warn "Stripe tắt (bình thường nếu chưa bán credit)" || pass "Stripe bật"
+[ -n "${TELEGRAM_BOT_TOKEN:-}" ] && [ -n "${TELEGRAM_CHAT_ID:-}" ] && pass "Telegram alert cấu hình" || warn "TELEGRAM_BOT_TOKEN/CHAT_ID trống — scripts/ops/alert.sh sẽ chỉ ghi log, không báo động (xem docs/SURVIVAL.md A3)"
 grep -q "NEXT_PUBLIC_" "$ENV_FILE" && warn "NEXT_PUBLIC_* trong .env không có tác dụng ở runtime (nướng lúc build CI)"
 
 echo "── Hệ thống"

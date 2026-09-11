@@ -70,10 +70,11 @@ fi
 chmod +x "$APP_DIR"/scripts/ops/*.sh
 [ -f "$APP_DIR/.env" ] || { cp "$APP_DIR/deploy/.env.production.example" "$APP_DIR/.env"; chmod 600 "$APP_DIR/.env"; }
 
-log "Cron: backup 2 lần/tuần (chỉ upload khi đổi) + dọn image cũ hàng tuần"
+log "Cron: backup 2 lần/tuần (chỉ upload khi đổi) + dọn image cũ hàng tuần + cảnh báo Telegram hàng giờ"
 cat > /etc/cron.d/elearning <<CRON
 0 3 * * 3,0  root  $APP_DIR/scripts/ops/backup-db.sh >> /var/log/elearning-backup.log 2>&1
 30 4 * * 1   root  docker image prune -af --filter "until=168h" >> /var/log/elearning-prune.log 2>&1
+0 * * * *    root  $APP_DIR/scripts/ops/alert.sh >> /var/log/elearning-alert.log 2>&1
 CRON
 chmod 644 /etc/cron.d/elearning
 
