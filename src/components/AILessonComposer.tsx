@@ -5,7 +5,6 @@ import Link from 'next/link';
 import {
     generateAIContent,
     parseAIQuizContent,
-    AIRecipeType,
     AIGenerationError,
     AIQuizQuestionDraft,
 } from '@/lib/aiGeneration';
@@ -16,7 +15,6 @@ import {
     DialogTitle,
     DialogDescription,
 } from '@/components/ui/dialog';
-import MarkdownText from '@/components/MarkdownText';
 import VideoSourceDropdown from '@/components/VideoSourceDropdown';
 
 /**
@@ -49,8 +47,6 @@ export interface AIVideoSourceOption {
 
 interface AILessonComposerProps {
     open: boolean;
-    /** Nút trigger nào mở dialog ("Tạo quiz tại đây" / "Tạo tóm tắt"). */
-    initialType: AIRecipeType;
     videoOptions: AIVideoSourceOption[];
     onClose: () => void;
     /**
@@ -72,27 +68,27 @@ interface AILessonComposerProps {
 /**
  * Quyết định UX 2026-08-21: trang edit là NƠI DUY NHẤT trigger AI (trang học
  * chỉ còn nút điều hướng về đây — xem spaces/[id]/learn). Dialog này gom đủ
- * lựa chọn cho cả 2 recipe:
+ * lựa chọn cho recipe quiz:
  *   - dropdown chọn video nguồn trong toàn bộ space (không giới hạn 1 chương);
  *   - bản miễn phí: recipe mặc định, khoá tham số (đúng luật SHARED_FREE —
  *     đổi bất kỳ tham số nào không còn là "mặc định" nữa, xem Recipes.ts);
- *   - bản tuỳ biến: số câu / độ khó / độ dài / chủ đề focus / BYOK. Không có
+ *   - bản tuỳ biến: số câu / độ khó / chủ đề focus / BYOK. Không có
  *     key riêng thì server trả AI_CUSTOM_RECIPE_REQUIRES_BYOK_OR_PAID và UI
  *     hiện nút trả phí bằng credit — chính sách tier (free/BYOK/vip) nằm ở
  *     AIGenerationPolicy phía server, UI này không tự quyết định giá.
  *
- * Tóm tắt chỉ hiển thị + copy được (chưa có loại lesson dạng text để "ráp
- * thành bài học" như quiz — nếu sau này thêm lesson TEXT thì nối vào cùng
- * callback pattern với onCreateQuizLesson).
+ * 2026-09-11 — bỏ hẳn recipe "tóm tắt" khỏi composer này (quyết định người
+ * dùng): kết quả tóm tắt chưa từng có nơi "ở lại" (không gắn vào lesson/
+ * space nào, chỉ hiển thị tạm rồi mất), khác hẳn quiz vốn ráp ngay thành 1
+ * lesson thật. Recipe 'summary' vẫn còn nguyên ở backend (route/service/
+ * Recipes.ts) — chỉ gỡ lối trigger từ UI.
  */
 export default function AILessonComposer({
     open,
-    initialType,
     videoOptions,
     onClose,
     onCreateQuizLesson,
 }: AILessonComposerProps) {
-    const [type, setType] = useState<AIRecipeType>(initialType);
     const [selectedLessonId, setSelectedLessonId] = useState<number | null>(null);
     // 2026-09-04 — bỏ toggle "bật/tắt tuỳ biến": panel tuỳ biến giờ LUÔN hiện
     // sẵn (pill chọn số câu/độ khó, ô chủ đề), badge trạng thái cập nhật
@@ -107,7 +103,6 @@ export default function AILessonComposer({
     // đường miễn phí) — không phạt user vì lỡ mở panel tuỳ biến.
     const [questionCount, setQuestionCount] = useState(10);
     const [difficulty, setDifficulty] = useState('medium');
-    const [length, setLength] = useState('standard');
     const [focusTopic, setFocusTopic] = useState('');
     const [byokApiKey, setByokApiKey] = useState('');
     const [byokBaseUrl, setByokBaseUrl] = useState('');
@@ -117,8 +112,6 @@ export default function AILessonComposer({
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [errorCode, setErrorCode] = useState<string | null>(null);
-    const [summaryResult, setSummaryResult] = useState<string | null>(null);
-    const [summaryCopied, setSummaryCopied] = useState(false);
     // Các sourceId đã tạo quiz trong phiên dialog này — lần generate tiếp
     // theo cho cùng video sẽ force qua cache, tránh tạo thêm 1 lesson quiz
     // giống hệt bản vừa tạo mà user không hiểu vì sao "tạo mới" ra bản cũ.
@@ -129,13 +122,10 @@ export default function AILessonComposer({
     // phiền, key chỉ sống trong state — không lưu đâu cả).
     useEffect(() => {
         if (open) {
-            setType(initialType);
             setError(null);
             setErrorCode(null);
-            setSummaryResult(null);
-            setSummaryCopied(false);
         }
-    }, [open, initialType]);
+    }, [open]);
 
     const selected = videoOptions.find(v => v.lessonId === selectedLessonId) ?? videoOptions[0] ?? null;
 
@@ -145,7 +135,7 @@ export default function AILessonComposer({
     // params nữa) — khi trùng mặc định, server tự đi đường miễn phí y hệt
     // trước đây dù params có mặt trong request hay không.
     const trimmedTopic = focusTopic.trim();
-    const isDefaultParams = trimmedTopic === '' && (type === 'summary' ? length === 'standard' : questionCount === 10 && difficulty === 'medium');
+    const isDefaultParams = trimmedTopic === '' && questionCount === 10 && difficulty === 'medium';
     const hasFullByok = byokApiKey.trim() !== '' && byokBaseUrl.trim() !== '' && byokModel.trim() !== '';
     const isFree = isDefaultParams || hasFullByok;
 
@@ -154,33 +144,24 @@ export default function AILessonComposer({
         setLoading(true);
         setError(null);
         setErrorCode(null);
-        setSummaryResult(null);
-        setSummaryCopied(false);
         try {
             const options = {
-                params: type === 'summary'
-                    ? { length, language: 'vi', ...(trimmedTopic ? { focusTopic: trimmedTopic } : {}) }
-                    : { questionCount, difficulty, language: 'vi', ...(trimmedTopic ? { focusTopic: trimmedTopic } : {}) },
+                params: { questionCount, difficulty, language: 'vi', ...(trimmedTopic ? { focusTopic: trimmedTopic } : {}) },
                 byokApiKey: byokApiKey.trim() || undefined,
                 byokBaseUrl: byokBaseUrl.trim() || undefined,
                 byokModel: byokModel.trim() || undefined,
                 requestedVisibility: (shareWithOthers ? 'SHARED' : 'PRIVATE') as 'SHARED' | 'PRIVATE',
                 paymentMethod,
-                force: type === 'quiz' && quizGeneratedSourceIds.has(selected.sourceId) ? true : undefined,
+                force: quizGeneratedSourceIds.has(selected.sourceId) ? true : undefined,
             };
 
-            const result = await generateAIContent(selected.sourceId, type, options);
+            const result = await generateAIContent(selected.sourceId, 'quiz', options);
             if (!result.content) {
                 setError('Tạo nội dung AI thất bại, thử lại sau.');
                 return;
             }
 
-            if (type === 'summary') {
-                setSummaryResult(result.content);
-                return;
-            }
-
-            // Quiz: parse → tạo lesson ngay. parseAIQuizContent throw
+            // Parse → tạo lesson ngay. parseAIQuizContent throw
             // AIGenerationError nếu output không thành quiz hợp lệ được —
             // rơi xuống catch chung, user bấm tạo lại.
             const draft = parseAIQuizContent(result.content);
@@ -201,16 +182,6 @@ export default function AILessonComposer({
         }
     };
 
-    const handleCopySummary = async () => {
-        if (!summaryResult) return;
-        try {
-            await navigator.clipboard.writeText(summaryResult);
-            setSummaryCopied(true);
-        } catch {
-            // clipboard bị chặn (permission/iframe) — không có gì để làm thêm
-        }
-    };
-
     return (
         <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
             <DialogContent className="max-w-xl max-h-[85vh] overflow-y-auto">
@@ -219,29 +190,12 @@ export default function AILessonComposer({
                         <svg className="w-4 h-4 text-ink-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z"/>
                         </svg>
-                        {type === 'quiz' ? 'Tạo bài quiz bằng AI' : 'Tạo tóm tắt bằng AI'}
+                        Tạo bài quiz bằng AI
                     </DialogTitle>
                     <DialogDescription>
-                        {type === 'quiz'
-                            ? 'Chọn video nguồn — quiz sinh ra sẽ thành 1 bài học mới ngay trong chương của video đó.'
-                            : 'Chọn video nguồn để AI tóm tắt nội dung.'}
+                        Chọn video nguồn — quiz sinh ra sẽ thành 1 bài học mới ngay trong chương của video đó.
                     </DialogDescription>
                 </DialogHeader>
-
-                {/* Chuyển qua lại giữa 2 recipe không cần đóng dialog */}
-                <div className="flex gap-1 p-1 bg-ink-page rounded-lg w-fit">
-                    {(['quiz', 'summary'] as AIRecipeType[]).map((t) => (
-                        <button
-                            key={t}
-                            onClick={() => { setType(t); setError(null); setErrorCode(null); }}
-                            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                                type === t ? 'bg-ink-panel text-ink-accent shadow-ink-sm' : 'text-ink-textMuted hover:text-ink-text'
-                            }`}
-                        >
-                            {t === 'quiz' ? 'Quiz' : 'Tóm tắt'}
-                        </button>
-                    ))}
-                </div>
 
                 {videoOptions.length === 0 ? (
                     <p className="text-sm text-ink-textMuted bg-ink-page border border-ink-border rounded-lg p-3">
@@ -271,7 +225,7 @@ export default function AILessonComposer({
                         <div className="p-3 rounded-lg bg-ink-accentA border border-ink-border space-y-2.5">
                             <div className="flex items-center justify-between">
                                 <span className="text-xs font-semibold text-ink-textMid">
-                                    Tuỳ biến {type === 'quiz' ? 'quiz' : 'tóm tắt'}
+                                    Tuỳ biến quiz
                                 </span>
                                 {/* Badge sống — cập nhật ngay theo giá trị đang chọn, thay vì 1
                                     dòng chữ tĩnh coi "mở panel tuỳ biến" = "sẽ tốn phí" (sai: để
@@ -292,68 +246,44 @@ export default function AILessonComposer({
                                 </span>
                             </div>
 
-                            {type === 'quiz' ? (
-                                <>
-                                    <div>
-                                        <label className="block text-[11px] font-medium text-ink-textDim mb-1">Số câu</label>
-                                        <div className="flex gap-1.5">
-                                            {[5, 10, 15, 20].map((n) => (
-                                                <button
-                                                    key={n}
-                                                    type="button"
-                                                    onClick={() => setQuestionCount(n)}
-                                                    className={`px-2.5 py-1 rounded-md text-xs font-medium border transition-colors ${
-                                                        questionCount === n
-                                                            ? 'bg-ink-accent text-white border-ink-accent'
-                                                            : 'bg-ink-panel text-ink-text border-ink-border hover:border-ink-accent'
-                                                    }`}
-                                                >
-                                                    {n} câu
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <label className="block text-[11px] font-medium text-ink-textDim mb-1">Độ khó</label>
-                                        <div className="flex gap-1.5">
-                                            {[{ v: 'easy', l: 'Dễ' }, { v: 'medium', l: 'Trung bình' }, { v: 'hard', l: 'Khó' }].map((opt) => (
-                                                <button
-                                                    key={opt.v}
-                                                    type="button"
-                                                    onClick={() => setDifficulty(opt.v)}
-                                                    className={`px-2.5 py-1 rounded-md text-xs font-medium border transition-colors ${
-                                                        difficulty === opt.v
-                                                            ? 'bg-ink-accent text-white border-ink-accent'
-                                                            : 'bg-ink-panel text-ink-text border-ink-border hover:border-ink-accent'
-                                                    }`}
-                                                >
-                                                    {opt.l}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-                                </>
-                            ) : (
-                                <div>
-                                    <label className="block text-[11px] font-medium text-ink-textDim mb-1">Độ dài</label>
-                                    <div className="flex gap-1.5">
-                                        {[{ v: 'short', l: 'Ngắn' }, { v: 'standard', l: 'Chuẩn' }, { v: 'long', l: 'Dài' }].map((opt) => (
-                                            <button
-                                                key={opt.v}
-                                                type="button"
-                                                onClick={() => setLength(opt.v)}
-                                                className={`px-2.5 py-1 rounded-md text-xs font-medium border transition-colors ${
-                                                    length === opt.v
-                                                        ? 'bg-ink-accent text-white border-ink-accent'
-                                                        : 'bg-ink-panel text-ink-text border-ink-border hover:border-ink-accent'
-                                                }`}
-                                            >
-                                                {opt.l}
-                                            </button>
-                                        ))}
-                                    </div>
+                            <div>
+                                <label className="block text-[11px] font-medium text-ink-textDim mb-1">Số câu</label>
+                                <div className="flex gap-1.5">
+                                    {[5, 10, 15, 20].map((n) => (
+                                        <button
+                                            key={n}
+                                            type="button"
+                                            onClick={() => setQuestionCount(n)}
+                                            className={`px-2.5 py-1 rounded-md text-xs font-medium border transition-colors ${
+                                                questionCount === n
+                                                    ? 'bg-ink-accent text-white border-ink-accent'
+                                                    : 'bg-ink-panel text-ink-text border-ink-border hover:border-ink-accent'
+                                            }`}
+                                        >
+                                            {n} câu
+                                        </button>
+                                    ))}
                                 </div>
-                            )}
+                            </div>
+                            <div>
+                                <label className="block text-[11px] font-medium text-ink-textDim mb-1">Độ khó</label>
+                                <div className="flex gap-1.5">
+                                    {[{ v: 'easy', l: 'Dễ' }, { v: 'medium', l: 'Trung bình' }, { v: 'hard', l: 'Khó' }].map((opt) => (
+                                        <button
+                                            key={opt.v}
+                                            type="button"
+                                            onClick={() => setDifficulty(opt.v)}
+                                            className={`px-2.5 py-1 rounded-md text-xs font-medium border transition-colors ${
+                                                difficulty === opt.v
+                                                    ? 'bg-ink-accent text-white border-ink-accent'
+                                                    : 'bg-ink-panel text-ink-text border-ink-border hover:border-ink-accent'
+                                            }`}
+                                        >
+                                            {opt.l}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
 
                             <div>
                                 <label className="block text-[11px] font-medium text-ink-textDim mb-1">Chủ đề muốn tập trung (tuỳ chọn)</label>
@@ -483,9 +413,7 @@ export default function AILessonComposer({
                             className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium bg-ink-accent text-white hover:bg-ink-accent/90 disabled:opacity-50 transition-colors"
                         >
                             {loading && <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />}
-                            {loading
-                                ? (type === 'quiz' ? 'Đang tạo quiz…' : 'Đang tóm tắt…')
-                                : (type === 'quiz' ? 'Tạo bài quiz ngay' : 'Tạo tóm tắt')}
+                            {loading ? 'Đang tạo quiz…' : 'Tạo bài quiz ngay'}
                         </button>
 
                         {error && (
@@ -510,21 +438,6 @@ export default function AILessonComposer({
                                         Mua thêm credit
                                     </Link>
                                 )}
-                            </div>
-                        )}
-
-                        {type === 'summary' && summaryResult && (
-                            <div className="p-3 rounded-lg bg-ink-page border border-ink-border">
-                                <div className="flex items-center justify-between mb-1.5">
-                                    <p className="text-xs font-semibold text-ink-textMuted">Tóm tắt — {selected?.lessonTitle}</p>
-                                    <button
-                                        onClick={handleCopySummary}
-                                        className="text-[11px] font-medium text-ink-accent hover:text-ink-accent/80"
-                                    >
-                                        {summaryCopied ? 'Đã sao chép ✓' : 'Sao chép'}
-                                    </button>
-                                </div>
-                                <MarkdownText text={summaryResult} className="text-sm text-ink-text max-h-60 overflow-y-auto" />
                             </div>
                         )}
                     </div>

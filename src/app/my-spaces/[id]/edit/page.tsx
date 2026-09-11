@@ -39,7 +39,6 @@ import AccountMenu from '@/components/AccountMenu';
 import { AuthUtils, logout as apiLogout } from '@/lib/auth';
 import { User } from '@/types/auth.types';
 import Toast from '@/components/Toast';
-import MarkdownText from '@/components/MarkdownText';
 import AILessonComposer, { AIVideoSourceOption } from '@/components/AILessonComposer';
 import VideoSourceDropdown from '@/components/VideoSourceDropdown';
 import {
@@ -154,10 +153,14 @@ export default function SpaceEditPage() {
     // AI trong editor — bổ sung gap: dán link → vào editor → AI tự sinh
     // quiz ngay tại đó, thay vì chỉ có đường Excel thủ công. Luôn do user
     // chủ động bấm nút, không có gì tự chạy khi mở editor/thêm lesson mới.
-    const [aiLoading, setAiLoading] = useState<'summary' | 'quiz' | null>(null);
+    // 2026-09-11 — bỏ "AI tóm tắt" khỏi trang edit (quyết định người dùng):
+    // kết quả tóm tắt trước đây chỉ hiện tạm trong panel rồi mất hẳn (không
+    // gắn vào lesson/space nào), khác quiz vốn ráp ngay thành 1 lesson thật
+    // — UX kém hơn hẳn, không đáng giữ. Backend (recipe 'summary') vẫn còn
+    // nguyên, chỉ gỡ lối trigger.
+    const [aiLoading, setAiLoading] = useState<'quiz' | null>(null);
     const [aiError, setAiError] = useState<string | null>(null);
     const [aiErrorCode, setAiErrorCode] = useState<string | null>(null);
-    const [aiSummary, setAiSummary] = useState<string | null>(null);
     const [aiQuizDraft, setAiQuizDraft] = useState<AIQuizQuestionDraft[] | null>(null);
     // Nếu 2 lesson QUIZ khác nhau cùng chọn 1 video nguồn, kết quả AI sẽ
     // GIỐNG HỆT NHAU — cache theo (source, recipe) dùng chung, đúng thiết
@@ -176,7 +179,6 @@ export default function SpaceEditPage() {
     // video nào trong space làm nguồn + đủ tuỳ chọn (số câu/độ khó/chủ đề
     // focus/BYOK/trả phí), quiz sinh ra ráp NGAY thành lesson QUIZ mới.
     const [aiComposerOpen, setAiComposerOpen] = useState(false);
-    const [aiComposerType, setAiComposerType] = useState<'summary' | 'quiz'>('quiz');
 
     const isProcessing = quizFlowStatus === 'processing';
     const isReviewing = quizFlowStatus === 'reviewing';
@@ -269,10 +271,9 @@ export default function SpaceEditPage() {
             sourceId: lesson.sourceId ?? null,
         });
         // Kết quả AI thuộc về lesson vừa chọn — đổi lesson phải xoá sạch, để
-        // không lỡ hiện tóm tắt/quiz của bài trước lẫn vào bài đang mở.
+        // không lỡ hiện quiz của bài trước lẫn vào bài đang mở.
         setAiError(null);
         setAiErrorCode(null);
-        setAiSummary(null);
         setAiQuizDraft(null);
         setAiQuizServedFromCache(false);
         setAiQuizSourceLessonId(null);
@@ -624,35 +625,6 @@ export default function SpaceEditPage() {
         }
     };
 
-    // AI trong editor — luôn do user chủ động bấm (không có gì tự chạy).
-    // Cùng 1 Source có thể đã có bản SHARED_FREE cache sẵn (vd generate qua
-    // composer cấp-space phía trên), nên bấm ở đây có thể trả về ngay
-    // (servedFromCache), không tốn thêm 1 lần gọi LLM.
-    const handleGenerateAISummary = async () => {
-        if (!lessonForm.sourceId) return;
-        setAiLoading('summary');
-        setAiError(null);
-        setAiErrorCode(null);
-        try {
-            const result = await generateAIContent(lessonForm.sourceId, 'summary');
-            // Contract sync (hướng a): POST chỉ trả về khi READY (có content)
-            // hoặc throw. Check theo content thay vì `status === 'FAILED'` —
-            // server không bao giờ trả FAILED qua POST (nó throw), và cache
-            // giờ chỉ khớp READY; content rỗng là bất thường → hiện lỗi thay
-            // vì im lặng không làm gì.
-            if (result.content) {
-                setAiSummary(result.content);
-            } else {
-                setAiError('Tạo tóm tắt AI thất bại, thử lại sau.');
-            }
-        } catch (err: any) {
-            setAiError(err.message || 'Có lỗi xảy ra khi tạo tóm tắt bằng AI.');
-            if (err instanceof AIGenerationError) setAiErrorCode(err.code);
-        } finally {
-            setAiLoading(null);
-        }
-    };
-
     // `sourceId` truyền rõ (không đọc thẳng lessonForm.sourceId) — dùng
     // chung được cho 2 tình huống: (a) đang mở lesson VIDEO, tạo quiz từ
     // chính source của nó; (b) đang mở 1 lesson QUIZ có sẵn (rỗng hoặc đã
@@ -666,8 +638,8 @@ export default function SpaceEditPage() {
         setAiQuizServedFromCache(false);
         try {
             const result = await generateAIContent(sourceId, 'quiz', paymentMethod ? { paymentMethod } : undefined);
-            // Cùng lý do với handleGenerateAISummary: check theo content,
-            // nhánh FAILED cũ là dead code với contract sync.
+            // Contract sync (hướng a): POST chỉ trả về khi READY (có content)
+            // hoặc throw — nhánh FAILED cũ là dead code, check theo content.
             if (result.content) {
                 setAiQuizDraft(parseAIQuizContent(result.content));
                 setAiQuizServedFromCache(result.servedFromCache);
@@ -968,7 +940,6 @@ export default function SpaceEditPage() {
             {/* Composer AI cấp-space — mở từ 2 nút trigger ở sidebar */}
             <AILessonComposer
                 open={aiComposerOpen}
-                initialType={aiComposerType}
                 videoOptions={aiVideoOptions}
                 onClose={() => setAiComposerOpen(false)}
                 onCreateQuizLesson={handleComposerCreateQuizLesson}
@@ -1107,19 +1078,13 @@ export default function SpaceEditPage() {
                                 {aiVideoOptions.length > 0 && (
                                     <div className="flex gap-2 mb-3">
                                         <button
-                                            onClick={() => { setAiComposerType('quiz'); setAiComposerOpen(true); }}
+                                            onClick={() => setAiComposerOpen(true)}
                                             className="flex-1 inline-flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg text-[11px] font-medium border border-dashed border-ink-accentA text-ink-accent hover:bg-ink-accentA hover:border-ink-accentA transition-colors"
                                         >
                                             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z"/>
                                             </svg>
                                             Tạo quiz tại đây
-                                        </button>
-                                        <button
-                                            onClick={() => { setAiComposerType('summary'); setAiComposerOpen(true); }}
-                                            className="flex-1 inline-flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg text-[11px] font-medium border border-dashed border-ink-accentA text-ink-accent hover:bg-ink-accentA hover:border-ink-accentA transition-colors"
-                                        >
-                                            Tạo tóm tắt
                                         </button>
                                     </div>
                                 )}
@@ -1524,19 +1489,11 @@ export default function SpaceEditPage() {
                                                     Dùng AI cho bài này
                                                 </h4>
                                                 <p className="text-[11px] text-ink-textDim mb-3">
-                                                    AI đọc nội dung video này để tóm tắt hoặc tạo sẵn 1 bài quiz — chỉ chạy khi bạn bấm,
-                                                    kết quả quiz sẽ tự tạo ngay thành 1 bài học mới trong chương này.
+                                                    AI đọc nội dung video này để tạo sẵn 1 bài quiz — chỉ chạy khi bạn bấm,
+                                                    kết quả sẽ tự tạo ngay thành 1 bài học mới trong chương này.
                                                 </p>
 
                                                 <div className="flex gap-2">
-                                                    <Button
-                                                        variant="outline"
-                                                        onClick={handleGenerateAISummary}
-                                                        disabled={aiLoading !== null}
-                                                        className="flex-1"
-                                                    >
-                                                        {aiLoading === 'summary' ? 'Đang tóm tắt…' : (aiSummary ? 'Tóm tắt lại' : 'AI tóm tắt bài này')}
-                                                    </Button>
                                                     <Button
                                                         variant="outline"
                                                         onClick={() => lessonForm.sourceId && handleGenerateAndCreateAIQuizLesson(lessonForm.sourceId)}
@@ -1564,13 +1521,6 @@ export default function SpaceEditPage() {
                                                                 Mua thêm credit
                                                             </a>
                                                         )}
-                                                    </div>
-                                                )}
-
-                                                {aiSummary && (
-                                                    <div className="mt-3 p-3 rounded-lg bg-ink-page border border-ink-pageDim">
-                                                        <p className="text-xs font-semibold text-ink-textMuted mb-1.5">Tóm tắt</p>
-                                                        <MarkdownText text={aiSummary} className="text-sm text-ink-text" />
                                                     </div>
                                                 )}
 
