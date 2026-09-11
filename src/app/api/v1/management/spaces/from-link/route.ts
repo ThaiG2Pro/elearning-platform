@@ -19,15 +19,30 @@ export async function POST(request: NextRequest) {
         ]);
         if (limited) return limited;
 
-        const body: { url?: string } = await request.json();
+        const body: { url?: string; confirmCreate?: boolean } = await request.json();
         if (!body.url?.trim()) {
             return NextResponse.json({ error: 'URL_REQUIRED' }, { status: 400 });
         }
 
         const controller = new ManagementController();
-        const result = await controller.createSpaceFromLink(userId, body.url);
+        const result = await controller.createSpaceFromLink(userId, body.url, { confirmCreate: body.confirmCreate === true });
+
+        // 2026-09-11 — video đã có sẵn trong 1 showcase space: không tạo gì
+        // cả, trả gợi ý để FE hỏi lại "Clone space này hay vẫn tạo mới?".
+        if (result.type === 'SUGGESTION') {
+            return NextResponse.json({
+                type: 'SUGGESTION',
+                suggestedSpace: {
+                    spaceId: result.suggestedSpace.spaceId.toString(),
+                    title: result.suggestedSpace.title,
+                    shareToken: result.suggestedSpace.shareToken,
+                    lessonCount: result.suggestedSpace.lessonCount,
+                },
+            }, { status: 200 });
+        }
 
         return NextResponse.json({
+            type: 'CREATED',
             spaceId: result.spaceId.toString(),
             title: result.title,
             titleIsPlaceholder: result.titleIsPlaceholder,

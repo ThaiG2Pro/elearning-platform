@@ -22,8 +22,8 @@ export class ManagementController {
         return await this.contentService.createSpace(ownerId, dto);
     }
 
-    async createSpaceFromLink(ownerId: bigint, url: string): Promise<{ spaceId: bigint; title: string; titleIsPlaceholder: boolean }> {
-        return await this.contentService.createSpaceFromLink(ownerId, url);
+    async createSpaceFromLink(ownerId: bigint, url: string, options?: { confirmCreate?: boolean }) {
+        return await this.contentService.createSpaceFromLink(ownerId, url, options);
     }
 
     async updateSpaceMetadata(ownerId: bigint, spaceId: bigint, data: { title?: string; description?: string; status?: 'ACTIVE' | 'ARCHIVED' }): Promise<void> {

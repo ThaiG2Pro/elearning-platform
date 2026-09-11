@@ -30,6 +30,14 @@ export interface LessonPreviewDto {
     quizQuestions?: QuizQuestionPreviewDto[];
 }
 
+// 2026-09-11 — "hidden" dedup gợi ý trên luồng dán link: nếu video đã có
+// sẵn trong 1 showcase space, service trả SUGGESTION (không tạo gì cả) để
+// caller hỏi lại user; user xác nhận vẫn muốn tạo mới thì gọi lại với
+// confirmCreate:true để nhận CREATED như luồng cũ.
+export type CreateSpaceFromLinkResult =
+    | { type: 'SUGGESTION'; suggestedSpace: { spaceId: bigint; title: string; shareToken: string; lessonCount: number } }
+    | { type: 'CREATED'; spaceId: bigint; title: string; titleIsPlaceholder: boolean };
+
 export class ContentManagementService {
     private oEmbedAdapter = new YouTubeOEmbedAdapter();
     private webPageAdapter = new WebPageAdapter();
@@ -250,7 +258,7 @@ export class ContentManagementService {
      * qua `AIGenerationService`) — ở đây chỉ lấy `<title>` để đặt tên space/
      * lesson, đối xứng oEmbed bên YouTube, không tốn thêm request nào khác.
      */
-    async createSpaceFromLink(ownerId: bigint, url: string): Promise<{ spaceId: bigint; title: string; titleIsPlaceholder: boolean }> {
+    async createSpaceFromLink(ownerId: bigint, url: string, options: { confirmCreate?: boolean } = {}): Promise<CreateSpaceFromLinkResult> {
         const trimmedUrl = url.trim();
         if (!trimmedUrl) throw new Error('URL_REQUIRED');
         // WP1.10.2 — reject playlist URLs at the validate layer with a clear,
@@ -263,6 +271,17 @@ export class ContentManagementService {
         const isYouTube = YouTubeOEmbedAdapter.isYouTubeUrl(trimmedUrl);
         if (!isYouTube && !WebPageAdapter.isWebUrl(trimmedUrl)) {
             throw new Error('UNSUPPORTED_URL');
+        }
+
+        // 2026-09-11 — trước khi tạo gì, hỏi "video này đã có sẵn trong
+        // showcase space nào chưa" (findShowcaseSuggestionForUrl là read-only,
+        // KHÔNG tạo Source mới) — bỏ qua bước này khi user đã xác nhận muốn
+        // tạo Space mới của riêng họ (confirmCreate).
+        if (!options.confirmCreate) {
+            const suggestedSpace = await this.findShowcaseSuggestionForUrl(trimmedUrl, isYouTube);
+            if (suggestedSpace) {
+                return { type: 'SUGGESTION', suggestedSpace };
+            }
         }
 
         const sourceId = await this.findOrCreateSourceForUrl(trimmedUrl);
@@ -310,6 +329,7 @@ export class ContentManagementService {
             });
 
             return {
+                type: 'CREATED' as const,
                 spaceId: space.id,
                 title: space.title,
                 // WP1.10.2 — lets the UI show a "đổi tên đi" banner when the
@@ -319,6 +339,22 @@ export class ContentManagementService {
                 titleIsPlaceholder: /^Video YouTube \(/.test(space.title),
             };
         });
+    }
+
+    /**
+     * Read-only lookup — chuẩn hoá URL giống hệt `findOrCreateSourceForUrl`
+     * nhưng KHÔNG tạo `Source` nếu chưa có (chỉ để check tồn tại), rồi tìm
+     * showcase space tốt nhất đang chứa `Source` đó.
+     */
+    private async findShowcaseSuggestionForUrl(trimmedUrl: string, isYouTube: boolean) {
+        const normalizedUrl = isYouTube
+            ? YouTubeOEmbedAdapter.normalize(trimmedUrl)
+            : WebPageAdapter.normalize(trimmedUrl);
+
+        const source = await this.prisma.sources.findUnique({ where: { normalized_url: normalizedUrl } });
+        if (!source) return null;
+
+        return await this.spaceRepository.findTopShowcaseSpaceBySourceId(source.id);
     }
 
     /** Owner-only: returns (generating on first call) the space's stable share token. */

@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
 import { getMyLearningSpaces } from '@/lib/space';
 import { createSpace, createSpaceFromLink, archiveSpace, unarchiveSpace } from '@/lib/management';
+import { copySharedSpace } from '@/lib/spaces';
 import Toast from '@/components/Toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
@@ -55,6 +56,8 @@ export default function MyLearningPage() {
     const [pasteUrl, setPasteUrl] = useState('');
     const [pasteError, setPasteError] = useState<string | null>(null);
     const [createdSpace, setCreatedSpace] = useState<{ spaceId: string; title: string; titleIsPlaceholder: boolean } | null>(null);
+    // 2026-09-11 — video đã có sẵn trong showcase space nào chưa (xem page.tsx).
+    const [suggestedSpace, setSuggestedSpace] = useState<{ spaceId: string; title: string; shareToken: string; lessonCount: number } | null>(null);
     const pasteInputRef = useRef<HTMLInputElement>(null);
 
     // Không truyền `filter` cho API — luôn lấy TOÀN BỘ space sở hữu 1 lần,
@@ -144,21 +147,42 @@ export default function MyLearningPage() {
         && /[?&]list=/.test(url)
         && !/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/.test(url);
 
-    const handleCreateFromLink = async () => {
+    const handleCreateFromLink = async (opts?: { confirmCreate?: boolean }) => {
         const url = pasteUrl.trim();
         if (!url) return;
         if (isPlaylistUrl(url)) {
-            setPasteError('Chưa hỗ trợ playlist — dán link từng video.');
+            setPasteError('Nhập playlist đang được phát triển — dán link từng video nhé!');
             return;
         }
         setPasteError(null);
         setCreating(true);
         try {
-            const res = await createSpaceFromLink(url);
+            const res = await createSpaceFromLink(url, opts?.confirmCreate ?? false);
+            if (res.type === 'SUGGESTION') {
+                setSuggestedSpace(res.suggestedSpace);
+                return;
+            }
             setPasteUrl('');
+            setSuggestedSpace(null);
             setCreatedSpace(res);
         } catch (err: any) {
             setPasteError(err.message || 'Lỗi khi tạo Space');
+        } finally {
+            setCreating(false);
+        }
+    };
+
+    // "Clone space này" — video đã có sẵn trong showcase space gợi ý.
+    const handleCloneSuggestedSpace = async () => {
+        if (!suggestedSpace) return;
+        setCreating(true);
+        try {
+            const { spaceId } = await copySharedSpace(suggestedSpace.shareToken);
+            setPasteUrl('');
+            setSuggestedSpace(null);
+            router.push(`/spaces/${spaceId}/learn`);
+        } catch (err: any) {
+            setPasteError(err.message || 'Lỗi khi sao chép Space');
         } finally {
             setCreating(false);
         }
@@ -397,7 +421,7 @@ export default function MyLearningPage() {
                 )}
 
                 {/* Hero paste-box — ported từ /my-spaces, trang gộp vẫn cần lối tạo mới. */}
-                {!createdSpace && (
+                {!createdSpace && !suggestedSpace && (
                     <section className="mb-6 bg-ink-accent rounded-ink-md p-6 shadow-ink-sm">
                         <h2 className="text-lg font-bold text-white">Dán link YouTube, tạo Space ngay</h2>
                         <p className="text-sm text-ink-onAccent/80 mt-0.5">Hệ thống tự lấy tiêu đề, ảnh và tạo bài học đầu tiên.</p>
@@ -413,7 +437,7 @@ export default function MyLearningPage() {
                                 className="flex-1 px-3 py-2.5 rounded-lg border-0 text-sm text-ink-text placeholder:text-ink-textDim focus:outline-none focus:ring-2 focus:ring-white disabled:opacity-60"
                             />
                             <Button
-                                onClick={handleCreateFromLink}
+                                onClick={() => handleCreateFromLink()}
                                 disabled={creating || !pasteUrl.trim()}
                                 variant="secondary"
                                 className="vd-focusable whitespace-nowrap"
@@ -431,6 +455,31 @@ export default function MyLearningPage() {
                         >
                             Tạo Space trống
                         </button>
+                    </section>
+                )}
+
+                {/* 2026-09-11 — video đã có sẵn trong 1 showcase space (xem page.tsx). */}
+                {suggestedSpace && (
+                    <section className="mb-6 bg-ink-panel border border-ink-border rounded-ink-md p-6 shadow-ink-sm vd-ink-in">
+                        <p className="text-xs font-semibold text-ink-accent uppercase tracking-wide mb-1">Video này đã có sẵn</p>
+                        <h2 className="text-lg font-bold text-ink-text">{suggestedSpace.title}</h2>
+                        <p className="text-sm text-ink-textMuted mt-1">
+                            Đã có Space với {suggestedSpace.lessonCount} bài học chứa video này — sao chép về học luôn thay vì tạo Space rỗng mới.
+                        </p>
+                        <div className="flex flex-col sm:flex-row gap-3 mt-4">
+                            <Button disabled={creating} onClick={handleCloneSuggestedSpace}>
+                                {creating ? 'Đang sao chép…' : 'Clone Space này'}
+                            </Button>
+                            <Button variant="outline" disabled={creating} onClick={() => handleCreateFromLink({ confirmCreate: true })}>
+                                Vẫn tạo Space mới
+                            </Button>
+                            <Button variant="ghost" onClick={() => setSuggestedSpace(null)}>
+                                Dán link khác
+                            </Button>
+                        </div>
+                        {pasteError && (
+                            <p className="mt-2 text-sm text-ink-wrong bg-ink-wrongA border border-ink-wrong/30 rounded-lg px-3 py-2">{pasteError}</p>
+                        )}
                     </section>
                 )}
 

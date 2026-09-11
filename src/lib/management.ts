@@ -369,10 +369,17 @@ export const updateSpaceContent = async (spaceId: number, payload: any): Promise
     }
 };
 
-// WP1.1 — paste a link, get a fully-formed space in one step
-export const createSpaceFromLink = async (url: string): Promise<{ spaceId: string; title: string; titleIsPlaceholder: boolean }> => {
+// WP1.1 — paste a link, get a fully-formed space in one step.
+// 2026-09-11 — có thể trả về SUGGESTION thay vì tạo ngay: video đã có sẵn
+// trong 1 showcase space, caller nên hỏi lại user rồi gọi lại với
+// confirmCreate:true nếu họ vẫn muốn 1 Space rỗng của riêng mình.
+export type CreateSpaceFromLinkResponse =
+    | { type: 'SUGGESTION'; suggestedSpace: { spaceId: string; title: string; shareToken: string; lessonCount: number } }
+    | { type: 'CREATED'; spaceId: string; title: string; titleIsPlaceholder: boolean };
+
+export const createSpaceFromLink = async (url: string, confirmCreate = false): Promise<CreateSpaceFromLinkResponse> => {
     try {
-        const response = await api.post('/management/spaces/from-link', { url });
+        const response = await api.post('/management/spaces/from-link', { url, confirmCreate });
         return response.data;
     } catch (error: any) {
         if (error.response) {
@@ -383,7 +390,7 @@ export const createSpaceFromLink = async (url: string): Promise<{ spaceId: strin
             // WP1.10.2 — oEmbed thất bại không còn chặn tạo Space (service tự
             // dùng title tạm), nên YOUTUBE_METADATA_FETCH_FAILED không còn
             // xảy ra ở đây nữa; PLAYLIST_URL_NOT_SUPPORTED là lỗi mới thay vào.
-            if (data?.error === 'PLAYLIST_URL_NOT_SUPPORTED') throw new Error('Chưa hỗ trợ playlist — dán link từng video.');
+            if (data?.error === 'PLAYLIST_URL_NOT_SUPPORTED') throw new Error('Nhập playlist đang được phát triển — dán link từng video nhé!');
             throw new Error('SERVER_ERROR');
         } else throw new Error('NETWORK_ERROR');
     }

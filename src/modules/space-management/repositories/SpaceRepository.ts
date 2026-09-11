@@ -203,6 +203,59 @@ export class SpaceRepository {
         });
     }
 
+    /**
+     * "Hidden" dedup gợi ý (2026-09-11) — trước khi tạo 1 Space rỗng mới từ
+     * 1 link video lẻ, xem video đó đã nằm sẵn trong showcase space nào
+     * chưa (space seed từ playlist qua prisma/seed-playlists.ts, hoặc
+     * showcase 1-video) để gợi ý "Clone space này" thay vì tạo bản trùng
+     * nội dung. Chỉ match `is_showcase` (không phải mọi space có
+     * share_token) — cố tình không lộ space cá nhân của user khác dù
+     * trùng video, tránh rò rỉ "ai đang học video gì".
+     *
+     * Nhiều showcase space cùng chứa video này → ưu tiên space có nhiều
+     * lượt clone nhất (tín hiệu "bản được cộng đồng chọn nhiều nhất").
+     */
+    async findTopShowcaseSpaceBySourceId(sourceId: bigint): Promise<{ spaceId: bigint; title: string; shareToken: string; lessonCount: number } | null> {
+        const candidates = await this.prisma.spaces.findMany({
+            where: {
+                is_showcase: true,
+                status: 'ACTIVE',
+                share_token: { not: null },
+                chapters: { some: { lessons: { some: { source_id: sourceId } } } },
+            },
+            select: { id: true, title: true, share_token: true },
+        });
+        if (candidates.length === 0) return null;
+
+        const ids = candidates.map(c => c.id);
+        const cloneCounts = await this.prisma.spaces.groupBy({
+            by: ['cloned_from_space_id'],
+            where: { cloned_from_space_id: { in: ids }, status: 'ACTIVE' },
+            _count: { id: true },
+        });
+        const cloneCountMap = new Map<string, number>();
+        for (const item of cloneCounts) {
+            if (item.cloned_from_space_id) {
+                cloneCountMap.set(item.cloned_from_space_id.toString(), item._count.id);
+            }
+        }
+
+        const best = candidates.reduce((top, candidate) => {
+            const count = cloneCountMap.get(candidate.id.toString()) || 0;
+            const topCount = cloneCountMap.get(top.id.toString()) || 0;
+            return count > topCount ? candidate : top;
+        }, candidates[0]);
+
+        const lessonCount = await this.prisma.lessons.count({ where: { chapter: { space_id: best.id } } });
+
+        return {
+            spaceId: best.id,
+            title: best.title,
+            shareToken: best.share_token!,
+            lessonCount,
+        };
+    }
+
     async create(space: Space): Promise<void> {
         const created = await this.prisma.spaces.create({
             data: {

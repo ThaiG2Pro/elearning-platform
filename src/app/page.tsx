@@ -14,6 +14,7 @@ import { User } from '@/types/auth.types';
 import { getSpaces } from '@/lib/spaces';
 import { getMyLearningSpaces } from '@/lib/space';
 import { createSpaceFromLink } from '@/lib/management';
+import { copySharedSpace } from '@/lib/spaces';
 import { logout as apiLogout, AuthUtils } from '@/lib/auth';
 import { formatDuration } from '@/lib/utils';
 
@@ -42,6 +43,9 @@ export default function Home() {
     const [creatingFromLink, setCreatingFromLink] = useState(false);
     const [linkError, setLinkError] = useState<string | null>(null);
     const [createdSpace, setCreatedSpace] = useState<{ spaceId: string; title: string; titleIsPlaceholder: boolean } | null>(null);
+    // 2026-09-11 — "video này đã có sẵn trong showcase space nào chưa": server
+    // trả SUGGESTION thay vì tạo ngay khi trùng; user chọn clone hoặc vẫn tạo mới.
+    const [suggestedSpace, setSuggestedSpace] = useState<{ spaceId: string; title: string; shareToken: string; lessonCount: number } | null>(null);
 
     // Debounce search query
     useEffect(() => {
@@ -100,18 +104,23 @@ export default function Home() {
         && /[?&]list=/.test(url)
         && !/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/.test(url);
 
-    const handleCreateFromLink = async () => {
+    const handleCreateFromLink = async (opts?: { confirmCreate?: boolean }) => {
         const url = linkUrl.trim();
         if (!url) return;
         if (isPlaylistUrl(url)) {
-            setLinkError('Chưa hỗ trợ playlist — dán link từng video.');
+            setLinkError('Nhập playlist đang được phát triển — dán link từng video nhé!');
             return;
         }
         setLinkError(null);
         setCreatingFromLink(true);
         try {
-            const res = await createSpaceFromLink(url);
+            const res = await createSpaceFromLink(url, opts?.confirmCreate ?? false);
+            if (res.type === 'SUGGESTION') {
+                setSuggestedSpace(res.suggestedSpace);
+                return;
+            }
             setLinkUrl('');
+            setSuggestedSpace(null);
             setCreatedSpace(res);
         } catch (err: any) {
             const message = err.message;
@@ -122,6 +131,22 @@ export default function Home() {
             } else {
                 setLinkError(message || 'Lỗi khi tạo Space');
             }
+        } finally {
+            setCreatingFromLink(false);
+        }
+    };
+
+    // "Clone space này" — video đã có sẵn trong showcase space gợi ý.
+    const handleCloneSuggestedSpace = async () => {
+        if (!suggestedSpace) return;
+        setCreatingFromLink(true);
+        try {
+            const { spaceId } = await copySharedSpace(suggestedSpace.shareToken);
+            setLinkUrl('');
+            setSuggestedSpace(null);
+            router.push(`/spaces/${spaceId}/learn`);
+        } catch (err: any) {
+            setLinkError(err.message || 'Lỗi khi sao chép Space');
         } finally {
             setCreatingFromLink(false);
         }
@@ -183,7 +208,7 @@ export default function Home() {
                 </section>
 
                 {/* Paste-link box for logged-in users */}
-                {user && !createdSpace && (
+                {user && !createdSpace && !suggestedSpace && (
                     <section className="mb-8 bg-ink-accent rounded-ink-md p-6 shadow-ink-sm">
                         <div className="flex flex-col md:flex-row md:items-center gap-4">
                             <div className="md:flex-shrink-0">
@@ -201,7 +226,7 @@ export default function Home() {
                                     className="flex-1 px-3 py-2.5 rounded-lg border-0 text-sm text-ink-text placeholder:text-ink-textMuted focus:outline-none focus:ring-2 focus:ring-white disabled:opacity-60"
                                 />
                                 <Button
-                                    onClick={handleCreateFromLink}
+                                    onClick={() => handleCreateFromLink()}
                                     disabled={creatingFromLink || !linkUrl.trim()}
                                     variant="secondary"
                                     className="vd-focusable whitespace-nowrap"
@@ -212,6 +237,32 @@ export default function Home() {
                         </div>
                         {linkError && (
                             <p className="mt-2 text-sm text-white/90 bg-black/15 rounded-lg px-3 py-2">{linkError}</p>
+                        )}
+                    </section>
+                )}
+
+                {/* 2026-09-11 — video đã có sẵn trong 1 showcase space: gợi ý clone
+                    thay vì tạo Space rỗng trùng nội dung, vẫn cho user chọn tạo mới. */}
+                {suggestedSpace && (
+                    <section className="mb-8 bg-ink-panel border border-ink-border rounded-ink-md p-6 shadow-ink-sm vd-ink-in">
+                        <p className="text-xs font-semibold text-ink-accent uppercase tracking-wide mb-1">Video này đã có sẵn</p>
+                        <h2 className="text-lg font-bold text-ink-text">{suggestedSpace.title}</h2>
+                        <p className="text-sm text-ink-textMuted mt-1">
+                            Đã có Space với {suggestedSpace.lessonCount} bài học chứa video này — sao chép về học luôn thay vì tạo Space rỗng mới.
+                        </p>
+                        <div className="flex flex-col sm:flex-row gap-3 mt-4">
+                            <Button className="vd-focusable" disabled={creatingFromLink} onClick={handleCloneSuggestedSpace}>
+                                {creatingFromLink ? 'Đang sao chép…' : 'Clone Space này'}
+                            </Button>
+                            <Button variant="outline" disabled={creatingFromLink} onClick={() => handleCreateFromLink({ confirmCreate: true })}>
+                                Vẫn tạo Space mới
+                            </Button>
+                            <Button variant="ghost" onClick={() => setSuggestedSpace(null)}>
+                                Dán link khác
+                            </Button>
+                        </div>
+                        {linkError && (
+                            <p className="mt-2 text-sm text-ink-wrong bg-ink-wrongA border border-ink-wrong/30 rounded-lg px-3 py-2">{linkError}</p>
                         )}
                     </section>
                 )}
