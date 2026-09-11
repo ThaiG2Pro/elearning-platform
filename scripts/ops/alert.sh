@@ -1,7 +1,8 @@
 #!/usr/bin/env sh
-# A3 (docs/SURVIVAL.md): cảnh báo Telegram khi ổ/RAM/swap vượt ngưỡng, container
-# không healthy, hoặc cert HTTPS sắp hết hạn. Chạy mỗi giờ qua cron — im lặng
-# khi mọi thứ bình thường, chỉ gửi tin khi có vấn đề.
+# A3 + C2 (docs/SURVIVAL.md): cảnh báo Telegram khi ổ/RAM/swap vượt ngưỡng,
+# container không healthy, cert HTTPS sắp hết hạn, hoặc lượt AI hôm nay sắp
+# chạm trần Groq. Chạy mỗi giờ qua cron — im lặng khi mọi thứ bình thường, chỉ
+# gửi tin khi có vấn đề.
 #
 # Cần trước khi dùng:
 #   1. Tạo bot: chat @BotFather trên Telegram → /newbot → lấy TELEGRAM_BOT_TOKEN.
@@ -65,5 +66,17 @@ if [ -n "${DOMAIN:-}" ]; then
         [ "$DAYS_LEFT" -lt "$CERT_DAYS_THRESHOLD" ] && send "⚠ Cert $DOMAIN hết hạn sau ${DAYS_LEFT} ngày — docker logs elearning-caddy"
     fi
 fi
+
+# C2 — lượt gọi AI hôm nay đã dùng key nền tảng (không tính BYOK — đó là
+# quota/tiền riêng của user). Báo sớm trước ngưỡng cảnh báo (mặc định 250,
+# dưới trần cứng 300 của C1 AI_GLOBAL_DAILY_LIMIT) để còn kịp xử lý trước khi
+# user thật bị chặn 429.
+AI_ALERT_THRESHOLD="${AI_ALERT_DAILY_REQUESTS:-250}"
+AI_TODAY=$(docker exec elearning-db psql -tA -U "${POSTGRES_USER:-elearning_user}" -d "${POSTGRES_DB:-elearning}" -c \
+    "select count(*) from ai_generations where created_at >= date_trunc('day', now()) and key_source <> 'BYOK'" 2>/dev/null || true)
+case "$AI_TODAY" in
+    '' | *[!0-9]*) ;; # container/DB chưa sẵn sàng hoặc output lạ — bỏ qua, không báo sai
+    *) [ "$AI_TODAY" -ge "$AI_ALERT_THRESHOLD" ] && send "⚠ AI hôm nay: $AI_TODAY lượt (ngưỡng cảnh báo $AI_ALERT_THRESHOLD, trần cứng ${AI_GLOBAL_DAILY_LIMIT:-300})" ;;
+esac
 
 exit 0

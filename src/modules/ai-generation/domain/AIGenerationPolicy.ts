@@ -114,6 +114,19 @@ export class AIGenerationPolicy {
     }
 
     /**
+     * C1 (docs/SURVIVAL.md) — trần theo user ở trên chặn 1 user rác đốt
+     * quota, nhưng không chặn NHIỀU user rác cộng lại (100 tài khoản × 20
+     * lượt = 2.000 lần gọi Groq/ngày). Đếm toàn hệ thống chỉ tính nhánh dùng
+     * key của nền tảng (SHARED_FREE/PAID_TIER) — BYOK là tiền/quota của
+     * chính user, không giới hạn.
+     */
+    static enforceGlobalDailyLimit(globalActivationsToday: number, globalDailyLimit: number): void {
+        if (globalActivationsToday >= globalDailyLimit) {
+            throw new Error('AI_GLOBAL_LIMIT_REACHED');
+        }
+    }
+
+    /**
      * Mục 6.3 — quota tính theo chi phí thực (ước lượng token), không theo
      * lượt: video quá dài bị từ chối tạo bản SHARED_FREE, bắt buộc BYOK/trả
      * phí ngay từ đầu thay vì âm thầm đốt ngân sách chung.

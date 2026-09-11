@@ -189,7 +189,13 @@ export default function AILessonComposer({
             onClose();
         } catch (err: any) {
             setError(err.message || 'Có lỗi xảy ra khi tạo nội dung bằng AI.');
-            if (err instanceof AIGenerationError) setErrorCode(err.code);
+            if (err instanceof AIGenerationError) {
+                setErrorCode(err.code);
+                // C1 (docs/SURVIVAL.md) — trần chung đã hết nhưng BYOK không
+                // tính vào đó: mở sẵn panel BYOK để user thấy lối đi tiếp,
+                // không phải tự tìm nút "Dùng key riêng" đang gấp lại.
+                if (err.code === 'AI_GLOBAL_LIMIT_REACHED') setByokOpen(true);
+            }
         } finally {
             setLoading(false);
         }

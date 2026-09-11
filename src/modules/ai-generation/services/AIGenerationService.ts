@@ -54,6 +54,12 @@ function positiveNumberFromEnv(raw: string | undefined, fallback: number): numbe
 function dailyActivationLimit(): number {
     return positiveNumberFromEnv(process.env.AI_DAILY_ACTIVATION_LIMIT, 20);
 }
+// C1 (docs/SURVIVAL.md) — trần toàn hệ thống/ngày cho nhánh dùng key nền
+// tảng (SHARED_FREE/PAID_TIER), chống nhiều tài khoản rác cộng lại bào hết
+// quota Groq của user thật. BYOK không tính vào đây.
+function globalDailyLimit(): number {
+    return positiveNumberFromEnv(process.env.AI_GLOBAL_DAILY_LIMIT, 300);
+}
 // Ước lượng thô: ~4 ký tự/token. Ngưỡng an toàn cho SHARED_FREE — video quá
 // dài bị từ chối tạo bản mặc định miễn phí (mục 6.3), bắt buộc BYOK/trả phí.
 function sharedFreeMaxTranscriptChars(): number {
@@ -261,6 +267,13 @@ export class AIGenerationService {
         if (decision.keySource === 'SHARED_FREE') {
             const activationsToday = await this.repo.countActivationsToday(req.userId);
             AIGenerationPolicy.enforceDailyActivationLimit(activationsToday, dailyActivationLimit());
+        }
+        // C1 (docs/SURVIVAL.md) — trần toàn hệ thống, áp cho cả SHARED_FREE
+        // và PAID_TIER (2 nhánh dùng key/proxy của nền tảng); BYOK dùng key
+        // riêng của user nên không đếm vào đây.
+        if (decision.keySource !== 'BYOK') {
+            const globalActivationsToday = await this.repo.countActivationsTodayGlobal();
+            AIGenerationPolicy.enforceGlobalDailyLimit(globalActivationsToday, globalDailyLimit());
         }
 
         const transcript = await this.ensureTranscript(source.id, source.url, source.type);

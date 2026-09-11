@@ -163,54 +163,35 @@ transcript của nguồn không ai dùng 180 ngày.
 
 ## C. Chết vì tiền / quota
 
-### C1. 🟥 Trần AI toàn hệ thống mỗi ngày (cần code, ~30 phút)
+### C1. ✅ 2026-09-11 🟥 Trần AI toàn hệ thống mỗi ngày (cần code, ~30 phút)
 
 **Vì sao.** Đã có trần **mỗi user** 20 lần/ngày (`AI_DAILY_ACTIVATION_LIMIT`) và 6 lần/phút.
 Chưa có trần **toàn app**: 100 tài khoản rác × 20 = 2.000 lần gọi Groq/ngày → hết quota
 free tier, user thật mất AI, hoặc nếu có thẻ thì tốn tiền.
 
-**Làm.**
-1. `.env.example` + `deploy/.env.production.example`: thêm `AI_GLOBAL_DAILY_LIMIT=300`.
-2. `AIGenerationRepository.ts` cạnh `countActivationsToday(userId)` thêm:
-   ```ts
-   async countActivationsTodayGlobal(): Promise<number> {
-       const since = new Date(); since.setUTCHours(0, 0, 0, 0);
-       return this.prisma.ai_generations.count({
-           where: { created_at: { gte: since }, key_source: { in: ['SHARED_FREE', 'PAID_TIER'] } },
-       });
-   }
-   ```
-   (Chỉ đếm nhánh dùng key của nền tảng — BYOK là tiền của user, không giới hạn.)
-3. `AIGenerationService.generate`, ngay sau `enforceDailyActivationLimit` (dòng ~263):
-   ```ts
-   if (decision.keySource !== 'BYOK') {
-       const globalToday = await this.repo.countActivationsTodayGlobal();
-       if (globalToday >= globalDailyLimit()) throw new Error('AI_GLOBAL_LIMIT_REACHED');
-   }
-   ```
-   với `globalDailyLimit()` đọc env như `dailyActivationLimit()` (mặc định 300).
-4. Route `ai-generations/route.ts`: map `AI_GLOBAL_LIMIT_REACHED` → 429, message
-   "Hôm nay hệ thống đã hết lượt AI miễn phí, thử lại sau 0h hoặc dùng key riêng (BYOK)".
-5. `AILessonComposer.tsx`: hiển thị message đó và tự mở panel BYOK.
-6. Test: thêm case trong `AIGenerationService.test.ts` mock `countActivationsTodayGlobal`
-   trả 300 → throw.
+**Đã có trong repo.**
+- `AI_GLOBAL_DAILY_LIMIT=300` trong `.env.example` + `deploy/.env.production.example`.
+- `AIGenerationRepository.countActivationsTodayGlobal()` — đếm `ai_generations` hôm nay,
+  chỉ `key_source` SHARED_FREE/PAID_TIER (không tính BYOK).
+- `AIGenerationPolicy.enforceGlobalDailyLimit()` + `AIGenerationService.generate` gọi nó
+  ngay sau check per-user, trước khi đọc transcript hay trừ credit.
+- Route `sources/[sourceId]/ai-generations/route.ts` map `AI_GLOBAL_LIMIT_REACHED` → 429.
+- `src/lib/aiGeneration.ts` dịch message tiếng Việt; `AILessonComposer.tsx` tự mở panel
+  BYOK khi gặp code này (BYOK không tính vào trần chung, vẫn dùng được ngay).
+- Test: `AIGenerationService.test.ts`, `AIGenerationPolicy.test.ts`.
 
 **Xong khi.** Đặt `AI_GLOBAL_DAILY_LIMIT=1` trên local, gọi AI 2 lần → lần 2 báo 429.
 
-### C2. 🟧 Theo dõi quota Groq và cảnh báo
+### C2. ✅ 2026-09-11 🟧 Theo dõi quota Groq và cảnh báo
 
 **Vì sao.** Groq free tier có giới hạn request/ngày và token/phút theo model; đổi không báo
 trước (đã từng gỡ model, xem comment trong `litellm/config.yaml`).
 
-**Làm.**
+**Đã có trong repo.** `scripts/ops/alert.sh` (A3, chạy cron hàng giờ) đã có thêm bước đếm
+`ai_generations` hôm nay (loại BYOK) và báo Telegram khi ≥ `AI_ALERT_DAILY_REQUESTS` (mặc
+định 250, dưới trần cứng 300 của C1). Vẫn nên tự làm thủ công:
 - Bookmark https://console.groq.com/settings/limits, xem mỗi tuần đầu.
-- `AI_ALERT_DAILY_REQUESTS=250` đã có trong env — script `scripts/aiUsageReport.ts` in
-  số request/ngày; chạy từ máy dev khi cần. Muốn tự động: thêm vào `alert.sh` (A3) một query:
-  ```sh
-  N=$(docker exec elearning-db psql -tA -U $POSTGRES_USER -d $POSTGRES_DB -c \
-     "select count(*) from ai_generations where created_at >= date_trunc('day', now()) and key_source <> 'BYOK'")
-  [ "$N" -ge 250 ] && send "⚠ AI hôm nay: $N lượt (trần 300)"
-  ```
+- `scripts/aiUsageReport.ts` (chạy tay từ máy dev) cho báo cáo chi tiết hơn khi cần.
 
 ### C3. 🟩 Đăng ký hàng loạt
 

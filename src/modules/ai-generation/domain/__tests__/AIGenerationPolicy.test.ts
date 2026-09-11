@@ -171,6 +171,18 @@ describe('AIGenerationPolicy.enforceDailyActivationLimit — cost-DoS guard (m�
     });
 });
 
+describe('AIGenerationPolicy.enforceGlobalDailyLimit — trần toàn hệ thống (C1 docs/SURVIVAL.md)', () => {
+    it('allows activation under the global daily limit', () => {
+        expect(() => AIGenerationPolicy.enforceGlobalDailyLimit(299, 300)).not.toThrow();
+    });
+
+    it('blocks activation once the global daily limit is reached', () => {
+        expect(() => AIGenerationPolicy.enforceGlobalDailyLimit(300, 300)).toThrow(
+            'AI_GLOBAL_LIMIT_REACHED',
+        );
+    });
+});
+
 describe('AIGenerationPolicy.enforceSharedFreeTokenBudget — quota theo chi phí thực (mục 6.3)', () => {
     it('allows a Source within the SHARED_FREE token budget', () => {
         expect(() => AIGenerationPolicy.enforceSharedFreeTokenBudget(5000, 20000)).not.toThrow();

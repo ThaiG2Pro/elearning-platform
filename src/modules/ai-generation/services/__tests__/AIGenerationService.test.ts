@@ -23,6 +23,7 @@ const makeRepo = () => ({
     markReady: vi.fn(),
     markFailed: vi.fn(),
     countActivationsToday: vi.fn().mockResolvedValue(0),
+    countActivationsTodayGlobal: vi.fn().mockResolvedValue(0),
     incrementReuseCount: vi.fn().mockResolvedValue(undefined),
 });
 
@@ -239,6 +240,41 @@ describe('AIGenerationService.generate', () => {
         await expect(
             service.generate({ sourceId: 1n, recipeType: 'summary', userId: 5n }),
         ).rejects.toThrow('AI_DAILY_RATE_LIMIT_EXCEEDED');
+        expect(llmProvider.generate).not.toHaveBeenCalled();
+    });
+
+    it('C1 (docs/SURVIVAL.md): enforces the global daily limit for SHARED_FREE even when the per-user limit is not hit', async () => {
+        repo.countActivationsTodayGlobal.mockResolvedValue(300);
+
+        await expect(
+            service.generate({ sourceId: 1n, recipeType: 'summary', userId: 5n }),
+        ).rejects.toThrow('AI_GLOBAL_LIMIT_REACHED');
+        expect(llmProvider.generate).not.toHaveBeenCalled();
+    });
+
+    it('C1: does NOT apply the global daily limit to BYOK — own key, own quota', async () => {
+        repo.countActivationsTodayGlobal.mockResolvedValue(300);
+
+        await service.generate({
+            sourceId: 1n,
+            recipeType: 'summary',
+            userId: 5n,
+            byokApiKey: 'user-own-key',
+            byokBaseUrl: 'https://api.groq.com/openai/v1',
+            byokModel: 'llama-3.3-70b-versatile',
+        });
+
+        expect(repo.countActivationsTodayGlobal).not.toHaveBeenCalled();
+        expect(llmProvider.generate).toHaveBeenCalled();
+    });
+
+    it('malformed AI_GLOBAL_DAILY_LIMIT env must NOT disable the global limit (falls back to 300)', async () => {
+        vi.stubEnv('AI_GLOBAL_DAILY_LIMIT', 'abc');
+        repo.countActivationsTodayGlobal.mockResolvedValue(300);
+
+        await expect(
+            service.generate({ sourceId: 1n, recipeType: 'summary', userId: 5n }),
+        ).rejects.toThrow('AI_GLOBAL_LIMIT_REACHED');
         expect(llmProvider.generate).not.toHaveBeenCalled();
     });
 

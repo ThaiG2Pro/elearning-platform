@@ -267,6 +267,20 @@ export class AIGenerationRepository {
         });
     }
 
+    /**
+     * C1 (docs/SURVIVAL.md) — đếm lượt kích hoạt AI toàn hệ thống hôm nay,
+     * chỉ nhánh dùng key nền tảng (SHARED_FREE/PAID_TIER). BYOK là tiền của
+     * user, không tính vào trần chung. Mốc UTC nửa đêm để nhất quán với các
+     * đếm/báo cáo khác trong hệ thống (scripts/aiUsageReport.ts).
+     */
+    async countActivationsTodayGlobal(): Promise<number> {
+        const since = new Date();
+        since.setUTCHours(0, 0, 0, 0);
+        return this.prisma.ai_generations.count({
+            where: { created_at: { gte: since }, key_source: { in: ['SHARED_FREE', 'PAID_TIER'] } },
+        });
+    }
+
     // Mục 6.7/WP2.4 (alerting theo ngày/tuần): truy vấn tương ứng sống trong
     // scripts/aiUsageReport.ts, không lặp lại ở đây — script đó không thể
     // import từ src/ (ràng buộc ts-node ESM, xem comment trong file đó), nên

@@ -114,6 +114,12 @@ export async function POST(request: NextRequest, props: { params: Promise<{ sour
         ) {
             return NextResponse.json({ error: message }, { status: 422 });
         }
+        // C1 (docs/SURVIVAL.md) — trần AI toàn hệ thống hôm nay đã chạm (chỉ
+        // nhánh dùng key nền tảng). 429 khớp ngữ nghĩa hơn 422 (không phải
+        // lỗi input, mà tài nguyên chung tạm hết cho hôm nay).
+        if (message === 'AI_GLOBAL_LIMIT_REACHED') {
+            return NextResponse.json({ error: message }, { status: 429 });
+        }
         // WP4.1 — không đủ credit: 402 Payment Required khớp ngữ nghĩa hơn
         // 422 (lỗi input) hoặc 403 (không phải vấn đề quyền truy cập).
         if (message === 'AI_INSUFFICIENT_CREDITS') {

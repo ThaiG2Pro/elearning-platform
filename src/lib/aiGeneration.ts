@@ -71,6 +71,15 @@ export const generateAIContent = async (
         if (code === 'AI_DAILY_RATE_LIMIT_EXCEEDED') {
             throw new AIGenerationError('Đã dùng hết lượt tạo AI miễn phí hôm nay — thử lại vào ngày mai.', code);
         }
+        // C1 (docs/SURVIVAL.md) — trần toàn hệ thống đã chạm, không phải lỗi
+        // riêng của user này. BYOK không tính vào trần này nên vẫn dùng được
+        // ngay — UI (AILessonComposer) tự mở panel BYOK khi thấy code này.
+        if (code === 'AI_GLOBAL_LIMIT_REACHED') {
+            throw new AIGenerationError(
+                'Hôm nay hệ thống đã hết lượt AI miễn phí, thử lại sau 0h hoặc dùng key riêng (BYOK).',
+                code,
+            );
+        }
         if (code === 'SHARED_FREE_NOT_CONFIGURED') {
             throw new AIGenerationError('Tính năng AI chưa được bật trên nền tảng này.', code);
         }
