@@ -74,7 +74,7 @@ export default function TopBar({ variant, focusMode = false, children }: TopBarP
                 // position của chính bar này), nên sticky render giống hệt fixed
                 // ở đây — đổi an toàn, không cần sửa page.tsx. z-50 giữ nguyên vì
                 // vẫn phải nổi trên content wrapper (z-1) và focus panel (z-40).
-                className={`sticky top-0 z-50 flex items-center gap-2 px-7 text-sm border-b transition-[background,border-color,color] duration-[600ms] ease-in-out ${
+                className={`sticky top-0 z-50 flex items-center gap-2 px-7 text-sm border-b transition-[background,border-color,color] [transition-duration:600ms] ease-in-out ${
                     focusMode
                         ? 'bg-ink-room border-[rgba(244,246,252,0.10)] text-[rgba(244,246,252,0.45)]'
                         : 'bg-ink-panel border-ink-border text-ink-textMuted'

@@ -716,7 +716,7 @@ export default function LearningPage() {
                         <button
                             key={tab.key}
                             onClick={() => setSidebarTab(tab.key)}
-                            className={`vd-focusable flex-1 flex items-baseline justify-center gap-1.5 py-3 px-2 bg-transparent cursor-pointer border-0 border-b-2 text-sm transition-colors duration-[120ms] ${
+                            className={`vd-focusable flex-1 flex items-baseline justify-center gap-1.5 py-3 px-2 bg-transparent cursor-pointer border-0 border-b-2 text-sm transition-colors [transition-duration:120ms] ${
                                 isActive ? 'border-ink-accent font-semibold text-ink-text' : 'border-transparent font-normal text-ink-textMuted'
                             }`}
                         >
@@ -984,7 +984,7 @@ export default function LearningPage() {
                         <div className={`w-20 h-0.5 overflow-hidden rounded-[1px] ${focusMode ? 'bg-[rgba(244,246,252,0.16)]' : 'bg-[rgba(33,38,51,0.14)]'}`}>
                             <div
                                 style={{ width: `${calculateSpaceProgress()}%` }}
-                                className={`h-full transition-[width] duration-[400ms] ease-in-out ${focusMode ? 'bg-ink-accentScreen' : 'bg-ink-accent'}`}
+                                className={`h-full transition-[width] [transition-duration:400ms] ease-in-out ${focusMode ? 'bg-ink-accentScreen' : 'bg-ink-accent'}`}
                             />
                         </div>
                         <span className={`font-mono text-[11px] ${focusMode ? 'text-ink-accentScreen' : 'text-ink-accent'}`}>{calculateSpaceProgress()}%</span>
@@ -1029,7 +1029,7 @@ export default function LearningPage() {
                 sáng giữa phòng tối". ══ */}
             <div
                 style={{ top: TOP_BAR_H }}
-                className={`fixed left-0 right-0 bottom-0 z-[1] flex justify-center transition-[background] duration-[600ms] ease-in-out ${focusMode ? 'bg-ink-room' : isVideoPlaying ? 'bg-ink-pageDim' : 'bg-ink-page'}`}
+                className={`fixed left-0 right-0 bottom-0 z-[1] flex justify-center transition-[background] [transition-duration:600ms] ease-in-out ${focusMode ? 'bg-ink-room' : isVideoPlaying ? 'bg-ink-pageDim' : 'bg-ink-page'}`}
             >
                 {/* Container FLUID — không còn maxWidth cố định: gutter trái/phải
                     luôn nhỏ, nội dung lớn dần theo bề ngang màn hình, video tự

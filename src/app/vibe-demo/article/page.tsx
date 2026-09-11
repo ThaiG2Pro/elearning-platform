@@ -111,7 +111,7 @@ export default function VibeArticleDemoPage() {
           <button
             key={tab.key}
             onClick={() => setPanelTab(tab.key)}
-            className={`flex-1 flex items-baseline justify-center gap-1.5 py-3 px-2 bg-none cursor-pointer border-0 border-b-2 text-sm transition-colors duration-[120ms] ${
+            className={`flex-1 flex items-baseline justify-center gap-1.5 py-3 px-2 bg-none cursor-pointer border-0 border-b-2 text-sm transition-colors [transition-duration:120ms] ${
               isActive ? 'border-ink-accent font-semibold text-ink-text' : 'border-transparent font-normal text-ink-textMuted'
             }`}
           >
@@ -138,7 +138,7 @@ export default function VibeArticleDemoPage() {
             tabIndex={0}
             onClick={() => setActiveId(l.id)}
             onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActiveId(l.id); } }}
-            className="vd-focusable flex items-stretch cursor-pointer transition-colors duration-[120ms]"
+            className="vd-focusable flex items-stretch cursor-pointer transition-colors [transition-duration:120ms]"
             style={{ background: isActive ? 'rgba(46,74,158,0.08)' : 'transparent' }}
             onMouseEnter={e => { if (!isActive) (e.currentTarget as HTMLElement).style.background = 'rgba(33,38,51,0.03)'; }}
             onMouseLeave={e => { if (!isActive) (e.currentTarget as HTMLElement).style.background = isActive ? 'rgba(46,74,158,0.08)' : 'transparent'; }}
@@ -446,7 +446,7 @@ setCount(c => c + 1); // 2 → 3`} />
       {/* ══ TITLE BAR — tắt đèn cùng căn phòng khi vào focus mode ══ */}
       <div
         style={{ height: TOP_BAR_H }}
-        className={`fixed top-0 left-0 right-0 z-50 flex items-center gap-2 px-7 text-[12.5px] transition-[background,border-color,color] duration-[600ms] ease-in-out ${
+        className={`fixed top-0 left-0 right-0 z-50 flex items-center gap-2 px-7 text-[12.5px] transition-[background,border-color,color] [transition-duration:600ms] ease-in-out ${
           focusMode
             ? 'bg-ink-room border-b border-b-[rgba(244,246,252,0.10)] text-[rgba(244,246,252,0.45)]'
             : 'bg-ink-panel border-b border-ink-border text-ink-textMuted'
@@ -472,7 +472,7 @@ setCount(c => c + 1); // 2 → 3`} />
             <div className={`w-20 h-0.5 overflow-hidden rounded-[1px] ${focusMode ? 'bg-[rgba(244,246,252,0.16)]' : 'bg-[rgba(33,38,51,0.14)]'}`}>
               <div
                 style={{ width: `${pct}%` }}
-                className={`h-full transition-[width] duration-[400ms] ease-in-out ${focusMode ? 'bg-ink-accentScreen' : 'bg-ink-accent'}`}
+                className={`h-full transition-[width] [transition-duration:400ms] ease-in-out ${focusMode ? 'bg-ink-accentScreen' : 'bg-ink-accent'}`}
               />
             </div>
             <span className={`font-mono text-[11px] ${focusMode ? 'text-ink-accentScreen' : 'text-ink-accent'}`}>{pct}%</span>
@@ -501,7 +501,7 @@ setCount(c => c + 1); // 2 → 3`} />
       {/* ══ WORKSPACE ══ */}
       <div
         style={{ top: TOP_BAR_H }}
-        className={`fixed left-0 right-0 bottom-0 z-[1] flex justify-center transition-[background] duration-[600ms] ease-in-out ${focusMode ? 'bg-ink-room' : 'bg-ink-page'}`}
+        className={`fixed left-0 right-0 bottom-0 z-[1] flex justify-center transition-[background] [transition-duration:600ms] ease-in-out ${focusMode ? 'bg-ink-room' : 'bg-ink-page'}`}
       >
         <div
           className="w-full h-full grid"

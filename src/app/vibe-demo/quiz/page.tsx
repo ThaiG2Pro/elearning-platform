@@ -326,7 +326,7 @@ const [timerAnnouncement, setTimerAnnouncement] = useState('');
             tabIndex={0}
             onClick={() => setActiveId(l.id)}
             onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActiveId(l.id); } }}
-            className="vd-focusable flex items-stretch cursor-pointer transition-colors duration-[120ms]"
+            className="vd-focusable flex items-stretch cursor-pointer transition-colors [transition-duration:120ms]"
             style={{ background: isActive ? 'rgba(46,74,158,0.08)' : 'transparent' }}
             onMouseEnter={e => { if (!isActive) (e.currentTarget as HTMLElement).style.background = 'rgba(33,38,51,0.03)'; }}
             onMouseLeave={e => { if (!isActive) (e.currentTarget as HTMLElement).style.background = isActive ? 'rgba(46,74,158,0.08)' : 'transparent'; }}
@@ -445,7 +445,7 @@ const [timerAnnouncement, setTimerAnnouncement] = useState('');
               aria-disabled={graded}
               onClick={() => pick(ci)}
               onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(ci); } }}
-              className={`vd-focusable flex items-stretch transition-colors duration-[120ms] ${graded ? 'cursor-default' : 'cursor-pointer'}`}
+              className={`vd-focusable flex items-stretch transition-colors [transition-duration:120ms] ${graded ? 'cursor-default' : 'cursor-pointer'}`}
               style={{
                 background: showRight ? T.correctA : showWrong ? T.wrongA : (!graded && isPicked) ? T.accentA : 'transparent',
               }}
@@ -847,7 +847,7 @@ const [timerAnnouncement, setTimerAnnouncement] = useState('');
           borderBottom: `1px solid ${focusMode ? T.screenBorder : T.border}`,
           color: focusMode ? T.screenTextMuted : T.inkMuted,
         }}
-        className="fixed left-0 right-0 z-50 flex items-center px-7 gap-2 text-[12.5px] transition-[background,border-color,color] duration-[600ms] ease-in-out"
+        className="fixed left-0 right-0 z-50 flex items-center px-7 gap-2 text-[12.5px] transition-[background,border-color,color] [transition-duration:600ms] ease-in-out"
       >
         {/* Mục 2 — bug thật do user test trên iPhone SE (cùng lỗi ở
             article/page.tsx): span breadcrumb không shrink-0/whitespace-nowrap
@@ -877,7 +877,7 @@ const [timerAnnouncement, setTimerAnnouncement] = useState('');
                   style={{ background: focusMode ? 'rgba(244,246,252,0.16)' : 'rgba(33,38,51,0.14)' }}
                 >
                   <div
-                    className="h-full transition-[width] duration-[400ms] ease-in-out"
+                    className="h-full transition-[width] [transition-duration:400ms] ease-in-out"
                     style={{ width: `${pct}%`, background: focusMode ? T.accentScreen : T.accent }}
                   />
                 </div>
@@ -906,7 +906,7 @@ const [timerAnnouncement, setTimerAnnouncement] = useState('');
       {/* ══ WORKSPACE ══ */}
       <div
         style={{ top: TOP_BAR_H, background: focusMode ? T.room : T.page }}
-        className="fixed left-0 right-0 bottom-0 z-[1] flex justify-center transition-[background] duration-[600ms] ease-in-out"
+        className="fixed left-0 right-0 bottom-0 z-[1] flex justify-center transition-[background] [transition-duration:600ms] ease-in-out"
       >
         <div
           style={{
