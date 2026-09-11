@@ -20,6 +20,11 @@ const nextConfig = {
                     { key: 'X-Content-Type-Options',    value: 'nosniff' },
                     { key: 'Referrer-Policy',           value: 'strict-origin-when-cross-origin' },
                     { key: 'Permissions-Policy',        value: 'camera=(), microphone=(), geolocation=()' },
+                    // D6 (docs/SURVIVAL.md) — securityheaders.com/observatory hay báo thiếu
+                    // header này. Cô lập BrowsingContext của tab (chặn `window.opener` từ
+                    // site khác thao túng tab này) — an toàn thêm vì app không có luồng OAuth
+                    // popup nào (grep window.open/popup không thấy) cần giữ `window.opener`.
+                    { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
                     {
                         key: 'Strict-Transport-Security',
                         value: 'max-age=63072000; includeSubDomains; preload',

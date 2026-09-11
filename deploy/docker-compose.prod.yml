@@ -33,6 +33,9 @@ services:
     logging: *logging
     depends_on:
       - app
+    # D3 (docs/SURVIVAL.md): chỉ cần gọi app (cùng lưới egress) + ra internet
+    # xin cert Let's Encrypt — không cần thấy db.
+    networks: [egress]
 
   db:
     image: postgres:16-alpine
@@ -61,6 +64,9 @@ services:
       timeout: 5s
       retries: 5
     logging: *logging
+    # D3 (docs/SURVIVAL.md): DB không có đường ra internet kể cả khi bị chiếm
+    # (RCE ở app/thư viện nào đó) — chỉ `internal` network, không `egress`.
+    networks: [internal]
 
   app:
     image: ${APP_IMAGE:-ghcr.io/thaig2pro/elearning-platform:latest}
@@ -81,6 +87,9 @@ services:
       db:
         condition: service_healthy
     logging: *logging
+    # D3 (docs/SURVIVAL.md): app cần cả 2 — `internal` để gọi db, `egress` để
+    # gọi Groq/YouTube/SMTP và URL người dùng dán (feature dán link).
+    networks: [internal, egress]
 
   # One-shot: docker compose -f deploy/docker-compose.prod.yml --env-file .env run --rm migrate
   # Image runner (Next standalone) KHÔNG chứa prisma CLI (chỉ @prisma/client),
@@ -100,6 +109,8 @@ services:
       db:
         condition: service_healthy
     logging: *logging
+    # Cần cả db (chạy migration) lẫn ra internet (npx tải prisma CLI lần đầu).
+    networks: [internal, egress]
 
   # A2 (docs/SURVIVAL.md): tự khởi động lại container "unhealthy" — restart:
   # unless-stopped chỉ cứu process CHẾT, không cứu process TREO (event loop
@@ -117,9 +128,21 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     logging: *logging
+    # D3 (docs/SURVIVAL.md): chỉ nói chuyện với Docker daemon qua docker.sock
+    # đã mount — không cần TCP network nào, kể cả egress.
+    network_mode: "none"
 
 volumes:
   postgres_data:
   caddy_data:
   caddy_config:
   npm_cache:
+
+# D3 (docs/SURVIVAL.md) — chỉ cho container app ra ngoài những gì cần. Nếu app
+# bị khai thác (RCE qua thư viện nào đó), kẻ tấn công dùng VPS làm bàn đạp.
+# Postgres và Caddy không cần ra internet; app cần Groq/YouTube/SMTP + URL
+# người dùng dán (feature dán link).
+networks:
+  internal:
+    internal: true # không có đường ra internet
+  egress: {}

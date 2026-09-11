@@ -79,4 +79,11 @@ case "$AI_TODAY" in
     *) [ "$AI_TODAY" -ge "$AI_ALERT_THRESHOLD" ] && send "⚠ AI hôm nay: $AI_TODAY lượt (ngưỡng cảnh báo $AI_ALERT_THRESHOLD, trần cứng ${AI_GLOBAL_DAILY_LIMIT:-300})" ;;
 esac
 
+# D4 (docs/SURVIVAL.md) — nhắc pull base image mới (postgres/caddy) + rebuild
+# app nếu cả tháng không có commit nào. Chạy mỗi giờ nên chỉ gửi đúng 1 lần
+# vào giờ 0 ngày 1 hằng tháng (khớp giờ cron chạy), không spam 24 lần/ngày đó.
+if [ "$(date +%d)" = "01" ] && [ "$(date +%H)" = "00" ]; then
+    send "🗓 Tháng mới: docker compose … pull db caddy && … up -d db caddy; nếu main không có commit tháng này thì rebuild app (git commit --allow-empty rồi deploy.sh)"
+fi
+
 exit 0

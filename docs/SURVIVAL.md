@@ -261,52 +261,44 @@ nó → backup DB có cũng khó khôi phục, mọi user bị logout. (Bản `.
 trong Bitwarden (free) / 1Password, tên "elearning VPS .env <ngày>". Mỗi lần đổi giá trị,
 cập nhật note. **Không** commit vào git, **không** gửi qua chat.
 
-### D3. 🟧 Chỉ cho container app ra ngoài những gì cần
+### D3. ✅ 2026-09-11 🟧 Chỉ cho container app ra ngoài những gì cần
 
 **Vì sao.** Nếu app bị khai thác (RCE qua thư viện nào đó), kẻ tấn công dùng VPS làm bàn đạp.
 Postgres và Caddy không cần ra internet; app chỉ cần tới Groq, YouTube, SMTP, và URL user dán.
 
-**Làm.** Mức đơn giản đủ dùng — trong `docker-compose.prod.yml`:
-```yaml
-  db:
-    networks: [internal]
-  app:
-    networks: [internal, egress]
-  caddy:
-    networks: [egress]
-networks:
-  internal:
-    internal: true      # không có đường ra internet
-  egress: {}
-```
-DB không thể ra ngoài kể cả khi bị chiếm. App vẫn cần egress vì tính năng dán link.
+**Đã có trong repo.** `deploy/docker-compose.prod.yml`: `db` chỉ ở network `internal`
+(`internal: true` — không có đường ra internet); `app` và `migrate` ở cả `internal` +
+`egress`; `caddy` chỉ ở `egress` (không cần thấy db). `autoheal` dùng `network_mode: "none"`
+— chỉ nói chuyện qua `docker.sock` đã mount, không cần network nào. Đã validate bằng
+`docker compose config`.
 
 **Xong khi.** `docker exec elearning-db wget -qO- --timeout=3 https://example.com` → thất bại;
 app vẫn tạo được space từ link YouTube.
 
-### D4. 🟧 Cập nhật image định kỳ
+### D4. ✅ 2026-09-11 (nhắc tự động) 🟧 Cập nhật image định kỳ
 
 **Vì sao.** `postgres:16-alpine`, `caddy:2-alpine`, `node:24-alpine` (base của app) có CVE
 mới hàng tháng. CI đã có `pnpm audit`; base image thì chưa ai kéo mới.
 
-**Làm.**
+**Đã có trong repo.** `scripts/ops/alert.sh` (A3, cron hàng giờ) gửi Telegram đúng 1 lần vào
+00:00 ngày 1 hằng tháng, nhắc pull image + kiểm tra có cần rebuild app không. Vẫn cần tự làm
+tay khi nhận được nhắc:
 - App: mỗi lần push `main` CI build lại từ `node:24-alpine` mới nhất → chỉ cần deploy đều.
   Nếu 1 tháng không có commit, tạo 1 commit rỗng `git commit --allow-empty -m "chore: rebuild image"` rồi `deploy.sh`.
-- Postgres/Caddy: mỗi tháng `docker compose -f deploy/docker-compose.prod.yml --env-file .env pull db caddy && … up -d db caddy`
+- Postgres/Caddy: `docker compose -f deploy/docker-compose.prod.yml --env-file .env pull db caddy && … up -d db caddy`
   (Postgres chỉ nhận **minor** trong cùng major 16 — không tự nhảy 17, vì data format khác).
-- Cron nhắc: thêm vào `alert.sh` gửi "🗓 Tháng mới: pull image db/caddy + rebuild app" ngày 1 hằng tháng.
 
 ### D5. 🟩 Cloudflare Access cho các route quản trị (khi có admin)
 
 Hiện không có trang admin. Khi làm, đừng viết auth riêng — đặt sau Cloudflare Access (free
 50 user): chỉ email của bạn qua được `/admin/*`, bot không thấy cả trang đăng nhập.
 
-### D6. 🟩 Rà soát header bảo mật
+### D6. ✅ 2026-09-11 🟩 Rà soát header bảo mật
 
-Đã có CSP, HSTS, X-Frame-Options trong `next.config.js`. Sau khi lên, chạy
-https://securityheaders.com và https://observatory.mozilla.org với domain — mục tiêu A.
-Cái thường thiếu: `Cross-Origin-Opener-Policy: same-origin` (thêm vào `headers()` nếu không
-dùng popup OAuth).
+Đã có CSP, HSTS, X-Frame-Options trong `next.config.js`. Đã thêm
+`Cross-Origin-Opener-Policy: same-origin` (không có luồng OAuth popup nào trong app — đã
+grep `window.open`/popup để xác nhận trước khi thêm). Sau khi lên, chạy
+https://securityheaders.com và https://observatory.mozilla.org với domain thật — mục tiêu A.
 
 ---
 
