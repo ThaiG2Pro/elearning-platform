@@ -8,6 +8,17 @@ www.{$DOMAIN} {
 {$DOMAIN} {
 	encode zstd gzip
 
+	# B2 (docs/SURVIVAL.md): bot xấu không đọc robots.txt (src/app/robots.ts) — chặn
+	# thẳng theo User-Agent trước khi tới reverse_proxy, đỡ tốn 1 vCPU render.
+	@badbots header_regexp User-Agent (?i)(Bytespider|PetalBot|SemrushBot|AhrefsBot|MJ12bot|DotBot|python-requests|Go-http-client|curl/)
+	respond @badbots 403
+
+	# B4 (docs/SURVIVAL.md): chặn request quá lớn ở Caddy — rẻ hơn từ chối ở tầng app
+	# (app đã cap upload quiz/avatar, nhưng đọc body vào RAM trước khi từ chối).
+	request_body {
+		max_size 8MB
+	}
+
 	# Rate limit trong app đọc X-Forwarded-For — Caddy set sẵn header này.
 	reverse_proxy app:3000 {
 		# Request AI chờ LLM tới 60s (AI_LLM_TIMEOUT_MS) — đừng cắt sớm hơn app.

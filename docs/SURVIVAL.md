@@ -75,46 +75,28 @@ docker exec elearning-db psql -U $POSTGRES_USER -d $POSTGRES_DB -c \
 
 ## B. Chết vì tài nguyên
 
-### B1. 🟥 Restart app định kỳ (1 dòng cron)
+### B1. ✅ 2026-09-11 🟥 Restart app định kỳ (1 dòng cron)
 
 **Vì sao.** Node + jsdom chạy nhiều ngày trên máy nhỏ hay phình RAM dần. Restart 10 giây
 lúc vắng người rẻ hơn mọi cuộc săn leak.
 
-**Làm.** Thêm vào `/etc/cron.d/elearning`:
-```
-15 4 * * 0  root  docker restart elearning-app >> /var/log/elearning-restart.log 2>&1
-```
-(4h15 sáng chủ nhật; chọn giờ user ít nhất theo access.log.)
+**Đã có trong repo.** Dòng cron `15 4 * * 0 root docker restart elearning-app …` đã ở
+`/etc/cron.d/elearning` do `vps-setup.sh` tạo, chạy cùng đợt cron A3/backup/prune.
+(4h15 sáng chủ nhật; đổi giờ trong `vps-setup.sh` nếu access.log cho thấy giờ khác vắng hơn.)
 
 **Xong khi.** Thứ hai kiểm `docker ps` cột STATUS thấy "Up 1 day" thay vì "Up 8 days".
 
-### B2. 🟥 `robots.txt` chặn bot cào
+### B2. ✅ 2026-09-11 🟥 `robots.txt` chặn bot cào
 
 **Vì sao.** Crawler AI (GPTBot, ClaudeBot, Bytespider, Amazonbot…) cào hàng nghìn trang/giờ,
 mỗi trang học là 1 lần render + query. Với 1 vCPU, chúng là "user" đông nhất của bạn.
 
-**Làm.** Tạo `src/app/robots.ts` (Next.js sinh `/robots.txt`):
+**Đã có trong repo.** `src/app/robots.ts` (Next.js tự sinh `/robots.txt`) chặn bot AI, cho
+bot tìm kiếm cào trang public. Chưa có `src/app/sitemap.ts` nên robots.txt tạm không khai
+`Sitemap:` — hợp lệ, chỉ thiếu tối ưu SEO, thêm sau khi cần.
 
-```ts
-import type { MetadataRoute } from 'next';
-
-export default function robots(): MetadataRoute.Robots {
-    return {
-        rules: [
-            // Bot AI/cào dữ liệu: chặn hẳn — không mang user, chỉ tốn CPU.
-            { userAgent: ['GPTBot', 'ClaudeBot', 'CCBot', 'Bytespider', 'Amazonbot', 'PetalBot',
-                          'anthropic-ai', 'Google-Extended', 'Applebot-Extended', 'meta-externalagent'],
-              disallow: '/' },
-            // Bot tìm kiếm: cho trang public, cấm API và trang cần đăng nhập.
-            { userAgent: '*', allow: '/', disallow: ['/api/', '/my-learning', '/my-spaces', '/profile', '/billing'] },
-        ],
-        sitemap: `${process.env.FRONTEND_URL ?? ''}/sitemap.xml`,
-    };
-}
-```
-
-Bot xấu không đọc robots.txt → chặn thêm ở Caddy (`deploy/Caddyfile`, trong khối domain,
-**trước** `reverse_proxy`):
+Bot xấu không đọc robots.txt → đã chặn thêm ở Caddy (`deploy/Caddyfile`, khối domain,
+trước `reverse_proxy`):
 
 ```caddyfile
 	@badbots header_regexp User-Agent (?i)(Bytespider|PetalBot|SemrushBot|AhrefsBot|MJ12bot|DotBot|python-requests|Go-http-client|curl/)
@@ -152,17 +134,12 @@ chuyển Caddy sang dùng **Cloudflare Origin Certificate** (15 năm, miễn ph�
 SSL/TLS → Origin Server, lưu vào `deploy/certs/`, Caddyfile đổi thành
 `tls /etc/caddy/certs/origin.pem /etc/caddy/certs/origin.key`. Chỉ làm khi gặp.
 
-### B4. 🟧 Giới hạn kích thước request ở Caddy
+### B4. ✅ 2026-09-11 🟧 Giới hạn kích thước request ở Caddy
 
 **Vì sao.** App đã cap upload quiz và avatar, nhưng cap ở tầng app nghĩa là body vẫn phải
 đọc vào RAM trước khi từ chối. Chặn sớm ở Caddy rẻ hơn.
 
-**Làm.** Trong khối domain của `Caddyfile`:
-```caddyfile
-	request_body {
-		max_size 8MB
-	}
-```
+**Đã có trong repo.** `request_body { max_size 8MB }` đã ở khối domain của `deploy/Caddyfile`.
 (8MB vì ảnh avatar gốc trước resize cho phép tới 8MB ở client — client resize xong chỉ gửi
 < 120KB, nhưng để dư an toàn.)
 
