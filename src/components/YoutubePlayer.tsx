@@ -101,6 +101,10 @@ const YoutubePlayer = forwardRef<VideoPlayerHandle, Props>(({ videoId, initialPo
     const opts = useMemo(() => ({
         height: '100%',
         width: '100%',
+        // youtube-nocookie.com: YouTube không đặt cookie theo dõi cho tới khi
+        // người dùng bấm play (privacy-enhanced mode). Không ảnh hưởng ads —
+        // chỉ giảm tracking. Không có downside so với domain youtube.com mặc định.
+        host: 'https://www.youtube-nocookie.com',
         playerVars: {
             autoplay: 0,
             controls: 1,
