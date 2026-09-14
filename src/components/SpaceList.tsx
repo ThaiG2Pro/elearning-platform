@@ -5,6 +5,13 @@ interface SpaceListProps {
     spaces: Space[];
     loading?: boolean;
     onSpaceClick?: (spaceId: number) => void;
+    // Trang chủ (2026-09-14) — xem SpaceCard: đánh số thứ hạng từ 1, ẩn badge
+    // Tuyển chọn, bản gọn không mô tả. Số skeleton khớp số card mục sẽ hiện.
+    ranked?: boolean;
+    hideShowcaseBadge?: boolean;
+    compact?: boolean;
+    skeletonCount?: number;
+    emptyMessage?: string;
 }
 
 function SpaceCardSkeleton() {
@@ -20,11 +27,11 @@ function SpaceCardSkeleton() {
     );
 }
 
-export default function SpaceList({ spaces, loading, onSpaceClick }: SpaceListProps) {
+export default function SpaceList({ spaces, loading, onSpaceClick, ranked, hideShowcaseBadge, compact, skeletonCount = 6, emptyMessage }: SpaceListProps) {
     if (loading) {
         return (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                {Array.from({ length: 6 }).map((_, i) => (
+                {Array.from({ length: skeletonCount }).map((_, i) => (
                     <SpaceCardSkeleton key={i} />
                 ))}
             </div>
@@ -40,18 +47,21 @@ export default function SpaceList({ spaces, loading, onSpaceClick }: SpaceListPr
                     </svg>
                 </div>
                 <h3 className="text-base font-semibold text-ink-text mb-1">Không có Space</h3>
-                <p className="text-sm text-ink-textMuted max-w-xs">Hiện tại chưa có Space phù hợp. Hãy thử thay đổi từ khóa tìm kiếm.</p>
+                <p className="text-sm text-ink-textMuted max-w-xs">{emptyMessage ?? 'Hiện tại chưa có Space phù hợp. Hãy thử thay đổi từ khóa tìm kiếm.'}</p>
             </div>
         );
     }
 
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {spaces.map((space) => (
+            {spaces.map((space, i) => (
                 <SpaceCard
                     key={space.id}
                     space={space}
                     onClick={onSpaceClick}
+                    rank={ranked ? i + 1 : undefined}
+                    hideShowcaseBadge={hideShowcaseBadge}
+                    compact={compact}
                 />
             ))}
         </div>

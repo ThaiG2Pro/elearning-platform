@@ -7,11 +7,14 @@ import { Play, ArrowRight } from 'lucide-react';
 import Header from '@/components/Header';
 import SearchBar from '@/components/SearchBar';
 import SpaceList from '@/components/SpaceList';
+import GuestHero from '@/components/home/GuestHero';
+import ShowcaseSpotlight from '@/components/home/ShowcaseSpotlight';
+import SectionHeader from '@/components/home/SectionHeader';
 import { Button } from '@/components/ui/button';
 import SalesAgentWidget from '@/components/ai/SalesAgentWidget';
-import { Space, MyLearningSpace } from '@/types/space.types';
+import { Space, MyLearningSpace, SpaceDiscovery } from '@/types/space.types';
 import { User } from '@/types/auth.types';
-import { getSpaces } from '@/lib/spaces';
+import { getSpaces, getDiscoverySpaces } from '@/lib/spaces';
 import { getMyLearningSpaces } from '@/lib/space';
 import { createSpaceFromLink } from '@/lib/management';
 import { copySharedSpace } from '@/lib/spaces';
@@ -27,6 +30,9 @@ export default function Home() {
     const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
     const [spaces, setSpaces] = useState<Space[]>([]);
     const [user, setUser] = useState<User | null>(null);
+    // Tránh hero cho khách nháy lên 1 frame với user đã đăng nhập (token đọc
+    // từ localStorage sau mount).
+    const [authResolved, setAuthResolved] = useState(false);
     const [appState, setAppState] = useState<AppState>('idle');
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -34,9 +40,15 @@ export default function Home() {
     const [continueSpaces, setContinueSpaces] = useState<MyLearningSpace[]>([]);
     const [continueState, setContinueState] = useState<ContinueState>('idle');
 
-    // Toggles for 2-tier Discovery sections
+    // Discovery (2026-09-14) — 4 mục trang chủ guest do server xếp hạng sẵn
+    // (xem SpaceRepository.findDiscoverySpaces), tách khỏi flow search.
+    const [discovery, setDiscovery] = useState<SpaceDiscovery | null>(null);
+    const [discoveryState, setDiscoveryState] = useState<AppState>('idle');
+
+    // Toggles for Discovery sections
     const [showAllShowcase, setShowAllShowcase] = useState(false);
     const [showAllPopular, setShowAllPopular] = useState(false);
+    const [showAllRising, setShowAllRising] = useState(false);
 
     // Paste-link box
     const [linkUrl, setLinkUrl] = useState('');
@@ -70,15 +82,37 @@ export default function Home() {
         }
     }, []);
 
-    // Effect for search changes
+    // Effect for search changes — chỉ gọi list search khi có từ khoá; chế độ
+    // khám phá dùng endpoint discover riêng bên dưới.
     useEffect(() => {
-        fetchSpaces(debouncedSearchQuery);
+        if (debouncedSearchQuery) {
+            fetchSpaces(debouncedSearchQuery);
+        }
     }, [debouncedSearchQuery, fetchSpaces]);
+
+    const fetchDiscovery = useCallback(async () => {
+        try {
+            setDiscoveryState('loading');
+            setErrorMessage(null);
+            const data = await getDiscoverySpaces();
+            setDiscovery(data);
+            setDiscoveryState('success');
+        } catch (error: any) {
+            setDiscoveryState('error');
+            setErrorMessage(error.message);
+            setDiscovery(null);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchDiscovery();
+    }, [fetchDiscovery]);
 
     // Load user from token on mount
     useEffect(() => {
         const currentUser = AuthUtils.getCurrentUser();
         setUser(currentUser);
+        setAuthResolved(true);
     }, []);
 
     // Fetch "học tiếp" once we know user is logged in
@@ -173,16 +207,15 @@ export default function Home() {
         router.push(`/spaces/${spaceId}`);
     };
 
-    // Filter spaces for Tầng 1 (Showcase) and Tầng 2 (Lineage Popularity)
-    const showcaseSpaces = spaces.filter((c) => c.isShowcase);
-    const popularSpaces = [...spaces]
-        .filter((c) => !c.isShowcase)
-        .sort((a, b) => (b.cloneCount || 0) - (a.cloneCount || 0));
-
-    // Fallback if no non-showcase spaces exist yet
-    const displayPopularSpaces = popularSpaces.length > 0
-        ? popularSpaces
-        : [...spaces].sort((a, b) => (b.cloneCount || 0) - (a.cloneCount || 0));
+    // Discovery sections — server đã lọc/xếp hạng, client chỉ hiển thị.
+    const showcaseSpaces = discovery?.showcase ?? [];
+    const popularSpaces = discovery?.popular ?? [];
+    const risingSpaces = discovery?.rising ?? [];
+    // Fallback: chưa có space nào đạt ngưỡng "phổ biến" → hiện "Space mới"
+    // (không giữ nhãn "Nhiều người học" khi dữ liệu chưa nói được điều đó).
+    const popularIsFallback = popularSpaces.length === 0;
+    const displayPopularSpaces = popularIsFallback ? (discovery?.latest ?? []) : popularSpaces;
+    const discoveryLoading = discoveryState === 'loading' || discoveryState === 'idle';
 
     return (
         <div className="min-h-screen bg-ink-page">
@@ -194,26 +227,25 @@ export default function Home() {
                 mực/streak của vibe-demo: đó là 1 feature (lịch streak) app thật chưa
                 có model dữ liệu, bịa ra sẽ là thêm tính năng giả, ngoài phạm vi layout. */}
             <main className="max-w-[1180px] mx-auto px-4 sm:px-6 lg:px-8 py-7 md:py-10">
-                {/* Hero / Search Section */}
-                <section className="mb-8 bg-ink-panel border border-ink-border rounded-ink-md p-6 shadow-ink-sm">
-                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                        <div>
-                            <h1 className="text-[clamp(22px,2.6vw,30px)] font-bold tracking-[-0.015em] text-ink-text">Khám phá Space</h1>
-                            <p className="text-sm text-ink-textMuted mt-1">Học bất cứ lúc nào — bắt đầu với Space phù hợp.</p>
-                        </div>
-                        <div className="w-full md:max-w-sm">
-                            <SearchBar value={searchQuery} onChange={handleSearchChange} />
-                        </div>
-                    </div>
-                </section>
+                {/* Hero (2026-09-14): khách thấy sản phẩm làm gì + lối vào; user đã
+                    đăng nhập thấy thẳng khối dán link (bên dưới) làm hero, không còn
+                    panel "Khám phá Space" chung chung phía trên. */}
+                {authResolved && !user && (
+                    <GuestHero
+                        searchQuery={searchQuery}
+                        onSearchChange={handleSearchChange}
+                        onJoin={handleJoin}
+                        onGuide={() => router.push('/guide')}
+                    />
+                )}
 
                 {/* Paste-link box for logged-in users */}
                 {user && !createdSpace && !suggestedSpace && (
-                    <section className="mb-8 bg-ink-accent rounded-ink-md p-6 shadow-ink-sm">
-                        <div className="flex flex-col md:flex-row md:items-center gap-4">
-                            <div className="md:flex-shrink-0">
-                                <h2 className="text-lg font-bold text-white">Dán link video, tạo Space ngay</h2>
-                                <p className="text-sm text-white/70 mt-0.5">Dán link YouTube — hệ thống tự lấy tiêu đề, ảnh và tạo bài học đầu tiên.</p>
+                    <section className="mb-8 bg-ink-accent rounded-ink-lg p-6 md:p-8 shadow-ink-md">
+                        <div className="flex flex-col md:flex-row md:items-center gap-5">
+                            <div className="md:flex-shrink-0 md:max-w-[40%]">
+                                <h1 className="text-[clamp(20px,2.2vw,26px)] font-bold tracking-[-0.015em] text-white leading-tight">Dán link video, tạo Space ngay</h1>
+                                <p className="text-sm text-white/70 mt-1.5 leading-relaxed">Hệ thống tự lấy tiêu đề, ảnh và tạo bài học đầu tiên.</p>
                             </div>
                             <div className="flex-1 flex flex-col sm:flex-row items-stretch gap-2">
                                 <input
@@ -375,6 +407,16 @@ export default function Home() {
                     </section>
                 )}
 
+                {/* Ô tìm kiếm cho user đã đăng nhập (khách có ô này trong hero). */}
+                {user && (
+                    <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <h2 className="text-lg font-bold text-ink-text">Khám phá Space</h2>
+                        <div className="w-full sm:max-w-sm">
+                            <SearchBar value={searchQuery} onChange={handleSearchChange} />
+                        </div>
+                    </div>
+                )}
+
                 {/* SEARCH RESULTS MODE vs DISCOVERY MODE */}
                 {searchQuery ? (
                     /* Search Results */
@@ -395,67 +437,80 @@ export default function Home() {
                         />
                     </section>
                 ) : (
-                    /* KHU VỰC 2: "Khám phá Space nổi bật" (2 Tầng) */
-                    <div className="space-y-10">
-                        {/* TẦNG 1: Space Mẫu (Showcase) — 1 dòng + nút xem tất cả */}
-                        {showcaseSpaces.length > 0 && (
-                            <section>
-                                <div className="mb-4 flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                        <h2 className="text-lg font-bold text-ink-text">Space Tuyển Chọn</h2>
-                                        <span className="text-xs font-semibold px-2.5 py-0.5 bg-ink-accentA text-ink-accent rounded-full border border-ink-border">
-                                            Chất lượng cao
-                                        </span>
-                                    </div>
-                                    {showcaseSpaces.length > 3 && (
-                                        <button
-                                            onClick={() => setShowAllShowcase(!showAllShowcase)}
-                                            className="text-xs font-semibold text-ink-accent hover:text-ink-accent/80 flex items-center gap-1 transition-colors"
-                                        >
-                                            {showAllShowcase ? 'Thu gọn ↑' : `Xem tất cả (${showcaseSpaces.length}) →`}
-                                        </button>
-                                    )}
-                                </div>
+                    /* KHU VỰC 2: Khám phá — 3 mục do server xếp hạng (2026-09-14).
+                       Mỗi mục 1 hình thái riêng: spotlight (tuyển chọn) / lưới có
+                       thứ hạng (phổ biến) / lưới gọn (mới nổi). */
+                    <div className="space-y-12">
+                        {discoveryLoading && (
+                            <SpaceList spaces={[]} loading skeletonCount={6} onSpaceClick={handleSpaceClick} />
+                        )}
 
-                                <SpaceList
-                                    spaces={showAllShowcase ? showcaseSpaces : showcaseSpaces.slice(0, 3)}
-                                    loading={appState === 'loading'}
+                        {!discoveryLoading && showcaseSpaces.length > 0 && (
+                            <section>
+                                <SectionHeader
+                                    title="Tuyển chọn"
+                                    criterion="Do đội ngũ chọn tay: nội dung đầy đủ, bài học theo thứ tự."
+                                    total={showcaseSpaces.length}
+                                    visibleCount={5}
+                                    expanded={showAllShowcase}
+                                    onToggle={() => setShowAllShowcase(!showAllShowcase)}
+                                />
+                                <ShowcaseSpotlight
+                                    spaces={showAllShowcase ? showcaseSpaces : showcaseSpaces.slice(0, 5)}
                                     onSpaceClick={handleSpaceClick}
                                 />
                             </section>
                         )}
 
-                        {/* TẦNG 2: Space Phổ biến nhất (Cộng đồng) — nhiều hơn 1 dòng (2 dòng = 6 cards) + nút xem tất cả */}
-                        {displayPopularSpaces.length > 0 && (
+                        {!discoveryLoading && displayPopularSpaces.length > 0 && (
                             <section>
-                                <div className="mb-4 flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                        <h2 className="text-lg font-bold text-ink-text">Space Phổ biến nhất</h2>
-                                        <span className="text-xs font-semibold px-2.5 py-0.5 bg-ink-page text-ink-textMid rounded-full border border-ink-border">
-                                            Nhiều người học
-                                        </span>
-                                    </div>
-                                    {displayPopularSpaces.length > 6 && (
-                                        <button
-                                            onClick={() => setShowAllPopular(!showAllPopular)}
-                                            className="text-xs font-semibold text-ink-accent hover:text-ink-accent/80 flex items-center gap-1 transition-colors"
-                                        >
-                                            {showAllPopular ? 'Thu gọn ↑' : `Xem tất cả (${displayPopularSpaces.length}) →`}
-                                        </button>
-                                    )}
-                                </div>
-
+                                <SectionHeader
+                                    title={popularIsFallback ? 'Space mới' : 'Phổ biến nhất'}
+                                    criterion={popularIsFallback
+                                        ? 'Vừa được chủ Space chia sẻ công khai.'
+                                        : 'Xếp theo số người sao chép về học trong 30 ngày qua.'}
+                                    total={displayPopularSpaces.length}
+                                    visibleCount={6}
+                                    expanded={showAllPopular}
+                                    onToggle={() => setShowAllPopular(!showAllPopular)}
+                                />
                                 <SpaceList
                                     spaces={showAllPopular ? displayPopularSpaces : displayPopularSpaces.slice(0, 6)}
-                                    loading={appState === 'loading'}
+                                    ranked={!popularIsFallback}
                                     onSpaceClick={handleSpaceClick}
                                 />
                             </section>
+                        )}
+
+                        {!discoveryLoading && risingSpaces.length > 0 && (
+                            <section>
+                                <SectionHeader
+                                    title="Mới nổi"
+                                    criterion="Tạo trong 30 ngày qua và đã có người đầu tiên học."
+                                    total={risingSpaces.length}
+                                    visibleCount={3}
+                                    expanded={showAllRising}
+                                    onToggle={() => setShowAllRising(!showAllRising)}
+                                />
+                                <SpaceList
+                                    spaces={showAllRising ? risingSpaces : risingSpaces.slice(0, 3)}
+                                    compact
+                                    onSpaceClick={handleSpaceClick}
+                                />
+                            </section>
+                        )}
+
+                        {discoveryState === 'success' && showcaseSpaces.length === 0 && displayPopularSpaces.length === 0 && risingSpaces.length === 0 && (
+                            <SpaceList
+                                spaces={[]}
+                                onSpaceClick={handleSpaceClick}
+                                emptyMessage="Chưa có Space nào được chia sẻ công khai. Dán một link YouTube để tạo Space đầu tiên."
+                            />
                         )}
                     </div>
                 )}
 
-                {appState === 'error' && errorMessage && (
+                {(searchQuery ? appState === 'error' : discoveryState === 'error') && errorMessage && (
                     <div className="flex flex-col items-center py-12 text-center">
                         <div className="w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center mb-3">
                             <svg className="w-6 h-6 text-destructive" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -465,7 +520,7 @@ export default function Home() {
                         <p className="text-sm text-ink-textMid mb-3">{errorMessage}</p>
                         <Button
                             variant="link"
-                            onClick={() => fetchSpaces(debouncedSearchQuery)}
+                            onClick={() => (searchQuery ? fetchSpaces(debouncedSearchQuery) : fetchDiscovery())}
                         >
                             Thử lại
                         </Button>

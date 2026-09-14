@@ -4,9 +4,16 @@ import { Space } from '@/types/space.types';
 interface SpaceCardProps {
     space: Space;
     onClick?: (spaceId: number) => void;
+    // Trang chủ (2026-09-14): số thứ hạng cho mục "Phổ biến nhất" — mục này
+    // đúng nghĩa là bảng xếp hạng nên đánh số mang thông tin, không trang trí.
+    rank?: number;
+    // Ẩn badge "Tuyển chọn" khi card đã nằm trong chính mục Tuyển chọn.
+    hideShowcaseBadge?: boolean;
+    // Bỏ mô tả, dùng cho mục phụ (Mới nổi) để nhẹ hơn mục chính.
+    compact?: boolean;
 }
 
-export default function SpaceCard({ space, onClick }: SpaceCardProps) {
+export default function SpaceCard({ space, onClick, rank, hideShowcaseBadge, compact }: SpaceCardProps) {
 
     return (
         <div
@@ -19,6 +26,14 @@ export default function SpaceCard({ space, onClick }: SpaceCardProps) {
         >
             {/* Thumbnail */}
             <div className="w-full aspect-video bg-ink-page flex items-center justify-center overflow-hidden relative">
+                {typeof rank === 'number' && (
+                    <span
+                        className="absolute top-3 left-3 z-[1] min-w-[30px] h-[30px] px-2 rounded-md bg-ink-accent font-mono text-[13px] font-bold text-white flex items-center justify-center shadow-ink-sm"
+                        aria-label={`Hạng ${rank}`}
+                    >
+                        {rank}
+                    </span>
+                )}
                 {space.thumbnailUrl ? (
                     <Image
                         src={space.thumbnailUrl}
@@ -40,7 +55,7 @@ export default function SpaceCard({ space, onClick }: SpaceCardProps) {
             {/* Content */}
             <div className="p-4">
                 <div className="flex flex-wrap items-center gap-1.5 mb-2">
-                    {space.isShowcase && (
+                    {space.isShowcase && !hideShowcaseBadge && (
                         <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-ink-accentA text-ink-accent border border-ink-border">
                             Tuyển chọn
                         </span>
@@ -67,10 +82,8 @@ export default function SpaceCard({ space, onClick }: SpaceCardProps) {
                 <div className="flex items-start justify-between gap-2 mb-2">
                     <h3 className="text-sm font-semibold text-ink-text leading-snug line-clamp-2 flex-1">{space.title}</h3>
                 </div>
-                {space.description ? (
+                {!compact && space.description && (
                     <p className="text-ink-textMuted text-xs line-clamp-2 leading-relaxed">{space.description}</p>
-                ) : (
-                    <p className="text-ink-textDim text-xs italic">Không có mô tả</p>
                 )}
 
                 {typeof (space as any).completionRate === 'number' && (
