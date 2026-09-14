@@ -224,6 +224,29 @@ async function main() {
                 continue;
             }
 
+            // Dedupe theo NỘI DUNG playlist, không chỉ theo slug — slug đổi tuỳ
+            // tiêu đề trùng (ensureUniqueSlug tự thêm -2/-3...) nên chỉ check slug
+            // không phát hiện được "playlist này đã seed rồi dưới slug khác".
+            // Nhận diện qua source thật của video đầu tiên: nếu đã có lesson nào
+            // của chủ seed owner trỏ tới cùng source_id thì coi như đã seed.
+            const firstVideoUrl = `https://www.youtube.com/watch?v=${videos[0].videoId}`;
+            const firstVideoSource = await prisma.sources.findUnique({
+                where: { normalized_url: normalizeYouTubeUrl(firstVideoUrl) },
+            });
+            if (firstVideoSource) {
+                const alreadySeeded = await prisma.lessons.findFirst({
+                    where: {
+                        source_id: firstVideoSource.id,
+                        chapter: { space: { owner_id: seedOwner.id } },
+                    },
+                });
+                if (alreadySeeded) {
+                    console.log(`↩︎  playlist ${playlistId} đã được seed trước đó (trùng video đầu) — bỏ qua`);
+                    summary.skippedExisting += 1;
+                    continue;
+                }
+            }
+
             const description = entry.description?.trim()
                 || snippet.description.slice(0, 500)
                 || `Playlist "${title}" — ${snippet.channelTitle}.`;
@@ -279,11 +302,18 @@ async function main() {
     }
 }
 
-main()
-    .catch((e) => {
+/** Chạy độc lập (npm run seed:playlists) HOẶC được prisma/seed-launch.ts import gọi tuần tự. */
+export async function run(): Promise<void> {
+    try {
+        await main();
+    } finally {
+        await prisma.$disconnect();
+    }
+}
+
+if (require.main === module) {
+    run().catch((e) => {
         console.error(e);
         process.exit(1);
-    })
-    .finally(async () => {
-        await prisma.$disconnect();
     });
+}

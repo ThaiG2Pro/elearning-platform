@@ -17,8 +17,10 @@
     "test:coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit",
     "check:tokens": "node scripts/check-design-tokens.js",
-    "seed:showcase": "ts-node prisma/seed-showcase.ts",
-    "seed:playlists": "ts-node prisma/seed-playlists.ts",
+    "seed:showcase": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\"}' ts-node prisma/seed-showcase.ts",
+    "seed:playlists": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\"}' ts-node prisma/seed-playlists.ts",
+    "seed:active-users": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\"}' ts-node prisma/seed-active-users.ts",
+    "seed:launch": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\"}' ts-node prisma/seed-launch.ts",
     "ai:usage-report": "ts-node scripts/aiUsageReport.ts",
     "data:archive-stale": "ts-node scripts/archiveStaleData.ts"
   },

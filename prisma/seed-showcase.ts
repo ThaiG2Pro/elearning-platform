@@ -169,11 +169,18 @@ async function main() {
     console.log('🎉 Showcase seed complete.');
 }
 
-main()
-    .catch((e) => {
+/** Chạy độc lập (npm run seed:showcase) HOẶC được prisma/seed-launch.ts import gọi tuần tự. */
+export async function run(): Promise<void> {
+    try {
+        await main();
+    } finally {
+        await prisma.$disconnect();
+    }
+}
+
+if (require.main === module) {
+    run().catch((e) => {
         console.error(e);
         process.exit(1);
-    })
-    .finally(async () => {
-        await prisma.$disconnect();
     });
+}
