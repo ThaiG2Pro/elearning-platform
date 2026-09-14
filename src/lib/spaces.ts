@@ -1,11 +1,24 @@
 import api from './api';
-import { Space, SpaceDetail, PublicSpace, Companion } from '@/types/space.types';
+import { Space, SpaceDetail, PublicSpace, Companion, SpaceDiscovery } from '@/types/space.types';
 
 export const getSpaces = async (search?: string): Promise<Space[]> => {
     try {
         const params = search ? { search } : {};
         const response = await api.get('/spaces', { params });
         return response.data as Space[];
+    } catch (error: any) {
+        if (error.response?.data?.error === 'SERVER_ERROR') {
+            throw new Error('Hệ thống đang gặp sự cố, vui lòng thử lại sau.');
+        }
+        throw new Error('Có lỗi xảy ra khi tải danh sách Space.');
+    }
+};
+
+// Discovery (2026-09-14) — 4 mục trang chủ guest đã xếp hạng phía server.
+export const getDiscoverySpaces = async (): Promise<SpaceDiscovery> => {
+    try {
+        const response = await api.get('/spaces/discover');
+        return response.data as SpaceDiscovery;
     } catch (error: any) {
         if (error.response?.data?.error === 'SERVER_ERROR') {
             throw new Error('Hệ thống đang gặp sự cố, vui lòng thử lại sau.');

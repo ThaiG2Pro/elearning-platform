@@ -12,6 +12,17 @@ export interface Space {
 }
 
 export type SpaceListResponse = Space[];
+
+// Discovery (2026-09-14) — các mục trang chủ guest, server xếp hạng sẵn:
+// showcase = đội ngũ chọn tay; popular = nhiều clone nhất trong 30 ngày (đạt
+// ngưỡng); rising = space mới có người học đầu tiên; latest = fallback khi
+// popular rỗng (UI đổi tiêu đề thành "Space mới").
+export interface SpaceDiscovery {
+    showcase: Space[];
+    popular: Space[];
+    rising: Space[];
+    latest: Space[];
+}
 export interface SpaceDetail {
     id: number;
     title: string;

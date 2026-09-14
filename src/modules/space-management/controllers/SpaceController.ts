@@ -3,7 +3,7 @@ import { ContentManagementService } from '../services/ContentManagementService';
 import { LearnService } from '../services/LearnService';
 import { SpaceRepository } from '../repositories/SpaceRepository';
 import { LearningProgressRepository } from '../repositories/LearningProgressRepository';
-import { SpaceListDto } from '../dtos/SpaceListDto';
+import { SpaceListDto, SpaceDiscoveryDto } from '../dtos/SpaceListDto';
 import { SpaceDetailDto, PublicSpaceDto } from '../dtos/SpaceDetailDto';
 import { CompanionDto } from '../dtos/CompanionDto';
 import { prisma } from '../../../shared/config/database';
@@ -22,6 +22,10 @@ export class SpaceController {
 
     async getSpaces(search?: string): Promise<SpaceListDto[]> {
         return await this.service.getSpaces(search);
+    }
+
+    async getDiscovery(): Promise<SpaceDiscoveryDto> {
+        return await this.service.getDiscovery();
     }
 
     async getSpaceDetail(spaceId: bigint, userId?: bigint): Promise<SpaceDetailDto | null> {

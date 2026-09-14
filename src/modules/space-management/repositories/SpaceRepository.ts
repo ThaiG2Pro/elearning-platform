@@ -10,6 +10,65 @@ import { AIGenerationPolicy, KeySource } from '../../ai-generation/domain/AIGene
 // cứng để 1 request không kéo cả bảng khi số space tăng.
 const PUBLIC_LIST_MAX_ITEMS = 60;
 
+// Discovery policy (2026-09-14) — định nghĩa sản phẩm cho các mục trang chủ
+// guest, thay cho việc "phổ biến" chỉ là hệ quả của orderBy id desc + take 60:
+//   - Phổ biến nhất: xếp theo số clone ACTIVE tạo trong DISCOVERY_WINDOW_DAYS
+//     gần nhất (velocity, không phải mọi thời đại), phải đạt ngưỡng
+//     POPULAR_MIN_RECENT_CLONES, query riêng không cắt trước khi xếp hạng.
+//   - Mới nổi: space tạo trong cùng cửa sổ và đã có >= 1 clone ACTIVE,
+//     loại những space đã lọt mục phổ biến.
+//   - Mới nhất: fallback khi chưa có space đạt ngưỡng phổ biến; UI đổi tiêu
+//     đề thành "Space mới" thay vì giữ chữ "Nhiều người học" nói sai.
+const DISCOVERY_WINDOW_DAYS = 30;
+const POPULAR_MIN_RECENT_CLONES = 2;
+const DISCOVERY_SECTION_MAX_ITEMS = 12;
+
+export type PublicSpaceRow = {
+    id: bigint;
+    title: string;
+    slug: string;
+    description: string | null;
+    thumbnailUrl: string;
+    isShowcase: boolean;
+    cloneCount: number;
+    clonedFrom: { spaceId: number; ownerName: string } | null;
+};
+
+export type DiscoverySpaces = {
+    showcase: PublicSpaceRow[];
+    popular: PublicSpaceRow[];
+    rising: PublicSpaceRow[];
+    latest: PublicSpaceRow[];
+};
+
+// Cột tối thiểu để dựng 1 PublicSpaceRow (xem hydratePublicRows).
+const PUBLIC_ROW_SELECT = {
+    id: true,
+    title: true,
+    slug: true,
+    description: true,
+    is_showcase: true,
+    cloned_from_space_id: true,
+    chapters: {
+        select: {
+            lessons: {
+                where: { content_url: { not: null } },
+                select: { content_url: true },
+                orderBy: { order_index: 'asc' as const },
+                take: 1,
+            },
+        },
+        orderBy: { order_index: 'asc' as const },
+    },
+} as const;
+
+// Điều kiện "được phép lộ diện ở trang chủ guest" — xem comment discovery
+// policy 2026-09-05 trong findActiveSpacesWithThumbnails.
+const PUBLICLY_VISIBLE_WHERE = {
+    status: 'ACTIVE' as const,
+    share_token: { not: null },
+};
+
 export class SpaceRepository {
     constructor(private prisma: PrismaClient) { }
 
@@ -90,7 +149,7 @@ export class SpaceRepository {
         return domainSpace;
     }
 
-    async findActiveSpacesWithThumbnails(search?: string): Promise<{ id: bigint; title: string; slug: string; description: string | null; thumbnailUrl: string; isShowcase: boolean; cloneCount: number; clonedFrom: { spaceId: number; ownerName: string } | null }[]> {
+    async findActiveSpacesWithThumbnails(search?: string): Promise<PublicSpaceRow[]> {
         // Discovery policy (2026-09-05): trước đây chỉ lọc status=ACTIVE nên
         // MỌI space active — kể cả space chủ chưa từng bấm "Chia sẻ" (private)
         // và mọi bản clone cá nhân (mặc định không có share_token) — đều lộ
@@ -100,10 +159,7 @@ export class SpaceRepository {
         // không set share_token), tự tái xuất hiện nếu sau này chủ bản clone
         // đó chủ động share lại chính nó (giống model fork công khai của
         // GitHub) — không cần loại trừ cloned_from_space_id riêng.
-        const where: any = {
-            status: 'ACTIVE',
-            share_token: { not: null },
-        };
+        const where: any = { ...PUBLICLY_VISIBLE_WHERE };
 
         if (search) {
             where.title = {
@@ -120,29 +176,132 @@ export class SpaceRepository {
         // trang. Tổng cố định 3 query bất kể số space.
         const spaces = await this.prisma.spaces.findMany({
             where,
-            select: {
-                id: true,
-                title: true,
-                slug: true,
-                description: true,
-                is_showcase: true,
-                cloned_from_space_id: true,
-                chapters: {
-                    select: {
-                        lessons: {
-                            where: { content_url: { not: null } },
-                            select: { content_url: true },
-                            orderBy: { order_index: 'asc' },
-                            take: 1,
-                        },
-                    },
-                    orderBy: { order_index: 'asc' },
-                },
-            },
+            select: PUBLIC_ROW_SELECT,
             orderBy: { id: 'desc' },
             take: PUBLIC_LIST_MAX_ITEMS,
         });
 
+        return this.hydratePublicRows(spaces);
+    }
+
+    /**
+     * Discovery (2026-09-14) — 4 danh sách cho trang chủ guest, mỗi mục là
+     * 1 query riêng theo đúng định nghĩa ở đầu file, thay cho việc client
+     * tách 1 list 60 dòng "mới nhất" rồi tự sort theo cloneCount (space cũ
+     * nhiều clone ngoài cửa sổ 60 không bao giờ lọt vào; space 0 clone vẫn
+     * mang nhãn "Nhiều người học").
+     */
+    async findDiscoverySpaces(): Promise<DiscoverySpaces> {
+        const since = new Date(Date.now() - DISCOVERY_WINDOW_DAYS * 24 * 60 * 60 * 1000);
+
+        // 1 groupBy duy nhất cho "clone ACTIVE tạo trong cửa sổ" — dùng chung
+        // cho cả xếp hạng phổ biến lẫn xác định space mới nổi. Lấy dư
+        // (x3) vì bước sau còn lọc theo PUBLICLY_VISIBLE_WHERE (space gốc đã
+        // archive / thu hồi share thì không hiện dù clone còn sống).
+        const recentClones = await this.prisma.spaces.groupBy({
+            by: ['cloned_from_space_id'],
+            where: {
+                cloned_from_space_id: { not: null },
+                status: 'ACTIVE',
+                created_at: { gte: since },
+            },
+            _count: { id: true },
+            orderBy: { _count: { id: 'desc' } },
+            take: DISCOVERY_SECTION_MAX_ITEMS * 3,
+        });
+        const recentCloneCountMap = new Map<string, number>();
+        for (const item of recentClones) {
+            if (item.cloned_from_space_id) {
+                recentCloneCountMap.set(item.cloned_from_space_id.toString(), item._count.id);
+            }
+        }
+        const recentCount = (id: bigint) => recentCloneCountMap.get(id.toString()) || 0;
+        const byRecentThenNewest = (a: { id: bigint }, b: { id: bigint }) =>
+            recentCount(b.id) - recentCount(a.id) || (b.id > a.id ? 1 : b.id < a.id ? -1 : 0);
+
+        const popularCandidateIds = recentClones
+            .filter(item => item.cloned_from_space_id && item._count.id >= POPULAR_MIN_RECENT_CLONES)
+            .map(item => item.cloned_from_space_id as bigint);
+
+        const [showcaseRows, popularRows, risingRows, latestRows] = await Promise.all([
+            // Tuyển chọn: do đội ngũ gắn cờ tay (seed / admin), mới nhất trước.
+            this.prisma.spaces.findMany({
+                where: { ...PUBLICLY_VISIBLE_WHERE, is_showcase: true },
+                select: PUBLIC_ROW_SELECT,
+                orderBy: { id: 'desc' },
+                take: DISCOVERY_SECTION_MAX_ITEMS,
+            }),
+            popularCandidateIds.length === 0
+                ? Promise.resolve([])
+                : this.prisma.spaces.findMany({
+                    where: { ...PUBLICLY_VISIBLE_WHERE, id: { in: popularCandidateIds } },
+                    select: PUBLIC_ROW_SELECT,
+                }),
+            // Mới nổi: tạo trong cửa sổ + đã có người clone. Lấy dư để còn
+            // loại những id trùng với mục phổ biến.
+            this.prisma.spaces.findMany({
+                where: {
+                    ...PUBLICLY_VISIBLE_WHERE,
+                    created_at: { gte: since },
+                    clones: { some: { status: 'ACTIVE' } },
+                },
+                select: PUBLIC_ROW_SELECT,
+                orderBy: { id: 'desc' },
+                take: DISCOVERY_SECTION_MAX_ITEMS * 2,
+            }),
+            // Mới nhất (fallback): space được chia sẻ gần đây, không tính showcase
+            // vì mục đó đã có chỗ riêng.
+            this.prisma.spaces.findMany({
+                where: { ...PUBLICLY_VISIBLE_WHERE, is_showcase: false },
+                select: PUBLIC_ROW_SELECT,
+                orderBy: { id: 'desc' },
+                take: DISCOVERY_SECTION_MAX_ITEMS,
+            }),
+        ]);
+
+        const popularSorted = [...popularRows].sort(byRecentThenNewest).slice(0, DISCOVERY_SECTION_MAX_ITEMS);
+        const popularIds = new Set(popularSorted.map(s => s.id.toString()));
+        const risingSorted = risingRows
+            .filter(s => !popularIds.has(s.id.toString()))
+            .sort(byRecentThenNewest)
+            .slice(0, DISCOVERY_SECTION_MAX_ITEMS);
+
+        // Hydrate 1 lần cho toàn bộ (dedupe theo id) rồi chia lại theo mục —
+        // giữ tổng số query cố định: 1 groupBy + 4 findMany + 2 của hydrate.
+        const allRows = new Map<string, (typeof showcaseRows)[number]>();
+        for (const row of [...showcaseRows, ...popularSorted, ...risingSorted, ...latestRows]) {
+            allRows.set(row.id.toString(), row);
+        }
+        const hydrated = await this.hydratePublicRows([...allRows.values()]);
+        const hydratedMap = new Map(hydrated.map(r => [r.id.toString(), r]));
+        const pick = (rows: { id: bigint }[]) =>
+            rows.map(r => hydratedMap.get(r.id.toString())).filter((r): r is PublicSpaceRow => !!r);
+
+        return {
+            showcase: pick(showcaseRows),
+            popular: pick(popularSorted),
+            rising: pick(risingSorted),
+            latest: pick(latestRows),
+        };
+    }
+
+    /**
+     * Dựng PublicSpaceRow từ các dòng select bằng PUBLIC_ROW_SELECT: thumbnail
+     * (từ lesson video đầu tiên đã kéo sẵn), cloneCount (tổng clone ACTIVE
+     * mọi thời đại — badge "N người cùng học" trên card), clonedFrom (tên chủ
+     * space gốc nếu bản thân là 1 clone). Luôn đúng 2 query bất kể số dòng.
+     */
+    private async hydratePublicRows(
+        spaces: {
+            id: bigint;
+            title: string;
+            slug: string;
+            description: string | null;
+            is_showcase: boolean;
+            cloned_from_space_id: bigint | null;
+            chapters: { lessons: { content_url: string | null }[] }[];
+        }[],
+    ): Promise<PublicSpaceRow[]> {
         if (spaces.length === 0) return [];
 
         const pageIds = spaces.map(s => s.id);

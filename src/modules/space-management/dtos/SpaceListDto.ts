@@ -12,3 +12,11 @@ export class SpaceListDto {
         public clonedFrom?: { spaceId: number; ownerName: string } | null,
     ) { }
 }
+
+// Discovery (2026-09-14) — payload của GET /api/v1/spaces/discover.
+export interface SpaceDiscoveryDto {
+    showcase: SpaceListDto[];
+    popular: SpaceListDto[];
+    rising: SpaceListDto[];
+    latest: SpaceListDto[];
+}

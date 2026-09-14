@@ -1,6 +1,6 @@
-import { SpaceRepository } from '../repositories/SpaceRepository';
+import { SpaceRepository, PublicSpaceRow } from '../repositories/SpaceRepository';
 import { LearnService } from './LearnService';
-import { SpaceListDto } from '../dtos/SpaceListDto';
+import { SpaceListDto, SpaceDiscoveryDto } from '../dtos/SpaceListDto';
 import { SpaceDetailDto, ChapterDto, LessonDto } from '../dtos/SpaceDetailDto';
 import { CompanionDto } from '../dtos/CompanionDto';
 import { VideoThumbnailUtil } from '../../shared/utils/VideoThumbnailUtil';
@@ -17,8 +17,23 @@ export class SpaceService {
 
     async getSpaces(search?: string): Promise<SpaceListDto[]> {
         const spaces = await this.spaceRepository.findActiveSpacesWithThumbnails(search);
+        return spaces.map(SpaceService.toListDto);
+    }
 
-        return spaces.map(space => new SpaceListDto(
+    // Discovery (2026-09-14) — 4 mục trang chủ guest, mỗi mục 1 query riêng
+    // theo định nghĩa trong SpaceRepository.findDiscoverySpaces.
+    async getDiscovery(): Promise<SpaceDiscoveryDto> {
+        const d = await this.spaceRepository.findDiscoverySpaces();
+        return {
+            showcase: d.showcase.map(SpaceService.toListDto),
+            popular: d.popular.map(SpaceService.toListDto),
+            rising: d.rising.map(SpaceService.toListDto),
+            latest: d.latest.map(SpaceService.toListDto),
+        };
+    }
+
+    private static toListDto(space: PublicSpaceRow): SpaceListDto {
+        return new SpaceListDto(
             Number(space.id),
             space.title,
             space.slug,
@@ -27,7 +42,7 @@ export class SpaceService {
             space.isShowcase,
             space.cloneCount,
             space.clonedFrom,
-        ));
+        );
     }
 
     async getSpaceDetail(spaceId: bigint, userId?: bigint): Promise<SpaceDetailDto> {
