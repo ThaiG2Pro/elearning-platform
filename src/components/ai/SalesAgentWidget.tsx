@@ -17,7 +17,8 @@ export type AgentContext =
     | 'homepage_guest'
     | 'homepage_no_spaces'
     | 'join'
-    | 'pricing';
+    | 'pricing'
+    | 'faq';
 
 interface SalesAgentWidgetProps {
     context: AgentContext;
@@ -93,6 +94,15 @@ const CONTEXT_CONFIG: Record<AgentContext, {
         proactiveDelay: 3000,
         proactiveBubble: 'Bạn đang phân vân về giá hay credit? Hỏi mình nhé!',
         topicOrder: ['gia-credit', 'tinh-nang', 'tai-khoan', 'ho-tro'],
+    },
+    // Trang /faq đã hiện sẵn mọi câu trả lời — widget ở đây chỉ là lối thoát
+    // sang người thật, nên không nhảy bong bóng chủ động và ưu tiên topic hỗ trợ.
+    faq: {
+        greeting: 'Cần hỏi thêm? 🙋',
+        subtitle: 'Không thấy câu bạn cần ở trên thì hỏi mình, hoặc chuyển sang người hỗ trợ.',
+        proactiveDelay: 0,
+        proactiveBubble: '',
+        topicOrder: ['ho-tro', 'gia-credit', 'tinh-nang', 'tai-khoan'],
     },
 };
 
@@ -217,10 +227,11 @@ export default function SalesAgentWidget({ context, userName }: SalesAgentWidget
     }, [isOpen]);
 
     useEffect(() => {
-        if (proactiveDismissed || hasInteracted) return;
+        // proactiveBubble rỗng = trang không muốn bong bóng chủ động (vd /faq).
+        if (proactiveDismissed || hasInteracted || !config.proactiveBubble) return;
         const timer = setTimeout(() => setShowProactiveBubble(true), config.proactiveDelay);
         return () => clearTimeout(timer);
-    }, [config.proactiveDelay, proactiveDismissed, hasInteracted]);
+    }, [config.proactiveDelay, config.proactiveBubble, proactiveDismissed, hasInteracted]);
 
     const handleOpen = useCallback(() => {
         setIsOpen(true);
