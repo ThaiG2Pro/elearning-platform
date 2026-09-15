@@ -1,6 +1,7 @@
 import OpenAI from 'openai';
 import { GenerateOptions, LLMGenerationError, LLMProvider } from './LLMProvider';
 import { defaultModel } from '../domain/Recipes';
+import { assertPublicHttpUrl } from '../../../shared/security/safeUrl';
 
 /**
  * WP2.2 (revised) — implementation duy nhất của `LLMProvider`, nói chuyện
@@ -52,6 +53,21 @@ export class LiteLLMProvider implements LLMProvider {
         const baseURL = options.baseUrl ?? process.env.LITELLM_BASE_URL;
         if (!baseURL) {
             throw new LLMGenerationError('LITELLM_NOT_CONFIGURED');
+        }
+        // Security (2026-09-15) — AIGenerationService đã validate baseUrl
+        // này bằng assertPublicHttpUrl TRƯỚC khi gọi generate(), nhưng giữa
+        // lúc đó và lúc request thật sự đi (routing/credit/transcript fetch
+        // ở service) có thể cách nhau hàng trăm ms tới vài giây — đủ để 1
+        // domain rebinding (TTL cực ngắn) đổi DNS từ IP public sang IP nội
+        // bộ. Check lại NGAY SÁT trước khi connect để rút cửa sổ TOCTOU
+        // xuống mức tối thiểu (chưa triệt để pin IP — xem "Known limitation"
+        // trong safeUrl.ts, cần custom dispatcher/agent để làm trọn vẹn).
+        if (options.baseUrl) {
+            try {
+                await assertPublicHttpUrl(options.baseUrl, { requireHttps: true });
+            } catch {
+                throw new LLMGenerationError('BYOK_BASE_URL_INVALID');
+            }
         }
         const model = options.model ?? defaultModel();
 
