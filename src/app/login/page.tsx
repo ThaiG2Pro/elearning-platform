@@ -9,6 +9,16 @@ import Header from '@/components/Header';
 import Toast from '@/components/Toast';
 import { MARGIN_W } from '@/lib/vibe/theme';
 import { sanitizeRedirectPath } from '@/shared/security/safeRedirect';
+import OAuthButtons from '@/components/OAuthButtons';
+
+// Mã lỗi route callback OAuth gắn vào ?error= khi redirect về đây (xem
+// api/v1/auth/oauth/*/callback/route.ts) — route đó không có JSON response
+// nào client đọc được, nên lỗi phải đi qua query string.
+const OAUTH_ERROR_MESSAGES: Record<string, string> = {
+    oauth_failed: 'Đăng nhập bằng Google/GitHub không thành công. Vui lòng thử lại.',
+    oauth_email_unverified: 'Email từ tài khoản Google/GitHub của bạn chưa được xác thực.',
+    oauth_not_configured: 'Đăng nhập bằng Google/GitHub hiện chưa khả dụng.',
+};
 
 export default function LoginPage() {
     const router = useRouter();
@@ -26,6 +36,12 @@ export default function LoginPage() {
         const continueParam = sanitizeRedirectPath(urlParams.get('continueUrl'), '/');
         setEmail(emailParam);
         setContinueUrl(continueParam);
+
+        const oauthError = urlParams.get('error');
+        if (oauthError && OAUTH_ERROR_MESSAGES[oauthError]) {
+            setAppState('error');
+            setErrorMessage(OAUTH_ERROR_MESSAGES[oauthError]);
+        }
     }, []);
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -162,6 +178,18 @@ export default function LoginPage() {
                             </div>
                         </div>
                     </form>
+
+                    {/* 03 — OAuth, ngoài <form>: đây là điều hướng full-page
+                        (<a href>) tới backend, không phải submit form. */}
+                    <div className="flex items-stretch border-t border-ink-border">
+                        <span style={{ width: MARGIN_W }} className="shrink-0 flex items-start justify-center pt-[3px] font-mono text-[11px] text-ink-textDim">
+                            03
+                        </span>
+                        <div className="flex-1 min-w-0 border-l border-ink-marginLn pl-4 pr-5 py-4">
+                            <p className="text-xs text-ink-textMuted mb-2">Hoặc đăng nhập bằng</p>
+                            <OAuthButtons />
+                        </div>
+                    </div>
                 </div>
 
                 {appState === 'error' && errorMessage && (

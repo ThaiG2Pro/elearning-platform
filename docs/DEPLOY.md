@@ -41,8 +41,14 @@ tự động hoá được**:
    fly secrets set JWT_SECRET="..." FRONTEND_URL="https://elearning-platform.fly.dev" \
      YOUTUBE_API_KEY="..." MAILTRAP_HOST="..." MAILTRAP_PORT=2525 \
      MAILTRAP_USER="..." MAILTRAP_PASS="..." MAIL_FROM="..." \
-     NEXT_PUBLIC_DONATE_URL="https://ko-fi.com/yourhandle"
+     NEXT_PUBLIC_DONATE_URL="https://ko-fi.com/yourhandle" \
+     GOOGLE_CLIENT_ID="..." GOOGLE_CLIENT_SECRET="..." \
+     GITHUB_CLIENT_ID="..." GITHUB_CLIENT_SECRET="..."
    ```
+   (OAuth — 2026-09-15 — tuỳ chọn, xem `.env.example`; bỏ trống thì nút
+   "Đăng nhập với Google/GitHub" vẫn hiện nhưng bấm vào báo lỗi, không chặn
+   phần còn lại của app. Redirect URI cần khai ở Google/GitHub:
+   `https://elearning-platform.fly.dev/api/v1/auth/oauth/{google,github}/callback`.)
 6. Chạy migration một lần (không có trong Dockerfile runtime image theo thiết
    kế — xem `migrate` profile trong `docker-compose.yml` để tham khảo lệnh):
    ```

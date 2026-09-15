@@ -33,6 +33,14 @@ enum token_type {
   RECOVERY
 }
 
+// 2026-09-15 — đăng nhập Google/GitHub. password_hash vẫn NOT NULL cho tài
+// khoản OAuth (sinh ngẫu nhiên, không ai biết) để không phải sửa toàn bộ
+// UserEntity/UserFactory/UserRepository sang nullable — xem UserFactory.createFromOAuth.
+enum user_oauth_provider {
+  GOOGLE
+  GITHUB
+}
+
 enum source_type {
   YOUTUBE_VIDEO
   WEB_ARTICLE
@@ -106,6 +114,12 @@ model users {
   // nhập lại. Access token 15 phút vẫn có thể sống nốt tới hết hạn — đánh
   // đổi chấp nhận được để không phải tra DB trên mọi request có auth.
   password_changed_at DateTime?           @map("password_changed_at") @db.Timestamp(6)
+  // 2026-09-15 — danh tính OAuth (Google/GitHub). Cả hai nullable: user
+  // đăng ký bằng password không có provider. `oauth_subject` là "sub" claim
+  // của provider (Google) hoặc user id dạng string (GitHub) — không phải
+  // email, vì email có thể đổi ở phía provider còn subject thì không.
+  oauth_provider    user_oauth_provider? @map("oauth_provider")
+  oauth_subject     String?              @map("oauth_subject") @db.VarChar(255)
   // Avatar (ảnh data-URL, có thể hàng trăm KB) tách sang user_avatars —
   // bảng users là bảng nóng nhất (auth, join khắp nơi), không để nó cõng blob.
   avatar            user_avatars?
@@ -118,6 +132,9 @@ model users {
   ai_generations    ai_generations[]
   credit_transactions credit_transactions[]
 
+  // Postgres cho nhiều NULL trùng nhau qua unique index, nên constraint này
+  // chỉ thực sự ràng buộc các user đã liên kết OAuth (findByOAuth dựa vào đây).
+  @@unique([oauth_provider, oauth_subject])
   @@map("users")
 }
 

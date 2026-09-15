@@ -12,6 +12,7 @@ vi.mock('../../domain/UserFactory', () => ({
     UserFactory: {
         createInactiveUser: vi.fn(),
         reconstituteForOverwrite: vi.fn(),
+        createFromOAuth: vi.fn(),
     },
 }));
 
@@ -31,6 +32,7 @@ const makeToken = (type = 'ACTIVATION', overrides: Partial<{ expiresAt: Date; is
 const makeUserRepo = () => ({
     findByEmail: vi.fn(),
     findById: vi.fn(),
+    findByOAuth: vi.fn(),
     save: vi.fn(),
     deleteInactiveUsersOlderThan24Hours: vi.fn(),
     invalidateAllTokens: vi.fn(),
@@ -57,10 +59,17 @@ describe('AuthService — integration (mocked repos)', () => {
     let emailAdapter: ReturnType<typeof makeEmailAdapter>;
     let service: AuthService;
 
-    beforeEach(() => {
+    beforeEach(async () => {
         userRepo     = makeUserRepo();
         tokenRepo    = makeTokenRepo();
         emailAdapter = makeEmailAdapter();
+        // UserFactory is module-mocked (top of file), so its call history
+        // persists across tests unless cleared here — needed for the
+        // `.not.toHaveBeenCalled()` assertions in loginWithOAuth below.
+        const { UserFactory } = await import('../../domain/UserFactory');
+        vi.mocked(UserFactory.createInactiveUser).mockClear();
+        vi.mocked(UserFactory.reconstituteForOverwrite).mockClear();
+        vi.mocked(UserFactory.createFromOAuth).mockClear();
         service = new AuthService(userRepo as any, tokenRepo as any, emailAdapter as any);
     });
 
@@ -252,6 +261,87 @@ describe('AuthService — integration (mocked repos)', () => {
 
             expect(JSON.stringify(profile, (_, v) => typeof v === 'bigint' ? v.toString() : v))
                 .not.toContain('passwordHash');
+        });
+    });
+
+    // ── loginWithOAuth (2026-09-15) ─────────────────────────────────────────────
+    describe('loginWithOAuth', () => {
+        const oauthInput = { provider: 'GOOGLE' as const, subject: 'google-sub-1', email: 'user@test.com', fullName: 'OAuth User' };
+
+        it('creates a new user when neither the OAuth identity nor the email are known', async () => {
+            vi.stubEnv('JWT_SECRET', 'test-secret-for-auth-service');
+            try {
+                const { UserFactory } = await import('../../domain/UserFactory');
+                const newUser = makeUser('ACTIVE');
+                (UserFactory.createFromOAuth as ReturnType<typeof vi.fn>).mockResolvedValue(newUser);
+
+                userRepo.findByOAuth.mockResolvedValue(null);
+                userRepo.findByEmail.mockResolvedValue(null);
+                userRepo.save.mockResolvedValue(undefined);
+
+                const result = await service.loginWithOAuth(oauthInput);
+
+                expect(UserFactory.createFromOAuth).toHaveBeenCalledWith(oauthInput.email, oauthInput.fullName, oauthInput.provider, oauthInput.subject);
+                expect(result.accessToken).toBeTruthy();
+                expect(result.user.email).toBe(oauthInput.email);
+            } finally {
+                vi.unstubAllEnvs();
+            }
+        });
+
+        it('auto-links to an existing ACTIVE password account matching the same email, without creating a new user', async () => {
+            vi.stubEnv('JWT_SECRET', 'test-secret-for-auth-service');
+            try {
+                const { UserFactory } = await import('../../domain/UserFactory');
+                const existing = makeUser('ACTIVE');
+                userRepo.findByOAuth.mockResolvedValue(null);
+                userRepo.findByEmail.mockResolvedValue(existing);
+                userRepo.save.mockResolvedValue(undefined);
+
+                const result = await service.loginWithOAuth(oauthInput);
+
+                expect(UserFactory.createFromOAuth).not.toHaveBeenCalled();
+                expect(existing.oauthProvider).toBe('GOOGLE');
+                expect(existing.oauthSubject).toBe('google-sub-1');
+                expect(result.user.id).toBe(Number(existing.id));
+            } finally {
+                vi.unstubAllEnvs();
+            }
+        });
+
+        it('activates an INACTIVE (never-activated) email match when linking via OAuth', async () => {
+            vi.stubEnv('JWT_SECRET', 'test-secret-for-auth-service');
+            try {
+                const existing = makeUser('INACTIVE');
+                userRepo.findByOAuth.mockResolvedValue(null);
+                userRepo.findByEmail.mockResolvedValue(existing);
+                userRepo.save.mockResolvedValue(undefined);
+
+                await service.loginWithOAuth(oauthInput);
+
+                expect(existing.status).toBe('ACTIVE');
+            } finally {
+                vi.unstubAllEnvs();
+            }
+        });
+
+        it('logs straight in on a previously-linked OAuth identity without touching email lookup results', async () => {
+            vi.stubEnv('JWT_SECRET', 'test-secret-for-auth-service');
+            try {
+                const { UserFactory } = await import('../../domain/UserFactory');
+                const linked = makeUser('ACTIVE');
+                linked.linkOAuth('GOOGLE', 'google-sub-1');
+                userRepo.findByOAuth.mockResolvedValue(linked);
+                userRepo.findByEmail.mockResolvedValue(null); // e.g. email changed at the provider since linking
+                userRepo.save.mockResolvedValue(undefined);
+
+                const result = await service.loginWithOAuth(oauthInput);
+
+                expect(UserFactory.createFromOAuth).not.toHaveBeenCalled();
+                expect(result.user.id).toBe(Number(linked.id));
+            } finally {
+                vi.unstubAllEnvs();
+            }
         });
     });
 

@@ -9,6 +9,7 @@ import Header from '@/components/Header';
 import Toast from '@/components/Toast';
 import { MARGIN_W } from '@/lib/vibe/theme';
 import { sanitizeRedirectPath } from '@/shared/security/safeRedirect';
+import OAuthButtons from '@/components/OAuthButtons';
 
 export default function RegisterPage() {
     const router = useRouter();
@@ -210,6 +211,16 @@ export default function RegisterPage() {
                             </div>
                         </div>
                     </form>
+
+                    {/* Ngoài <form>: điều hướng full-page tới backend, không
+                        phải submit form — cùng khối với login/page.tsx. */}
+                    <div className="flex items-stretch border-t border-ink-border">
+                        <span style={{ width: MARGIN_W }} className="shrink-0" />
+                        <div className="flex-1 min-w-0 border-l border-ink-marginLn pl-4 pr-5 py-4">
+                            <p className="text-xs text-ink-textMuted mb-2">Hoặc đăng ký bằng</p>
+                            <OAuthButtons />
+                        </div>
+                    </div>
                 </div>
 
                 {appState === 'request_sent' && (

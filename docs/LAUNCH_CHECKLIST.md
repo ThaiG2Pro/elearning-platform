@@ -20,6 +20,12 @@ Thứ tự làm. Mỗi bước có lệnh; `preflight.sh` phải toàn PASS trư
       Thiếu 3 event sau = khách hoàn tiền/chargeback mà credit vẫn còn trong tài khoản.
 - [ ] **Cảnh báo về tiền**: tạo incoming webhook Discord/Slack → `OPS_ALERT_WEBHOOK_URL`. Nhận: đối soát
       credit thấy nợ, sổ cái lệch, Stripe hoàn tiền / chargeback.
+- [ ] **OAuth Google/GitHub** (2026-09-15, tuỳ chọn — trống thì nút vẫn hiện nhưng bấm vào báo lỗi, không
+      chặn phần còn lại của app):
+      - Google Cloud Console → Credentials → OAuth client ID (Web application). Authorized redirect URI:
+        `https://DOMAIN/api/v1/auth/oauth/google/callback` → `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`.
+      - GitHub → Settings → Developer settings → OAuth Apps → New OAuth App. Authorization callback URL:
+        `https://DOMAIN/api/v1/auth/oauth/github/callback` → `GITHUB_CLIENT_ID`/`GITHUB_CLIENT_SECRET`.
 - [ ] **DNS**: A record `DOMAIN` → IP VPS. Nếu dùng Cloudflare, để **DNS only** (mây xám) cho tới khi Caddy
       lấy cert xong; bật proxy cam sau nếu muốn CDN/cache.
 
@@ -64,6 +70,8 @@ echo '*/15 * * * * root . /opt/elearning/.env && curl -fsS -X POST -H "Authoriza
 ## 6. Smoke test tay (5 phút)
 - [ ] Trang chủ tải, ảnh thumbnail hiện.
 - [ ] Đăng ký → **nhận được email** kích hoạt → kích hoạt → đăng nhập.
+- [ ] Nếu đã điền `GOOGLE_CLIENT_ID`/`GITHUB_CLIENT_ID`: bấm nút "Google"/"GitHub" ở `/login` → về đúng
+      redirect URI đã khai báo ở dịch vụ (không phải `localhost`) → đăng nhập thành công.
 - [ ] Dán 1 link YouTube tạo space → học → tiến độ lưu (reload còn).
 - [ ] Dán 1 link bài viết web → tạo space → bấm AI tóm tắt (nhánh miễn phí Groq) → có kết quả.
 - [ ] Tạo link share → mở ẩn danh được.

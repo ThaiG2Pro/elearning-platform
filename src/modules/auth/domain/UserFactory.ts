@@ -1,5 +1,6 @@
 import { UserEntity } from './UserEntity';
 import * as bcrypt from 'bcryptjs';;
+import * as crypto from 'crypto';
 
 export class UserFactory {
     static async createInactiveUser(email: string, password: string, fullName: string, age?: number): Promise<UserEntity> {
@@ -47,5 +48,28 @@ export class UserFactory {
             existingUser.createdAt, // Keep existing createdAt
             undefined, // lastLoginAt
         );
+    }
+
+    // 2026-09-15 — tạo user từ đăng nhập Google/GitHub. users.password_hash
+    // vẫn NOT NULL ở DB nên sinh 1 password ngẫu nhiên không ai biết (và
+    // không trả về cho ai) thay vì đổi cột sang nullable — xem ghi chú ở
+    // migration 20260915030000_add_oauth_identity. status ACTIVE ngay vì
+    // provider đã verify email hộ, không cần activation email.
+    static async createFromOAuth(email: string, fullName: string, provider: 'GOOGLE' | 'GITHUB', subject: string): Promise<UserEntity> {
+        const unusablePassword = crypto.randomBytes(32).toString('hex');
+        const hashedPassword = await bcrypt.hash(unusablePassword, 10);
+        const user = new UserEntity(
+            BigInt(0), // ID will be set by DB
+            email,
+            hashedPassword,
+            'ACTIVE',
+            'STUDENT',
+            fullName,
+            undefined, // age - not provided by OAuth providers
+            undefined, // createdAt - will be set by DB
+            undefined, // lastLoginAt
+        );
+        user.linkOAuth(provider, subject);
+        return user;
     }
 }

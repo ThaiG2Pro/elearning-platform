@@ -4,6 +4,7 @@ import { RegistrationPolicy } from '../domain/RegistrationPolicy';
 import { TokenPolicy } from '../domain/TokenPolicy';
 import { UserFactory } from '../domain/UserFactory';
 import { UserEntity } from '../domain/UserEntity';
+import { OAuthLinkPolicy } from '../domain/OAuthLinkPolicy';
 import { UserRepository } from '../repositories/UserRepository';
 import { TokenRepository } from '../repositories/TokenRepository';
 import { RegisterDto } from '../dtos/RegisterDto';
@@ -148,6 +149,55 @@ export class AuthService {
             tokens.refreshToken,
             {
                 id: Number(user.id), // Convert BigInt to number for JSON serialization
+                email: user.email,
+                role: user.role,
+                fullName: user.fullName,
+            },
+            redirectUrl,
+        );
+    }
+
+    // 2026-09-15 — đăng nhập Google/GitHub. `subject`/`email`/`fullName` đến
+    // từ profile provider (đã fetch xong ở route callback), không phải input
+    // thô của user — không cần validate password/format như login thường.
+    async loginWithOAuth(input: { provider: 'GOOGLE' | 'GITHUB'; subject: string; email: string; fullName: string }): Promise<LoginResponseDto> {
+        const [existingByOAuth, existingByEmail] = await Promise.all([
+            this.userRepository.findByOAuth(input.provider, input.subject),
+            this.userRepository.findByEmail(input.email),
+        ]);
+
+        const decision = OAuthLinkPolicy.resolve(existingByOAuth, existingByEmail);
+
+        let user: UserEntity;
+        if (decision === 'LOGIN_EXISTING_OAUTH') {
+            user = existingByOAuth!;
+        } else if (decision === 'LINK_TO_EMAIL') {
+            user = existingByEmail!;
+            user.linkOAuth(input.provider, input.subject);
+            // Provider đã verify email hộ — coi như kích hoạt luôn nếu tài
+            // khoản password này chưa từng được activate.
+            if (!user.isActive()) {
+                user.activate();
+            }
+        } else {
+            user = await UserFactory.createFromOAuth(input.email, input.fullName, input.provider, input.subject);
+        }
+
+        await this.userRepository.save(user);
+
+        // Issue tokens — cùng cơ chế với login thường.
+        const tokens = TokenFactory.createAuthTokens(user);
+
+        user.updateLastLogin();
+        await this.userRepository.save(user);
+
+        const redirectUrl = LoginNavigationPolicy.determineRedirectUrl(user);
+
+        return new LoginResponseDto(
+            tokens.accessToken,
+            tokens.refreshToken,
+            {
+                id: Number(user.id),
                 email: user.email,
                 role: user.role,
                 fullName: user.fullName,

@@ -72,6 +72,15 @@ export class AuthController {
         return await this.authService.login(dto);
     }
 
+    // 2026-09-15 — input đến từ profile do route callback OAuth đã fetch từ
+    // Google/GitHub, không phải form user tự gõ — chỉ cần guard tồn tại.
+    async loginWithOAuth(input: { provider: 'GOOGLE' | 'GITHUB'; subject: string; email: string; fullName: string }): Promise<LoginResponseDto> {
+        if (!input.subject || !input.email) {
+            throw new Error('OAUTH_PROFILE_INCOMPLETE');
+        }
+        return await this.authService.loginWithOAuth(input);
+    }
+
     async forgot(dto: ForgotDto): Promise<ForgotResponseDto> {
         // Basic validation
         if (!dto.email) {

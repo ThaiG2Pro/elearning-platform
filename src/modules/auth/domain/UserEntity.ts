@@ -15,6 +15,10 @@ export class UserEntity {
         // Security — mốc đổi mật khẩu gần nhất, dùng để vô hiệu hoá refresh
         // token cũ (xem changePassword()).
         public passwordChangedAt?: Date,
+        // 2026-09-15 — danh tính OAuth (Google/GitHub), cả hai cùng có hoặc
+        // cùng không — user đăng ký bằng password không set 2 field này.
+        public oauthProvider?: 'GOOGLE' | 'GITHUB',
+        public oauthSubject?: string,
     ) { }
 
     isActive(): boolean {
@@ -60,5 +64,13 @@ export class UserEntity {
     updateProfile(fullName: string, age?: number): void {
         this.fullName = fullName;
         this.age = age;
+    }
+
+    // 2026-09-15 — auto-link (quyết định sản phẩm): 1 email OAuth trùng tài
+    // khoản password ACTIVE có sẵn thì gắn danh tính OAuth vào đúng user đó
+    // thay vì tạo bản ghi trùng — xem OAuthLinkPolicy/AuthService.loginWithOAuth.
+    linkOAuth(provider: 'GOOGLE' | 'GITHUB', subject: string): void {
+        this.oauthProvider = provider;
+        this.oauthSubject = subject;
     }
 }

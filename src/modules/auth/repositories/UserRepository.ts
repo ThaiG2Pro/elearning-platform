@@ -1,6 +1,6 @@
 import { prisma } from '../../../shared/config/database';
 import { UserEntity } from '../domain/UserEntity';
-import type { user_role, user_status } from '@prisma/client';
+import type { user_role, user_status, user_oauth_provider } from '@prisma/client';
 
 // Avatar sống ở bảng user_avatars (1-1) — bảng users không cõng blob data-URL
 // nữa; các query auth/join khác vào users vì thế nhẹ đi. Hai finder dưới đây
@@ -10,6 +10,7 @@ type UserWithAvatar = {
     role: user_role; full_name: string; age: number | null;
     created_at: Date | null; avatar: { data: string } | null;
     password_changed_at: Date | null;
+    oauth_provider: user_oauth_provider | null; oauth_subject: string | null;
 };
 
 function normalizeEmail(email: string): string {
@@ -29,6 +30,8 @@ function toEntity(user: UserWithAvatar): UserEntity {
         undefined, // lastLoginAt - not loaded in this query
         user.avatar?.data || undefined,
         user.password_changed_at || undefined,
+        user.oauth_provider || undefined,
+        user.oauth_subject || undefined,
     );
 }
 
@@ -55,6 +58,19 @@ export class UserRepository {
     async findById(id: bigint): Promise<UserEntity | null> {
         const user = await prisma.users.findUnique({
             where: { id },
+            include: { avatar: { select: { data: true } } },
+        });
+        if (!user) return null;
+        return toEntity(user);
+    }
+
+    // 2026-09-15 — tra theo danh tính OAuth (đã liên kết trước đó), khác với
+    // findByEmail vốn dùng để phát hiện tài khoản password trùng email cho
+    // OAuthLinkPolicy. oauth_provider_oauth_subject là tên compound key Prisma
+    // tự sinh từ @@unique([oauth_provider, oauth_subject]) trong schema.
+    async findByOAuth(provider: user_oauth_provider, subject: string): Promise<UserEntity | null> {
+        const user = await prisma.users.findUnique({
+            where: { oauth_provider_oauth_subject: { oauth_provider: provider, oauth_subject: subject } },
             include: { avatar: { select: { data: true } } },
         });
         if (!user) return null;
@@ -101,6 +117,8 @@ export class UserRepository {
                     role: user.role as user_role,
                     age: user.age || null,
                     created_at: new Date(),
+                    oauth_provider: (user.oauthProvider as user_oauth_provider) || null,
+                    oauth_subject: user.oauthSubject || null,
                 },
             });
             user.id = created.id; // Update the entity with the new ID
@@ -116,6 +134,11 @@ export class UserRepository {
                         status: user.status as user_status,
                         age: user.age || null,
                         password_changed_at: user.passwordChangedAt ?? undefined,
+                        // 2026-09-15 — chỉ ghi khi entity có set (linkOAuth) — undefined
+                        // giữ nguyên giá trị cũ trong DB thay vì null-hoá liên kết OAuth
+                        // đã có ở mọi lần save() khác (đổi mật khẩu, avatar, profile...).
+                        oauth_provider: (user.oauthProvider as user_oauth_provider) ?? undefined,
+                        oauth_subject: user.oauthSubject ?? undefined,
                     },
                 }),
                 user.avatarUrl
