@@ -112,6 +112,7 @@ export async function POST(request: NextRequest, props: { params: Promise<{ sour
             message === 'AI_CUSTOM_RECIPE_REQUIRES_BYOK_OR_PAID' ||
             message === 'AI_DAILY_RATE_LIMIT_EXCEEDED' ||
             message === 'SOURCE_TOO_LONG_FOR_SHARED_FREE' ||
+            message === 'SOURCE_TOO_LONG_FOR_PAID_TIER' ||
             message === 'TRANSCRIPT_UNSUPPORTED_SOURCE' ||
             message === 'SHARED_FREE_NOT_CONFIGURED' ||
             message === 'BYOK_CONFIG_INCOMPLETE' ||

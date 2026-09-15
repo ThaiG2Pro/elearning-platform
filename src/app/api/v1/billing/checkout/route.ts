@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { BillingController } from '@/modules/billing/controllers/BillingController';
 import { getUserIdFromRequest } from '@/shared/middleware/auth';
 import { prisma } from '@/shared/config/database';
+import { applyRateLimit, UPLOAD_RATE_LIMITS } from '@/shared/middleware/rateLimit';
 
 /**
  * WP4.1 — tạo Stripe Checkout session cho 1 gói credit. Trả về `checkoutUrl`
@@ -14,6 +15,12 @@ export async function POST(request: NextRequest) {
         if (!userId) {
             return NextResponse.json({ error: 'UNAUTHORIZED' }, { status: 401 });
         }
+
+        // Security (2026-09-15) — chặn spam tạo Checkout Session bên Stripe.
+        const limited = applyRateLimit([
+            { bucket: 'billing-checkout:user', key: userId.toString(), ...UPLOAD_RATE_LIMITS.checkoutPerUser },
+        ]);
+        if (limited) return limited;
 
         const body: { packageId?: string } = await request.json();
         if (!body.packageId) {

@@ -127,6 +127,11 @@ export const AUTH_RATE_LIMITS = {
     forgotPerEmail: { limit: 3, windowMs: HOUR },
     resetPerIp: { limit: 10, windowMs: 15 * MIN },
     activatePerIp: { limit: 10, windowMs: 15 * MIN },
+    // 2026-09-15 — OAuth start + callback đều đi qua rule này (mỗi request
+    // callback tốn 2 lệnh HTTP ra ngoài tới provider), chung budget với
+    // login thường vì cùng mục đích "1 người dùng thật không cần quá
+    // 20 lần thử/15 phút".
+    oauthPerIp: { limit: 20, windowMs: 15 * MIN },
 } as const;
 
 /** Per-user budgets for endpoints that make the server fetch/parse user-supplied data. */
@@ -139,6 +144,10 @@ export const UPLOAD_RATE_LIMITS = {
     // lineage + transaction copy toàn cây nội dung — burst từ 1 user vẫn tốn
     // tài nguyên dù không tạo được nhiều bản trùng (unique constraint chặn).
     cloneSpacePerUser: { limit: 20, windowMs: 10 * MIN },
+    // Security (2026-09-15) — POST /billing/checkout trước đây không có cầu chì:
+    // mỗi request tạo 1 Checkout Session thật bên Stripe (gọi API ngoài, tạo
+    // Customer lần đầu). 1 user hợp lệ không cần quá vài phiên/10 phút.
+    checkoutPerUser: { limit: 10, windowMs: 10 * MIN },
 } as const;
 
 /**

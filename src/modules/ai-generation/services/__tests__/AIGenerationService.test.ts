@@ -644,6 +644,28 @@ describe('AIGenerationService.generate', () => {
             ).rejects.toThrow('SOURCE_TOO_LONG_FOR_SHARED_FREE');
         });
 
+        it('2026-09-15 security: PAID_TIER has its own transcript cap, checked BEFORE creating the row or spending', async () => {
+            const creditSpender = makeCreditSpender();
+            transcriptProvider.fetchTranscript.mockResolvedValue('x'.repeat(400_001));
+            service = new AIGenerationService(
+                prisma as any, repo as any, transcriptProvider as any, llmProvider as any,
+                undefined, creditSpender as any,
+            );
+
+            await expect(
+                service.generate({
+                    sourceId: 1n,
+                    recipeType: 'summary',
+                    userId: 5n,
+                    params: { length: 'long', language: 'vi' },
+                    paymentMethod: 'CREDITS',
+                }),
+            ).rejects.toThrow('SOURCE_TOO_LONG_FOR_PAID_TIER');
+            expect(repo.create).not.toHaveBeenCalled();
+            expect(creditSpender.spendCredits).not.toHaveBeenCalled();
+            expect(llmProvider.generate).not.toHaveBeenCalled();
+        });
+
         it('2026-09-15: the global daily cap does NOT block PAID_TIER — paying users are not throttled by the free tier ceiling', async () => {
             const creditSpender = makeCreditSpender();
             repo.countActivationsTodayGlobal.mockResolvedValue(300);

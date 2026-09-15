@@ -98,6 +98,9 @@ export const generateAIContent = async (
         if (code === 'SOURCE_TOO_LONG_FOR_SHARED_FREE') {
             throw new AIGenerationError('Video này quá dài để tạo miễn phí — dùng key riêng hoặc trả bằng credit.', code);
         }
+        if (code === 'SOURCE_TOO_LONG_FOR_PAID_TIER') {
+            throw new AIGenerationError('Nội dung này quá dài để nền tảng tạo giúp — dùng key riêng của bạn.', code);
+        }
         if (code === 'TRANSCRIPT_UNSUPPORTED_SOURCE') {
             throw new AIGenerationError('Không lấy được nội dung nguồn này để tạo AI.', code);
         }

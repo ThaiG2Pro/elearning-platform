@@ -66,6 +66,14 @@ function globalDailyLimit(): number {
 function sharedFreeMaxTranscriptChars(): number {
     return positiveNumberFromEnv(process.env.AI_SHARED_FREE_MAX_TRANSCRIPT_CHARS, 60_000);
 }
+// 2026-09-15 — trần cho nhánh PAID_TIER (key nền tảng, user trả credit cố
+// định mỗi lượt). Không có trần thì 1 transcript siêu dài đẩy chi phí LLM 1
+// lượt vượt giá bán, và vượt context model là lỗi → hoàn credit → nền tảng
+// vẫn tốn tiền gọi. ~400k chữ ≈ 100k token, dưới context 128k của model mặc
+// định, chi phí input vẫn dưới giá 1 lượt ở gói nhỏ nhất.
+function paidTierMaxTranscriptChars(): number {
+    return positiveNumberFromEnv(process.env.AI_PAID_MAX_TRANSCRIPT_CHARS, 400_000);
+}
 // Cửa sổ coi 1 row PENDING là "đang chạy thật" (dedup generate trùng). Phải
 // dài hơn thời gian 1 lời gọi LLM chậm nhất còn chấp nhận được — quá cửa sổ
 // này, PENDING bị coi là mồ côi (process chết giữa chừng) và cho generate lại.
@@ -321,6 +329,10 @@ export class AIGenerationService {
             fallbackToPaidOrThrow(() =>
                 AIGenerationPolicy.enforceSharedFreeTokenBudget(transcript.length, sharedFreeMaxTranscriptChars()),
             );
+        }
+        // Kiểm tra TRƯỚC khi tạo row / trừ credit — quá dài thì chưa tốn gì.
+        if (keySource === 'PAID_TIER' && transcript.length > paidTierMaxTranscriptChars()) {
+            throw new Error('SOURCE_TOO_LONG_FOR_PAID_TIER');
         }
 
         // WP3.1/mục 5 — user chỉ được tự chọn SHARED khi bản cuối cùng là
