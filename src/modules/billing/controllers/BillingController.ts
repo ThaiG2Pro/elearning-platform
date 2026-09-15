@@ -1,5 +1,5 @@
 import { prisma } from '../../../shared/config/database';
-import { BillingService, CreateCheckoutSessionRequest } from '../services/BillingService';
+import { BillingService, CreateCheckoutSessionRequest, CreditTransactionView } from '../services/BillingService';
 import { CreditRepository } from '../repositories/CreditRepository';
 import { StripePaymentProvider } from '../services/StripePaymentProvider';
 
@@ -14,6 +14,18 @@ export class BillingController {
 
     async getBalance(userId: bigint): Promise<number> {
         return this.creditRepo.getBalance(userId);
+    }
+
+    async getCreditSummary(userId: bigint): Promise<{ creditBalance: number; creditCostPerGeneration: number }> {
+        return this.service.getCreditSummary(userId);
+    }
+
+    async listTransactions(
+        userId: bigint,
+        limit: number,
+        cursor?: bigint,
+    ): Promise<{ items: CreditTransactionView[]; nextCursor: string | null }> {
+        return this.service.listTransactions(userId, limit, cursor);
     }
 
     async createCheckoutSession(req: CreateCheckoutSessionRequest): Promise<{ checkoutUrl: string }> {

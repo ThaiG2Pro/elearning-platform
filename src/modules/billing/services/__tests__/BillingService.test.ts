@@ -1,6 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { BillingService } from '../BillingService';
-import type { VerifiedWebhookEvent } from '../PaymentProvider';
+import type { CheckoutCompletedEvent, VerifiedWebhookEvent } from '../PaymentProvider';
+
+vi.mock('../../../../shared/ops/alert', () => ({ sendOpsAlert: vi.fn().mockResolvedValue(undefined) }));
+import { sendOpsAlert } from '../../../../shared/ops/alert';
 
 // ── Mocks ────────────────────────────────────────────────────────────────────
 
@@ -11,8 +14,10 @@ const makePrisma = () => ({
 });
 
 const makeCreditRepo = () => ({
-    addCredits: vi.fn().mockResolvedValue(120),
+    addCredits: vi.fn().mockResolvedValue(30),
     ensureStripeCustomerId: vi.fn().mockResolvedValue(undefined),
+    findPurchaseByPaymentIntent: vi.fn().mockResolvedValue(null),
+    adjustCreditsForStripeEvent: vi.fn().mockResolvedValue(0),
 });
 
 const makePaymentProvider = () => ({
@@ -23,11 +28,13 @@ const makePaymentProvider = () => ({
     verifyAndParseWebhook: vi.fn(),
 });
 
-const makeEvent = (overrides: Partial<VerifiedWebhookEvent> = {}): VerifiedWebhookEvent => ({
+const makeEvent = (overrides: Partial<CheckoutCompletedEvent> = {}): VerifiedWebhookEvent => ({
+    kind: 'checkout_completed',
     type: 'checkout.session.completed',
     referenceId: 'cs_test_abc',
     stripeCustomerId: 'cus_123',
     paymentStatus: 'paid',
+    paymentIntentId: 'pi_123',
     metadata: { userId: '7', packageId: 'standard' },
     ...overrides,
 });
@@ -84,9 +91,7 @@ describe('BillingService.handleWebhook', () => {
     );
 
     it('ignores event types other than checkout.session.completed without crediting', async () => {
-        provider.verifyAndParseWebhook.mockReturnValue(
-            makeEvent({ type: 'payment_intent.created' }),
-        );
+        provider.verifyAndParseWebhook.mockReturnValue({ kind: 'ignored', type: 'payment_intent.created' });
 
         await service.handleWebhook('raw', 'sig');
         expect(creditRepo.addCredits).not.toHaveBeenCalled();
@@ -127,7 +132,7 @@ describe('BillingService.handleWebhook', () => {
 
     it('credits the server-table amount for the package, keyed by referenceId', async () => {
         // Payload cố nhét credits giả — số cộng phải lấy từ CREDIT_PACKAGES
-        // (standard = 120), không bao giờ từ metadata.
+        // (standard = 30), không bao giờ từ metadata.
         provider.verifyAndParseWebhook.mockReturnValue(
             makeEvent({
                 referenceId: 'cs_test_xyz',
@@ -138,7 +143,7 @@ describe('BillingService.handleWebhook', () => {
         await service.handleWebhook('raw', 'sig');
 
         expect(creditRepo.addCredits).toHaveBeenCalledTimes(1);
-        expect(creditRepo.addCredits).toHaveBeenCalledWith(7n, 120, 'PURCHASE', 'cs_test_xyz');
+        expect(creditRepo.addCredits).toHaveBeenCalledWith(7n, 30, 'PURCHASE', 'cs_test_xyz', 'pi_123');
     });
 });
 
@@ -176,9 +181,158 @@ describe('BillingService.createCheckoutSession', () => {
         expect(provider.createCheckoutSession).toHaveBeenCalledWith(
             expect.objectContaining({
                 packageId: 'starter',
-                priceUsdCents: 199,
+                priceUsdCents: 100,
                 userId: 7n,
             }),
         );
+    });
+});
+
+// ── 2026-09-15 — tiền RA: Stripe hoàn tiền / chargeback ─────────────────────
+// Mọi thu hồi tính theo MỤC TIÊU CỘNG DỒN trừ phần đã thu hồi (Stripe gửi
+// amount_refunded cộng dồn, không có số của từng lần) → không trùng, không vượt.
+
+describe('BillingService.handleWebhook — refund & dispute', () => {
+    let prisma: ReturnType<typeof makePrisma>;
+    let creditRepo: ReturnType<typeof makeCreditRepo> & {
+        sumStripeAdjustmentsForPurchase: ReturnType<typeof vi.fn>;
+        findByStripeReference: ReturnType<typeof vi.fn>;
+    };
+    let provider: ReturnType<typeof makePaymentProvider>;
+    let service: BillingService;
+
+    const purchase = { userId: 7n, credits: 30, stripeReference: 'cs_test_abc' };
+
+    beforeEach(() => {
+        vi.mocked(sendOpsAlert).mockClear();
+        prisma = makePrisma();
+        creditRepo = {
+            ...makeCreditRepo(),
+            sumStripeAdjustmentsForPurchase: vi.fn().mockResolvedValue(0),
+            findByStripeReference: vi.fn().mockResolvedValue(null),
+        };
+        creditRepo.findPurchaseByPaymentIntent.mockResolvedValue(purchase);
+        provider = makePaymentProvider();
+        service = new BillingService(prisma as any, creditRepo as any, provider as any);
+    });
+
+    const refunded = (refundId: string, refundedCents: number, chargeCents = 300) => ({
+        kind: 'charge_refunded' as const, type: 'charge.refunded',
+        refundId, paymentIntentId: 'pi_123', refundedCents, chargeCents,
+    });
+
+    it('hoàn toàn bộ → thu hồi toàn bộ credit của gói, gắn payment_intent', async () => {
+        provider.verifyAndParseWebhook.mockReturnValue(refunded('re_1', 300));
+
+        await service.handleWebhook('raw', 'sig');
+
+        expect(creditRepo.adjustCreditsForStripeEvent).toHaveBeenCalledWith(7n, -30, 'STRIPE_REFUND_CLAWBACK', 're_1', 'pi_123');
+        expect(sendOpsAlert).toHaveBeenCalled();
+    });
+
+    it('hoàn một phần → thu hồi theo tỉ lệ, làm tròn lên', async () => {
+        provider.verifyAndParseWebhook.mockReturnValue(refunded('re_2', 100));
+
+        await service.handleWebhook('raw', 'sig');
+
+        expect(creditRepo.adjustCreditsForStripeEvent).toHaveBeenCalledWith(7n, -10, 'STRIPE_REFUND_CLAWBACK', 're_2', 'pi_123');
+    });
+
+    it('LỖ HỔNG ĐÃ CHẶN: hoàn từng phần 2 lần (amount_refunded cộng dồn) chỉ thu hồi phần chênh, không trùng', async () => {
+        // Lần 1 đã thu hồi 10 (hoàn $1/$3). Lần 2 Stripe báo tổng đã hoàn $2 → mục tiêu 20, chỉ trừ thêm 10.
+        creditRepo.sumStripeAdjustmentsForPurchase.mockResolvedValue(-10);
+        provider.verifyAndParseWebhook.mockReturnValue(refunded('ch_1:refunded:200', 200));
+
+        await service.handleWebhook('raw', 'sig');
+
+        expect(creditRepo.adjustCreditsForStripeEvent).toHaveBeenCalledWith(7n, -10, 'STRIPE_REFUND_CLAWBACK', 'ch_1:refunded:200', 'pi_123');
+    });
+
+    it('Stripe retry cùng trạng thái cộng dồn → phần chênh = 0 → không trừ gì', async () => {
+        creditRepo.sumStripeAdjustmentsForPurchase.mockResolvedValue(-10);
+        provider.verifyAndParseWebhook.mockReturnValue(refunded('ch_1:refunded:100', 100));
+
+        await service.handleWebhook('raw', 'sig');
+
+        expect(creditRepo.adjustCreditsForStripeEvent).not.toHaveBeenCalled();
+    });
+
+    it('refund CHỒNG lên dispute đã thu hồi hết → không âm thêm quá số credit gói', async () => {
+        creditRepo.sumStripeAdjustmentsForPurchase.mockResolvedValue(-30);
+        provider.verifyAndParseWebhook.mockReturnValue(refunded('re_9', 300));
+
+        await service.handleWebhook('raw', 'sig');
+
+        expect(creditRepo.adjustCreditsForStripeEvent).not.toHaveBeenCalled();
+    });
+
+    it('refund không khớp gói nào → không đoán, chỉ cảnh báo, vẫn resolve (Stripe nhận 200)', async () => {
+        creditRepo.findPurchaseByPaymentIntent.mockResolvedValue(null);
+        provider.verifyAndParseWebhook.mockReturnValue({ ...refunded('re_3', 300), paymentIntentId: 'pi_unknown' });
+
+        await expect(service.handleWebhook('raw', 'sig')).resolves.toBeUndefined();
+        expect(creditRepo.adjustCreditsForStripeEvent).not.toHaveBeenCalled();
+        expect(sendOpsAlert).toHaveBeenCalledWith(expect.stringContaining('không khớp'), expect.anything());
+    });
+
+    it('dispute mở → thu hồi phần credit còn lại của gói, reference = dispute id', async () => {
+        provider.verifyAndParseWebhook.mockReturnValue({
+            kind: 'dispute_created', type: 'charge.dispute.created',
+            disputeId: 'dp_1', paymentIntentId: 'pi_123', amountCents: 300,
+        });
+
+        await service.handleWebhook('raw', 'sig');
+
+        expect(creditRepo.adjustCreditsForStripeEvent).toHaveBeenCalledWith(7n, -30, 'DISPUTE_CLAWBACK', 'dp_1', 'pi_123');
+    });
+
+    it('dispute mở sau khi đã refund một phần → chỉ thu hồi nốt phần còn lại', async () => {
+        creditRepo.sumStripeAdjustmentsForPurchase.mockResolvedValue(-10);
+        provider.verifyAndParseWebhook.mockReturnValue({
+            kind: 'dispute_created', type: 'charge.dispute.created',
+            disputeId: 'dp_2', paymentIntentId: 'pi_123', amountCents: 200,
+        });
+
+        await service.handleWebhook('raw', 'sig');
+
+        expect(creditRepo.adjustCreditsForStripeEvent).toHaveBeenCalledWith(7n, -20, 'DISPUTE_CLAWBACK', 'dp_2', 'pi_123');
+    });
+
+    it('thắng dispute → trả lại ĐÚNG phần DISPUTE_CLAWBACK của dispute đó', async () => {
+        creditRepo.findByStripeReference.mockResolvedValue({ userId: 7n, amount: -20 });
+        provider.verifyAndParseWebhook.mockReturnValue({
+            kind: 'dispute_closed', type: 'charge.dispute.closed',
+            disputeId: 'dp_2', paymentIntentId: 'pi_123', status: 'won',
+        });
+
+        await service.handleWebhook('raw', 'sig');
+
+        expect(creditRepo.findByStripeReference).toHaveBeenCalledWith('dp_2');
+        expect(creditRepo.adjustCreditsForStripeEvent).toHaveBeenCalledWith(7n, 20, 'DISPUTE_WON_RESTORE', 'dp_2:won', 'pi_123');
+    });
+
+    it('LỖ HỔNG ĐÃ CHẶN: thắng dispute nhưng chưa từng thu hồi (bỏ lỡ event created) → KHÔNG in credit', async () => {
+        creditRepo.findByStripeReference.mockResolvedValue(null);
+        provider.verifyAndParseWebhook.mockReturnValue({
+            kind: 'dispute_closed', type: 'charge.dispute.closed',
+            disputeId: 'dp_ghost', paymentIntentId: 'pi_123', status: 'won',
+        });
+
+        await service.handleWebhook('raw', 'sig');
+
+        expect(creditRepo.adjustCreditsForStripeEvent).not.toHaveBeenCalled();
+        expect(sendOpsAlert).toHaveBeenCalledWith(expect.stringContaining('không có dòng thu hồi'), expect.anything());
+    });
+
+    it('thua dispute → không đụng số dư (đã thu hồi lúc mở), chỉ cảnh báo', async () => {
+        provider.verifyAndParseWebhook.mockReturnValue({
+            kind: 'dispute_closed', type: 'charge.dispute.closed',
+            disputeId: 'dp_1', paymentIntentId: 'pi_123', status: 'lost',
+        });
+
+        await service.handleWebhook('raw', 'sig');
+
+        expect(creditRepo.adjustCreditsForStripeEvent).not.toHaveBeenCalled();
+        expect(sendOpsAlert).toHaveBeenCalled();
     });
 });

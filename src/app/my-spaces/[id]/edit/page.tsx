@@ -23,7 +23,10 @@ import {
     parseAIQuizContent,
     AIGenerationError,
     AIQuizQuestionDraft,
+    CREDIT_FALLBACK_ERROR_CODES,
 } from '@/lib/aiGeneration';
+import CreditHint from '@/components/billing/CreditHint';
+import { getCreditSummary, type CreditSummary } from '@/lib/billing';
 import {
     SpaceStructure,
     Chapter,
@@ -161,6 +164,16 @@ export default function SpaceEditPage() {
     const [aiLoading, setAiLoading] = useState<'quiz' | null>(null);
     const [aiError, setAiError] = useState<string | null>(null);
     const [aiErrorCode, setAiErrorCode] = useState<string | null>(null);
+    // 2026-09-15 — số dư credit để hiện cạnh nút trả phí; tải lại sau mỗi lượt AI.
+    const [creditSummary, setCreditSummary] = useState<CreditSummary | null>(null);
+    useEffect(() => {
+        if (aiLoading !== null) return;
+        let cancelled = false;
+        getCreditSummary()
+            .then((s) => { if (!cancelled) setCreditSummary(s); })
+            .catch(() => { if (!cancelled) setCreditSummary(null); });
+        return () => { cancelled = true; };
+    }, [aiLoading]);
     const [aiQuizDraft, setAiQuizDraft] = useState<AIQuizQuestionDraft[] | null>(null);
     // Nếu 2 lesson QUIZ khác nhau cùng chọn 1 video nguồn, kết quả AI sẽ
     // GIỐNG HỆT NHAU — cache theo (source, recipe) dùng chung, đúng thiết
@@ -1507,14 +1520,17 @@ export default function SpaceEditPage() {
                                                 {aiError && (
                                                     <div className="mt-3 text-xs text-ink-warning bg-ink-warningA border border-ink-warningBorder rounded-lg p-2.5">
                                                         {aiError}
-                                                        {aiErrorCode === 'AI_CUSTOM_RECIPE_REQUIRES_BYOK_OR_PAID' && (
-                                                            <button
-                                                                onClick={() => lessonForm.sourceId && handleGenerateAndCreateAIQuizLesson(lessonForm.sourceId, 'CREDITS')}
-                                                                disabled={aiLoading !== null}
-                                                                className="mt-2 block px-2.5 py-1.5 rounded-lg text-[11px] font-medium bg-ink-warning text-white hover:bg-ink-warning disabled:opacity-50"
-                                                            >
-                                                                Trả phí để nền tảng tạo giúp
-                                                            </button>
+                                                        {aiErrorCode !== null && CREDIT_FALLBACK_ERROR_CODES.has(aiErrorCode) && (
+                                                            <>
+                                                                <CreditHint summary={creditSummary} className="mt-2" />
+                                                                <button
+                                                                    onClick={() => lessonForm.sourceId && handleGenerateAndCreateAIQuizLesson(lessonForm.sourceId, 'CREDITS')}
+                                                                    disabled={aiLoading !== null}
+                                                                    className="mt-2 block px-2.5 py-1.5 rounded-lg text-[11px] font-medium bg-ink-warning text-white hover:bg-ink-warning disabled:opacity-50"
+                                                                >
+                                                                    Trả phí để nền tảng tạo giúp
+                                                                </button>
+                                                            </>
                                                         )}
                                                         {aiErrorCode === 'AI_INSUFFICIENT_CREDITS' && (
                                                             <a href="/billing" className="mt-2 block px-2.5 py-1.5 rounded-lg text-[11px] font-medium bg-ink-warning text-white hover:bg-ink-warning w-fit">
@@ -1676,14 +1692,17 @@ export default function SpaceEditPage() {
                                                             {aiError && (
                                                                 <div className="mt-2 text-xs text-ink-warning bg-ink-warningA border border-ink-warningBorder rounded-lg p-2.5">
                                                                     {aiError}
-                                                                    {aiErrorCode === 'AI_CUSTOM_RECIPE_REQUIRES_BYOK_OR_PAID' && (
-                                                                        <button
-                                                                            onClick={() => handleGenerateAIQuiz(selectedSourceId, 'CREDITS')}
-                                                                            disabled={aiLoading !== null}
-                                                                            className="mt-2 block px-2.5 py-1.5 rounded-lg text-[11px] font-medium bg-ink-warning text-white hover:bg-ink-warning disabled:opacity-50"
-                                                                        >
-                                                                            Trả phí để nền tảng tạo giúp
-                                                                        </button>
+                                                                    {aiErrorCode !== null && CREDIT_FALLBACK_ERROR_CODES.has(aiErrorCode) && (
+                                                                        <>
+                                                                            <CreditHint summary={creditSummary} className="mt-2" />
+                                                                            <button
+                                                                                onClick={() => handleGenerateAIQuiz(selectedSourceId, 'CREDITS')}
+                                                                                disabled={aiLoading !== null}
+                                                                                className="mt-2 block px-2.5 py-1.5 rounded-lg text-[11px] font-medium bg-ink-warning text-white hover:bg-ink-warning disabled:opacity-50"
+                                                                            >
+                                                                                Trả phí để nền tảng tạo giúp
+                                                                            </button>
+                                                                        </>
                                                                     )}
                                                                     {aiErrorCode === 'AI_INSUFFICIENT_CREDITS' && (
                                                                         <a href="/billing" className="mt-2 block px-2.5 py-1.5 rounded-lg text-[11px] font-medium bg-ink-warning text-white hover:bg-ink-warning w-fit">

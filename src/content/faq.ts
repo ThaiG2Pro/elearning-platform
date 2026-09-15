@@ -74,7 +74,7 @@ export const FAQ_TOPICS: FaqTopic[] = [
             {
                 id: 'credit-la-gi',
                 label: 'Credit là gì, mua sao?',
-                answer: 'Credit dùng để AI tạo nội dung tuỳ biến theo yêu cầu riêng của bạn. Có 3 gói:\n\n• 20 credit — $1.99\n• 120 credit — $9.99\n• 300 credit — $19.99\n\nMỗi lần tạo AI tuỳ biến sẽ trừ một lượng nhỏ credit.',
+                answer: 'Credit dùng để AI tạo nội dung tuỳ biến theo yêu cầu riêng của bạn. Có 3 gói:\n\n• 10 credit — $1\n• 30 credit — $3\n• 75 credit — $5 (rẻ nhất mỗi credit)\n\nMỗi lượt tạo AI tuỳ biến trừ một số credit cố định, không phụ thuộc độ dài video — số cụ thể và số lượt mỗi gói xem ở trang Bảng giá. Nếu AI lỗi giữa chừng, credit của lượt đó được hoàn lại tự động.',
                 keywords: ['credit', 'mua credit', 'nạp credit', 'gói credit', 'thanh toán'],
                 related: ['co-mat-phi-khong', 'hoan-tien'],
             },
@@ -95,7 +95,7 @@ export const FAQ_TOPICS: FaqTopic[] = [
             {
                 id: 'gioi-han-ngay',
                 label: 'Có giới hạn dùng AI mỗi ngày không?',
-                answer: 'Có giới hạn số lượt kích hoạt AI mới mỗi ngày cho mỗi người, để tránh quá tải hệ thống. Nếu chạm giới hạn, bạn sẽ được báo rõ và có thể thử lại vào hôm sau, hoặc dùng API key riêng để không bị giới hạn.',
+                answer: 'Có giới hạn số lượt kích hoạt AI mới mỗi ngày cho mỗi người, để tránh quá tải hệ thống. Nếu chạm giới hạn, bạn sẽ được báo rõ và có thể thử lại vào hôm sau, dùng API key riêng, hoặc trả bằng credit — hai cách sau không bị giới hạn này.',
                 keywords: ['giới hạn', 'mỗi ngày', 'quá tải', 'rate limit', 'hết lượt'],
                 related: ['ai-mien-phi'],
             },

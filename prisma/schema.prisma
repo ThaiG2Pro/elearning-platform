@@ -76,6 +76,12 @@ enum credit_reason {
   PURCHASE
   AI_GENERATION_SPEND
   REFUND
+  // 2026-09-15 — tiền ra do Stripe (xem migration 20260915010000).
+  STRIPE_REFUND_CLAWBACK
+  DISPUTE_CLAWBACK
+  DISPUTE_WON_RESTORE
+  // 2026-09-15 — người vận hành sửa tay qua scripts/creditAdjust.ts, kèm note.
+  MANUAL_ADJUSTMENT
 }
 
 model users {
@@ -139,11 +145,25 @@ model credit_transactions {
   reason            credit_reason @map("reason")
   // Stripe session/payment_intent id — null cho SPEND/REFUND nội bộ.
   stripe_reference  String?       @unique @map("stripe_reference") @db.VarChar(255)
+  // 2026-09-15 — row ai_generations mà SPEND/REFUND này thuộc về (null cho
+  // PURCHASE). Khoá đối soát: SPEND có ai_generation_id mà row đó FAILED /
+  // PENDING mồ côi và chưa có REFUND cùng id → hoàn bù (CreditReconciliation).
+  // Không khai báo @relation để không cascade/khoá xoá ai_generations.
+  ai_generation_id  BigInt?       @map("ai_generation_id")
+  // 2026-09-15 — chỉ dòng PURCHASE: Stripe PaymentIntent id, để event
+  // charge.refunded / charge.dispute.* nối ngược về đúng gói đã mua.
+  // Partial unique index (REFUND, ai_generation_id) viết tay ở migration
+  // 20260915010000 — Prisma không biểu diễn được.
+  stripe_payment_intent String?   @map("stripe_payment_intent") @db.VarChar(255)
+  // Ghi chú người vận hành (MANUAL_ADJUSTMENT) — vì sao sửa, ai sửa.
+  note              String?       @map("note") @db.VarChar(500)
   balance_after     Int           @map("balance_after")
   created_at        DateTime      @default(now()) @map("created_at")
   user              users         @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@index([user_id, created_at])
+  @@index([ai_generation_id])
+  @@index([stripe_payment_intent])
   @@map("credit_transactions")
 }
 

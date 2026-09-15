@@ -18,6 +18,7 @@ const makePrisma = (source: any, ownedLesson: any = { id: 10n }) => ({
 const makeRepo = () => ({
     findDefaultCache: vi.fn().mockResolvedValue(null),
     findSharedByokMatch: vi.fn().mockResolvedValue(null),
+    findOwnPaidMatch: vi.fn().mockResolvedValue(null),
     findInFlight: vi.fn().mockResolvedValue(null),
     create: vi.fn(),
     markReady: vi.fn(),
@@ -419,7 +420,7 @@ describe('AIGenerationService.generate', () => {
                 paymentMethod: 'CREDITS',
             });
 
-            expect(creditSpender.spendCredits).toHaveBeenCalledWith(5n, expect.any(Number));
+            expect(creditSpender.spendCredits).toHaveBeenCalledWith(5n, expect.any(Number), 100n);
             expect(result.servedFromCache).toBe(false);
             expect(repo.create).toHaveBeenCalledWith(expect.objectContaining({ keySource: 'PAID_TIER', visibility: 'PRIVATE' }));
             expect(llmProvider.generate).toHaveBeenCalledWith(expect.objectContaining({ apiKey: 'test-shared-key' }));
@@ -464,7 +465,7 @@ describe('AIGenerationService.generate', () => {
             ).rejects.toThrow('LITELLM_GENERATION_FAILED');
             expect(creditSpender.spendCredits).toHaveBeenCalledTimes(1);
             expect(creditSpender.refundCredits).toHaveBeenCalledTimes(1);
-            expect(creditSpender.refundCredits).toHaveBeenCalledWith(5n, expect.any(Number));
+            expect(creditSpender.refundCredits).toHaveBeenCalledWith(5n, expect.any(Number), 100n);
         });
 
         it('refunds exactly once when the LLM succeeds but markReady fails (paid work lost, user not charged)', async () => {
@@ -486,16 +487,14 @@ describe('AIGenerationService.generate', () => {
             ).rejects.toThrow('DB_WRITE_FAILED');
             expect(creditSpender.spendCredits).toHaveBeenCalledTimes(1);
             expect(creditSpender.refundCredits).toHaveBeenCalledTimes(1);
-            expect(creditSpender.refundCredits).toHaveBeenCalledWith(5n, expect.any(Number));
+            expect(creditSpender.refundCredits).toHaveBeenCalledWith(5n, expect.any(Number), 100n);
         });
 
-        it('surfaces an error and still marks FAILED when the refund itself rejects after an LLM failure', async () => {
-            // Pin hành vi hiện tại: refund lỗi thay thế lỗi LLM gốc (known
-            // limitation — lỗi gốc bị che); quan trọng là call vẫn fail to
-            // và row đã được markFailed, không âm thầm nuốt lỗi.
+        it('2026-09-15: refund failure never masks the LLM error and still marks FAILED — reconciliation job refunds later', async () => {
             const creditSpender = makeCreditSpender();
             llmProvider.generate.mockRejectedValue(new Error('LITELLM_GENERATION_FAILED'));
             creditSpender.refundCredits.mockRejectedValue(new Error('REFUND_FAILED'));
+            const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
             service = new AIGenerationService(
                 prisma as any, repo as any, transcriptProvider as any, llmProvider as any,
                 undefined, creditSpender as any,
@@ -509,8 +508,160 @@ describe('AIGenerationService.generate', () => {
                     params: { length: 'long', language: 'vi' },
                     paymentMethod: 'CREDITS',
                 }),
-            ).rejects.toThrow('REFUND_FAILED');
+            ).rejects.toThrow('LITELLM_GENERATION_FAILED');
             expect(repo.markFailed).toHaveBeenCalledWith(100n, 'LITELLM_GENERATION_FAILED');
+            expect(errorSpy).toHaveBeenCalled();
+            errorSpy.mockRestore();
+        });
+
+        it('2026-09-15: creates the PENDING row BEFORE spending, so a create() failure never charges', async () => {
+            const creditSpender = makeCreditSpender();
+            repo.create.mockRejectedValue(new Error('AI_GENERATION_IN_PROGRESS'));
+            service = new AIGenerationService(
+                prisma as any, repo as any, transcriptProvider as any, llmProvider as any,
+                undefined, creditSpender as any,
+            );
+
+            await expect(
+                service.generate({
+                    sourceId: 1n,
+                    recipeType: 'summary',
+                    userId: 5n,
+                    params: { length: 'long', language: 'vi' },
+                    paymentMethod: 'CREDITS',
+                }),
+            ).rejects.toThrow('AI_GENERATION_IN_PROGRESS');
+            expect(creditSpender.spendCredits).not.toHaveBeenCalled();
+        });
+
+        it('2026-09-15: AI_INSUFFICIENT_CREDITS marks the fresh row FAILED and does not refund', async () => {
+            const creditSpender = makeCreditSpender();
+            creditSpender.spendCredits.mockRejectedValue(new Error('AI_INSUFFICIENT_CREDITS'));
+            service = new AIGenerationService(
+                prisma as any, repo as any, transcriptProvider as any, llmProvider as any,
+                undefined, creditSpender as any,
+            );
+
+            await expect(
+                service.generate({
+                    sourceId: 1n,
+                    recipeType: 'summary',
+                    userId: 5n,
+                    params: { length: 'long', language: 'vi' },
+                    paymentMethod: 'CREDITS',
+                }),
+            ).rejects.toThrow('AI_INSUFFICIENT_CREDITS');
+            expect(repo.markFailed).toHaveBeenCalledWith(100n, 'AI_INSUFFICIENT_CREDITS');
+            expect(creditSpender.refundCredits).not.toHaveBeenCalled();
+        });
+
+        it('2026-09-15: serves the user\'s own PAID_TIER READY copy for free instead of charging again', async () => {
+            const creditSpender = makeCreditSpender();
+            const paid = { id: 77n, keySource: 'PAID_TIER', status: 'READY', content: 'đã trả tiền', generatedByUserId: 5n };
+            repo.findOwnPaidMatch.mockResolvedValue(paid);
+            service = new AIGenerationService(
+                prisma as any, repo as any, transcriptProvider as any, llmProvider as any,
+                undefined, creditSpender as any,
+            );
+
+            const result = await service.generate({
+                sourceId: 1n,
+                recipeType: 'summary',
+                userId: 5n,
+                params: { length: 'long', language: 'vi' },
+                paymentMethod: 'CREDITS',
+            });
+
+            expect(result.servedFromCache).toBe(true);
+            expect(result.generation.id).toBe(77n);
+            expect(creditSpender.spendCredits).not.toHaveBeenCalled();
+            expect(llmProvider.generate).not.toHaveBeenCalled();
+            expect(repo.findOwnPaidMatch).toHaveBeenCalledWith(1n, expect.any(String), 5n);
+        });
+
+        it('2026-09-15: force=true skips the own PAID_TIER copy and charges for a fresh generation', async () => {
+            const creditSpender = makeCreditSpender();
+            repo.findOwnPaidMatch.mockResolvedValue({ id: 77n, keySource: 'PAID_TIER', status: 'READY', content: 'cũ' });
+            service = new AIGenerationService(
+                prisma as any, repo as any, transcriptProvider as any, llmProvider as any,
+                undefined, creditSpender as any,
+            );
+
+            const result = await service.generate({
+                sourceId: 1n,
+                recipeType: 'summary',
+                userId: 5n,
+                params: { length: 'long', language: 'vi' },
+                paymentMethod: 'CREDITS',
+                force: true,
+            });
+
+            expect(result.servedFromCache).toBe(false);
+            expect(repo.findOwnPaidMatch).not.toHaveBeenCalled();
+            expect(creditSpender.spendCredits).toHaveBeenCalledTimes(1);
+        });
+
+        it('2026-09-15: default recipe blocked by the daily limit falls back to PAID_TIER when credits are authorized', async () => {
+            const creditSpender = makeCreditSpender();
+            repo.countActivationsToday.mockResolvedValue(20);
+            service = new AIGenerationService(
+                prisma as any, repo as any, transcriptProvider as any, llmProvider as any,
+                undefined, creditSpender as any,
+            );
+
+            const result = await service.generate({ sourceId: 1n, recipeType: 'summary', userId: 5n, paymentMethod: 'CREDITS' });
+
+            expect(result.servedFromCache).toBe(false);
+            expect(repo.create).toHaveBeenCalledWith(expect.objectContaining({ keySource: 'PAID_TIER', visibility: 'PRIVATE', isDefaultRecipe: true }));
+            expect(creditSpender.spendCredits).toHaveBeenCalledTimes(1);
+        });
+
+        it('2026-09-15: default recipe on a too-long transcript falls back to PAID_TIER when credits are authorized', async () => {
+            const creditSpender = makeCreditSpender();
+            transcriptProvider.fetchTranscript.mockResolvedValue('x'.repeat(60_001));
+            service = new AIGenerationService(
+                prisma as any, repo as any, transcriptProvider as any, llmProvider as any,
+                undefined, creditSpender as any,
+            );
+
+            const result = await service.generate({ sourceId: 1n, recipeType: 'summary', userId: 5n, paymentMethod: 'CREDITS' });
+
+            expect(result.servedFromCache).toBe(false);
+            expect(repo.create).toHaveBeenCalledWith(expect.objectContaining({ keySource: 'PAID_TIER' }));
+            expect(creditSpender.spendCredits).toHaveBeenCalledTimes(1);
+        });
+
+        it('2026-09-15: without credits, the daily limit and length budget still throw the original errors', async () => {
+            repo.countActivationsToday.mockResolvedValue(20);
+            await expect(
+                service.generate({ sourceId: 1n, recipeType: 'summary', userId: 5n }),
+            ).rejects.toThrow('AI_DAILY_RATE_LIMIT_EXCEEDED');
+
+            repo.countActivationsToday.mockResolvedValue(0);
+            transcriptProvider.fetchTranscript.mockResolvedValue('x'.repeat(60_001));
+            await expect(
+                service.generate({ sourceId: 1n, recipeType: 'summary', userId: 5n }),
+            ).rejects.toThrow('SOURCE_TOO_LONG_FOR_SHARED_FREE');
+        });
+
+        it('2026-09-15: the global daily cap does NOT block PAID_TIER — paying users are not throttled by the free tier ceiling', async () => {
+            const creditSpender = makeCreditSpender();
+            repo.countActivationsTodayGlobal.mockResolvedValue(300);
+            service = new AIGenerationService(
+                prisma as any, repo as any, transcriptProvider as any, llmProvider as any,
+                undefined, creditSpender as any,
+            );
+
+            const result = await service.generate({
+                sourceId: 1n,
+                recipeType: 'summary',
+                userId: 5n,
+                params: { length: 'long', language: 'vi' },
+                paymentMethod: 'CREDITS',
+            });
+
+            expect(result.servedFromCache).toBe(false);
+            expect(creditSpender.spendCredits).toHaveBeenCalledTimes(1);
         });
 
         it('never spends credits on the BYOK and SHARED_FREE generate paths', async () => {

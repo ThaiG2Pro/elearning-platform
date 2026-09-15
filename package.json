@@ -22,7 +22,9 @@
     "seed:active-users": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\"}' ts-node prisma/seed-active-users.ts",
     "seed:launch": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\"}' ts-node prisma/seed-launch.ts",
     "ai:usage-report": "ts-node scripts/aiUsageReport.ts",
-    "data:archive-stale": "ts-node scripts/archiveStaleData.ts"
+    "data:archive-stale": "ts-node scripts/archiveStaleData.ts",
+    "credits:reconcile": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\",\"moduleResolution\":\"node\"}' ts-node scripts/reconcileCredits.ts",
+    "credits:adjust": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\",\"moduleResolution\":\"node\"}' ts-node scripts/creditAdjust.ts"
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"

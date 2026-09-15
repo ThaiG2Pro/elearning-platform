@@ -7,6 +7,12 @@ import { parseIdParam } from '@/shared/http/params';
 
 const VALID_RECIPE_TYPES: RecipeType[] = ['summary', 'quiz'];
 
+// 2026-09-15 — request này await trọn lời gọi LLM (timeout 60s ở
+// LiteLLMProvider). Vercel Hobby mặc định cắt function ở 10s: bị cắt giữa
+// chừng là credit đã trừ, row kẹt PENDING, không hoàn. 60s là trần Hobby cho
+// phép; job đối soát (CreditReconciliationService) là lớp bảo hiểm thứ 2.
+export const maxDuration = 60;
+
 /**
  * WP2.2 — lazy-trigger duy nhất cho AI generation (không auto khi thêm
  * Source — mục 6.1 economics doc).

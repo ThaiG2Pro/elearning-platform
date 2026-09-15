@@ -35,6 +35,18 @@ export interface AIGenerationOptions {
  * "trả phí") với `AI_INSUFFICIENT_CREDITS` (dẫn sang /billing) mà không phải
  * so sánh chuỗi tiếng Việt dễ vỡ khi đổi câu chữ.
  */
+/**
+ * 2026-09-15 — các mã lỗi mà gửi lại cùng request kèm `paymentMethod:
+ * 'CREDITS'` sẽ đi được: server rơi sang PAID_TIER khi bản miễn phí bị chặn
+ * (hết lượt ngày / video quá dài) hoặc khi recipe tuỳ biến không có BYOK.
+ * UI dùng để quyết định có hiện nút "Trả phí để nền tảng tạo giúp" không.
+ */
+export const CREDIT_FALLBACK_ERROR_CODES: ReadonlySet<string> = new Set([
+    'AI_CUSTOM_RECIPE_REQUIRES_BYOK_OR_PAID',
+    'AI_DAILY_RATE_LIMIT_EXCEEDED',
+    'SOURCE_TOO_LONG_FOR_SHARED_FREE',
+]);
+
 export class AIGenerationError extends Error {
     constructor(message: string, public code: string) {
         super(message);
@@ -69,7 +81,7 @@ export const generateAIContent = async (
             throw new AIGenerationError('Nội dung này đang được tạo bởi một yêu cầu khác — chờ chút rồi bấm lại.', code);
         }
         if (code === 'AI_DAILY_RATE_LIMIT_EXCEEDED') {
-            throw new AIGenerationError('Đã dùng hết lượt tạo AI miễn phí hôm nay — thử lại vào ngày mai.', code);
+            throw new AIGenerationError('Đã dùng hết lượt tạo AI miễn phí hôm nay — thử lại vào ngày mai, dùng key riêng, hoặc trả bằng credit.', code);
         }
         // C1 (docs/SURVIVAL.md) — trần toàn hệ thống đã chạm, không phải lỗi
         // riêng của user này. BYOK không tính vào trần này nên vẫn dùng được
@@ -84,7 +96,7 @@ export const generateAIContent = async (
             throw new AIGenerationError('Tính năng AI chưa được bật trên nền tảng này.', code);
         }
         if (code === 'SOURCE_TOO_LONG_FOR_SHARED_FREE') {
-            throw new AIGenerationError('Video này quá dài để tạo miễn phí.', code);
+            throw new AIGenerationError('Video này quá dài để tạo miễn phí — dùng key riêng hoặc trả bằng credit.', code);
         }
         if (code === 'TRANSCRIPT_UNSUPPORTED_SOURCE') {
             throw new AIGenerationError('Không lấy được nội dung nguồn này để tạo AI.', code);

@@ -18,6 +18,12 @@ export interface RoutingRequest {
     /** Đã có ai SHARED bản BYOK trùng recipeHash tuỳ biến này chưa? */
     hasSharedByokMatch: boolean;
     /**
+     * 2026-09-15 — CHÍNH user này đã trả credit tạo bản READY cho đúng recipe
+     * này chưa. Nếu có thì trả lại miễn phí — mục 5 chỉ cấm người khác dùng
+     * lại bản PAID_TIER, không phải cấm chính người đã trả tiền.
+     */
+    hasOwnPaidMatch?: boolean;
+    /**
      * WP4.1 — user đã chủ động chọn "Trả phí để nền tảng tạo giúp" (nửa thứ 2
      * của nhánh UX #4) VÀ đã xác nhận đủ credit ở tầng service. Chỉ có ý
      * nghĩa khi 3 field trên đều rơi vào tình huống lẽ ra CHOICE_REQUIRED —
@@ -32,6 +38,7 @@ export type RoutingDecision =
     | { action: 'USE_CACHE'; keySource: 'SHARED_FREE' }
     | { action: 'GENERATE'; keySource: 'SHARED_FREE' }
     | { action: 'USE_CACHE'; keySource: 'BYOK' }
+    | { action: 'USE_CACHE'; keySource: 'PAID_TIER' }
     | { action: 'GENERATE'; keySource: 'PAID_TIER' }
     | { action: 'CHOICE_REQUIRED' };
 
@@ -49,6 +56,12 @@ export class AIGenerationPolicy {
             return req.hasDefaultCache
                 ? { action: 'USE_CACHE', keySource: 'SHARED_FREE' }
                 : { action: 'GENERATE', keySource: 'SHARED_FREE' };
+        }
+        // Bản của chính mình đã trả tiền đứng TRƯỚC bản SHARED-BYOK của người
+        // lạ: cùng miễn phí ở bước này, nhưng bản của mình là nội dung mình
+        // đã duyệt, không có rủi ro cache poisoning từ endpoint người khác.
+        if (req.hasOwnPaidMatch) {
+            return { action: 'USE_CACHE', keySource: 'PAID_TIER' };
         }
         if (req.hasSharedByokMatch) {
             return { action: 'USE_CACHE', keySource: 'BYOK' };

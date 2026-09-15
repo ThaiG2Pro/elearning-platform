@@ -165,6 +165,18 @@ async function main() {
         await prisma.user_avatars.create({
             data: { user_id: user.id, data: avatarDataUrl(def.full_name) },
         });
+        // 2026-09-15 — mọi số dư phải có dấu vết trong sổ cái: job đối soát
+        // (pnpm credits:reconcile) so users.credit_balance với SUM(ledger) và
+        // báo lệch. Seed gán thẳng 100 mà không ghi ledger là "lệch" giả.
+        await prisma.credit_transactions.create({
+            data: {
+                user_id: user.id,
+                amount: 100,
+                reason: 'PURCHASE',
+                stripe_reference: `seed-dev:${def.key}`,
+                balance_after: 100,
+            },
+        });
         users[def.key] = user;
     }
     const viet = users.viet;

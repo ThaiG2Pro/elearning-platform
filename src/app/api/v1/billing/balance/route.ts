@@ -10,8 +10,8 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ error: 'UNAUTHORIZED' }, { status: 401 });
         }
         const controller = new BillingController();
-        const creditBalance = await controller.getBalance(userId);
-        return NextResponse.json({ creditBalance });
+        // 2026-09-15 — kèm chi phí mỗi lượt để UI nói rõ "còn N, lượt này trừ M".
+        return NextResponse.json(await controller.getCreditSummary(userId));
     } catch (error) {
         console.error('Get credit balance error:', error);
         return NextResponse.json({ error: 'INTERNAL_ERROR' }, { status: 500 });

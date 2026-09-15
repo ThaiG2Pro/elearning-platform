@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { User } from '@/types/auth.types';
+import { getCreditSummary } from '@/lib/billing';
 
 interface AccountMenuProps {
     user: User;
@@ -25,6 +26,18 @@ interface AccountMenuProps {
 export default function AccountMenu({ user, onLogout, variant = 'chip' }: AccountMenuProps) {
     const router = useRouter();
     const [isOpen, setIsOpen] = useState(false);
+    // 2026-09-15 — số dư credit hiện ngay trên mục menu: trước đây không có
+    // lối nào tới /billing ngoài lúc gặp lỗi hết credit. Chỉ tải khi mở menu,
+    // lỗi thì lặng lẽ để trống (menu không được phép hỏng vì billing lỗi).
+    const [creditBalance, setCreditBalance] = useState<number | null>(null);
+    useEffect(() => {
+        if (!isOpen) return;
+        let cancelled = false;
+        getCreditSummary()
+            .then((s) => { if (!cancelled) setCreditBalance(s.creditBalance); })
+            .catch(() => { if (!cancelled) setCreditBalance(null); });
+        return () => { cancelled = true; };
+    }, [isOpen]);
 
     const getInitial = (fullName: string) => fullName.charAt(0).toUpperCase();
 
@@ -121,6 +134,14 @@ export default function AccountMenu({ user, onLogout, variant = 'chip' }: Accoun
                                 className="flex items-center gap-2.5 px-4 py-2 text-sm text-ink-text hover:bg-ink-page w-full text-left transition-colors">
                                 <svg className="w-4 h-4 text-ink-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8.684 13.342a4 4 0 010-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684zm0-9.316a3 3 0 105.368-2.684 3 3 0 00-5.368 2.684z"/></svg>
                                 Chia sẻ của tôi
+                            </button>
+                            <button onClick={() => go('/billing')} role="menuitem"
+                                className="flex items-center gap-2.5 px-4 py-2 text-sm text-ink-text hover:bg-ink-page w-full text-left transition-colors">
+                                <svg className="w-4 h-4 text-ink-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+                                <span className="flex-1">Credit</span>
+                                {creditBalance !== null && (
+                                    <span className="font-mono text-[12px] tabular-nums text-ink-accent">{creditBalance}</span>
+                                )}
                             </button>
                             <div className="mx-4 my-1 border-t border-ink-border" />
                             <button onClick={() => go('/profile')} role="menuitem"

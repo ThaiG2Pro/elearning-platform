@@ -7,6 +7,7 @@ import {
     parseAIQuizContent,
     AIGenerationError,
     AIQuizQuestionDraft,
+    CREDIT_FALLBACK_ERROR_CODES,
 } from '@/lib/aiGeneration';
 import {
     Dialog,
@@ -16,6 +17,8 @@ import {
     DialogDescription,
 } from '@/components/ui/dialog';
 import VideoSourceDropdown from '@/components/VideoSourceDropdown';
+import CreditHint from '@/components/billing/CreditHint';
+import { getCreditSummary, type CreditSummary } from '@/lib/billing';
 
 /**
  * 1 lesson VIDEO có Source trong space — ứng viên làm "video nguồn" cho AI.
@@ -126,6 +129,18 @@ export default function AILessonComposer({
             setErrorCode(null);
         }
     }, [open]);
+
+    // 2026-09-15 — số dư + chi phí mỗi lượt, tải khi mở dialog; lỗi thì để
+    // trống (không chặn tạo quiz vì billing lỗi).
+    const [creditSummary, setCreditSummary] = useState<CreditSummary | null>(null);
+    useEffect(() => {
+        if (!open) return;
+        let cancelled = false;
+        getCreditSummary()
+            .then((s) => { if (!cancelled) setCreditSummary(s); })
+            .catch(() => { if (!cancelled) setCreditSummary(null); });
+        return () => { cancelled = true; };
+    }, [open, loading]);
 
     const selected = videoOptions.find(v => v.lessonId === selectedLessonId) ?? videoOptions[0] ?? null;
 
@@ -245,6 +260,7 @@ export default function AILessonComposer({
                                     {isFree ? (hasFullByok ? 'Miễn phí — dùng key riêng' : 'Miễn phí') : 'Cần BYOK hoặc trả phí'}
                                 </span>
                             </div>
+                            {!isFree && <CreditHint summary={creditSummary} className="-mt-1" />}
 
                             <div>
                                 <label className="block text-[11px] font-medium text-ink-textDim mb-1">Số câu</label>
@@ -421,14 +437,17 @@ export default function AILessonComposer({
                                 {error}
                                 {/* Cùng cặp nhánh trả phí với panel cũ ở trang học (WP4.1) —
                                     chính sách tier do server quyết, UI chỉ mở đúng lối đi. */}
-                                {errorCode === 'AI_CUSTOM_RECIPE_REQUIRES_BYOK_OR_PAID' && (
-                                    <button
-                                        onClick={() => handleGenerate('CREDITS')}
-                                        disabled={loading}
-                                        className="mt-2 block px-2.5 py-1.5 rounded-lg text-[11px] font-medium bg-ink-warning text-white hover:bg-ink-warning disabled:opacity-50"
-                                    >
-                                        Trả phí để nền tảng tạo giúp
-                                    </button>
+                                {errorCode !== null && CREDIT_FALLBACK_ERROR_CODES.has(errorCode) && (
+                                    <>
+                                        <CreditHint summary={creditSummary} className="mt-2" />
+                                        <button
+                                            onClick={() => handleGenerate('CREDITS')}
+                                            disabled={loading}
+                                            className="mt-2 block px-2.5 py-1.5 rounded-lg text-[11px] font-medium bg-ink-warning text-white hover:bg-ink-warning disabled:opacity-50"
+                                        >
+                                            Trả phí để nền tảng tạo giúp
+                                        </button>
+                                    </>
                                 )}
                                 {errorCode === 'AI_INSUFFICIENT_CREDITS' && (
                                     <Link

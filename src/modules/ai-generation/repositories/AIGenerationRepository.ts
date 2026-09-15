@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { KeySource, Visibility } from '../domain/AIGenerationPolicy';
 
 export interface AIGenerationRecord {
@@ -147,6 +147,58 @@ export class AIGenerationRepository {
     }
 
     /**
+     * 2026-09-15 — bản PAID_TIER READY của CHÍNH user cho đúng recipe này.
+     * Trước đây PAID_TIER không bao giờ được coi là cache (findDefaultCache
+     * chỉ SHARED_FREE, findSharedByokMatch chỉ BYOK) nên đóng tab / bấm lại
+     * là trả credit lần 2 cho nội dung y hệt đã trả. Mục 5 (free-rider) chỉ
+     * cấm NGƯỜI KHÁC dùng lại bản PAID_TIER — chính người đã trả thì phải
+     * được dùng lại, nên chỉ khớp theo generated_by_user_id.
+     */
+    async findOwnPaidMatch(sourceId: bigint, recipeHash: string, userId: bigint): Promise<AIGenerationRecord | null> {
+        const row = await this.prisma.ai_generations.findFirst({
+            where: {
+                source_id: sourceId,
+                recipe_hash: recipeHash,
+                key_source: 'PAID_TIER',
+                generated_by_user_id: userId,
+                status: 'READY',
+                archived_at: null,
+            },
+            orderBy: { id: 'desc' },
+        });
+        return row ? toRecord(row) : null;
+    }
+
+    /**
+     * Đối soát credit: row PAID_TIER còn PENDING quá cửa sổ in-flight (process
+     * bị cắt giữa lúc await LLM — serverless timeout, crash) hoặc đã FAILED.
+     * Job đối soát hỏi CreditRepository lượt nào trong số này đã trừ mà chưa
+     * hoàn, rồi hoàn bù. `since` = mốc PENDING cũ hơn thì coi là mồ côi.
+     */
+    async findPaidGenerationsNeedingReconciliation(
+        pendingOlderThan: Date,
+        limit = 200,
+    ): Promise<Array<{ id: bigint; userId: bigint | null; status: 'PENDING' | 'FAILED' }>> {
+        const rows = await this.prisma.ai_generations.findMany({
+            where: {
+                key_source: 'PAID_TIER',
+                OR: [
+                    { status: 'PENDING', updated_at: { lt: pendingOlderThan } },
+                    { status: 'FAILED' },
+                ],
+            },
+            select: { id: true, generated_by_user_id: true, status: true },
+            orderBy: { id: 'asc' },
+            take: limit,
+        });
+        return rows.map((r) => ({
+            id: r.id,
+            userId: r.generated_by_user_id,
+            status: r.status as 'PENDING' | 'FAILED',
+        }));
+    }
+
+    /**
      * 2026-09-05 — gọi khi `decideRouting` trả `USE_CACHE` (SHARED_FREE hoặc
      * SHARED-BYOK) cho đúng row này — nguồn dữ liệu cho trang "/my-ai-shares"
      * ("bản của bạn đã được dùng lại N lần"). `increment` ở tầng SQL, không
@@ -228,20 +280,36 @@ export class AIGenerationRepository {
                 return toRecord(row);
             }
         }
-        const row = await this.prisma.ai_generations.create({
-            data: {
-                source_id: input.sourceId,
-                recipe_hash: input.recipeHash,
-                recipe_type: input.recipeType,
-                is_default_recipe: input.isDefaultRecipe,
-                key_source: input.keySource,
-                generated_by_user_id: input.generatedByUserId,
-                visibility: input.visibility,
-                model_version: input.modelVersion,
-                status: 'PENDING',
-            },
-        });
-        return toRecord(row);
+        try {
+            const row = await this.prisma.ai_generations.create({
+                data: {
+                    source_id: input.sourceId,
+                    recipe_hash: input.recipeHash,
+                    recipe_type: input.recipeType,
+                    is_default_recipe: input.isDefaultRecipe,
+                    key_source: input.keySource,
+                    generated_by_user_id: input.generatedByUserId,
+                    visibility: input.visibility,
+                    model_version: input.modelVersion,
+                    status: 'PENDING',
+                },
+            });
+            return toRecord(row);
+        } catch (error) {
+            // 2026-09-15 — partial unique index ai_generations_paid_pending_key
+            // (migration 20260915000000): đã có 1 row PAID_TIER PENDING cho
+            // (source, recipe, user) → request thứ 2 của cú bấm đúp / 2 tab.
+            // Ném cùng mã với findInFlight để route trả 409, chưa trừ credit
+            // (service tạo row TRƯỚC khi spendCredits).
+            if (
+                input.keySource === 'PAID_TIER' &&
+                error instanceof Prisma.PrismaClientKnownRequestError &&
+                error.code === 'P2002'
+            ) {
+                throw new Error('AI_GENERATION_IN_PROGRESS');
+            }
+            throw error;
+        }
     }
 
     async markReady(id: bigint, content: string): Promise<void> {

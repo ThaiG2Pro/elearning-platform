@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import { AIGenerationPolicy } from '../domain/AIGenerationPolicy';
+import { AIGenerationPolicy, KeySource } from '../domain/AIGenerationPolicy';
 import { RecipeHash, SegmentRange } from '../domain/RecipeHash';
 import { RecipeType, defaultParamsFor, defaultModel } from '../domain/Recipes';
 import { AIGenerationRecord, AIGenerationRepository, SharedAIGenerationSummary } from '../repositories/AIGenerationRepository';
@@ -12,8 +12,9 @@ import { assertPublicHttpUrl } from '../../../shared/security/safeUrl';
 
 /** WP4.1 — chỉ 2 method service này cần, tránh phụ thuộc cứng vào CreditRepository thật trong test. */
 export interface CreditSpender {
-    spendCredits(userId: bigint, amount: number): Promise<number>;
-    refundCredits(userId: bigint, amount: number): Promise<number>;
+    /** `aiGenerationId` — row đang trả tiền cho, để ledger đối soát được (2026-09-15). */
+    spendCredits(userId: bigint, amount: number, aiGenerationId?: bigint): Promise<number>;
+    refundCredits(userId: bigint, amount: number, aiGenerationId?: bigint): Promise<number>;
 }
 
 /** WP4.2 — chỉ method service này cần, cùng lý do trên. */
@@ -212,6 +213,12 @@ export class AIGenerationService {
         const sharedByokMatch = !isDefaultRecipe && !skipCache
             ? await this.repo.findSharedByokMatch(req.sourceId, recipeHash, req.userId)
             : null;
+        // 2026-09-15 — bản PAID_TIER của chính user (mọi recipe, kể cả mặc
+        // định khi họ đã phải trả vì bản free bị chặn — xem fallback dưới).
+        // Không tra khi force: "Tạo lại" là chủ động trả tiền cho bản mới.
+        const ownPaidMatch = !skipCache
+            ? await this.repo.findOwnPaidMatch(req.sourceId, recipeHash, req.userId)
+            : null;
 
         // WP4.1 — chỉ có ý nghĩa khi 3 nhánh rẻ hơn ở trên đều không khớp;
         // decideRouting tự đảm bảo thứ tự ưu tiên đó, ở đây chỉ truyền ý
@@ -219,16 +226,28 @@ export class AIGenerationService {
         if (req.paymentMethod === 'CREDITS' && !this.creditSpender) {
             throw new Error('BILLING_NOT_CONFIGURED');
         }
-        const decision = AIGenerationPolicy.decideRouting({
+        const creditsAuthorized = req.paymentMethod === 'CREDITS';
+        // Recipe mặc định nhưng bản free không có cache: nếu user đã trả
+        // tiền cho đúng recipe này trước đó (vì video dài / hết lượt ngày),
+        // trả lại bản của họ thay vì generate SHARED_FREE lần nữa rồi lại bị
+        // chặn y như cũ.
+        let decision = AIGenerationPolicy.decideRouting({
             hasByokKey,
             isDefaultRecipe,
             hasDefaultCache: defaultCache !== null,
             hasSharedByokMatch: sharedByokMatch !== null,
-            creditsAuthorized: req.paymentMethod === 'CREDITS',
+            hasOwnPaidMatch: ownPaidMatch !== null,
+            creditsAuthorized,
         });
+        if (decision.action === 'GENERATE' && decision.keySource === 'SHARED_FREE' && ownPaidMatch) {
+            decision = { action: 'USE_CACHE', keySource: 'PAID_TIER' };
+        }
 
         if (decision.action === 'USE_CACHE') {
-            const cached = decision.keySource === 'SHARED_FREE' ? defaultCache : sharedByokMatch;
+            const cached =
+                decision.keySource === 'SHARED_FREE' ? defaultCache
+                : decision.keySource === 'PAID_TIER' ? ownPaidMatch
+                : sharedByokMatch;
             // decideRouting only returns USE_CACHE when the matching lookup
             // above found something, so this is unreachable in practice —
             // narrows the type for TS rather than masking a real bug.
@@ -263,30 +282,45 @@ export class AIGenerationService {
             throw new Error('AI_GENERATION_IN_PROGRESS');
         }
 
-        // decision.action === 'GENERATE' from here — SHARED_FREE or BYOK.
-        if (decision.keySource === 'SHARED_FREE') {
+        // decision.action === 'GENERATE' from here — SHARED_FREE, BYOK or PAID_TIER.
+        //
+        // 2026-09-15 — bản free bị chặn (hết lượt ngày / video quá dài) mà user
+        // đã bấm "trả bằng credit" thì rơi sang PAID_TIER thay vì báo lỗi.
+        // Trước đây recipe mặc định luôn đi SHARED_FREE bất kể có credit, nên
+        // người có credit vẫn bị kẹt ở đúng 2 chỗ họ mua credit để vượt qua.
+        // Không có credit thì vẫn ném đúng lỗi cũ để UI mở lối BYOK/trả phí.
+        let keySource: KeySource = decision.keySource;
+        const fallbackToPaidOrThrow = (blocked: () => void) => {
+            try {
+                blocked();
+            } catch (error) {
+                if (!creditsAuthorized) throw error;
+                if (!this.creditSpender) throw new Error('BILLING_NOT_CONFIGURED');
+                keySource = 'PAID_TIER';
+            }
+        };
+        if (keySource === 'SHARED_FREE') {
             const activationsToday = await this.repo.countActivationsToday(req.userId);
-            AIGenerationPolicy.enforceDailyActivationLimit(activationsToday, dailyActivationLimit());
+            fallbackToPaidOrThrow(() =>
+                AIGenerationPolicy.enforceDailyActivationLimit(activationsToday, dailyActivationLimit()),
+            );
         }
-        // C1 (docs/SURVIVAL.md) — trần toàn hệ thống, áp cho cả SHARED_FREE
-        // và PAID_TIER (2 nhánh dùng key/proxy của nền tảng); BYOK dùng key
-        // riêng của user nên không đếm vào đây.
-        if (decision.keySource !== 'BYOK') {
+        // C1 (docs/SURVIVAL.md) — trần toàn hệ thống/ngày. 2026-09-15: chỉ áp
+        // cho SHARED_FREE. PAID_TIER dùng key nền tảng nhưng đã có doanh thu
+        // gấp ~15 lần chi phí LLM mỗi lượt bù vào — chặn người vừa mua credit
+        // bằng trần của tier miễn phí là bán thứ họ không dùng được. Vẫn đếm
+        // PAID_TIER trong countActivationsTodayGlobal để báo cáo chi phí.
+        if (keySource === 'SHARED_FREE') {
             const globalActivationsToday = await this.repo.countActivationsTodayGlobal();
             AIGenerationPolicy.enforceGlobalDailyLimit(globalActivationsToday, globalDailyLimit());
         }
 
         const transcript = await this.ensureTranscript(source.id, source.url, source.type);
 
-        if (decision.keySource === 'SHARED_FREE') {
-            AIGenerationPolicy.enforceSharedFreeTokenBudget(transcript.length, sharedFreeMaxTranscriptChars());
-        }
-
-        // WP4.1 — trừ credit TRƯỚC khi gọi LLM (throw AI_INSUFFICIENT_CREDITS
-        // nếu không đủ, chưa tốn gì); hoàn lại trong nhánh catch bên dưới nếu
-        // LLM call thất bại sau khi đã trừ tiền.
-        if (decision.keySource === 'PAID_TIER') {
-            await this.creditSpender!.spendCredits(req.userId, aiGenerationCreditCost());
+        if (keySource === 'SHARED_FREE') {
+            fallbackToPaidOrThrow(() =>
+                AIGenerationPolicy.enforceSharedFreeTokenBudget(transcript.length, sharedFreeMaxTranscriptChars()),
+            );
         }
 
         // WP3.1/mục 5 — user chỉ được tự chọn SHARED khi bản cuối cùng là
@@ -294,15 +328,21 @@ export class AIGenerationService {
         // requestedVisibility ở 2 nhánh đó, tránh user "xin" SHARED cho 1
         // bản PAID_TIER thông qua route).
         const visibility = AIGenerationPolicy.resolveVisibility(
-            decision.keySource,
-            decision.keySource === 'BYOK' && req.requestedVisibility === 'SHARED',
+            keySource,
+            keySource === 'BYOK' && req.requestedVisibility === 'SHARED',
         );
+        // Thứ tự 2026-09-15: tạo row PENDING TRƯỚC, trừ credit SAU, và cả hai
+        // nằm trong cùng khối try với lời gọi LLM. Trước đây spendCredits chạy
+        // trước repo.create và ngoài try/catch → create lỗi là mất credit không
+        // hoàn. Giờ mọi lỗi sau khi đã trừ đều đi qua 1 nhánh catch duy nhất,
+        // và row PENDING có id để ledger gắn ai_generation_id (đối soát được
+        // khi process bị cắt giữa chừng — xem CreditReconciliationService).
         const record = await this.repo.create({
             sourceId: req.sourceId,
             recipeHash,
             recipeType: req.recipeType,
             isDefaultRecipe,
-            keySource: decision.keySource,
+            keySource,
             generatedByUserId: req.userId,
             visibility,
             modelVersion: defaultModel(),
@@ -314,19 +354,27 @@ export class AIGenerationService {
         // và là dấu vết chẩn đoán nếu process chết giữa chừng. Nếu sau này
         // chuyển hướng (b) — async thật — thì tách từ đây trở xuống thành
         // phần chạy nền (xem doc comment đầu file).
+        const creditCost = aiGenerationCreditCost();
+        let charged = false;
         try {
+            // WP4.1 — trừ credit TRƯỚC khi gọi LLM (throw AI_INSUFFICIENT_CREDITS
+            // nếu không đủ → row đánh FAILED, chưa tốn gì).
+            if (keySource === 'PAID_TIER') {
+                await this.creditSpender!.spendCredits(req.userId, creditCost, record.id);
+                charged = true;
+            }
             // Mục 6.2 — lỗi BYOK không bao giờ tự fallback ngầm sang
             // SHARED_FREE: 2 nhánh key_source dùng cùng code path ở đây vì
             // key nào cũng generate 1 lần rồi lưu, không có logic fallback
             // giữa chúng.
-            const apiKey = decision.keySource === 'BYOK' ? req.byokApiKey! : this.sharedFreeApiKey();
+            const apiKey = keySource === 'BYOK' ? req.byokApiKey! : this.sharedFreeApiKey();
             const content = await this.llmProvider.generate({
                 apiKey,
                 // WP3.1 — BYOK gọi thẳng endpoint/model của chính user;
-                // SHARED_FREE để undefined, LiteLLMProvider tự dùng proxy +
-                // model mặc định của nền tảng.
-                baseUrl: decision.keySource === 'BYOK' ? req.byokBaseUrl : undefined,
-                model: decision.keySource === 'BYOK' ? req.byokModel : undefined,
+                // SHARED_FREE/PAID_TIER để undefined, LiteLLMProvider tự dùng
+                // proxy + model mặc định của nền tảng.
+                baseUrl: keySource === 'BYOK' ? req.byokBaseUrl : undefined,
+                model: keySource === 'BYOK' ? req.byokModel : undefined,
                 prompt: this.buildPrompt(req.recipeType, transcript, params, segmentRange),
             });
             await this.repo.markReady(record.id, content);
@@ -334,10 +382,21 @@ export class AIGenerationService {
         } catch (error) {
             const message = error instanceof Error ? error.message : 'AI_GENERATION_FAILED';
             await this.repo.markFailed(record.id, message);
-            // WP4.1 — LLM call thất bại sau khi đã trừ credit: hoàn lại ngay,
-            // user không trả tiền cho 1 lần generate lỗi.
-            if (decision.keySource === 'PAID_TIER') {
-                await this.creditSpender!.refundCredits(req.userId, aiGenerationCreditCost());
+            // WP4.1 — thất bại sau khi đã trừ credit: hoàn lại ngay, user không
+            // trả tiền cho 1 lần generate lỗi. 2026-09-15: hoàn lỗi KHÔNG che
+            // lỗi gốc và không làm mất credit — row đã FAILED + ledger có
+            // ai_generation_id nên job đối soát sẽ hoàn bù (refund idempotent).
+            if (charged) {
+                try {
+                    await this.creditSpender!.refundCredits(req.userId, creditCost, record.id);
+                } catch (refundError) {
+                    console.error('refundCredits failed — CreditReconciliation will retry', {
+                        aiGenerationId: record.id.toString(),
+                        userId: req.userId.toString(),
+                        amount: creditCost,
+                        error: refundError instanceof Error ? refundError.message : String(refundError),
+                    });
+                }
             }
             throw error;
         }

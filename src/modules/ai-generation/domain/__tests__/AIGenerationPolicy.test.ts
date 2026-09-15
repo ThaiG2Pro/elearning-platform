@@ -86,6 +86,45 @@ describe('AIGenerationPolicy.decideRouting — 4 nhánh cố định (economics 
     });
 });
 
+describe('AIGenerationPolicy.decideRouting — 2026-09-15 own PAID_TIER copy', () => {
+    it('no key, custom recipe, own PAID_TIER copy exists → reuses it free, even when credits are authorized', () => {
+        expect(
+            AIGenerationPolicy.decideRouting({
+                hasByokKey: false,
+                isDefaultRecipe: false,
+                hasDefaultCache: false,
+                hasSharedByokMatch: false,
+                hasOwnPaidMatch: true,
+                creditsAuthorized: true,
+            }),
+        ).toEqual({ action: 'USE_CACHE', keySource: 'PAID_TIER' });
+    });
+
+    it('own PAID_TIER copy wins over a stranger\'s SHARED-BYOK match (trusted content first)', () => {
+        expect(
+            AIGenerationPolicy.decideRouting({
+                hasByokKey: false,
+                isDefaultRecipe: false,
+                hasDefaultCache: false,
+                hasSharedByokMatch: true,
+                hasOwnPaidMatch: true,
+            }),
+        ).toEqual({ action: 'USE_CACHE', keySource: 'PAID_TIER' });
+    });
+
+    it('BYOK key still wins over the own PAID_TIER copy (explicit key = explicit intent)', () => {
+        expect(
+            AIGenerationPolicy.decideRouting({
+                hasByokKey: true,
+                isDefaultRecipe: false,
+                hasDefaultCache: false,
+                hasSharedByokMatch: false,
+                hasOwnPaidMatch: true,
+            }),
+        ).toEqual({ action: 'GENERATE', keySource: 'BYOK' });
+    });
+});
+
 describe('AIGenerationPolicy.resolveVisibility — free-rider fix (mục 5)', () => {
     it('PAID_TIER is always forced PRIVATE, even if the user asks for SHARED', () => {
         expect(AIGenerationPolicy.resolveVisibility('PAID_TIER', true)).toBe('PRIVATE');
