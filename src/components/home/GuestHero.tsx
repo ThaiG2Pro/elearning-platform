@@ -16,7 +16,7 @@ interface GuestHeroProps {
 export default function GuestHero({ searchQuery, onSearchChange, onJoin, onGuide }: GuestHeroProps) {
     const steps = [
         { icon: Link2, text: 'Dán link YouTube' },
-        { icon: ListVideo, text: 'Hệ thống chia thành chương và bài học' },
+        { icon: ListVideo, text: 'Hệ thống tạo ngay Space với bài học đầu tiên' },
         { icon: CheckSquare, text: 'Học, làm quiz, theo dõi tiến độ' },
     ];
 

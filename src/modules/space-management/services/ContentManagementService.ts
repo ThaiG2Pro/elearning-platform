@@ -360,8 +360,10 @@ export class ContentManagementService {
     /** Owner-only: returns (generating on first call) the space's stable share token. */
     async getOrCreateShareLink(userId: bigint, spaceId: bigint): Promise<string> {
         const space = await this.spaceRepository.findById(spaceId);
-        if (!space) throw new Error('SPACE_NOT_FOUND');
-        AccessControlPolicy.validateOwnership(userId, space.ownerId);
+        // Security — trả SPACE_NOT_FOUND (không phải ACCESS_DENIED) khi space
+        // tồn tại nhưng không thuộc userId, để 1 user đã đăng nhập không dò
+        // được spaceId của người khác có tồn tại hay không qua 404 vs 403.
+        if (!space || space.ownerId !== userId) throw new Error('SPACE_NOT_FOUND');
 
         return await this.spaceRepository.ensureShareToken(spaceId);
     }
@@ -369,8 +371,8 @@ export class ContentManagementService {
     /** WP1.5.11: owner-only — revokes a space's share link (old URL 404s afterwards). */
     async revokeShareLink(userId: bigint, spaceId: bigint): Promise<void> {
         const space = await this.spaceRepository.findById(spaceId);
-        if (!space) throw new Error('SPACE_NOT_FOUND');
-        AccessControlPolicy.validateOwnership(userId, space.ownerId);
+        // Security — cùng lý do với getOrCreateShareLink ở trên.
+        if (!space || space.ownerId !== userId) throw new Error('SPACE_NOT_FOUND');
 
         await this.spaceRepository.clearShareToken(spaceId);
     }

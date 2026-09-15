@@ -133,6 +133,12 @@ export const AUTH_RATE_LIMITS = {
 export const UPLOAD_RATE_LIMITS = {
     quizUploadPerUser: { limit: 30, windowMs: 10 * MIN },
     fromLinkPerUser: { limit: 20, windowMs: 10 * MIN },
+    // Security (2026-09-15) — POST /spaces/share/[token]/copy trước đây không
+    // có cầu chì nào: mỗi request (kể cả lần đầu, chưa hit fast-path
+    // idempotency) chạy findByShareToken (join chapters+lessons) + BFS
+    // lineage + transaction copy toàn cây nội dung — burst từ 1 user vẫn tốn
+    // tài nguyên dù không tạo được nhiều bản trùng (unique constraint chặn).
+    cloneSpacePerUser: { limit: 20, windowMs: 10 * MIN },
 } as const;
 
 /**

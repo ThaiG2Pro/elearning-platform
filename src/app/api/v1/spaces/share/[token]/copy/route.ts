@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { SpaceController } from '@/modules/space-management/controllers/SpaceController';
 import { getUserIdFromRequest } from '@/shared/middleware/auth';
+import { applyRateLimit, UPLOAD_RATE_LIMITS } from '@/shared/middleware/rateLimit';
 
 /**
  * "Sao chép về học" — clones a shared space into the caller's own account.
@@ -14,6 +15,15 @@ export async function POST(request: NextRequest, props: { params: Promise<{ toke
         if (!userId) {
             return NextResponse.json({ error: 'UNAUTHORIZED' }, { status: 401 });
         }
+
+        // Security (2026-09-15) — trước đây route này không có cầu chì nào,
+        // khác với from-link; mỗi lần clone (kể cả lần đầu trước khi hit
+        // fast-path idempotency) chạy join chapters+lessons + BFS lineage +
+        // transaction copy toàn cây nội dung.
+        const limited = applyRateLimit([
+            { bucket: 'clone-space:user', key: userId.toString(), ...UPLOAD_RATE_LIMITS.cloneSpacePerUser },
+        ]);
+        if (limited) return limited;
 
         const controller = new SpaceController();
         const spaceId = await controller.cloneSharedSpace(params.token, userId);
