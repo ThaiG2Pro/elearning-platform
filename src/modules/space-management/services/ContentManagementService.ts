@@ -9,6 +9,14 @@ import type { source_type, lesson_type } from '@prisma/client';
 import { VideoThumbnailUtil } from '../../shared/utils/VideoThumbnailUtil';
 import { YouTubeOEmbedAdapter } from '../../../shared/adapters/YouTubeOEmbedAdapter';
 import { WebPageAdapter } from '../../../shared/adapters/WebPageAdapter';
+
+// 2026-09-15 — nguồn web/blog (WEB_ARTICLE, WP3.3) tạm ẩn: backend trích nội
+// dung và AI quiz chạy được, nhưng trang học chưa có UI đọc bài (learn/page.tsx
+// chỉ render lesson VIDEO) nên dán link bài viết ra một Space trống. Tắt ở
+// đây để trả UNSUPPORTED_URL rõ ràng ("Hiện chỉ hỗ trợ link YouTube") thay vì
+// tạo Space hỏng. Bật lại khi có UI ARTICLE — copy public (guide/FAQ) đang
+// nói YouTube-only, nhớ sửa cùng lúc.
+const WEB_ARTICLE_SOURCES_ENABLED = false;
 import { FIELD_LIMITS, assertMaxLength } from '../../../shared/validation/fieldLimits';
 import { isPublicHttpUrlSyntax } from '../../../shared/security/safeUrl';
 
@@ -186,7 +194,7 @@ export class ContentManagementService {
         if (YouTubeOEmbedAdapter.isPlaylistUrl(trimmedUrl)) return undefined;
 
         const isYouTube = YouTubeOEmbedAdapter.isYouTubeUrl(trimmedUrl);
-        if (!isYouTube && !WebPageAdapter.isWebUrl(trimmedUrl)) return undefined;
+        if (!isYouTube && !(WEB_ARTICLE_SOURCES_ENABLED && WebPageAdapter.isWebUrl(trimmedUrl))) return undefined;
 
         const normalizedUrl = isYouTube
             ? YouTubeOEmbedAdapter.normalize(trimmedUrl)
@@ -269,7 +277,7 @@ export class ContentManagementService {
         }
 
         const isYouTube = YouTubeOEmbedAdapter.isYouTubeUrl(trimmedUrl);
-        if (!isYouTube && !WebPageAdapter.isWebUrl(trimmedUrl)) {
+        if (!isYouTube && !(WEB_ARTICLE_SOURCES_ENABLED && WebPageAdapter.isWebUrl(trimmedUrl))) {
             throw new Error('UNSUPPORTED_URL');
         }
 

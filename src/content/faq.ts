@@ -33,14 +33,14 @@ export const FAQ_TOPICS: FaqTopic[] = [
             {
                 id: 'nen-tang-co-gi',
                 label: 'Nền tảng có gì đặc biệt?',
-                answer: 'Bạn dán 1 link YouTube (hoặc trang web) là có ngay một không gian học riêng. Khi cần, bạn bấm nút để AI tạo quiz ôn tập — cộng thêm theo dõi tiến độ học của bạn.',
+                answer: 'Bạn dán 1 link YouTube là có ngay một không gian học riêng. Khi cần, bạn bấm nút để AI tạo quiz ôn tập — cộng thêm theo dõi tiến độ học của bạn.',
                 keywords: ['đặc biệt', 'tính năng', 'giới thiệu', 'nền tảng', 'là gì'],
                 related: ['bat-dau-hoc'],
             },
             {
                 id: 'bat-dau-hoc',
                 label: 'Bắt đầu học thế nào?',
-                answer: 'Chỉ cần tạo tài khoản miễn phí, dán link video/bài viết muốn học vào — hệ thống tự tạo Space học cho bạn, không cần cài đặt gì thêm.',
+                answer: 'Chỉ cần tạo tài khoản miễn phí, dán link video YouTube muốn học vào — hệ thống tự tạo Space học cho bạn, không cần cài đặt gì thêm.',
                 keywords: ['bắt đầu', 'mới bắt đầu', 'cách dùng', 'hướng dẫn', 'sử dụng'],
                 related: ['nen-tang-co-gi', 'ai-mien-phi'],
             },
