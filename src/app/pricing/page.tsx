@@ -1,5 +1,6 @@
 import { Metadata } from 'next';
 import PricingContent from './PricingContent';
+import { aiGenerationCreditCost } from '@/modules/billing/domain/CreditLedger';
 
 export const metadata: Metadata = {
     title: 'Bảng giá | E-Learning Platform',
@@ -8,5 +9,7 @@ export const metadata: Metadata = {
 };
 
 export default function PricingPage() {
-    return <PricingContent />;
+    // Server component đọc đúng chi phí đang áp dụng (env AI_GENERATION_CREDIT_COST,
+    // mặc định 1) và truyền xuống — không chép tay số ở client để tránh lệch.
+    return <PricingContent creditCostPerGeneration={aiGenerationCreditCost()} />;
 }
