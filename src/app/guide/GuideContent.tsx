@@ -40,7 +40,7 @@ const STEPS: Step[] = [
                     Ở trang chủ, dán link video YouTube vào ô tạo nhanh. Hệ thống tự lấy tiêu đề, ảnh bìa và tạo Space đầu tiên cho bạn.
                 </p>
                 <p className="mt-2">
-                    Xong bước này bạn có hai lối: <B>Học ngay</B> để vào xem luôn, hoặc <B>Thêm quiz/tóm tắt trước khi học</B> để soạn thêm ở bước 2.
+                    Xong bước này bạn có hai lối: <B>Học ngay</B> để vào xem luôn, hoặc <B>Thêm quiz trước khi học</B> để soạn thêm ở bước 2.
                 </p>
             </>
         ),
@@ -54,7 +54,7 @@ const STEPS: Step[] = [
                     Trong màn hình chỉnh sửa Space, chia nội dung thành chương và bài học theo thứ tự bạn muốn. Mỗi bài là một video hoặc một quiz.
                 </p>
                 <p className="mt-2">
-                    Quiz có hai cách tạo: tự soạn bằng cách tải file câu hỏi lên, hoặc bấm <B>AI tạo quiz cho bài này</B> để soạn từ chính video trong Space. Tóm tắt cũng vậy, bấm <B>AI tóm tắt</B>.
+                    Quiz có hai cách tạo: tự soạn bằng cách tải file câu hỏi lên, hoặc bấm <B>AI tạo quiz cho bài này</B> để soạn từ chính video trong Space.
                 </p>
             </>
         ),
@@ -144,7 +144,7 @@ const LIMITS: { label: string; body: string; faqId?: string }[] = [
     },
     {
         label: 'AI miễn phí',
-        body: 'Tóm tắt và quiz theo cấu hình chuẩn miễn phí, có giới hạn lượt mỗi ngày và độ dài video.',
+        body: 'Quiz theo cấu hình chuẩn miễn phí, có giới hạn lượt mỗi ngày và độ dài video.',
         faqId: 'gioi-han-ngay',
     },
     {

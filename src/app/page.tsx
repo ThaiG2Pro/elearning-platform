@@ -317,7 +317,7 @@ export default function Home() {
                                 Học ngay
                             </Button>
                             <Button variant="outline" onClick={() => router.push(`/my-spaces/${createdSpace.spaceId}/edit`)}>
-                                Thêm quiz/tóm tắt trước khi học
+                                Thêm quiz trước khi học
                             </Button>
                             <Button variant="ghost" onClick={() => setCreatedSpace(null)}>
                                 Dán link khác

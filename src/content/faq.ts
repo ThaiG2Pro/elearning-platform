@@ -33,7 +33,7 @@ export const FAQ_TOPICS: FaqTopic[] = [
             {
                 id: 'nen-tang-co-gi',
                 label: 'Nền tảng có gì đặc biệt?',
-                answer: 'Bạn dán 1 link YouTube (hoặc trang web) là có ngay một không gian học riêng. Khi cần, bạn bấm nút để AI tóm tắt nội dung hoặc tạo quiz ôn tập — cộng thêm theo dõi tiến độ học của bạn.',
+                answer: 'Bạn dán 1 link YouTube (hoặc trang web) là có ngay một không gian học riêng. Khi cần, bạn bấm nút để AI tạo quiz ôn tập — cộng thêm theo dõi tiến độ học của bạn.',
                 keywords: ['đặc biệt', 'tính năng', 'giới thiệu', 'nền tảng', 'là gì'],
                 related: ['bat-dau-hoc'],
             },
@@ -81,7 +81,7 @@ export const FAQ_TOPICS: FaqTopic[] = [
             {
                 id: 'ai-mien-phi',
                 label: 'Có cách nào dùng AI miễn phí không?',
-                answer: 'Có 2 cách hoàn toàn miễn phí:\n\n• Dùng cấu hình AI mặc định (tóm tắt/quiz chuẩn).\n• Nhập API key AI của riêng bạn (BYOK) để tuỳ biến thoải mái mà không tốn credit.',
+                answer: 'Có 2 cách hoàn toàn miễn phí:\n\n• Dùng cấu hình AI mặc định (quiz chuẩn).\n• Nhập API key AI của riêng bạn (BYOK) để tuỳ biến thoải mái mà không tốn credit.',
                 keywords: ['ai miễn phí', 'byok', 'api key', 'không tốn credit', 'key riêng'],
                 related: ['video-dai', 'gioi-han-ngay'],
             },

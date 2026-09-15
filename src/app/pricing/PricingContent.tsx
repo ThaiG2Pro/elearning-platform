@@ -35,7 +35,7 @@ const FREE_FEATURES = [
     'Chia chương, sắp bài học',
     'Quiz, ghi chú, tiến độ',
     'Chia sẻ và sao chép Space',
-    'Quiz và tóm tắt AI bản mặc định',
+    'Quiz AI bản mặc định',
 ];
 
 const AI_PATHS = [
@@ -117,7 +117,7 @@ export default function PricingContent({ creditCostPerGeneration }: PricingConte
                         Học miễn phí. AI soạn theo ý riêng từ {formatUsd(CREDIT_PACKAGE_OPTIONS[0].priceUsdCents)}.
                     </h1>
                     <p className="mt-3 text-[15px] text-ink-textMid">
-                        Một credit là một lượt AI soạn quiz hoặc tóm tắt đúng theo yêu cầu của bạn.
+                        Một credit là một lượt AI soạn quiz đúng theo yêu cầu của bạn.
                     </p>
                 </div>
 
