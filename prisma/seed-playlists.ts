@@ -44,6 +44,11 @@ interface PlaylistSeedEntry {
     slug?: string;
     title?: string;
     description?: string;
+    // 2026-09-22 — thứ tự trong mục Tuyển chọn (spaces.showcase_order): nhỏ
+    // hơn lên trước. Đặt sẵn trong file dữ liệu theo tổng view YouTube của
+    // playlist, nhóm DevOps xếp cuối. Space ĐÃ tồn tại vẫn được cập nhật cột
+    // này khi chạy lại (đây là ngoại lệ duy nhất của quy tắc "không re-sync").
+    order?: number;
 }
 
 interface YouTubePlaylistSnippet {
@@ -179,7 +184,14 @@ async function main() {
         console.log(`✅ Created dedicated seed owner (${SEED_OWNER_EMAIL})`);
     }
 
-    const summary = { created: 0, skippedExisting: 0, failed: [] as string[] };
+    const summary = { created: 0, skippedExisting: 0, reordered: 0, failed: [] as string[] };
+
+    /** Space đã có → chỉ đồng bộ showcase_order nếu file dữ liệu có `order`. */
+    const syncOrder = async (spaceId: bigint, currentOrder: number | null, entry: PlaylistSeedEntry) => {
+        if (entry.order === undefined || currentOrder === entry.order) return;
+        await prisma.spaces.update({ where: { id: spaceId }, data: { showcase_order: entry.order } });
+        summary.reordered += 1;
+    };
 
     for (const entry of entries) {
         try {
@@ -194,6 +206,7 @@ async function main() {
                 const existing = await prisma.spaces.findUnique({ where: { slug: providedSlug } });
                 if (existing) {
                     console.log(`↩︎  ${providedSlug} đã tồn tại — bỏ qua`);
+                    await syncOrder(existing.id, existing.showcase_order, entry);
                     summary.skippedExisting += 1;
                     continue;
                 }
@@ -213,6 +226,7 @@ async function main() {
                 const existing = await prisma.spaces.findUnique({ where: { slug } });
                 if (existing) {
                     console.log(`↩︎  ${slug} đã tồn tại — bỏ qua`);
+                    await syncOrder(existing.id, existing.showcase_order, entry);
                     summary.skippedExisting += 1;
                     continue;
                 }
@@ -239,9 +253,11 @@ async function main() {
                         source_id: firstVideoSource.id,
                         chapter: { space: { owner_id: seedOwner.id } },
                     },
+                    select: { chapter: { select: { space: { select: { id: true, showcase_order: true } } } } },
                 });
                 if (alreadySeeded) {
                     console.log(`↩︎  playlist ${playlistId} đã được seed trước đó (trùng video đầu) — bỏ qua`);
+                    await syncOrder(alreadySeeded.chapter.space.id, alreadySeeded.chapter.space.showcase_order, entry);
                     summary.skippedExisting += 1;
                     continue;
                 }
@@ -260,6 +276,7 @@ async function main() {
                     status: 'ACTIVE',
                     share_token: generateShareToken(),
                     is_showcase: true,
+                    showcase_order: entry.order,
                     // Multi-source space (one source per video) — no single space.source_id.
                 },
             });
@@ -296,6 +313,7 @@ async function main() {
     console.log('\n🎉 Playlist seed complete.');
     console.log(`   Created: ${summary.created}`);
     console.log(`   Skipped (already existed): ${summary.skippedExisting}`);
+    console.log(`   Re-ordered (showcase_order updated): ${summary.reordered}`);
     if (summary.failed.length > 0) {
         console.log(`   Failed: ${summary.failed.length}`);
         for (const f of summary.failed) console.log(`     - ${f}`);

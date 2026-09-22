@@ -19,6 +19,7 @@ export type SpaceListResponse = Space[];
 // popular rỗng (UI đổi tiêu đề thành "Space mới").
 export interface SpaceDiscovery {
     showcase: Space[];
+    showcaseTotal: number;
     popular: Space[];
     rising: Space[];
     latest: Space[];

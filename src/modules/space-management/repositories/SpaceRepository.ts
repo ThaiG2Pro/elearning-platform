@@ -36,6 +36,10 @@ export type PublicSpaceRow = {
 
 export type DiscoverySpaces = {
     showcase: PublicSpaceRow[];
+    // Tổng space tuyển chọn thật (không bị cắt ở DISCOVERY_SECTION_MAX_ITEMS)
+    // để nút "Xem tất cả N" trên trang chủ nói đúng số và dẫn sang
+    // /spaces/tuyen-chon thay vì bung tại chỗ.
+    showcaseTotal: number;
     popular: PublicSpaceRow[];
     rising: PublicSpaceRow[];
     latest: PublicSpaceRow[];
@@ -49,6 +53,7 @@ const PUBLIC_ROW_SELECT = {
     description: true,
     is_showcase: true,
     cloned_from_space_id: true,
+    // Không lộ ra DTO — chỉ để orderBy showcase đọc được.
     chapters: {
         select: {
             lessons: {
@@ -68,6 +73,14 @@ const PUBLICLY_VISIBLE_WHERE = {
     status: 'ACTIVE' as const,
     share_token: { not: null },
 };
+
+// Thứ tự mục Tuyển chọn (2026-09-22): theo showcase_order tăng dần (seed đặt
+// theo view YouTube, DevOps cuối), space chưa xếp (NULL) đứng sau, trong
+// cùng nhóm thì mới nhất trước.
+const SHOWCASE_ORDER_BY = [
+    { showcase_order: { sort: 'asc' as const, nulls: 'last' as const } },
+    { id: 'desc' as const },
+];
 
 export class SpaceRepository {
     constructor(private prisma: PrismaClient) { }
@@ -223,14 +236,16 @@ export class SpaceRepository {
             .filter(item => item.cloned_from_space_id && item._count.id >= POPULAR_MIN_RECENT_CLONES)
             .map(item => item.cloned_from_space_id as bigint);
 
-        const [showcaseRows, popularRows, risingRows, latestRows] = await Promise.all([
-            // Tuyển chọn: do đội ngũ gắn cờ tay (seed / admin), mới nhất trước.
+        const [showcaseRows, showcaseTotal, popularRows, risingRows, latestRows] = await Promise.all([
+            // Tuyển chọn: do đội ngũ gắn cờ tay (seed / admin), xếp theo
+            // showcase_order (xem SHOWCASE_ORDER_BY).
             this.prisma.spaces.findMany({
                 where: { ...PUBLICLY_VISIBLE_WHERE, is_showcase: true },
                 select: PUBLIC_ROW_SELECT,
-                orderBy: { id: 'desc' },
+                orderBy: SHOWCASE_ORDER_BY,
                 take: DISCOVERY_SECTION_MAX_ITEMS,
             }),
+            this.prisma.spaces.count({ where: { ...PUBLICLY_VISIBLE_WHERE, is_showcase: true } }),
             popularCandidateIds.length === 0
                 ? Promise.resolve([])
                 : this.prisma.spaces.findMany({
@@ -279,10 +294,25 @@ export class SpaceRepository {
 
         return {
             showcase: pick(showcaseRows),
+            showcaseTotal,
             popular: pick(popularSorted),
             rising: pick(risingSorted),
             latest: pick(latestRows),
         };
+    }
+
+    /**
+     * Toàn bộ space Tuyển chọn cho trang /spaces/tuyen-chon (2026-09-22) —
+     * cùng điều kiện lộ diện và cùng thứ tự với mục trên trang chủ, không cắt
+     * số lượng. Tập này nhỏ (vài chục space seed), client lọc theo tên.
+     */
+    async findAllShowcaseSpaces(): Promise<PublicSpaceRow[]> {
+        const rows = await this.prisma.spaces.findMany({
+            where: { ...PUBLICLY_VISIBLE_WHERE, is_showcase: true },
+            select: PUBLIC_ROW_SELECT,
+            orderBy: SHOWCASE_ORDER_BY,
+        });
+        return this.hydratePublicRows(rows);
     }
 
     /**

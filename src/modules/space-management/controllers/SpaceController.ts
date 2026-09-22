@@ -28,6 +28,10 @@ export class SpaceController {
         return await this.service.getDiscovery();
     }
 
+    async getAllShowcase(): Promise<SpaceListDto[]> {
+        return await this.service.getAllShowcase();
+    }
+
     async getSpaceDetail(spaceId: bigint, userId?: bigint): Promise<SpaceDetailDto | null> {
         return await this.service.getSpaceDetail(spaceId, userId);
     }

@@ -26,10 +26,17 @@ export class SpaceService {
         const d = await this.spaceRepository.findDiscoverySpaces();
         return {
             showcase: d.showcase.map(SpaceService.toListDto),
+            showcaseTotal: d.showcaseTotal,
             popular: d.popular.map(SpaceService.toListDto),
             rising: d.rising.map(SpaceService.toListDto),
             latest: d.latest.map(SpaceService.toListDto),
         };
+    }
+
+    // Trang /spaces/tuyen-chon (2026-09-22) — toàn bộ mục Tuyển chọn, không cắt.
+    async getAllShowcase(): Promise<SpaceListDto[]> {
+        const rows = await this.spaceRepository.findAllShowcaseSpaces();
+        return rows.map(SpaceService.toListDto);
     }
 
     private static toListDto(space: PublicSpaceRow): SpaceListDto {

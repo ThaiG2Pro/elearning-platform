@@ -46,7 +46,6 @@ export default function Home() {
     const [discoveryState, setDiscoveryState] = useState<AppState>('idle');
 
     // Toggles for Discovery sections
-    const [showAllShowcase, setShowAllShowcase] = useState(false);
     const [showAllPopular, setShowAllPopular] = useState(false);
     const [showAllRising, setShowAllRising] = useState(false);
 
@@ -447,16 +446,18 @@ export default function Home() {
 
                         {!discoveryLoading && showcaseSpaces.length > 0 && (
                             <section>
+                                {/* 2026-09-22 — server cắt mục này ở 12 nhưng tổng thật
+                                    có thể vài chục: "Xem tất cả N" dẫn sang trang riêng
+                                    thay vì bung tại chỗ, N là tổng thật (showcaseTotal). */}
                                 <SectionHeader
                                     title="Tuyển chọn"
                                     criterion="Do đội ngũ chọn tay: nội dung đầy đủ, bài học theo thứ tự."
-                                    total={showcaseSpaces.length}
+                                    total={discovery?.showcaseTotal ?? showcaseSpaces.length}
                                     visibleCount={5}
-                                    expanded={showAllShowcase}
-                                    onToggle={() => setShowAllShowcase(!showAllShowcase)}
+                                    href="/spaces/tuyen-chon"
                                 />
                                 <ShowcaseSpotlight
-                                    spaces={showAllShowcase ? showcaseSpaces : showcaseSpaces.slice(0, 5)}
+                                    spaces={showcaseSpaces.slice(0, 5)}
                                     onSpaceClick={handleSpaceClick}
                                 />
                             </section>

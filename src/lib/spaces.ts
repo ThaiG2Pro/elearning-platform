@@ -27,6 +27,19 @@ export const getDiscoverySpaces = async (): Promise<SpaceDiscovery> => {
     }
 };
 
+// Trang /spaces/tuyen-chon (2026-09-22) — toàn bộ mục Tuyển chọn đã xếp thứ tự.
+export const getShowcaseSpaces = async (): Promise<Space[]> => {
+    try {
+        const response = await api.get('/spaces/showcase');
+        return response.data as Space[];
+    } catch (error: any) {
+        if (error.response?.data?.error === 'SERVER_ERROR') {
+            throw new Error('Hệ thống đang gặp sự cố, vui lòng thử lại sau.');
+        }
+        throw new Error('Có lỗi xảy ra khi tải danh sách Space.');
+    }
+};
+
 export const getSpaceDetail = async (id: number): Promise<SpaceDetail> => {
     try {
         const response = await api.get(`/spaces/${id}`);

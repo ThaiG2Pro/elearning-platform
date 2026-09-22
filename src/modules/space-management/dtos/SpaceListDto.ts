@@ -16,6 +16,7 @@ export class SpaceListDto {
 // Discovery (2026-09-14) — payload của GET /api/v1/spaces/discover.
 export interface SpaceDiscoveryDto {
     showcase: SpaceListDto[];
+    showcaseTotal: number;
     popular: SpaceListDto[];
     rising: SpaceListDto[];
     latest: SpaceListDto[];

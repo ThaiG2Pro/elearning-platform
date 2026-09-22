@@ -300,6 +300,11 @@ model spaces {
   updated_at            DateTime            @default(now()) @updatedAt @map("updated_at")
   // WP1.9 — public showcase artifact tag (outreach/audit; no route filters on it).
   is_showcase           Boolean             @default(false) @map("is_showcase")
+  // 2026-09-22 — thứ tự hiện trong mục "Tuyển chọn" (nhỏ hơn = lên trước).
+  // Seed đặt theo tổng view YouTube của playlist gốc, nhóm DevOps xếp cuối
+  // (xem prisma/seed-playlists.ts). NULL = chưa xếp, đứng sau mọi space có
+  // thứ tự, sắp theo id mới nhất.
+  showcase_order        Int?                @map("showcase_order")
   // WP1.10.1 — "space này sinh từ nguồn nào", neo ở tầng space khớp mô hình
   // "1 URL → 1 không gian học". Nullable vì space tạo trống không có nguồn.
   // Clone copy nguyên giá trị này — xuất xứ nội dung không đổi khi đổi chủ.
