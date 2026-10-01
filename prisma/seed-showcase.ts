@@ -100,6 +100,7 @@ async function main() {
     // it exists only so showcase spaces have a stable, clearly-labelled
     // owner distinct from real users and from dev/test data.
     const showcaseEmail = 'showcase@elearning-platform.local';
+    const SEED_OWNER_NAME = 'Spacely'; // hiện ở "Tác giả" của Space showcase
     let showcaseOwner = await prisma.users.findFirst({ where: { email: showcaseEmail } });
     if (!showcaseOwner) {
         const hashedPassword = await bcrypt.hash(randomBytes(32).toString('base64url'), 10);
@@ -107,13 +108,17 @@ async function main() {
             data: {
                 email: showcaseEmail,
                 password_hash: hashedPassword,
-                full_name: 'Spacely',
+                full_name: SEED_OWNER_NAME,
                 role: 'STUDENT',
                 status: 'ACTIVE',
                 created_at: new Date(),
             },
         });
         console.log(`✅ Created dedicated showcase owner (${showcaseEmail})`);
+    } else if (showcaseOwner.full_name !== SEED_OWNER_NAME) {
+        // Tên hiển thị ở "Tác giả" / "Bản sao của" trên site — đồng bộ khi đổi brand.
+        showcaseOwner = await prisma.users.update({ where: { id: showcaseOwner.id }, data: { full_name: SEED_OWNER_NAME } });
+        console.log(`🔄 Renamed showcase owner → ${SEED_OWNER_NAME}`);
     }
 
     for (const item of SHOWCASE_SPACES) {

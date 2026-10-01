@@ -36,6 +36,7 @@ const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
 const DATA_FILE = process.env.PLAYLISTS_SEED_FILE
     ?? path.join(__dirname, 'playlists-seed-data.json');
 const SEED_OWNER_EMAIL = 'content-seed@elearning-platform.local';
+const SEED_OWNER_NAME = 'Spacely'; // hiện ở "Tác giả" của Space tuyển chọn
 const MAX_VIDEOS_PER_PLAYLIST = 300; // sanity cap — avoids one pathological playlist blowing up a run
 const MIN_VALID_VIDEOS = 3; // fewer than this and the playlist isn't worth a space
 
@@ -175,13 +176,17 @@ async function main() {
             data: {
                 email: SEED_OWNER_EMAIL,
                 password_hash: hashedPassword,
-                full_name: 'Spacely',
+                full_name: SEED_OWNER_NAME,
                 role: 'STUDENT',
                 status: 'ACTIVE',
                 created_at: new Date(),
             },
         });
         console.log(`✅ Created dedicated seed owner (${SEED_OWNER_EMAIL})`);
+    } else if (seedOwner.full_name !== SEED_OWNER_NAME) {
+        // Tên hiển thị ở "Tác giả" / "Bản sao của" trên site — đồng bộ khi đổi brand.
+        seedOwner = await prisma.users.update({ where: { id: seedOwner.id }, data: { full_name: SEED_OWNER_NAME } });
+        console.log(`🔄 Renamed seed owner → ${SEED_OWNER_NAME}`);
     }
 
     const summary = { created: 0, skippedExisting: 0, reordered: 0, failed: [] as string[] };
