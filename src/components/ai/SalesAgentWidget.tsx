@@ -10,6 +10,12 @@ import {
     type FaqTopic,
     type FaqQuestion,
 } from '@/content/faq';
+import {
+    sendSupportMessage,
+    SupportAgentUnavailableError,
+    SupportRateLimitedError,
+    type SupportChatReply,
+} from '@/lib/supportChat';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -38,16 +44,18 @@ interface Message {
     options?: QuickOption[];
 }
 
-// ─── FAQ knowledge base ───────────────────────────────────────────────────────
-// Không có AI thật đứng sau widget này (chưa đủ ngân sách host AI) — đây là
-// trợ lý FAQ có hướng dẫn (guided), trả lời cố định. Nội dung (FAQ_TOPICS/
-// ALL_QUESTIONS/findQuestionByFreeText) nằm ở src/content/faq.ts — dùng
-// chung với trang tĩnh /faq, tránh 2 nơi lệch nội dung. Đã đối chiếu với
-// code thật (AIGenerationPolicy, CreditLedger, auth, space clone/share),
-// lọc bớt chi tiết nội bộ (ngưỡng chính xác, cơ chế routing...) — xem trao
-// đổi trong phiên làm việc về "policy audit cho chatbot". KHÔNG cố "giải
-// quyết" khiếu nại bằng câu trả lời cứng — luôn trỏ sang kênh người thật
-// (mục ho-tro) để tránh bot tự ý xử lý sai.
+// ─── Hai chế độ trả lời ───────────────────────────────────────────────────────
+// 1. Menu FAQ có hướng dẫn (chip chủ đề/câu hỏi): câu trả lời cố định từ
+//    src/content/faq.ts — dùng chung với trang /faq, luôn hoạt động, không
+//    cần backend.
+// 2. Gõ tự do → AI agent thật (repo ai-agent-sale-v2, persona Spacely CSKH)
+//    qua POST /api/v1/support/chat. Agent trả lời bằng RAG trên chính kho
+//    FAQ này (+ gói credit), có ngưỡng tự tin: không chắc thì `declined`
+//    → widget đẩy nút "người thật" lên trước. Agent không cấu hình/sập →
+//    widget tự rơi về bộ so khớp keyword cũ (findQuestionByFreeText) cho
+//    hết phiên, không hiện lỗi đỏ.
+// KHÔNG cố "giải quyết" khiếu nại bằng bot — luôn có lối sang người thật
+// (mục ho-tro + thanh liên hệ cố định).
 
 // ─── Kênh liên hệ người thật ──────────────────────────────────────────────────
 // Ưu tiên link chat (Zalo/Messenger) nếu có cấu hình, fallback sang email.
@@ -199,6 +207,47 @@ function buildFallbackMessage(missCount: number): Message {
     };
 }
 
+function buildAiAnswerMessage(reply: SupportChatReply, missCount: number): Message {
+    const human = { id: 'action:human', label: '🙋 Liên hệ người thật' };
+    const menu = { id: 'action:menu', label: '🔙 Menu chính' };
+    const sources = !reply.declined && reply.citations.length > 0
+        ? `\n\nNguồn: ${reply.citations.slice(0, 2).join(' · ')}`
+        : '';
+    return {
+        id: `ai-${Date.now()}`,
+        role: 'agent',
+        content: reply.answer + sources,
+        timestamp: new Date(),
+        // Agent không có căn cứ (declined) hoặc đã trượt 2 lần → người thật lên trước.
+        options: reply.declined || missCount >= 2 ? [human, menu] : [menu, human],
+    };
+}
+
+function buildRateLimitedMessage(): Message {
+    return {
+        id: `ratelimit-${Date.now()}`,
+        role: 'agent',
+        content: 'Bạn gửi hơi nhanh, chờ một chút rồi hỏi tiếp nhé 🙏',
+        timestamp: new Date(),
+        options: [{ id: 'action:menu', label: '🔙 Menu chính' }],
+    };
+}
+
+const SESSION_STORAGE_KEY = 'spacely-support-session';
+
+/** Mã phiên chat (1 tab trình duyệt) — agent giữ ngữ cảnh nhiều lượt theo mã này. */
+function getOrCreateSessionId(): string {
+    try {
+        const existing = sessionStorage.getItem(SESSION_STORAGE_KEY);
+        if (existing) return existing;
+        const fresh = crypto.randomUUID();
+        sessionStorage.setItem(SESSION_STORAGE_KEY, fresh);
+        return fresh;
+    } catch {
+        return crypto.randomUUID();
+    }
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function SalesAgentWidget({ context, userName }: SalesAgentWidgetProps) {
@@ -212,6 +261,9 @@ export default function SalesAgentWidget({ context, userName }: SalesAgentWidget
     const [proactiveDismissed, setProactiveDismissed] = useState(false);
     const [hasInteracted, setHasInteracted] = useState(false);
     const [missCount, setMissCount] = useState(0);
+    // null = chưa biết (chưa gọi lần nào), false = agent không cấu hình/sập → FAQ tĩnh.
+    const [aiAvailable, setAiAvailable] = useState<boolean | null>(null);
+    const sessionIdRef = useRef<string>('');
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -325,21 +377,61 @@ export default function SalesAgentWidget({ context, userName }: SalesAgentWidget
         }
     }, [isTyping, config.topicOrder, pushAgentMessageWithDelay, openSupportChannel]);
 
-    const sendFreeText = useCallback((text: string) => {
+    /** Chế độ FAQ tĩnh (khi agent tắt): so khớp keyword, không gọi mạng. */
+    const answerFromFaq = useCallback((trimmed: string) => {
+        const match = findQuestionByFreeText(trimmed);
+        if (match) {
+            setMissCount(0);
+            pushAgentMessageWithDelay(() => buildAnswerMessage(match));
+        } else {
+            const nextMiss = missCount + 1;
+            setMissCount(nextMiss);
+            pushAgentMessageWithDelay(() => buildFallbackMessage(nextMiss));
+        }
+    }, [missCount, pushAgentMessageWithDelay]);
+
+    const sendFreeText = useCallback(async (text: string) => {
         const trimmed = text.trim();
         if (!trimmed || isTyping) return;
 
         setInputValue('');
-        const match = findQuestionByFreeText(trimmed);
-        if (match) {
-            setMissCount(0);
-            pushAgentMessageWithDelay(() => buildAnswerMessage(match), trimmed);
-        } else {
-            const nextMiss = missCount + 1;
-            setMissCount(nextMiss);
-            pushAgentMessageWithDelay(() => buildFallbackMessage(nextMiss), trimmed);
+        setMessages((prev) => [...prev, {
+            id: `user-${Date.now()}`,
+            role: 'user',
+            content: trimmed,
+            timestamp: new Date(),
+        }]);
+
+        if (aiAvailable === false) {
+            answerFromFaq(trimmed);
+            return;
         }
-    }, [isTyping, missCount, pushAgentMessageWithDelay]);
+
+        if (!sessionIdRef.current) sessionIdRef.current = getOrCreateSessionId();
+        setIsTyping(true);
+        try {
+            const reply = await sendSupportMessage({
+                message: trimmed,
+                sessionId: sessionIdRef.current,
+                context,
+            });
+            setAiAvailable(true);
+            const nextMiss = reply.declined ? missCount + 1 : 0;
+            setMissCount(nextMiss);
+            setMessages((prev) => [...prev, buildAiAnswerMessage(reply, nextMiss)]);
+        } catch (error) {
+            if (error instanceof SupportRateLimitedError) {
+                setMessages((prev) => [...prev, buildRateLimitedMessage()]);
+            } else {
+                // Agent chưa cấu hình / sập / timeout / lỗi lạ → FAQ tĩnh cho hết
+                // phiên này; người dùng không thấy lỗi kỹ thuật.
+                if (error instanceof SupportAgentUnavailableError) setAiAvailable(false);
+                answerFromFaq(trimmed);
+            }
+        } finally {
+            setIsTyping(false);
+        }
+    }, [isTyping, aiAvailable, context, missCount, answerFromFaq]);
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
         if (e.key === 'Enter' && !e.shiftKey) {
@@ -383,7 +475,7 @@ export default function SalesAgentWidget({ context, userName }: SalesAgentWidget
                             <span className="sag-panel__name">Trợ lý hỗ trợ nhanh</span>
                             <span className="sag-panel__status">
                                 <span className="sag-panel__status-dot" />
-                                Trả lời tự động
+                                {aiAvailable ? 'AI trả lời · có thể sai, hỏi lại nếu cần' : 'Trả lời tự động'}
                             </span>
                         </div>
                         <button
@@ -455,7 +547,7 @@ export default function SalesAgentWidget({ context, userName }: SalesAgentWidget
                             value={inputValue}
                             onChange={(e) => setInputValue(e.target.value)}
                             onKeyDown={handleKeyDown}
-                            placeholder="Gõ câu hỏi khác…"
+                            placeholder={aiAvailable === false ? "Gõ câu hỏi khác…" : "Hỏi gì về Spacely cũng được…"}
                             rows={1}
                             disabled={isTyping}
                             aria-label="Nhập tin nhắn"
