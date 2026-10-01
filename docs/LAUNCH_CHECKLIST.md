@@ -10,6 +10,8 @@ Thứ tự làm. Mỗi bước có lệnh; `preflight.sh` phải toàn PASS trư
 
 ## 1. Dịch vụ ngoài (miễn phí)
 - [ ] **Groq API key** → `LITELLM_MASTER_KEY`.
+- [ ] **YouTube Data API v3 key** (Google Cloud Console, miễn phí) → `YOUTUBE_API_KEY`. Chỉ seed
+      playlist cần; app chạy bình thường không có.
 - [ ] **SMTP thật** (Brevo 300 mail/ngày hoặc Resend 100/ngày): verify domain gửi, lấy user/pass →
       `MAILTRAP_HOST/PORT/USER/PASS`, `MAIL_FROM=noreply@<domain>`. Mailtrap sandbox KHÔNG gửi tới user thật →
       không ai kích hoạt được tài khoản.
@@ -61,6 +63,15 @@ scripts/ops/deploy.sh
 Pull image → db → migrate → app + caddy → chờ healthy → gọi `https://DOMAIN/api/health`.
 Cert Let's Encrypt mất ~30s lần đầu (`docker logs -f elearning-caddy`).
 
+Nạp nội dung khởi điểm (additive, chạy lại không tạo trùng — KHÔNG phải `prisma db seed`, cái đó
+TRUNCATE). Container `app` là image standalone không có pnpm/ts-node nên chạy qua service `migrate`
+(build từ stage `builder`, có đủ node_modules) như migration:
+```sh
+. /opt/elearning/.env
+docker compose run --rm -e YOUTUBE_API_KEY="$YOUTUBE_API_KEY" migrate pnpm seed:playlists   # 58 space Tuyển chọn, ~5 phút
+docker compose run --rm migrate pnpm seed:active-users                                      # user ảo + clone để Phổ biến/Mới nổi không trống
+```
+
 Sau khi app healthy, đặt cron đối soát credit (mỗi 15 phút — hoàn bù lượt AI trả phí bị cắt giữa chừng,
 kiểm tra sổ cái, bắn cảnh báo nếu có gì bất thường; bình thường job này KHÔNG tìm thấy gì):
 ```sh
@@ -73,7 +84,12 @@ echo '*/15 * * * * root . /opt/elearning/.env && curl -fsS -X POST -H "Authoriza
 - [ ] Nếu đã điền `GOOGLE_CLIENT_ID`/`GITHUB_CLIENT_ID`: bấm nút "Google"/"GitHub" ở `/login` → về đúng
       redirect URI đã khai báo ở dịch vụ (không phải `localhost`) → đăng nhập thành công.
 - [ ] Dán 1 link YouTube tạo space → học → tiến độ lưu (reload còn).
-- [ ] Dán 1 link bài viết web → tạo space → bấm AI tóm tắt (nhánh miễn phí Groq) → có kết quả.
+- [ ] Trong space vừa tạo bấm "AI tạo quiz 10 câu" (nhánh miễn phí Groq) → có quiz. (AI tóm tắt và
+      nguồn web/blog đã ẩn từ 2026-09-15 — dán link ngoài YouTube phải báo "Hiện chỉ hỗ trợ link
+      YouTube", không phải lỗi 500.)
+- [ ] Trang chủ mục "Tuyển chọn" có space, bấm "Xem tất cả N" → `/spaces/tuyen-chon` hiện đủ N space
+      (cần đã chạy `pnpm seed:playlists` ở mục 5; mục "Phổ biến"/"Mới nổi" chỉ hiện sau
+      `pnpm seed:active-users` hoặc khi có user thật sao chép space).
 - [ ] Tạo link share → mở ẩn danh được.
 - [ ] Nếu bật Stripe: mua gói $1 bằng thẻ test `4242 4242 4242 4242` (Stripe test mode trước, live sau)
       → về `/billing?checkout=success` → số dư +10 → lịch sử có dòng "Mua gói". Hoàn tiền từ Stripe

@@ -755,6 +755,10 @@ Thêm hỗ trợ nguồn web/blog (không chỉ YouTube).
   tách riêng; UI đọc bài viết web dạng "article reader" chuyên biệt (hiện
   lesson `type: 'ARTICLE'` dùng chung layout ẩn nội dung phía trên
   `AIGenerationPanel`, panel tóm tắt/quiz vẫn hoạt động qua `sourceId`).
+  **Tạm ẩn (2026-09-15, commit c79f8c8):** vì thiếu article reader nên luồng
+  không dùng được end-to-end — `WEB_ARTICLE_SOURCES_ENABLED=false`, dán link
+  ngoài YouTube trả "Hiện chỉ hỗ trợ link YouTube", copy public chỉ nói
+  YouTube. Backend (ingest + AI quiz) giữ nguyên; bật lại khi có reader UI.
 - ~~WP3.4 — Nút donate/ủng hộ~~ **Đã chuyển lên WP1.8** (quyết định
   wayfinder ticket 09: link donate thụ động bật từ ngày đầu là vô hại;
   chỉ khung chữ "cầu cứu" mới gây hại — xem Vision mục 7).
@@ -840,6 +844,21 @@ khi mở public — không mở rộng khi tín hiệu ở checkpoint trước c
 
 Gap/bug nghiệp vụ phát hiện dọc đường, không thuộc WP nào — ghi lại để không
 trôi, đánh dấu khi xử lý xong.
+
+- [x] **Kho playlist khởi điểm quá mỏng + trang chủ cắt cứng 12 space**
+  (phát hiện 2026-09-22, fix cùng ngày, commit e682390). Người mới chỉ thấy
+  12 space vì `findDiscoverySpaces` lấy tối đa 12 mỗi mục và không có đường
+  nào tới phần còn lại; file seed cũng chỉ có 24 playlist (1 entry chết).
+  **Fix:** (a) `prisma/playlists-seed-data.json` lên 58 playlist IT tiếng
+  Việt, từng cái kiểm qua YouTube Data API là public; (b) cột
+  `spaces.showcase_order` (migration `20260922000000_add_spaces_showcase_order`)
+  — seed đặt theo tổng view YouTube của playlist, nhóm DevOps xếp cuối, chạy
+  lại seed vẫn đồng bộ thứ tự cho space đã có (ngoại lệ duy nhất của quy tắc
+  "không re-sync"); (c) trang `/spaces/tuyen-chon` + `GET /api/v1/spaces/showcase`
+  hiện đủ danh sách, lọc theo tên không dấu; trang chủ giữ 12 card, nút "Xem
+  tất cả N" thành link sang trang đó, N là tổng thật (`showcaseTotal`).
+  Thứ tự seed trên prod: `prisma migrate deploy` → `pnpm seed:playlists` →
+  `pnpm seed:active-users` (cả 3 additive/idempotent).
 
 - [x] **Clone Space không copy câu hỏi quiz** (phát hiện 2026-08-21, fix cùng
   ngày). `CourseRepository.cloneForOwner` copy row lesson (title/type/url +

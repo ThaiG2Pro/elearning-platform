@@ -59,6 +59,17 @@ tự động hoá được**:
    `password123`. Script tự từ chối chạy khi `NODE_ENV=production` hoặc
    `DATABASE_URL` không trỏ về DB local; chỉ vượt qua bằng
    `ALLOW_DESTRUCTIVE_SEED=1` khi thật sự muốn xoá sạch dữ liệu.
+   Seed **được phép** chạy trên prod (additive, idempotent, chạy lại không tạo
+   trùng), theo đúng thứ tự, sau khi migrate, trong cùng môi trường chạy được
+   migrate (cần node_modules đầy đủ — image runtime standalone không có; với
+   docker compose là `docker compose run --rm migrate ...`, xem
+   LAUNCH_CHECKLIST mục 5):
+   ```
+   pnpm seed:playlists      # 58 space Tuyển chọn từ playlist YouTube, cần YOUTUBE_API_KEY
+   pnpm seed:active-users   # user ảo + bản clone để mục Phổ biến/Mới nổi không trống
+   ```
+   `seed:playlists` chạy lại trên DB đã có space chỉ cập nhật thứ tự
+   (`showcase_order`), không đụng nội dung space cũ.
 7. `fly deploy`
 8. Trỏ DNS domain thật (nếu có) về Fly qua `fly certs add <domain>`.
 
