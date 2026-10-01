@@ -107,7 +107,7 @@ async function main() {
             data: {
                 email: showcaseEmail,
                 password_hash: hashedPassword,
-                full_name: 'E-Learning Showcase',
+                full_name: 'Spacely',
                 role: 'STUDENT',
                 status: 'ACTIVE',
                 created_at: new Date(),

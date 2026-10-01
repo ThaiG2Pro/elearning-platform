@@ -175,7 +175,7 @@ async function main() {
             data: {
                 email: SEED_OWNER_EMAIL,
                 password_hash: hashedPassword,
-                full_name: 'E-Learning Content Seed',
+                full_name: 'Spacely',
                 role: 'STUDENT',
                 status: 'ACTIVE',
                 created_at: new Date(),

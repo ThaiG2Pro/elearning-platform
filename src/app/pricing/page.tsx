@@ -4,7 +4,7 @@ import PricingContent from './PricingContent';
 import { aiGenerationCreditCost } from '@/modules/billing/domain/CreditLedger';
 
 export const metadata: Metadata = {
-    title: 'Bảng giá | E-Learning Platform',
+    title: 'Bảng giá | Spacely',
     description:
         'Học, tạo Space, làm quiz, xem tiến độ, chia sẻ và sao chép Space — miễn phí không giới hạn. Chỉ trả phí (credit) khi muốn AI tự soạn quiz theo yêu cầu riêng; dùng API key AI của bạn thì luôn miễn phí.',
 };

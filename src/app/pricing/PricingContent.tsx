@@ -237,7 +237,7 @@ export default function PricingContent({ creditCostPerGeneration }: PricingConte
             </main>
 
             <footer className="bg-ink-panel border-t border-ink-border py-6 text-center text-xs sm:text-sm text-ink-textMuted">
-                <p>© {new Date().getFullYear()} E-Learning Platform.</p>
+                <p>© {new Date().getFullYear()} Spacely.</p>
             </footer>
 
             <SalesAgentWidget context="pricing" userName={user?.fullName} />

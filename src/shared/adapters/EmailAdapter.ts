@@ -23,7 +23,7 @@ export class NodemailerEmailAdapter implements EmailAdapter {
         const mailOptions = {
             from: process.env.MAIL_FROM || 'noreply@elearning.com',
             to: email,
-            subject: 'Activate Your Account',
+            subject: 'Kích hoạt tài khoản Spacely',
             html: `
         <p>Click the link below to activate your account:</p>
         <a href="${process.env.FRONTEND_URL}/activate?token=${token}">Activate Account</a>
@@ -38,7 +38,7 @@ export class NodemailerEmailAdapter implements EmailAdapter {
         const mailOptions = {
             from: process.env.MAIL_FROM || 'noreply@elearning.com',
             to: email,
-            subject: 'Reset Your Password',
+            subject: 'Đặt lại mật khẩu Spacely',
             html: `
         <p>Click the link below to reset your password:</p>
         <a href="${process.env.FRONTEND_URL}/reset-password?token=${token}">Reset Password</a>

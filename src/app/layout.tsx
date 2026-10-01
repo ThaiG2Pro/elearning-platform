@@ -24,7 +24,7 @@ const beVietnamPro = Be_Vietnam_Pro({
 })
 
 export const metadata: Metadata = {
-    title: 'E-Learning Platform',
+    title: 'Spacely',
     description: 'Nền tảng học trực tuyến chuyên nghiệp',
 }
 

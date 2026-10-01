@@ -49,10 +49,10 @@ function BrandMark({ workspace = false }: { workspace?: boolean }) {
                     workspace ? 'w-[26px] h-[26px] text-[11px]' : 'w-8 h-8 text-sm'
                 }`}
             >
-                E
+                S
             </span>
             {!workspace && (
-                <span className="font-semibold text-ink-text text-base hidden sm:block whitespace-nowrap">E-Learning</span>
+                <span className="font-semibold text-ink-text text-base hidden sm:block whitespace-nowrap">Spacely</span>
             )}
         </button>
     );

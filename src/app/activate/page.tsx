@@ -57,9 +57,9 @@ export default function ActivatePage() {
             <TopBar variant="site">
                 <div className="flex-1 flex justify-center items-center gap-2">
                     <div className="w-8 h-8 rounded-lg bg-ink-accent flex items-center justify-center">
-                        <span className="text-white font-bold text-sm">E</span>
+                        <span className="text-white font-bold text-sm">S</span>
                     </div>
-                    <span className="font-semibold text-ink-text">E-Learning</span>
+                    <span className="font-semibold text-ink-text">Spacely</span>
                 </div>
             </TopBar>
 

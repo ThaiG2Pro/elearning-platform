@@ -69,9 +69,9 @@ const CONTEXT_CONFIG: Record<AgentContext, {
 }> = {
     homepage_guest: {
         greeting: 'Xin chào! 👋',
-        subtitle: 'Mình là trợ lý hỗ trợ tự động — hỏi mình về nền tảng nhé.',
+        subtitle: 'Mình là trợ lý hỗ trợ tự động — hỏi mình về Spacely nhé.',
         proactiveDelay: 8000,
-        proactiveBubble: 'Bạn muốn tìm hiểu về nền tảng học trực tuyến này?',
+        proactiveBubble: 'Bạn muốn tìm hiểu về Spacely?',
         topicOrder: ['tinh-nang', 'gia-credit', 'tai-khoan', 'ho-tro'],
     },
     homepage_no_spaces: {
