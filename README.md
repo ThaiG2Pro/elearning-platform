@@ -1,5 +1,7 @@
 # Spacely
 
+*[English](README.en.md)*
+
 **Dán một link YouTube, có ngay một chỗ để học nó nghiêm túc.**
 Ghi chú theo mốc thời gian, quiz tự kiểm tra (AI soạn từ chính video), tiến độ tự lưu, chia sẻ hoặc sao chép Space của người khác.
 
