@@ -14,4 +14,4 @@ Vận hành: [`DEPLOY.md`](DEPLOY.md), [`RUNBOOK.md`](RUNBOOK.md), [`LAUNCH_CHEC
 Thiết kế & nghiên cứu: [`design/`](design/) (spec UX, kinh tế AI, kiến trúc), [`DESIGN_ROADMAP.md`](DESIGN_ROADMAP.md), [`research/`](research/).
 
 [`archive/`](archive/): tài liệu lịch sử, giữ để tra cứu, không còn cập nhật
-(phân tích codebase thời còn là LMS, tracker wayfinder, ảnh bug cũ). [`journal/`](journal/): nhật ký làm việc.
+(phân tích codebase thời còn là LMS, tracker wayfinder, nhật ký làm việc, ảnh bug cũ).

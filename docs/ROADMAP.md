@@ -449,7 +449,7 @@ cho người ngoài.**
   chương mặc định `'Chương 1'` lộ ra khắp nơi dù course chỉ có 1 bài — không
   khớp lời hứa "1 video lẻ cũng là một không gian học nhẹ nhàng, không phải
   giáo trình". Nguồn quyết định: wayfinder map [Khóa học như không gian
-  học](../wayfinder/khong-gian-hoc/map.md), gom lại tại
+  học](archive/wayfinder/khong-gian-hoc/map.md), gom lại tại
   [`docs/design/khong-gian-hoc-spec.md`](design/khong-gian-hoc-spec.md).
   - **WP1.10.1 — Schema.** Thêm cột `courses.source_id` (nullable, FK →
     `sources`) ghi course sinh từ nguồn nào (video lẻ hay playlist); chuẩn

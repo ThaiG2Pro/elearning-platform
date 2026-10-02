@@ -73,7 +73,7 @@ Chi tiết hơn: [`docs/ARCHITECTURE_NOTES.md`](docs/ARCHITECTURE_NOTES.md), [`d
 
 ## Stack
 
-Next.js 14 (App Router, TypeScript strict) · Tailwind + design system "ink" riêng · Prisma + PostgreSQL · LiteLLM · Stripe · Vitest (387 test) · Docker Compose, Caddy, Fly.io · GitHub Actions (typecheck, lint, audit, test).
+Next.js 14 (App Router, TypeScript strict) · Tailwind + design system "ink" riêng · Prisma + PostgreSQL · LiteLLM · Stripe · Vitest (387 test) · Docker Compose, Caddy, Fly.io · GitHub Actions (typecheck, lint, audit, test, build).
 
 ## Giới hạn hiện tại
 

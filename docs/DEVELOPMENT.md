@@ -93,4 +93,4 @@ litellm/              config LiteLLM proxy (model alias, fallback)
 
 ## Contributing
 
-Branch từ `main`, PR vào `main`. CI (`.github/workflows/ci.yml`): typecheck → lint → audit → test.
+Branch từ `main`, PR vào `main`. CI (`.github/workflows/ci.yml`): typecheck → lint → audit dependency → design tokens → test + coverage → build → (main) build & push Docker image.

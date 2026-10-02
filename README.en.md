@@ -73,7 +73,7 @@ More: [`docs/ARCHITECTURE_NOTES.md`](docs/ARCHITECTURE_NOTES.md), [`docs/adr/`](
 
 ## Stack
 
-Next.js 14 (App Router, strict TypeScript) · Tailwind + an in-house "ink" design system · Prisma + PostgreSQL · LiteLLM · Stripe · Vitest (387 tests) · Docker Compose, Caddy, Fly.io · GitHub Actions (typecheck, lint, audit, test).
+Next.js 14 (App Router, strict TypeScript) · Tailwind + an in-house "ink" design system · Prisma + PostgreSQL · LiteLLM · Stripe · Vitest (387 tests) · Docker Compose, Caddy, Fly.io · GitHub Actions (typecheck, lint, audit, test, build).
 
 ## Current limitations
 

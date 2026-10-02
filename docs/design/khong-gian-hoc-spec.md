@@ -1,6 +1,6 @@
 # Khóa học như không gian học — spec đã chốt
 
-Nguồn: map wayfinder [Khóa học như không gian học](../wayfinder/khong-gian-hoc/map.md), gom mọi quyết định đã đóng (glossary, ADR, ticket 01–05, 07). Đây là bản bàn giao cho effort triển khai — không mở thêm quyết định mới, chỉ tổng hợp cho dễ đọc một lần.
+Nguồn: map wayfinder [Khóa học như không gian học](../archive/wayfinder/khong-gian-hoc/map.md), gom mọi quyết định đã đóng (glossary, ADR, ticket 01–05, 07). Đây là bản bàn giao cho effort triển khai — không mở thêm quyết định mới, chỉ tổng hợp cho dễ đọc một lần.
 
 ## 1. Khái niệm nền
 
@@ -16,7 +16,7 @@ Nguồn: [CONTEXT.md](../CONTEXT.md), [ADR-0001](../adr/0001-mot-container-duy-n
 
 ## 2. Cấu trúc dữ liệu đích
 
-Nguồn: [ticket 02](../wayfinder/khong-gian-hoc/tickets/02-cai-dat-chuong-tuy-chon.md), [ticket 03](../wayfinder/khong-gian-hoc/tickets/03-xuat-xu-playlist-trong-sources.md).
+Nguồn: [ticket 02](../archive/wayfinder/khong-gian-hoc/tickets/02-cai-dat-chuong-tuy-chon.md), [ticket 03](../archive/wayfinder/khong-gian-hoc/tickets/03-xuat-xu-playlist-trong-sources.md).
 
 - **Schema `lessons.chapter_id` giữ NOT NULL** (không migration nullable). "Chương tùy chọn" là chuyện *hiển thị*, không phải chuyện DB lưu — mọi course vẫn có ≥1 chương ở DB, invariant `PublishingPolicy` (cấm xóa chương cuối) giữ nguyên.
 - **Luật ẩn chương thuần theo đếm**: course có đúng 1 chương (bất kể tên) → UI ẩn tầng chương, in phẳng danh sách bài; thêm chương thứ 2 → hiện; xóa còn 1 → tự ẩn lại. Không cờ, không so tên, không trạng thái riêng.
@@ -34,7 +34,7 @@ Nguồn: [ticket 02](../wayfinder/khong-gian-hoc/tickets/02-cai-dat-chuong-tuy-c
 
 ## 3. Luồng tạo "dán 1 URL → không gian học"
 
-Nguồn: [ticket 04](../wayfinder/khong-gian-hoc/tickets/04-luong-tao-tu-mot-url.md) + [mockup 3 màn](../wayfinder/khong-gian-hoc/prototypes/04-luong-tao-tu-mot-url.html).
+Nguồn: [ticket 04](../archive/wayfinder/khong-gian-hoc/tickets/04-luong-tao-tu-mot-url.md) + [mockup 3 màn](../archive/wayfinder/khong-gian-hoc/prototypes/04-luong-tao-tu-mot-url.html).
 
 Nền: server flow đã tồn tại (`POST /management/courses/from-link`, 1 transaction: `sources` dedup → `courses` ghi `source_id` → chương mặc định ẩn → 1 lesson). Ticket này chốt UX bao quanh.
 
@@ -52,7 +52,7 @@ Nền: server flow đã tồn tại (`POST /management/courses/from-link`, 1 tra
 
 ## 4. Từ ngữ hiển thị UI
 
-Nguồn: [ticket 05](../wayfinder/khong-gian-hoc/tickets/05-tu-hien-thi-container-tren-ui.md).
+Nguồn: [ticket 05](../archive/wayfinder/khong-gian-hoc/tickets/05-tu-hien-thi-container-tren-ui.md).
 
 - Đổi **"Khóa học" → "Space"** trên **toàn bộ UI**, đồng nhất mọi màn hình (trang chủ, `/my-courses`, `/my-learning`, `/share/{token}`, editor, learn page) — chèn độc lập giữa câu Việt ("Space của tôi", "Tạo Space mới", "Space nổi bật"), không ghép cụm "Learning Space".
 - **Code/DB/route không đổi** — `courses`, `/my-courses`, `/courses/[id]`, biến `course` giữ nguyên; đây thuần là quyết định string hiển thị.
@@ -60,7 +60,7 @@ Nguồn: [ticket 05](../wayfinder/khong-gian-hoc/tickets/05-tu-hien-thi-containe
 
 ## 5. Container 1-video trên danh sách và share/clone
 
-Nguồn: [ticket 07](../wayfinder/khong-gian-hoc/tickets/07-container-1-video-tren-danh-sach-va-share.md).
+Nguồn: [ticket 07](../archive/wayfinder/khong-gian-hoc/tickets/07-container-1-video-tren-danh-sach-va-share.md).
 
 - **`/my-courses`, `/my-learning`**: chỉ badge "N bài" (§4) — **không** thêm tab/nhóm/lọc theo hình thái nguồn ("từ YouTube" vs "tự soạn"). Giữ tinh thần ADR-0001: không tái tạo phân biệt container ở tầng UI.
 - **`/share/{token}`**: **fix để nhất quán** — trang này hiện *luôn* in tiêu đề chương cho mọi chương, chưa áp dụng luật ẩn-chương-đơn (§2). Cần sửa để container 1-video hiện đúng 1 bài phẳng, không lộ "Chương 1" thừa.
