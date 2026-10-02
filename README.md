@@ -1,188 +1,72 @@
-# E-Learning Platform (LMS)
+# Spacely
 
-Next.js 14 + Prisma + PostgreSQL — Hệ thống quản lý khóa học (Learning Management System).
+**Dán một link YouTube, có ngay một chỗ để học nó nghiêm túc.**
+Ghi chú theo mốc thời gian, quiz tự kiểm tra (AI soạn từ chính video), tiến độ tự lưu, chia sẻ hoặc sao chép Space của người khác.
 
-## 📋 Tính năng chính
+[![CI](https://github.com/ThaiG2Pro/elearning-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/ThaiG2Pro/elearning-platform/actions/workflows/ci.yml)
+![Next.js 14](https://img.shields.io/badge/Next.js-14-black) ![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue) ![Prisma](https://img.shields.io/badge/Prisma-PostgreSQL-2D3748) ![tests](https://img.shields.io/badge/tests-387%20passing-brightgreen)
 
-- **Lecturer (Giảng viên)**: Tạo & quản lý khóa học, tải lên video/bài quiz
-- **Admin (Quản trị viên)**: Duyệt khóa học, phê duyệt/từ chối
-- **Student (Học sinh)**: Đăng ký khóa học, học video, làm bài quiz, theo dõi tiến độ
-- **Preview Mode**: Giảng viên xem trước khóa học trước khi submit
-- **Validation & Error Handling**: Chi tiết, dễ debug
+> Vì sao có sản phẩm này: kiến thức miễn phí trên YouTube không thiếu, thiếu là một chỗ để học nó mà không bị autoplay, gợi ý và quảng cáo kéo đi. Tôi làm cho chính mình học trước và vẫn dùng mỗi ngày. Chi tiết: [`docs/VISION.md`](docs/VISION.md).
 
----
+## Người dùng làm được gì
 
-## 🚀 Setup sau khi clone (3 lệnh)
+| | |
+|---|---|
+| **Tạo Space từ 1 link** | Dán link YouTube ở trang chủ → có Space với tiêu đề, ảnh bìa; sắp thành chương / bài học. |
+| **Học tập trung** | Chế độ tập trung ẩn mọi thứ ngoài bài đang xem; vị trí xem tự lưu; ghi chú gắn vào đúng giây, bấm là tua lại. |
+| **Quiz** | Tự soạn (tải file) hoặc **AI tạo quiz từ transcript video**; chấm khi nộp, bài dở giữ tạm trên máy nếu mất mạng. |
+| **Tiến độ** | Mục *Đang học* ở trang chủ, trang *Học tiếp* với % hoàn thành thật, lọc chưa học / đang học / xong. |
+| **Chia sẻ & sao chép** | Link chia sẻ xem không cần tài khoản; *Sao chép về học* để có bản riêng; ai sao chép cùng Space thấy tiến độ của nhau (*Cùng học*). |
+| **Khám phá** | 58 playlist tuyển chọn xếp theo lượt xem YouTube (`/spaces/tuyen-chon`), trang chủ gợi ý theo hoạt động thật. |
+| **Credit & thanh toán** | AI theo cấu hình chuẩn miễn phí có hạn mức ngày; tuỳ biến thì dùng API key riêng hoặc mua credit qua Stripe. |
+| **Trợ lý CSKH** | Widget chat: menu FAQ tĩnh + gõ tự do → AI agent thật (RAG trên FAQ/guide/about, có ngưỡng tự tin, luôn có lối sang người thật). |
+| **Dữ liệu là của bạn** | Xuất toàn bộ hồ sơ/Space/tiến độ/ghi chú ra JSON; xoá tài khoản là xoá thật; không quảng cáo. |
+
+## Chạy thử trong 5 phút
+
+Cần Node LTS (`mise install`), pnpm (`corepack enable pnpm`), Docker.
 
 ```bash
-# 1. Cài đúng Node.js version (đọc từ .mise.toml)
-mise install
-
-# 2. Kích hoạt pnpm qua corepack (chỉ cần làm 1 lần trên máy)
-corepack enable pnpm
-
-# 3. Cài dependencies từ lockfile (deterministic — giống uv sync)
 pnpm install
-```
-
-> **Không dùng `npm install` hay `yarn`.** `packageManager` field trong `package.json` enforce pnpm qua corepack.
-
----
-
-## 🛠️ Dependency Management
-
-| Tool | Vai trò | Tương đương Python |
-|------|---------|-------------------|
-| `mise` | Quản lý Node.js runtime | `mise` (Python runtime) |
-| `.mise.toml` | Pin Node.js version | `.mise.toml` (Python version) |
-| `pnpm` | Quản lý packages | `uv` |
-| `pnpm-lock.yaml` | Lockfile deterministic | `uv.lock` |
-| `corepack` | Enforce đúng package manager | N/A (built-in Node.js) |
-
-### Các lệnh thường dùng
-
-```bash
-pnpm install              # Sync packages từ lockfile (sau khi pull)
-pnpm add <package>        # Thêm dependency mới
-pnpm add -D <package>     # Thêm devDependency
-pnpm remove <package>     # Xóa package
-pnpm run dev              # Chạy dev server
-pnpm run build            # Build production
-pnpm run lint             # ESLint check
-```
-
----
-
-## ⚙️ Environment
-
-Copy `.env.example` → `.env` và điền các biến:
-
-```bash
 cp .env.example .env
+# sửa 2 dòng trong .env cho Postgres của docker compose:
+#   DATABASE_URL="postgresql://elearning_user:elearning_pass@localhost:15432/elearning"
+#   JWT_SECRET=<chuỗi ngẫu nhiên bất kỳ>
+docker compose up -d db         # Postgres :15432
+pnpm prisma migrate deploy
+pnpm seed:launch                # 58 playlist tuyển chọn + showcase + social proof (idempotent)
+pnpm dev                        # http://localhost:3000
 ```
 
-**Variables cần thiết:**
-- `DATABASE_URL` — PostgreSQL connection string
-- `JWT_SECRET` — Secret key cho JWT tokens
+Không cần key AI để chạy: tính năng AI và widget tự tắt khi thiếu biến môi trường. Muốn bật AI tạo quiz: `docker compose up -d litellm` + `GROQ_API_KEY` (xem `.env.example`). Chi tiết lệnh, seed, quy ước: [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md).
 
----
+## Kiến trúc
 
-## 🗄️ Database
-
-```bash
-pnpm prisma migrate dev    # Chạy migrations
-pnpm prisma db seed        # Seed dữ liệu mẫu (XOÁ SẠCH DB — chỉ chạy được với DB local)
-pnpm prisma studio         # Mở Prisma Studio
+```mermaid
+flowchart LR
+    B[Browser<br/>Next.js App Router pages] --> API[/api/v1 route handlers/]
+    API --> M[modules: auth · space-management<br/>ai-generation · billing · data-retention<br/>controller → service → domain policy → repository]
+    M --> P[(PostgreSQL<br/>Prisma)]
+    M -->|transcript → quiz| L[LiteLLM proxy<br/>Groq / OpenAI / self-host]
+    M -->|checkout, webhook| S[Stripe]
+    M -->|oEmbed, Data API| Y[YouTube]
+    API -->|/support/chat proxy| A[ai-agent-sale-v2<br/>FastAPI · LangGraph · pgvector]
 ```
 
----
+- **Modular monolith theo DDD**: mỗi module có `domain/` chứa policy thuần (không I/O) và được unit test riêng, ví dụ `AIGenerationPolicy`, `CreditLedger`, `AccessControlPolicy`, `ProgressPolicy`.
+- **AI tạo quiz**: transcript video → LiteLLM (alias model, fallback) → quiz; hash "recipe" để không trả tiền hai lần cho cùng yêu cầu; hạn mức theo ngày (user + toàn hệ thống) và theo độ dài transcript; nội dung AI tạo riêng của chủ Space không đi theo bản sao.
+- **Credit ledger + Stripe**: 3 gói cố định, webhook idempotent theo `metadata.packageId`, clawback khi refund/dispute, job đối soát credit đang treo.
+- **Trợ lý CSKH**: widget gọi `POST /api/v1/support/chat` (rate-limit IP + người, cookie ẩn danh, key agent giữ ở server) → graph CSKH riêng trong [ai-agent-sale-v2](https://github.com/ThaiG2Pro/ai-agent-sale-v2) (`support_graph`: router 4 intent → RAG → confidence gating → groundedness check; eval gate 25 câu). Kho tri thức xuất từ chính `src/content/` của repo này qua `GET /api/v1/support/knowledge`, nên trang và bot không bao giờ lệch.
+- **An toàn**: một điểm xác thực JWT, rate limit cho mọi endpoint tốn tài nguyên, chống SSRF khi fetch URL ngoài, giới hạn kích thước upload, OAuth state ký.
 
-## 📚 Architecture & Documentation
+Chi tiết hơn: [`docs/ARCHITECTURE_NOTES.md`](docs/ARCHITECTURE_NOTES.md), [`docs/adr/`](docs/adr/), [`docs/README.md`](docs/README.md).
 
-Codebase được tổ chức theo **DDD (Domain-Driven Design)**:
+## Stack
 
-```
-src/
-├── app/                    # Next.js App Router
-│   ├── api/v1/             # REST API endpoints
-│   └── [pages]/            # UI pages
-├── modules/                # Domain-driven modules
-│   └── space-management/   # Controllers → Services → Domain → Repos
-├── components/             # Shared React components
-├── lib/                    # Client-side API wrappers
-└── types/                  # TypeScript types
-```
+Next.js 14 (App Router, TypeScript strict) · Tailwind + design system "ink" riêng · Prisma + PostgreSQL · LiteLLM · Stripe · Vitest (387 test) · Docker Compose, Caddy, Fly.io · GitHub Actions (typecheck, lint, audit, test).
 
-### Tài liệu chi tiết (Tiếng Việt)
+## Giới hạn hiện tại
 
-- **`docs/codebase/01-database-schema.md`** — Schema DB, 9 bảng, ERD
-- **`docs/codebase/02-backend-components.md`** — Tất cả BE components với tên chính xác
-- **`docs/codebase/03-backend-dependency-chain.md`** — 43 API endpoint chains (Route → Controller → Service → Domain → Repo)
-- **`docs/codebase/04-frontend-components.md`** — 35 FE components (pages, components, lib files)
-- **`docs/codebase/05-frontend-dependency-chain.md`** — 23 user flows, component map, navigation map
-
----
-
-## 🐛 Bug Fixes & Recent Changes
-
-### v1.0.0 (Latest)
-- ✅ Fixed YouTube API 400 error — clean error logging (không expose API key)
-- ✅ Fixed publish/moderate route methods (PATCH → POST)
-- ✅ Fixed autosave UX — in-memory sync only, Save button persists to DB
-- ✅ Fixed course.submit() not a function — return Course domain instance
-- ✅ Fixed slug unique constraint — append random suffix
-- ✅ Fixed delete section ACCESS_DENIED — validate against course.lecturerId
-- ✅ Fixed republish after rejection — allow submit() from REJECTED status
-- ✅ Added `/api/v1/management/courses/[id]` PUT endpoint — update course metadata
-
----
-
-## 🔐 Auth Flow
-
-### Access Token (JWT)
-- Lưu trong `localStorage`
-- Valid 15 phút
-- Auto-attach vào headers via Axios interceptor
-
-### Refresh Token
-- Lưu trong `httpOnly` cookie
-- Valid 7 ngày
-- Server-side renewal
-
----
-
-## 📝 API Status Codes
-
-| Status | Meaning |
-|--------|---------|
-| 200 | OK |
-| 201 | Created |
-| 400 | Bad Request (validation error) |
-| 401 | Unauthorized (no token/invalid token) |
-| 403 | Forbidden (permission denied) |
-| 404 | Not Found |
-| 409 | Conflict (e.g., duplicate slug) |
-| 500 | Internal Server Error |
-
----
-
-## 🚀 Deployment
-
-### Build for Production
-
-```bash
-pnpm run build
-pnpm start
-```
-
-### Environment Variables (Production)
-
-Set các biến in `.env` hoặc environment của server (VPS/Vercel):
-```bash
-DATABASE_URL=postgresql://user:password@host:5432/dbname
-JWT_SECRET=your-secret-key
-NODE_ENV=production
-```
-
----
-
-## 🤝 Contributing
-
-1. Branch từ `main`: `git checkout -b feature/your-feature`
-2. Commit với co-author trailer:
-   ```bash
-   git commit -m "Fix bug X
-
-   Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>"
-   ```
-3. Push & tạo Pull Request
-
----
-
-## 📞 Support
-
-Xem file log tại `/logs/` hoặc browser DevTools → Console/Network tab.
-
----
-
-**Last Updated**: Mar 10, 2026
+- Chỉ nhận link YouTube, mỗi lần một video (nguồn web/blog tạm ẩn).
+- Rate limiter in-memory: đủ cho 1 instance, đổi sang Redis khi scale ngang.
+- Chưa deploy public; checklist ở [`docs/LAUNCH_CHECKLIST.md`](docs/LAUNCH_CHECKLIST.md).

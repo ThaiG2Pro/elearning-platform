@@ -1,13 +1,12 @@
 {
   "name": "elearning-platform",
   "version": "1.0.0",
-  "description": "",
+  "description": "Spacely — dán link YouTube, có ngay một không gian học riêng: ghi chú theo mốc thời gian, quiz AI, tiến độ, chia sẻ.",
   "packageManager": "pnpm@10.30.3",
   "engines": {
     "node": ">=22"
   },
-  "main": "index.js",
-  "scripts": {
+    "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
@@ -29,7 +28,7 @@
   "prisma": {
     "seed": "ts-node prisma/seed.ts"
   },
-  "keywords": [],
+  "keywords": ["nextjs","prisma","postgresql","learning","youtube","quiz","llm","stripe"],
   "author": "",
   "license": "ISC",
   "devDependencies": {

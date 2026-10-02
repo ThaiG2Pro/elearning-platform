@@ -52,3 +52,6 @@ next-env.d.ts
 # OS
 Thumbs.db
 .DS_Store
+
+# Claude Code skills lock (dev tooling, machine-local)
+skills-lock.json

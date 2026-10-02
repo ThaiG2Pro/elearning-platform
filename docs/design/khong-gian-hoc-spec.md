@@ -4,7 +4,7 @@ Nguồn: map wayfinder [Khóa học như không gian học](../wayfinder/khong-g
 
 ## 1. Khái niệm nền
 
-Nguồn: [CONTEXT.md](../../CONTEXT.md), [ADR-0001](../adr/0001-mot-container-duy-nhat-cho-moi-hinh-thai-noi-dung-hoc.md).
+Nguồn: [CONTEXT.md](../CONTEXT.md), [ADR-0001](../adr/0001-mot-container-duy-nhat-cho-moi-hinh-thai-noi-dung-hoc.md).
 
 - **Khóa học (`course` trong code/DB)** = không gian học cá nhân quanh nội dung nguồn, từ 1 video lẻ đến playlist có trình tự đến bộ sưu tập tạp — **một container duy nhất** cho mọi hình thái, không thêm loại thứ hai. Lý do: cả ba hình thái dùng chung trọn bộ tính năng (notes, quiz, tiến độ, share/clone); container thứ hai sẽ nhân đôi mọi luồng đó chỉ để đổi tên.
 - **Chương** = cách nhóm bài, thuần tổ chức, **tùy chọn về khái niệm** — khóa học phẳng (không chương) hợp lệ.

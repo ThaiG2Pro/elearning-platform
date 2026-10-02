@@ -4,7 +4,7 @@
 > 1. `docs/VISION.md` — nguồn sự thật về hướng đi sản phẩm; roadmap này hiện
 >    thực hoá Vision mục 4 (lộ trình người dùng) và mục 10 (lộ trình giai đoạn)
 >    thành các checkpoint quản lý được.
-> 2. `ARCHITECTURE_NOTES.md` — nợ kỹ thuật & gap giữa code hiện tại và Vision.
+> 2. `docs/ARCHITECTURE_NOTES.md` — nợ kỹ thuật & gap giữa code hiện tại và Vision.
 > 3. `docs/design/ai-personalization-economics.md` — thiết kế chi tiết lớp AI,
 >    được hiện thực hoá dần ở Checkpoint 2–3 dưới đây.
 > 4. `docs/design/checkpoint-0-1-ux-audit.md` — audit code thật đối chiếu
@@ -46,7 +46,7 @@ không mất user. 4 quy tắc áp dụng cho **mọi** checkpoint từ Checkpoi
 buộc trước khi build tiếp, tận dụng việc **chưa ai ngoài dùng** để đổi mạnh tay
 mà không phá vỡ trải nghiệm của ai (nguyên tắc #1 ở trên).
 
-**Vấn đề cần giải quyết** (theo `ARCHITECTURE_NOTES.md`): code hiện tại là mô
+**Vấn đề cần giải quyết** (theo `docs/ARCHITECTURE_NOTES.md`): code hiện tại là mô
 hình marketplace giảng viên cũ (LECTURER tạo course, ADMIN duyệt qua
 approval-queue, STUDENT enroll) — không khớp Vision (course cá nhân từ link tự
 chọn, không cần ai duyệt).

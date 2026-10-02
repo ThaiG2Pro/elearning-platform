@@ -1,12 +1,12 @@
 # Audit UI/UX hiện tại — Checkpoint 0 & 1
 
 > **Tài liệu liên quan**: `docs/VISION.md` (tầm nhìn), `docs/ROADMAP.md` (Checkpoint
-> 0/1 mà audit này chi tiết hoá), `ARCHITECTURE_NOTES.md` (gap kỹ thuật gốc).
+> 0/1 mà audit này chi tiết hoá), `docs/ARCHITECTURE_NOTES.md` (gap kỹ thuật gốc).
 > Ghi lại 2026-08-06 qua 1 lượt audit code trực tiếp (không phải suy đoán).
 
 ## Kết luận chính
 
-Trải nghiệm hiện tại đúng như `ARCHITECTURE_NOTES.md` mô tả: **một LMS
+Trải nghiệm hiện tại đúng như `docs/ARCHITECTURE_NOTES.md` mô tả: **một LMS
 marketplace thu nhỏ** (giảng viên soạn → admin duyệt → học viên đăng ký), gần
 như đối lập với Vision (course cá nhân từ link tự dán, không cần ai duyệt,
 không xao nhãng, share ngay được). Cả 4 luồng lõi của Vision đều thiếu hoặc bị

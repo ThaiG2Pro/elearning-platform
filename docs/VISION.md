@@ -188,7 +188,7 @@ Tài liệu này là nguồn sự thật duy nhất về hướng đi sản ph�
 triển khai theo hướng đi này nằm ở 2 file riêng (phải cập nhật theo nếu tài
 liệu này thay đổi):
 
-- `ARCHITECTURE_NOTES.md` — nợ kỹ thuật hiện tại, đối chiếu code hiện tại với
+- `docs/ARCHITECTURE_NOTES.md` — nợ kỹ thuật hiện tại, đối chiếu code hiện tại với
   hướng đi ở đây.
 - `docs/design/ai-personalization-economics.md` — thiết kế chi tiết cho tính
   năng AI (mục 6) và chiến lược kiếm tiền (mục 7) ở trên.

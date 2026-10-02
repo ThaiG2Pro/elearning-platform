@@ -3,12 +3,12 @@
 > **Tài liệu liên quan** (không lặp lại nội dung nhau):
 > 1. `docs/VISION.md` — nguồn sự thật về hướng đi sản phẩm; tài liệu này chi
 >    tiết hoá riêng mục 6 (tính năng AI) và mục 7 (chiến lược kiếm tiền).
-> 2. `ARCHITECTURE_NOTES.md` — nợ kỹ thuật & trạng thái codebase hiện tại.
+> 2. `docs/ARCHITECTURE_NOTES.md` — nợ kỹ thuật & trạng thái codebase hiện tại.
 >
 > Ghi lại ngày 2026-08-06, qua nhiều lượt phân tích và fix lỗ hổng phát hiện
 > được. Đây là **thiết kế**, chưa phải code — chưa cần build billing/Stripe
 > thật (xem mục 7). Nếu kết luận ở đây thay đổi, cập nhật lại phần tham chiếu
-> tương ứng trong `ARCHITECTURE_NOTES.md` (mục "Kết luận về đầu tư kiến trúc").
+> tương ứng trong `docs/ARCHITECTURE_NOTES.md` (mục "Kết luận về đầu tư kiến trúc").
 
 ## 0. Nguyên tắc bao trùm duy nhất
 
@@ -177,7 +177,7 @@ như transcript video.
 ## 7. Khi triển khai `PAID_TIER` thật (chưa cần làm ngay)
 
 - `keySource: PAID_TIER` trong schema **chỉ là chỗ trống**, chưa cần build
-  billing/Stripe thật — khớp với kết luận cũ trong `ARCHITECTURE_NOTES.md`.
+  billing/Stripe thật — khớp với kết luận cũ trong `docs/ARCHITECTURE_NOTES.md`.
 - Khi tín hiệu ở Vision mục 7 xảy ra thật, chỉ cần cắm luồng thanh toán vào
   nhánh UX #4 (mục 4) — không phải đổi lại data model.
 - **Ghi chú tránh sai lầm trước**: nên bán theo gói **credit/subscription**,
