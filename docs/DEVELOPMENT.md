@@ -45,7 +45,7 @@ Seed có 2 loại, đừng nhầm:
 | Lệnh | Dùng khi | Tính chất |
 |---|---|---|
 | `pnpm prisma db seed` (`prisma/seed.ts`) | dev/QA | **xoá sạch DB**, có guard chỉ chạy với DB local |
-| `pnpm seed:launch` | lần đầu public app | additive, idempotent: 58 playlist tuyển chọn (`seed:playlists`), showcase (`seed:showcase`), social proof (`seed:active-users`) |
+| `pnpm seed:launch` | lần đầu public app | additive, idempotent: showcase (`seed:showcase`, không cần key) → 58 playlist tuyển chọn (`seed:playlists`, **cần `YOUTUBE_API_KEY`** để liệt kê video) → social proof (`seed:active-users`, cần playlist đã seed) |
 
 ## Biến môi trường
 

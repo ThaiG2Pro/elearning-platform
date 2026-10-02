@@ -44,11 +44,11 @@ cp .env.example .env
 #   JWT_SECRET=<chuỗi ngẫu nhiên bất kỳ>
 docker compose up -d db         # Postgres :15432
 pnpm prisma migrate deploy
-pnpm seed:launch                # 58 playlist tuyển chọn + showcase + social proof (idempotent)
+pnpm seed:showcase              # 5 Space mẫu, không cần key gì
 pnpm dev                        # http://localhost:3000
 ```
 
-Không cần key AI để chạy: tính năng AI và widget tự tắt khi thiếu biến môi trường. Muốn bật AI tạo quiz: `docker compose up -d litellm` + `GROQ_API_KEY` (xem `.env.example`). Chi tiết lệnh, seed, quy ước: [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md). Ảnh trong README chụp bằng `scripts/screenshots.mjs`.
+Muốn đủ 58 playlist tuyển chọn như ảnh: lấy `YOUTUBE_API_KEY` (Google Cloud, miễn phí) vào `.env` rồi `pnpm seed:launch` (idempotent: showcase + 58 playlist + social proof). Không cần key AI để chạy: tính năng AI và widget tự tắt khi thiếu biến môi trường. Muốn bật AI tạo quiz: `docker compose up -d litellm` + `GROQ_API_KEY` (xem `.env.example`). Chi tiết lệnh, seed, quy ước: [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md). Ảnh trong README chụp bằng `scripts/screenshots.mjs`.
 
 ## Kiến trúc
 

@@ -79,7 +79,7 @@
     "jsonwebtoken": "^9.0.3",
     "lucide-react": "^0.575.0",
     "next": "^15.5.25",
-    "nodemailer": "^10.0.0",
+    "nodemailer": "^10.0.6",
     "openai": "^7.4.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
@@ -100,6 +100,7 @@
     ],
     "overrides": {
       "form-data@<4.0.6": ">=4.0.6",
+      "undici@<8.10.2": ">=8.10.2",
       "follow-redirects@<1.16.0": ">=1.16.0",
       "nanoid@<3.3.18": ">=3.3.18",
       "postcss@<8.5.23": ">=8.5.23",
@@ -108,8 +109,8 @@
       "picomatch@2": "2.3.2",
       "picomatch@4": "4.0.7",
       "minimatch@3": "3.1.5",
-      "brace-expansion@1": "1.1.18",
-      "brace-expansion@2": "2.1.4",
+      "brace-expansion@1": "1.1.20",
+      "brace-expansion@2": ">=2.1.7",
       "uuid@8": "11.1.1"
     }
   }

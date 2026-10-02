@@ -44,11 +44,11 @@ cp .env.example .env
 #   JWT_SECRET=<any random string>
 docker compose up -d db         # Postgres on :15432
 pnpm prisma migrate deploy
-pnpm seed:launch                # 58 curated playlists + showcase + social proof (idempotent)
+pnpm seed:showcase              # 5 sample Spaces, no keys required
 pnpm dev                        # http://localhost:3000
 ```
 
-No AI keys are needed to run it: AI features and the widget switch themselves off when their environment variables are missing. To enable AI quiz generation: `docker compose up -d litellm` + `GROQ_API_KEY` (see `.env.example`). Commands, seeds and conventions: [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md). The README screenshots are produced by `scripts/screenshots.mjs`.
+For the full 58 curated playlists shown in the screenshots, put a free `YOUTUBE_API_KEY` (Google Cloud) in `.env` and run `pnpm seed:launch` (idempotent: showcase + 58 playlists + social proof). No AI keys are needed to run it: AI features and the widget switch themselves off when their environment variables are missing. To enable AI quiz generation: `docker compose up -d litellm` + `GROQ_API_KEY` (see `.env.example`). Commands, seeds and conventions: [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md). The README screenshots are produced by `scripts/screenshots.mjs`.
 
 ## Architecture
 

@@ -34,10 +34,17 @@ const PATTERN =
   /(bg|text|border|from|to|via|ring|fill|stroke|divide|outline|decoration|placeholder|caret|accent|shadow)-(red|blue|green|emerald|amber|yellow|indigo|purple|violet|fuchsia|pink|rose|slate|gray|zinc|neutral|stone|orange|lime|teal|cyan|sky)-[0-9]{2,3}/g;
 
 function listSourceFiles() {
-  const out = execSync(
-    `grep -rlE '${PATTERN.source}' --include=*.tsx --include=*.ts src`,
-    { cwd: ROOT, encoding: 'utf8' }
-  ).trim();
+  let out = '';
+  try {
+    out = execSync(
+      `grep -rlE '${PATTERN.source}' --include=*.tsx --include=*.ts src`,
+      { cwd: ROOT, encoding: 'utf8' }
+    );
+  } catch (err) {
+    // grep exit 1 = không file nào khớp (trạng thái mong muốn) — không phải lỗi.
+    if (err.status !== 1) throw err;
+  }
+  out = out.trim();
   return out ? out.split('\n') : [];
 }
 
