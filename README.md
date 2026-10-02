@@ -6,6 +6,14 @@ Ghi chú theo mốc thời gian, quiz tự kiểm tra (AI soạn từ chính vid
 [![CI](https://github.com/ThaiG2Pro/elearning-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/ThaiG2Pro/elearning-platform/actions/workflows/ci.yml)
 ![Next.js 14](https://img.shields.io/badge/Next.js-14-black) ![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue) ![Prisma](https://img.shields.io/badge/Prisma-PostgreSQL-2D3748) ![tests](https://img.shields.io/badge/tests-387%20passing-brightgreen)
 
+<p align="center">
+  <img src="docs/screenshots/home.png" alt="Trang chủ: dán link YouTube, 58 Space tuyển chọn" width="820">
+</p>
+<p align="center">
+  <img src="docs/screenshots/learn.png" alt="Màn hình học: video, danh sách bài, ghi chú, tiến độ" width="400">
+  <img src="docs/screenshots/support-chat.png" alt="Widget CSKH: AI trả lời có dẫn nguồn, luôn có lối sang người thật" width="400">
+</p>
+
 > Vì sao có sản phẩm này: kiến thức miễn phí trên YouTube không thiếu, thiếu là một chỗ để học nó mà không bị autoplay, gợi ý và quảng cáo kéo đi. Tôi làm cho chính mình học trước và vẫn dùng mỗi ngày. Chi tiết: [`docs/VISION.md`](docs/VISION.md).
 
 ## Người dùng làm được gì
@@ -38,7 +46,7 @@ pnpm seed:launch                # 58 playlist tuyển chọn + showcase + social
 pnpm dev                        # http://localhost:3000
 ```
 
-Không cần key AI để chạy: tính năng AI và widget tự tắt khi thiếu biến môi trường. Muốn bật AI tạo quiz: `docker compose up -d litellm` + `GROQ_API_KEY` (xem `.env.example`). Chi tiết lệnh, seed, quy ước: [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md).
+Không cần key AI để chạy: tính năng AI và widget tự tắt khi thiếu biến môi trường. Muốn bật AI tạo quiz: `docker compose up -d litellm` + `GROQ_API_KEY` (xem `.env.example`). Chi tiết lệnh, seed, quy ước: [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md). Ảnh trong README chụp bằng `scripts/screenshots.mjs`.
 
 ## Kiến trúc
 

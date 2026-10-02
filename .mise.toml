@@ -1,5 +1,5 @@
 [tools]
-node = "lts"           # Node.js LTS — run `mise install` after cloning
+node = "24"             # khớp CI (.github/workflows/ci.yml); chạy `mise install` sau khi clone
 
 [env]
 # Enforce pnpm as the only package manager (corepack will handle version)

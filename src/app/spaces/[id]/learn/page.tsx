@@ -268,14 +268,12 @@ export default function LearningPage() {
     const isCompact = useIsCompact(900);
 
     const loadLessonData = useCallback(async (lessonId: string, lessonType: string) => {
-        // console.log('loadLessonData called with:', { lessonId, lessonType });
         try {
             const [progress, lessonNotes] = await Promise.all([
                 getLessonProgress(lessonId),
                 getLessonNotes(lessonId)
             ]);
 
-            // console.log('Progress and notes loaded:', { progress, lessonNotes });
             setLessonProgress(progress);
             // Seed the live display with the saved resume position — it's
             // then driven purely by player ticks until the lesson changes.
@@ -285,13 +283,10 @@ export default function LearningPage() {
 
             // Always set appState based on lesson type
             if (lessonType.toLowerCase() === 'video') {
-                // console.log('Setting appState to idle for video');
                 setAppState('idle');
             } else if (lessonType.toLowerCase() === 'quiz') {
-                // console.log('Setting appState to quiz_ready for quiz');
                 setAppState('quiz_ready');
             } else {
-                // console.log('Setting appState to idle (fallback)');
                 // Fallback
                 setAppState('idle');
             }
@@ -310,12 +305,10 @@ export default function LearningPage() {
             .catch(() => {});
         try {
             const spaceLessons = await getLessons(spaceId);
-            // console.log('Loaded lessons:', spaceLessons);
             setLessons(spaceLessons);
 
             // Set first lesson as current
             if (spaceLessons.length > 0) {
-                // console.log('Setting current lesson:', spaceLessons[0]);
                 setCurrentLesson(spaceLessons[0]);
                 // DO NOT toggle appState here to avoid unnecessary unmounting of the player.
                 // appState will be set by loadLessonData based on lesson type or by handleLessonSelect when user switches lessons.

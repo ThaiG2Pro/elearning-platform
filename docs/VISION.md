@@ -1,4 +1,4 @@
-# Tầm Nhìn Sản Phẩm — [Tên nền tảng học tập cá nhân]
+# Tầm Nhìn Sản Phẩm — Spacely
 
 > Tài liệu này trả lời câu hỏi "chúng ta đang xây cái gì, và vì sao lại quyết định như vậy" — để cả team có chung một hình dung trước khi đi vào chi tiết triển khai. Plan triển khai kỹ thuật (schema, API, milestone) sẽ là tài liệu riêng, đi sau.
 

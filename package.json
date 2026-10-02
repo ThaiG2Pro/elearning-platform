@@ -6,7 +6,7 @@
   "engines": {
     "node": ">=22"
   },
-    "scripts": {
+  "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
@@ -16,6 +16,7 @@
     "test:coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit",
     "check:tokens": "node scripts/check-design-tokens.js",
+    "screenshots": "node scripts/screenshots.mjs",
     "seed:showcase": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\"}' ts-node prisma/seed-showcase.ts",
     "seed:playlists": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\"}' ts-node prisma/seed-playlists.ts",
     "seed:active-users": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\"}' ts-node prisma/seed-active-users.ts",
@@ -28,9 +29,18 @@
   "prisma": {
     "seed": "ts-node prisma/seed.ts"
   },
-  "keywords": ["nextjs","prisma","postgresql","learning","youtube","quiz","llm","stripe"],
+  "keywords": [
+    "nextjs",
+    "prisma",
+    "postgresql",
+    "learning",
+    "youtube",
+    "quiz",
+    "llm",
+    "stripe"
+  ],
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
     "@types/jsdom": "^30.0.0",
@@ -41,6 +51,7 @@
     "@vitest/coverage-v8": "^4.0.18",
     "eslint": "^8.57.1",
     "eslint-config-next": "^15.5.25",
+    "playwright": "^1.63.0",
     "prisma": "^5",
     "ts-node": "^10.9.2",
     "typescript": "^5",
