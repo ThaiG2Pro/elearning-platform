@@ -6,6 +6,7 @@ import Header from '@/components/Header';
 import { Button } from '@/components/ui/button';
 import { User } from '@/types/auth.types';
 import { logout as apiLogout, AuthUtils } from '@/lib/auth';
+import { ABOUT, PROMISES } from '@/content/siteInfo';
 
 // Trang /about v5 (2026-09-15) — chỉ trả lời "vì sao có sản phẩm này".
 // Bản v4 có 4 demo mockup (tập trung, quiz, AI, cùng học) trùng gần hết
@@ -17,27 +18,7 @@ import { logout as apiLogout, AuthUtils } from '@/lib/auth';
 // giải thích dài. Cột đọc, cỡ chữ, bảng định nghĩa cùng ngôn ngữ /pricing
 // v3, /faq v2, /guide v3.
 
-const PROMISES: { label: string; body: string; faqId?: string }[] = [
-    {
-        label: 'Miễn phí để học',
-        body: 'Tạo Space, xem, ghi chú, làm quiz, theo dõi tiến độ không mất tiền. Chỉ trả khi muốn AI tạo nội dung theo yêu cầu riêng mà không dùng key của bạn.',
-        faqId: 'co-mat-phi-khong',
-    },
-    {
-        label: 'Không quảng cáo chen ngang',
-        body: 'Trong Space chỉ có video của bạn, ghi chú của bạn và bài quiz. Không gợi ý video khác, không banner.',
-    },
-    {
-        label: 'Dữ liệu là của bạn',
-        body: 'Tải về một bản JSON đầy đủ hồ sơ, Space, tiến độ, ghi chú bất cứ lúc nào. Xoá tài khoản là xoá thật.',
-        faqId: 'xoa-tk',
-    },
-    {
-        label: 'Không học một mình',
-        body: 'Chia sẻ Space cho bạn bè. Ai sao chép cùng một Space thấy tiến độ của nhau, dù mỗi người học trên bản riêng.',
-        faqId: 'chia-se-space',
-    },
-];
+// Chữ của trang nằm ở src/content/siteInfo.ts (dùng chung với bot CSKH).
 
 export default function AboutContent() {
     const router = useRouter();
@@ -65,10 +46,10 @@ export default function AboutContent() {
                 {/* 1. Slogan, chữ trần. H1 đứng một mình theo quyết định 2026-09-11. */}
                 <section className="max-w-[62ch]">
                     <h1 className="text-[clamp(28px,4vw,40px)] font-bold tracking-[-0.02em] leading-[1.15] text-ink-text text-balance">
-                        Xem đến đâu, nhớ đến đó. Chỉ cần link.
+                        {ABOUT.slogan}
                     </h1>
                     <p className="mt-4 text-[15px] text-ink-textMid leading-relaxed">
-                        Dán một link YouTube là có một chỗ để học nó nghiêm túc: ghi chú theo mốc thời gian, quiz tự kiểm tra, tiến độ tự lưu.
+                        {ABOUT.intro}
                     </p>
                     <div className="mt-6 flex flex-wrap gap-3">
                         <Button
@@ -92,13 +73,13 @@ export default function AboutContent() {
                     <span aria-hidden className="hidden sm:block absolute top-0 bottom-0 -left-6 w-px bg-ink-marginLn" />
                     <p className="text-[13px] text-ink-textMuted">Vì sao có trang này</p>
                     <p className="mt-2 text-lg sm:text-xl font-semibold text-ink-text leading-snug tracking-[-0.01em]">
-                        Trước khi làm sản phẩm này, tôi học theo cách hầu hết mọi người đang học: mở một video, ghi chú vào một chỗ khác, xem xong thì chuyển sang video kế tiếp.
+                        {ABOUT.storyLead}
                     </p>
                     <p className="mt-4 text-[14.5px] text-ink-textMid leading-relaxed">
-                        Nhưng cái tôi chuyển sang phần nhiều là do YouTube gợi ý. Một tiêu đề giật hơn, một chủ đề chẳng liên quan, đôi khi là quảng cáo chen ngang. Lần sau quay lại, lịch sử xem lẫn lộn giữa video học nghiêm túc và video xem cho vui, chẳng còn cách nào lọc ra đâu là buổi mình thật sự đang học.
+                        {ABOUT.story[0]}
                     </p>
                     <p className="mt-4 text-[14.5px] text-ink-textMid leading-relaxed">
-                        Kiến thức miễn phí không thiếu. Thiếu là một chỗ để học nó nghiêm túc. Nên tôi làm ra chỗ đó cho chính mình học trước, và giờ vẫn đang dùng nó mỗi ngày.
+                        {ABOUT.story[1]}
                     </p>
                 </section>
 
@@ -108,10 +89,10 @@ export default function AboutContent() {
                     <div>
                         <p className="text-[13px] text-ink-textMuted">Chỗ đó tôi gọi là Space</p>
                         <h2 className="mt-2 text-[19px] font-bold tracking-[-0.01em] text-ink-text leading-snug">
-                            Ý nào nảy ra lúc đang xem, giữ ngay tại đó
+                            {ABOUT.spaceTitle}
                         </h2>
                         <p className="mt-3 text-[14.5px] text-ink-textMid leading-relaxed">
-                            Ghi chú gắn vào đúng giây đang xem, bấm vào là tua lại. Cần tập trung hơn thì gạt hết phần còn lại, chỉ còn video và ghi chú của bạn.
+                            {ABOUT.spaceBody}
                         </p>
                     </div>
                     <figure>
