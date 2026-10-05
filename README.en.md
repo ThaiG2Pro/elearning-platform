@@ -6,7 +6,7 @@
 Timestamped notes, self-check quizzes (AI-generated from the video itself), progress that saves itself, and Spaces you can share or copy from other learners.
 
 [![CI](https://github.com/ThaiG2Pro/elearning-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/ThaiG2Pro/elearning-platform/actions/workflows/ci.yml)
-![Next.js 14](https://img.shields.io/badge/Next.js-14-black) ![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue) ![Prisma](https://img.shields.io/badge/Prisma-PostgreSQL-2D3748) ![tests](https://img.shields.io/badge/tests-387%20passing-brightgreen)
+![Next.js 14](https://img.shields.io/badge/Next.js-14-black) ![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue) ![Prisma](https://img.shields.io/badge/Prisma-PostgreSQL-2D3748)
 
 <p align="center">
   <img src="docs/screenshots/home.png" alt="Home: paste a YouTube link, 58 curated Spaces" width="820">

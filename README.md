@@ -6,7 +6,7 @@
 Ghi chú theo mốc thời gian, quiz tự kiểm tra (AI soạn từ chính video), tiến độ tự lưu, chia sẻ hoặc sao chép Space của người khác.
 
 [![CI](https://github.com/ThaiG2Pro/elearning-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/ThaiG2Pro/elearning-platform/actions/workflows/ci.yml)
-![Next.js 14](https://img.shields.io/badge/Next.js-14-black) ![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue) ![Prisma](https://img.shields.io/badge/Prisma-PostgreSQL-2D3748) ![tests](https://img.shields.io/badge/tests-387%20passing-brightgreen)
+![Next.js 14](https://img.shields.io/badge/Next.js-14-black) ![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue) ![Prisma](https://img.shields.io/badge/Prisma-PostgreSQL-2D3748)
 
 <p align="center">
   <img src="docs/screenshots/home.png" alt="Trang chủ: dán link YouTube, 58 Space tuyển chọn" width="820">
