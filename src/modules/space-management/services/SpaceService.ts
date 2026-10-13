@@ -155,17 +155,37 @@ export class SpaceService {
             return [];
         }
 
-        const companions = await Promise.all(
-            visibleLineage.map(async (member) => {
-                const progress = await this.learnService!.getSpaceProgress(member.ownerId, member.id);
-                return new CompanionDto(
-                    Number(member.id),
-                    member.ownerName,
-                    progress.completionRate,
-                    member.ownerId === userId,
+        const spaceIds = visibleLineage.map(member => member.id);
+        let progressMap: Map<string, number> | undefined;
+
+        if (typeof this.learnService.getBatchSpaceProgress === 'function') {
+            progressMap = await this.learnService.getBatchSpaceProgress(spaceIds);
+        }
+
+        if (!progressMap) {
+            progressMap = new Map();
+            // Bounded concurrency fallback (chunk size 5) to prevent connection pool exhaustion
+            const CHUNK_SIZE = 5;
+            for (let i = 0; i < visibleLineage.length; i += CHUNK_SIZE) {
+                const chunk = visibleLineage.slice(i, i + CHUNK_SIZE);
+                await Promise.all(
+                    chunk.map(async (member) => {
+                        const progress = await this.learnService!.getSpaceProgress(member.ownerId, member.id);
+                        progressMap!.set(member.id.toString(), progress?.completionRate ?? 0);
+                    })
                 );
-            })
-        );
+            }
+        }
+
+        const companions = visibleLineage.map((member) => {
+            const completionRate = progressMap.get(member.id.toString()) ?? 0;
+            return new CompanionDto(
+                Number(member.id),
+                member.ownerName,
+                completionRate,
+                member.ownerId === userId,
+            );
+        });
 
         return companions.sort((a, b) => b.completionRate - a.completionRate);
     }

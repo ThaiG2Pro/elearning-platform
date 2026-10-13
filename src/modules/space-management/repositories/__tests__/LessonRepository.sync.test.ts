@@ -30,6 +30,7 @@ function makePrisma() {
             updateMany: vi.fn(async () => ({ count: 1 })),
             createMany: vi.fn(async () => ({ count: 1 })),
         },
+        $executeRaw: vi.fn(async () => 1),
     };
     const prisma = { $transaction: vi.fn(async (fn: any) => fn(tx)), _tx: tx };
     return prisma;
@@ -50,7 +51,7 @@ describe('LessonRepository.syncLessons — payload ids must belong to the space'
         await expect(repo.syncLessons(BigInt(1), [mk(BigInt(200), BigInt(10))]))
             .rejects.toThrow('LESSON_NOT_IN_SPACE');
         expect(prisma._tx.lessons.deleteMany).not.toHaveBeenCalled();
-        expect(prisma._tx.lessons.updateMany).not.toHaveBeenCalled();
+        expect(prisma._tx.$executeRaw).not.toHaveBeenCalled();
     });
 
     it('rejects a chapter id from another space before writing anything', async () => {
@@ -60,10 +61,11 @@ describe('LessonRepository.syncLessons — payload ids must belong to the space'
         expect(prisma._tx.lessons.createMany).not.toHaveBeenCalled();
     });
 
-    it('accepts a payload whose ids all belong to the space', async () => {
+    it('accepts a payload whose ids all belong to the space and uses single $executeRaw bulk update', async () => {
         await repo.syncLessons(BigInt(1), [mk(BigInt(100), BigInt(10)), mk(null, BigInt(10))]);
         expect(prisma._tx.lessons.deleteMany).toHaveBeenCalledTimes(1);
-        expect(prisma._tx.lessons.updateMany).toHaveBeenCalledTimes(1);
+        expect(prisma._tx.$executeRaw).toHaveBeenCalledTimes(1);
+        expect(prisma._tx.lessons.updateMany).not.toHaveBeenCalled();
         expect(prisma._tx.lessons.createMany).toHaveBeenCalledTimes(1);
     });
 });

@@ -3,7 +3,7 @@ import { ProgressPolicy } from '../domain/ProgressPolicy';
 import { LearningProgress } from '../domain/LearningProgress';
 import { ProgressResult } from '../dtos/ProgressResult';
 import { PreviewPolicy } from '../domain/PreviewPolicy';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 
 export class LearnService {
     constructor(
@@ -96,6 +96,41 @@ export class LearnService {
             finishedLessons,
             totalLessons,
         };
+    }
+
+    /**
+     * WP1.7 — Batch computes completion % for multiple spaces using a single SQL query.
+     * Replaces N+1 queries with a single query using SQL IN + GROUP BY to avoid connection pool exhaustion.
+     */
+    async getBatchSpaceProgress(spaceIds: bigint[]): Promise<Map<string, number>> {
+        if (spaceIds.length === 0) {
+            return new Map();
+        }
+
+        const rows = await this.prisma.$queryRaw<{ space_id: bigint; completion_rate: number }[]>`
+            SELECT
+                s.id AS space_id,
+                CASE 
+                    WHEN COUNT(DISTINCT l.id) > 0 
+                    THEN ROUND((COUNT(DISTINCT CASE WHEN lp.is_finished = true THEN l.id END)::numeric / COUNT(DISTINCT l.id)::numeric) * 100)::int
+                    ELSE 0 
+                END AS completion_rate
+            FROM spaces s
+            LEFT JOIN chapters c ON c.space_id = s.id
+            LEFT JOIN lessons l ON l.chapter_id = c.id
+            LEFT JOIN learning_progress lp 
+                ON lp.space_id = s.id 
+               AND lp.user_id = s.owner_id 
+               AND lp.lesson_id = l.id
+            WHERE s.id IN (${Prisma.join(spaceIds)})
+            GROUP BY s.id
+        `;
+
+        const map = new Map<string, number>();
+        for (const row of rows) {
+            map.set(row.space_id.toString(), Number(row.completion_rate));
+        }
+        return map;
     }
 
     private async findSpaceIdByLesson(lessonId: bigint): Promise<bigint> {

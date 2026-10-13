@@ -658,72 +658,60 @@ export class SpaceRepository {
         const baseSlug = source.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
         const suffix = randomBytes(4).toString('hex');
         const slug = `${baseSlug}-${suffix}`;
+        const rootSpaceId = source.root_space_id ?? source.id;
 
         try {
-            return await this.prisma.$transaction(async (tx) => {
-                const created = await tx.spaces.create({
-                    data: {
-                        owner_id: newOwnerId,
-                        title: source.title,
-                        slug,
-                        description: source.description,
-                        status: 'ACTIVE',
-                        cloned_from_space_id: spaceId,
-                        source_id: source.source_id,
-                    },
-                });
-
-                for (const chapter of source.chapters) {
-                    const newChapter = await tx.chapters.create({
-                        data: {
-                            space_id: created.id,
+            const created = await this.prisma.spaces.create({
+                data: {
+                    owner_id: newOwnerId,
+                    title: source.title,
+                    slug,
+                    description: source.description,
+                    status: 'ACTIVE',
+                    cloned_from_space_id: spaceId,
+                    root_space_id: rootSpaceId,
+                    source_id: source.source_id,
+                    chapters: {
+                        create: source.chapters.map(chapter => ({
                             title: chapter.title,
                             order_index: chapter.order_index,
-                        },
-                    });
+                            lessons: {
+                                create: chapter.lessons.map(lesson => {
+                                    // WP3.2/mục 5 economics doc — kế thừa AIGeneration đã
+                                    // gán qua clone, TRỪ bản PAID_TIER (free-rider fix:
+                                    // người fork phải tự tạo lại nếu muốn bản tương
+                                    // đương, không được "thừa hưởng" bản người khác đã
+                                    // trả tiền).
+                                    const inheritedAiGenerationId =
+                                        lesson.ai_generation_id !== null &&
+                                        AIGenerationPolicy.inheritOnClone((lesson.ai_generation?.key_source as KeySource) ?? null)
+                                            ? lesson.ai_generation_id
+                                            : null;
 
-                    for (const lesson of chapter.lessons) {
-                        // WP3.2/mục 5 economics doc — kế thừa AIGeneration đã
-                        // gán qua clone, TRỪ bản PAID_TIER (free-rider fix:
-                        // người fork phải tự tạo lại nếu muốn bản tương
-                        // đương, không được "thừa hưởng" bản người khác đã
-                        // trả tiền).
-                        const inheritedAiGenerationId =
-                            lesson.ai_generation_id !== null &&
-                            AIGenerationPolicy.inheritOnClone((lesson.ai_generation?.key_source as KeySource) ?? null)
-                                ? lesson.ai_generation_id
-                                : null;
-
-                        const newLesson = await tx.lessons.create({
-                            data: {
-                                chapter_id: newChapter.id,
-                                source_id: lesson.source_id,
-                                title: lesson.title,
-                                type: lesson.type,
-                                content_url: lesson.content_url,
-                                order_index: lesson.order_index,
-                                ai_generation_id: inheritedAiGenerationId,
+                                    return {
+                                        source_id: lesson.source_id,
+                                        title: lesson.title,
+                                        type: lesson.type,
+                                        content_url: lesson.content_url,
+                                        order_index: lesson.order_index,
+                                        ai_generation_id: inheritedAiGenerationId,
+                                        questions: lesson.questions.length > 0 ? {
+                                            create: lesson.questions.map(q => ({
+                                                content: q.content,
+                                                answer_key: q.answer_key,
+                                                options: (q.options ?? []) as any,
+                                            })),
+                                        } : undefined,
+                                    };
+                                }),
                             },
-                        });
-
-                        if (lesson.questions.length > 0) {
-                            await tx.questions.createMany({
-                                data: lesson.questions.map((q) => ({
-                                    lesson_id: newLesson.id,
-                                    content: q.content,
-                                    answer_key: q.answer_key,
-                                    // Json column: JsonValue đọc ra có thể là null
-                                    // theo type Prisma, nhưng cột NOT NULL nên
-                                    // fallback [] không bao giờ chạy trong thực tế.
-                                    options: q.options ?? [],
-                                })),
-                            });
-                        }
-                    }
-                }
-
-                return created.id;
+                        })),
+                    },
+                },
+                select: { id: true },
             });
+
+            return created.id;
         } catch (error: any) {
             // P2002 = unique violation on (owner_id, cloned_from_space_id) —
             // a concurrent request (double-submit/double-fire) won the race
@@ -742,58 +730,59 @@ export class SpaceRepository {
     /**
      * WP1.7 — every space sharing this space's clone lineage: the root
      * (owner-authored space, possibly itself) plus every clone anyone made
-     * of it, at any generation. Walks up `cloned_from_space_id` to find the
-     * root, then BFS's back down — cloning a clone is possible (share a
-     * clone → someone else clones it), so this isn't just one level deep.
+     * of it, at any generation.
+     * Uses the denormalized `root_space_id` pointer for flat, O(1) query time.
      */
     async findLineageSpaces(spaceId: bigint): Promise<{ id: bigint; ownerId: bigint; ownerName: string; status: string }[]> {
         const start = await this.prisma.spaces.findUnique({
             where: { id: spaceId },
-            select: { id: true, cloned_from_space_id: true },
+            select: { id: true, root_space_id: true, cloned_from_space_id: true },
         });
         if (!start) return [];
 
-        // Walk up to the root. `visited` guards against a corrupt cycle.
-        const visited = new Set<string>([start.id.toString()]);
-        let rootId = start.id;
-        let parentId = start.cloned_from_space_id;
-        while (parentId && !visited.has(parentId.toString())) {
-            visited.add(parentId.toString());
-            rootId = parentId;
-            const parent = await this.prisma.spaces.findUnique({
-                where: { id: parentId },
-                select: { cloned_from_space_id: true },
-            });
-            if (!parent) break;
-            parentId = parent.cloned_from_space_id;
-        }
+        let rootId = start.root_space_id ?? (start.cloned_from_space_id ? null : start.id);
 
-        // `status` được lấy kèm ở đây (không thêm query) để tầng gọi (getCompanions)
-        // tự quyết định lọc thành viên ARCHIVED — cloneForOwner (fast-path lineage
-        // reuse) vẫn cần TOÀN BỘ thành viên bất kể status nên hàm này KHÔNG tự lọc.
-        const members = new Map<string, { id: bigint; ownerId: bigint; ownerName: string; status: string }>();
-        const root = await this.prisma.spaces.findUnique({
-            where: { id: rootId },
-            select: { id: true, owner_id: true, status: true, owner: { select: { full_name: true } } },
-        });
-        if (!root) return [];
-        members.set(root.id.toString(), { id: root.id, ownerId: root.owner_id, ownerName: root.owner.full_name, status: root.status });
-
-        let frontier = [root.id];
-        while (frontier.length > 0) {
-            const children = await this.prisma.spaces.findMany({
-                where: { cloned_from_space_id: { in: frontier } },
-                select: { id: true, owner_id: true, status: true, owner: { select: { full_name: true } } },
-            });
-            frontier = [];
-            for (const child of children) {
-                const key = child.id.toString();
-                if (members.has(key)) continue;
-                members.set(key, { id: child.id, ownerId: child.owner_id, ownerName: child.owner.full_name, status: child.status });
-                frontier.push(child.id);
+        if (!rootId) {
+            // Fallback for un-backfilled spaces: climb up cloned_from_space_id to find root
+            let parentId = start.cloned_from_space_id;
+            let currentRoot = start.id;
+            while (parentId) {
+                currentRoot = parentId;
+                const parent = await this.prisma.spaces.findUnique({
+                    where: { id: parentId },
+                    select: { root_space_id: true, cloned_from_space_id: true },
+                });
+                if (!parent) break;
+                if (parent.root_space_id) {
+                    currentRoot = parent.root_space_id;
+                    break;
+                }
+                parentId = parent.cloned_from_space_id;
             }
+            rootId = currentRoot;
         }
 
-        return Array.from(members.values());
+        // Flat lookup: root space itself + all clones pointing to root_space_id
+        const members = await this.prisma.spaces.findMany({
+            where: {
+                OR: [
+                    { id: rootId },
+                    { root_space_id: rootId },
+                ],
+            },
+            select: {
+                id: true,
+                owner_id: true,
+                status: true,
+                owner: { select: { full_name: true } },
+            },
+        });
+
+        return members.map(m => ({
+            id: m.id,
+            ownerId: m.owner_id,
+            ownerName: m.owner.full_name,
+            status: m.status,
+        }));
     }
 }

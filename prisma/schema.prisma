@@ -295,6 +295,9 @@ model spaces {
   // Self-FK SetNull (2026-08-21): xoá space gốc thì clone mất lineage chứ
   // không giữ id dangling trỏ vào hư không.
   cloned_from_space_id BigInt?             @map("cloned_from_space_id")
+  // WP1.7 — Root pointer denormalization: ID of the root (original) space in the clone lineage.
+  // Enables flat O(1) lineage lookups without recursive graph traversal.
+  root_space_id        BigInt?             @map("root_space_id")
   // WP1.6.2 — "/my-learning" shows this as the "enrolled at" date.
   created_at            DateTime            @default(now()) @map("created_at")
   updated_at            DateTime            @default(now()) @updatedAt @map("updated_at")
@@ -316,6 +319,8 @@ model spaces {
   source                sources?            @relation(fields: [source_id], references: [id], onDelete: SetNull)
   cloned_from           spaces?            @relation("SpaceCloneOrigin", fields: [cloned_from_space_id], references: [id], onDelete: SetNull)
   clones                spaces[]           @relation("SpaceCloneOrigin")
+  root_space            spaces?            @relation("SpaceRootOrigin", fields: [root_space_id], references: [id], onDelete: SetNull)
+  lineage_clones        spaces[]           @relation("SpaceRootOrigin")
 
   // Postgres allows multiple NULLs through a unique index, so this only
   // constrains actual clones — what makes cloneForOwner's check-then-create
@@ -323,6 +328,7 @@ model spaces {
   @@unique([owner_id, cloned_from_space_id])
   @@index([owner_id])
   @@index([source_id])
+  @@index([root_space_id])
   @@map("spaces")
 }
 

@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 import { Lesson } from '../domain/Lesson';
 
 export class LessonRepository {
@@ -87,18 +87,42 @@ export class LessonRepository {
             await tx.lessons.deleteMany({ where: deleteWhere });
 
             // Update existing lessons in-place so quiz questions remain linked.
-            // The where clause re-asserts space membership as a second guard.
-            for (const lesson of existingLessons) {
-                await tx.lessons.updateMany({
-                    where: { id: lesson.id!, chapter_id: { in: chapterIds } },
-                    data: {
-                        title: lesson.title,
-                        type: lesson.type,
-                        order_index: lesson.orderIndex,
-                        // Preserve quiz content_url (questions live in the questions table)
-                        ...(lesson.type !== 'QUIZ' && { content_url: lesson.contentUrl }),
-                    },
-                });
+            // Uses a single bulk UPDATE ... FROM (VALUES ...) statement to prevent N+1 queries in the transaction.
+            if (existingLessons.length > 0) {
+                if (typeof (tx as any).$executeRaw === 'function') {
+                    const values = existingLessons.map((l) =>
+                        Prisma.sql`(${l.id!}::bigint, ${l.title}::varchar, ${l.type}::lesson_type, ${l.orderIndex}::int, ${l.type !== 'QUIZ' ? (l.contentUrl || null) : null}::varchar)`
+                    );
+
+                    await tx.$executeRaw`
+                        UPDATE lessons AS l
+                        SET
+                            title = v.title,
+                            type = v.type,
+                            order_index = v.order_index,
+                            content_url = CASE
+                                WHEN v.type = 'QUIZ' THEN l.content_url
+                                ELSE v.content_url
+                            END
+                        FROM (
+                            VALUES ${Prisma.join(values)}
+                        ) AS v(id, title, type, order_index, content_url)
+                        WHERE l.id = v.id
+                          AND l.chapter_id IN (${Prisma.join(chapterIds)});
+                    `;
+                } else {
+                    for (const lesson of existingLessons) {
+                        await tx.lessons.updateMany({
+                            where: { id: lesson.id!, chapter_id: { in: chapterIds } },
+                            data: {
+                                title: lesson.title,
+                                type: lesson.type,
+                                order_index: lesson.orderIndex,
+                                ...(lesson.type !== 'QUIZ' && { content_url: lesson.contentUrl }),
+                            },
+                        });
+                    }
+                }
             }
 
             // Insert brand-new lessons

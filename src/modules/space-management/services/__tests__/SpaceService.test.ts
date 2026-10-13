@@ -9,6 +9,7 @@ const makeSpaceRepo = () => ({
 
 const makeLearnService = () => ({
     getSpaceProgress: vi.fn(),
+    getBatchSpaceProgress: vi.fn(),
 });
 
 // ── Tests ────────────────────────────────────────────────────────────────────
@@ -92,5 +93,27 @@ describe('SpaceService.getCompanions', () => {
         // về không có ai (Alice không thấy Bob, Bob nhìn vào cũng chỉ thấy 1
         // người active còn lại nên bị coi là "solo").
         await expect(service.getCompanions(1n, 20n)).resolves.toEqual([]);
+    });
+
+    it('uses getBatchSpaceProgress in a single batch call when available', async () => {
+        spaceRepo.findLineageSpaces.mockResolvedValue([
+            { id: 1n, ownerId: 10n, ownerName: 'Alice', status: 'ACTIVE' },
+            { id: 2n, ownerId: 20n, ownerName: 'Bob', status: 'ACTIVE' },
+        ]);
+        learnService.getBatchSpaceProgress.mockResolvedValue(
+            new Map([
+                ['1', 30],
+                ['2', 75],
+            ])
+        );
+
+        const result = await service.getCompanions(1n, 10n);
+
+        expect(result).toEqual([
+            { spaceId: 2, name: 'Bob', completionRate: 75, isSelf: false },
+            { spaceId: 1, name: 'Alice', completionRate: 30, isSelf: true },
+        ]);
+        expect(learnService.getBatchSpaceProgress).toHaveBeenCalledWith([1n, 2n]);
+        expect(learnService.getSpaceProgress).not.toHaveBeenCalled();
     });
 });

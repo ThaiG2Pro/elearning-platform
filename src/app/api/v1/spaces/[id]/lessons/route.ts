@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { SpaceController } from '@/modules/space-management/controllers/SpaceController';
+import { LearningProgressRepository } from '@/modules/space-management/repositories/LearningProgressRepository';
 import { prisma } from '@/shared/config/database';
 import { getUserIdFromRequest } from '@/shared/middleware/auth';
 import { parseIdParam } from '@/shared/http/params';
@@ -41,15 +42,17 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
             );
         }
 
-        // Extract lessons from chapters
-        const progressRepo = new ((await import('@/modules/space-management/repositories/LearningProgressRepository')).LearningProgressRepository)(prisma);
+        // Extract lessons from chapters with single batch query (O(1) queries instead of O(N) N+1 waterfall)
+        const progressRepo = new LearningProgressRepository(prisma);
+        const progresses = await progressRepo.findByUserAndSpace(userId, spaceId);
+        const progressMap = new Map<string, boolean>(
+            progresses.map(p => [p.lessonId.toString(), p.isFinished])
+        );
 
         const lessons = [] as any[];
         for (const chapter of space.chapters) {
             for (const lesson of chapter.lessons) {
-                // Get progress for this lesson for the user
-                const progress = await progressRepo.findByStudentAndLesson(userId, BigInt(lesson.id));
-                const isCompleted = !!progress?.isFinished;
+                const isCompleted = !!progressMap.get(lesson.id.toString());
 
                 // Duration: try lesson.duration if present, otherwise 0 (could be enhanced to fetch YouTube metadata)
                 const duration = (lesson as any).duration || 0;
