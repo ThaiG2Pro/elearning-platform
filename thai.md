@@ -360,5 +360,54 @@ Qua rà soát toàn bộ codebase, còn có 3 vị trí khác đang gặp vấn 
   - Latency giảm từ hàng trăm millisecond xuống còn <5ms.
   - Test suite mới `src/app/api/v1/spaces/[id]/lessons/__tests__/route.test.ts` đảm bảo 100% không tái xuất hiện N+1 query.
 
+---
+
+## 5. Bảng Số Liệu Đo Lường Thực Nghiệm (Benchmark Results: Before vs After)
+
+> Thực thi tự động qua test suite `scripts/benchmark-optimizations.ts` đo lường trên PostgreSQL Docker (`localhost:15432`) với Prisma Query Duration Event Listener.
+
+### Test 1: `GET .../lessons` (N+1 Query Waterfall)
+| Số bài học ($N$) | BEFORE (Cũ): $Q \rightarrow T_{db} + \text{Overhead} = T_{total}$ | AFTER (Mới): $Q \rightarrow T_{db} + \text{Overhead} = T_{total}$ | Tăng tốc (Speedup) |
+|:---|:---|:---|:---:|
+| **$N = 5$** | $5q \rightarrow 0.00\text{ms} + 1.62\text{ms} = 1.62\text{ms}$ | $1q \rightarrow 0.00\text{ms} + 0.39\text{ms} = 0.39\text{ms}$ | **$4.2\times$** |
+| **$N = 15$** | $15q \rightarrow 0.00\text{ms} + 6.27\text{ms} = 6.27\text{ms}$ | $1q \rightarrow 0.00\text{ms} + 0.54\text{ms} = 0.54\text{ms}$ | **$11.6\times$** |
+| **$N = 30$** | $30q \rightarrow 0.00\text{ms} + 13.32\text{ms} = 13.32\text{ms}$ | $1q \rightarrow 0.00\text{ms} + 0.60\text{ms} = 0.60\text{ms}$ | **$22.2\times$** |
+| **$N = 60$** | $60q \rightarrow 0.00\text{ms} + 24.80\text{ms} = 24.80\text{ms}$ | $1q \rightarrow 0.00\text{ms} + 0.78\text{ms} = 0.78\text{ms}$ | **$31.8\times$** |
+| **$N = 100$** | $100q \rightarrow 0.00\text{ms} + 41.74\text{ms} = 41.74\text{ms}$ | $1q \rightarrow 0.00\text{ms} + 0.94\text{ms} = 0.94\text{ms}$ | **$44.4\times$** |
+
+### Test 2: `getCompanions` (Progress Batching)
+| Số Spaces ($N$) | BEFORE (Cũ): $Q \rightarrow T_{db} + \text{Overhead} = T_{total}$ | AFTER (Mới): $Q \rightarrow T_{db} + \text{Overhead} = T_{total}$ | Tăng tốc (Speedup) |
+|:---|:---|:---|:---:|
+| **$N = 5$** | $10q \rightarrow 0.00\text{ms} + 3.60\text{ms} = 3.60\text{ms}$ | $1q \rightarrow 1.00\text{ms} + 0.47\text{ms} = 1.47\text{ms}$ | **$2.4\times$** |
+| **$N = 10$** | $20q \rightarrow 0.00\text{ms} + 8.30\text{ms} = 8.30\text{ms}$ | $1q \rightarrow 0.00\text{ms} + 1.04\text{ms} = 1.04\text{ms}$ | **$8.0\times$** |
+| **$N = 20$** | $40q \rightarrow 0.00\text{ms} + 18.49\text{ms} = 18.49\text{ms}$ | $1q \rightarrow 1.00\text{ms} + 0.36\text{ms} = 1.36\text{ms}$ | **$13.6\times$** |
+| **$N = 35$** | $70q \rightarrow 0.00\text{ms} + 30.83\text{ms} = 30.83\text{ms}$ | $1q \rightarrow 1.00\text{ms} + 0.94\text{ms} = 1.94\text{ms}$ | **$15.9\times$** |
+
+### Test 3: `findLineageSpaces` (Tree Traversal)
+| Độ sâu ($\text{Depth}$) | BEFORE (Cũ): $Q \rightarrow T_{db} + \text{Overhead} = T_{total}$ | AFTER (Mới): $Q \rightarrow T_{db} + \text{Overhead} = T_{total}$ | Tăng tốc (Speedup) |
+|:---|:---|:---|:---:|
+| **$\text{Depth} = 2$** | $6q \rightarrow 0.00\text{ms} + 2.88\text{ms} = 2.88\text{ms}$ | $2q \rightarrow 0.00\text{ms} + 0.83\text{ms} = 0.83\text{ms}$ | **$3.5\times$** |
+| **$\text{Depth} = 5$** | $12q \rightarrow 0.00\text{ms} + 5.62\text{ms} = 5.62\text{ms}$ | $2q \rightarrow 0.00\text{ms} + 0.95\text{ms} = 0.95\text{ms}$ | **$5.9\times$** |
+| **$\text{Depth} = 10$** | $22q \rightarrow 0.00\text{ms} + 8.98\text{ms} = 8.98\text{ms}$ | $2q \rightarrow 0.00\text{ms} + 0.71\text{ms} = 0.71\text{ms}$ | **$12.6\times$** |
+| **$\text{Depth} = 20$** | $42q \rightarrow 0.00\text{ms} + 18.92\text{ms} = 18.92\text{ms}$ | $2q \rightarrow 0.00\text{ms} + 0.94\text{ms} = 0.94\text{ms}$ | **$20.1\times$** |
+
+### Test 4: `syncLessons` (Bulk Update in Transaction)
+| Số bài học ($N$) | BEFORE (Cũ): $Q \rightarrow T_{db} + \text{Overhead} = T_{total}$ | AFTER (Mới): $Q \rightarrow T_{db} + \text{Overhead} = T_{total}$ | Tăng tốc (Speedup) |
+|:---|:---|:---|:---:|
+| **$N = 5$** | $7q \rightarrow 0.00\text{ms} + 3.53\text{ms} = 3.53\text{ms}$ | $3q \rightarrow 0.00\text{ms} + 1.47\text{ms} = 1.47\text{ms}$ | **$2.4\times$** |
+| **$N = 15$** | $17q \rightarrow 0.00\text{ms} + 6.02\text{ms} = 6.02\text{ms}$ | $3q \rightarrow 0.20\text{ms} + 1.68\text{ms} = 1.88\text{ms}$ | **$3.2\times$** |
+| **$N = 30$** | $32q \rightarrow 0.00\text{ms} + 13.48\text{ms} = 13.48\text{ms}$ | $3q \rightarrow 0.00\text{ms} + 2.25\text{ms} = 2.25\text{ms}$ | **$6.0\times$** |
+| **$N = 60$** | $62q \rightarrow 0.80\text{ms} + 26.38\text{ms} = 27.18\text{ms}$ | $3q \rightarrow 0.20\text{ms} + 2.44\text{ms} = 2.64\text{ms}$ | **$10.3\times$** |
+| **$N = 100$** | $102q \rightarrow 0.60\text{ms} + 42.77\text{ms} = 43.37\text{ms}$ | $3q \rightarrow 1.00\text{ms} + 2.29\text{ms} = 3.29\text{ms}$ | **$13.2\times$** |
+
+### Test 5: `cloneForOwner` (Deep Clone Space)
+| Số bài học ($N$) | BEFORE (Cũ): $Q \rightarrow T_{db} + \text{Overhead} = T_{total}$ | AFTER (Mới): $Q \rightarrow T_{db} + \text{Overhead} = T_{total}$ | Tăng tốc (Speedup) |
+|:---|:---|:---|:---:|
+| **$N = 6$** | $12q \rightarrow 0.00\text{ms} + 6.31\text{ms} = 6.31\text{ms}$ | $10q \rightarrow 0.20\text{ms} + 4.36\text{ms} = 4.56\text{ms}$ | **$1.4\times$** |
+| **$N = 18$** | $24q \rightarrow 0.20\text{ms} + 13.46\text{ms} = 13.66\text{ms}$ | $10q \rightarrow 0.00\text{ms} + 5.18\text{ms} = 5.18\text{ms}$ | **$2.6\times$** |
+| **$N = 36$** | $42q \rightarrow 0.60\text{ms} + 22.41\text{ms} = 23.01\text{ms}$ | $10q \rightarrow 0.00\text{ms} + 6.70\text{ms} = 6.70\text{ms}$ | **$3.4\times$** |
+| **$N = 60$** | $66q \rightarrow 0.80\text{ms} + 36.05\text{ms} = 36.85\text{ms}$ | $10q \rightarrow 2.40\text{ms} + 6.70\text{ms} = 9.10\text{ms}$ | **$4.0\times$** |
+
+
 
 
