@@ -1,8 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
     // Emit a standalone folder with only the files needed to run the app.
-    // Required for the multi-stage Docker image (copies .next/standalone).
-    output: 'standalone',
+    // Required for Docker, omitted on Vercel so Vercel builds native serverless lambdas.
+    ...(process.env.VERCEL ? {} : { output: 'standalone' }),
+
+    serverExternalPackages: ['@prisma/client', 'prisma'],
 
     // Security — tắt header "X-Powered-By: Next.js" mà Next.js tự thêm mặc
     // định trên mọi response. Không phải lỗ hổng tự thân, nhưng lộ rõ

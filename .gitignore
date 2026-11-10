@@ -55,3 +55,4 @@ Thumbs.db
 
 # Claude Code skills lock (dev tooling, machine-local)
 skills-lock.json
+.env*

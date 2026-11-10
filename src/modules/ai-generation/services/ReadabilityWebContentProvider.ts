@@ -1,6 +1,4 @@
-import { JSDOM } from 'jsdom';
 import { fetchPublicUrl } from '../../../shared/security/safeUrl';
-import { Readability } from '@mozilla/readability';
 import { WebContentFetchError, WebContentProvider } from './WebContentProvider';
 
 /**
@@ -23,6 +21,8 @@ export class ReadabilityWebContentProvider implements WebContentProvider {
         }
 
         try {
+            const { JSDOM } = await import('jsdom');
+            const { Readability } = await import('@mozilla/readability');
             const dom = new JSDOM(html, { url });
             const article = new Readability(dom.window.document).parse();
             dom.window.close();

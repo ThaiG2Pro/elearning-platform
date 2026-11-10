@@ -1,5 +1,3 @@
-import { JSDOM } from 'jsdom';
-import { Readability } from '@mozilla/readability';
 import { fetchPublicUrl, isPublicHttpUrlSyntax } from '../security/safeUrl';
 import { YouTubeOEmbedAdapter } from './YouTubeOEmbedAdapter';
 
@@ -57,11 +55,13 @@ export class WebPageAdapter {
             // SSRF guard: public host only, redirects re-validated, body capped.
             // Perf (2026-09-06): timeout 15s → 10s; chỉ cần <title>.
             const response = await fetchPublicUrl(url, { timeoutMs: 10_000, maxBytes: 2 * 1024 * 1024 });
+            const { JSDOM } = await import('jsdom');
             const dom = new JSDOM(response.data, { url });
             const title = dom.window.document.title?.trim();
             let textContent: string | undefined;
             try {
                 // Readability biến đổi DOM tại chỗ → đọc <title> TRƯỚC.
+                const { Readability } = await import('@mozilla/readability');
                 textContent = new Readability(dom.window.document).parse()?.textContent?.trim() || undefined;
             } catch {
                 // best-effort — tiêu đề vẫn trả về được
