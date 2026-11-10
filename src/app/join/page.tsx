@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { identifyUser } from '@/lib/auth';
 import { IdentifyRequest } from '@/types/auth.types';
 import Header from '@/components/Header';
+import OAuthButtons from '@/components/OAuthButtons';
 import Toast from '@/components/Toast';
 import SalesAgentWidget from '@/components/ai/SalesAgentWidget';
 import { MARGIN_W } from '@/lib/vibe/theme';
@@ -76,7 +77,7 @@ export default function JoinPage() {
                     giữ nguyên 100%. */}
                 <div className="mb-6">
                     <h1 className="text-[clamp(20px,2.2vw,26px)] font-bold tracking-[-0.015em] text-ink-text mb-1">Bắt đầu ngay</h1>
-                    <p className="text-sm text-ink-textMuted">Nhập email của bạn để tiếp tục.</p>
+                    <p className="text-sm text-ink-textMuted">Nhập email hoặc tiếp tục nhanh với Google, GitHub.</p>
                 </div>
 
                 <div className="bg-ink-panel border border-ink-border rounded-ink-md shadow-ink-sm overflow-hidden">
@@ -121,6 +122,17 @@ export default function JoinPage() {
                             </div>
                         </div>
                     </form>
+
+                    {/* 02 — OAuth: Đăng nhập nhanh với Google / GitHub */}
+                    <div className="flex items-stretch border-t border-ink-border">
+                        <span style={{ width: MARGIN_W }} className="shrink-0 flex items-start justify-center pt-[3px] font-mono text-[11px] text-ink-textDim">
+                            02
+                        </span>
+                        <div className="flex-1 min-w-0 border-l border-ink-marginLn pl-4 pr-5 py-4">
+                            <p className="text-xs text-ink-textMuted mb-2">Hoặc tiếp tục nhanh bằng</p>
+                            <OAuthButtons />
+                        </div>
+                    </div>
                 </div>
 
                 {appState === 'error' && errorMessage && (
