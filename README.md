@@ -1,12 +1,27 @@
 # Spacely
 
-*[English](README.en.md)*
+*[English](README.en.md)* · **[Trải nghiệm trực tiếp tại spacely.thais.software](https://spacely.thais.software)**
 
-**Dán một link YouTube, có ngay một chỗ để học nó nghiêm túc.**
-Ghi chú theo mốc thời gian, quiz tự kiểm tra (AI soạn từ chính video), tiến độ tự lưu, chia sẻ hoặc sao chép Space của người khác.
+> **Dán một link YouTube, có ngay một chỗ để học nó nghiêm túc.**  
+> Ghi chú theo mốc thời gian, quiz tự kiểm tra (AI soạn từ chính video), tiến độ tự lưu, chia sẻ hoặc sao chép Space của người khác.
 
+[![Live Demo](https://img.shields.io/badge/Demo-spacely.thais.software-22c55e?style=for-the-badge&logo=vercel&logoColor=white)](https://spacely.thais.software)
 [![CI](https://github.com/ThaiG2Pro/elearning-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/ThaiG2Pro/elearning-platform/actions/workflows/ci.yml)
-![Next.js 14](https://img.shields.io/badge/Next.js-14-black) ![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue) ![Prisma](https://img.shields.io/badge/Prisma-PostgreSQL-2D3748)
+![Next.js 14](https://img.shields.io/badge/Next.js-14-black)
+![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue)
+![Prisma](https://img.shields.io/badge/Prisma-PostgreSQL-2D3748)
+
+---
+
+### 🌐 Trải nghiệm trực tiếp (Live Application)
+- **Website chính thức:** [https://spacely.thais.software](https://spacely.thais.software)
+- **Đăng nhập 1-click:** Hỗ trợ đăng nhập nhanh qua **Google** & **GitHub**.
+- **Tài khoản Demo có sẵn (nếu không muốn dùng tài khoản cá nhân):**
+  - **Email:** `demo@thais.software`
+  - **Mật khẩu:** `password123`
+  - *(Tài khoản kích hoạt sẵn 100 Credits để trải nghiệm tạo Quiz AI, lưu tiến độ, ghi chú).*
+
+---
 
 <p align="center">
   <img src="docs/screenshots/home.png" alt="Trang chủ: dán link YouTube, 58 Space tuyển chọn" width="820">
@@ -16,7 +31,15 @@ Ghi chú theo mốc thời gian, quiz tự kiểm tra (AI soạn từ chính vid
   <img src="docs/screenshots/support-chat.png" alt="Widget CSKH: AI trả lời có dẫn nguồn, luôn có lối sang người thật" width="400">
 </p>
 
-> Vì sao có sản phẩm này: kiến thức miễn phí trên YouTube không thiếu, thiếu là một chỗ để học nó mà không bị autoplay, gợi ý và quảng cáo kéo đi. Tôi làm cho chính mình học trước và vẫn dùng mỗi ngày. Chi tiết: [`docs/VISION.md`](docs/VISION.md).
+> **Vì sao có sản phẩm này:** Kiến thức miễn phí trên YouTube không thiếu, thiếu là một chỗ để học nó mà không bị autoplay, gợi ý và quảng cáo kéo đi. Tôi làm cho chính mình học trước và vẫn dùng mỗi ngày. Chi tiết: [`docs/VISION.md`](docs/VISION.md).
+
+## ✨ Điểm nhấn nổi bật
+
+- 🎯 **Học không phân tâm**: Bọc video YouTube trong giao diện tập trung; lưu vị trí giây đang xem, ghi chú neo theo timestamp bấm là tua tới.
+- 🤖 **Quiz AI tự động**: Trích xuất transcript video YouTube và tạo trắc nghiệm củng cố kiến thức ngay sau bài học.
+- 📚 **58 Playlist Tuyển chọn**: Có sẵn các khoá học lập trình tuyển chọn từ các kênh uy tín (F8, Hỏi Dân IT, 28tech, HowKteam, Devteria...).
+- 👥 **Học cùng nhau (Social Proof)**: Sao chép Space về học và quan sát tiến độ học tập thực tế của các bạn học khác cùng Space.
+- ⚡ **Kiến trúc tối ưu**: Modular monolith (DDD), khử hoàn toàn truy vấn N+1 và đệ quy lineage (O(1) lookups), Next.js App Router kết hợp Neon PostgreSQL Serverless tại Singapore.
 
 ## Người dùng làm được gì
 
@@ -75,8 +98,8 @@ Chi tiết hơn: [`docs/ARCHITECTURE_NOTES.md`](docs/ARCHITECTURE_NOTES.md), [`d
 
 Next.js 14 (App Router, TypeScript strict) · Tailwind + design system "ink" riêng · Prisma + PostgreSQL · LiteLLM · Stripe · Vitest (387 test) · Docker Compose, Caddy, Fly.io · GitHub Actions (typecheck, lint, audit, test, build).
 
-## Giới hạn hiện tại
+## Trạng thái vận hành
 
-- Chỉ nhận link YouTube, mỗi lần một video (nguồn web/blog tạm ẩn).
-- Rate limiter in-memory: đủ cho 1 instance, đổi sang Redis khi scale ngang.
-- Chưa deploy public; checklist ở [`docs/LAUNCH_CHECKLIST.md`](docs/LAUNCH_CHECKLIST.md).
+- **Đang chạy thực tế (Production):** [https://spacely.thais.software](https://spacely.thais.software) (Vercel Serverless + Neon PostgreSQL Singapore).
+- **Hỗ trợ Auth:** Đăng nhập 1-click Google OAuth & GitHub OAuth, hoặc đăng nhập email/mật khẩu.
+- **Tiến trình tiếp theo:** Tích hợp bộ nhớ tạm Redis khi mở rộng chịu tải đa vùng.

@@ -1,12 +1,27 @@
 # Spacely
 
-*[Tiếng Việt](README.md)*
+*[Tiếng Việt](README.md)* · **[Live Application: spacely.thais.software](https://spacely.thais.software)**
 
-**Paste a YouTube link and get a place to actually learn it.**
-Timestamped notes, self-check quizzes (AI-generated from the video itself), progress that saves itself, and Spaces you can share or copy from other learners.
+> **Paste a YouTube link and get a place to actually learn it.**  
+> Timestamped notes, self-check quizzes (AI-generated from the video itself), progress that saves itself, and Spaces you can share or copy from other learners.
 
+[![Live Demo](https://img.shields.io/badge/Demo-spacely.thais.software-22c55e?style=for-the-badge&logo=vercel&logoColor=white)](https://spacely.thais.software)
 [![CI](https://github.com/ThaiG2Pro/elearning-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/ThaiG2Pro/elearning-platform/actions/workflows/ci.yml)
-![Next.js 14](https://img.shields.io/badge/Next.js-14-black) ![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue) ![Prisma](https://img.shields.io/badge/Prisma-PostgreSQL-2D3748)
+![Next.js 14](https://img.shields.io/badge/Next.js-14-black)
+![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue)
+![Prisma](https://img.shields.io/badge/Prisma-PostgreSQL-2D3748)
+
+---
+
+### 🌐 Live Application
+- **Official URL:** [https://spacely.thais.software](https://spacely.thais.software)
+- **1-Click Authentication:** Instant sign-in via **Google** & **GitHub**.
+- **Pre-configured Demo Account:**
+  - **Email:** `demo@thais.software`
+  - **Password:** `password123`
+  - *(Preloaded with 100 Credits to explore AI quiz generation, progress tracking, and timestamped notes).*
+
+---
 
 <p align="center">
   <img src="docs/screenshots/home.png" alt="Home: paste a YouTube link, 58 curated Spaces" width="820">
@@ -16,7 +31,15 @@ Timestamped notes, self-check quizzes (AI-generated from the video itself), prog
   <img src="docs/screenshots/support-chat.png" alt="Support widget: AI answers with sources, always a path to a human" width="400">
 </p>
 
-> Why this exists: free knowledge on YouTube is not the bottleneck; a place to learn it without autoplay, recommendations and ads pulling you away is. I built it for my own studying first and still use it daily. Details (Vietnamese): [`docs/VISION.md`](docs/VISION.md).
+> **Why this exists:** Free knowledge on YouTube is not the bottleneck; a place to learn it without autoplay, recommendations and ads pulling you away is. I built it for my own studying first and still use it daily. Details (Vietnamese): [`docs/VISION.md`](docs/VISION.md).
+
+## ✨ Key Highlights
+
+- 🎯 **Distraction-free learning**: Wraps YouTube in a clean, focused study environment with timestamp-synced notes and autoplay/ad isolation.
+- 🤖 **Automated AI Quizzes**: Extracts transcripts directly from YouTube to generate knowledge-check quizzes.
+- 📚 **58 Curated Spaces**: Curated programming paths from trusted channels (F8, 28tech, HowKteam, Devteria, etc.).
+- 👥 **Social Learning**: Clone Spaces for personal study while seeing real completion rates from others on the same Space.
+- ⚡ **Optimized Architecture**: Domain-driven design (DDD), flat O(1) lineage lookups eliminating recursive queries and N+1 overhead, Next.js App Router deployed on Vercel with Neon PostgreSQL Serverless in Singapore.
 
 ## What a user can do
 
@@ -75,8 +98,8 @@ More: [`docs/ARCHITECTURE_NOTES.md`](docs/ARCHITECTURE_NOTES.md), [`docs/adr/`](
 
 Next.js 14 (App Router, strict TypeScript) · Tailwind + an in-house "ink" design system · Prisma + PostgreSQL · LiteLLM · Stripe · Vitest (387 tests) · Docker Compose, Caddy, Fly.io · GitHub Actions (typecheck, lint, audit, test, build).
 
-## Current limitations
+## Operational Status
 
-- YouTube links only, one video at a time (web/blog sources are temporarily hidden).
-- In-memory rate limiter: fine for one instance, swap for Redis when scaling horizontally.
-- Not deployed publicly yet; checklist in [`docs/LAUNCH_CHECKLIST.md`](docs/LAUNCH_CHECKLIST.md).
+- **Live Production:** [https://spacely.thais.software](https://spacely.thais.software) (Vercel Serverless + Neon PostgreSQL Singapore).
+- **Authentication:** 1-click Google OAuth & GitHub OAuth, or traditional email/password credentials.
+- **Roadmap:** Distributed caching with Redis when scaling across regions.
